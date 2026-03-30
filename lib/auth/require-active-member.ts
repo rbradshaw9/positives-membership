@@ -14,13 +14,14 @@ type MemberProfile = {
  * lib/auth/require-active-member.ts
  * Server-side access guard for protected member routes.
  *
- * Redirects to /login if:
- * - no authenticated session exists
- * - member record not found
- * - subscription_status is not 'active'
+ * Redirect logic:
+ * - Unauthenticated (no session)        → /login
+ * - Authenticated, no member row        → /subscribe
+ *   (brief race on first sign-in before trigger runs)
+ * - Authenticated, subscription not active → /subscribe
+ * - Authenticated, active subscription  → returns MemberProfile
  *
- * Use at the top of protected Server Component page files.
- * Returns the member profile when access is granted.
+ * Use at the top of protected Server Component layouts/pages.
  */
 export async function requireActiveMember(): Promise<MemberProfile> {
   const supabase = await createClient();
@@ -41,15 +42,16 @@ export async function requireActiveMember(): Promise<MemberProfile> {
     .single();
 
   if (memberError || !data) {
-    // Member record may not exist yet (race on signup) — send to login
-    redirect("/login");
+    // Member row missing — trigger may not have run yet (first sign-in race).
+    // User IS authenticated, so redirect to /subscribe not /login.
+    redirect("/subscribe");
   }
 
   const member = data as MemberProfile;
 
   if (member.subscription_status !== "active") {
-    // Expired or cancelled — redirect with context
-    redirect("/login?reason=subscription_inactive");
+    // Authenticated but subscription is inactive, canceled, or past_due.
+    redirect("/subscribe");
   }
 
   return member;

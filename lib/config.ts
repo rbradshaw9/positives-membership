@@ -45,5 +45,21 @@ export const config = {
     get publishableKey() { return optional("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"); },
     /** Server-only — used for webhook signature verification */
     get webhookSecret() { return required("STRIPE_WEBHOOK_SECRET"); },
+
+    /**
+     * Stripe Price IDs — map to Positives subscription tiers.
+     * Set these in .env.local once prices are created in the Stripe dashboard.
+     * Used exclusively by the webhook service layer — never in client code.
+     */
+    prices: {
+      get level1Monthly() { return optional("STRIPE_PRICE_LEVEL_1_MONTHLY"); },
+      get level2Monthly() { return optional("STRIPE_PRICE_LEVEL_2_MONTHLY"); },
+      get level3Monthly() { return optional("STRIPE_PRICE_LEVEL_3_MONTHLY"); },
+      get level4Monthly() { return optional("STRIPE_PRICE_LEVEL_4_MONTHLY"); },
+      get level1Annual() { return optional("STRIPE_PRICE_LEVEL_1_ANNUAL"); },
+      get level2Annual() { return optional("STRIPE_PRICE_LEVEL_2_ANNUAL"); },
+      get level3Annual() { return optional("STRIPE_PRICE_LEVEL_3_ANNUAL"); },
+      get level4Annual() { return optional("STRIPE_PRICE_LEVEL_4_ANNUAL"); },
+    },
   },
 } as const;

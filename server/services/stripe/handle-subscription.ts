@@ -1,6 +1,7 @@
 import type Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import type { SubscriptionStatus, SubscriptionTier } from "@/types/supabase";
+import { config } from "@/lib/config";
 
 /**
  * server/services/stripe/handle-subscription.ts
@@ -12,8 +13,7 @@ import type { SubscriptionStatus, SubscriptionTier } from "@/types/supabase";
  * The Stripe customer ID is used to locate the member record.
  * Ensure member.stripe_customer_id is set when a customer is created in Stripe.
  *
- * TODO (production):
- * - Map Stripe Price IDs to subscription tiers (level_1–level_4)
+ * TODO (later milestones):
  * - Handle subscription trial states
  * - Trigger ActiveCampaign tag updates on status change
  * - Trigger Castos feed access update on status change
@@ -49,13 +49,48 @@ function mapStatus(stripeStatus: string): SubscriptionStatus {
 }
 
 /**
- * Map Stripe Price ID → Positives subscription tier
- * TODO: Replace with real Price IDs from Stripe dashboard.
+ * Map Stripe Price ID → Positives subscription tier.
+ *
+ * Driven by STRIPE_PRICE_LEVEL_*_{MONTHLY|ANNUAL} env vars.
+ * Set these in .env.local once prices are created in your Stripe dashboard.
+ *
+ * If the price ID is unknown, throws an error rather than silently assigning
+ * the wrong tier. The webhook returns 400, prompting Stripe to retry.
  */
-function mapTier(_priceId: string | null): SubscriptionTier {
-  // Placeholder — wire up to real Stripe Price IDs
-  // e.g. if (priceId === 'price_123') return 'level_1';
-  return "level_1";
+function mapTier(priceId: string | null): SubscriptionTier {
+  if (!priceId) {
+    throw new Error(
+      `[Stripe] Cannot map tier: subscription has no price ID. ` +
+        `Ensure the subscription has at least one active price item.`
+    );
+  }
+
+  const {
+    level1Monthly, level2Monthly, level3Monthly, level4Monthly,
+    level1Annual, level2Annual, level3Annual, level4Annual,
+  } = config.stripe.prices;
+
+  const tierMap: Record<string, SubscriptionTier> = {};
+  if (level1Monthly) tierMap[level1Monthly] = "level_1";
+  if (level2Monthly) tierMap[level2Monthly] = "level_2";
+  if (level3Monthly) tierMap[level3Monthly] = "level_3";
+  if (level4Monthly) tierMap[level4Monthly] = "level_4";
+  if (level1Annual)  tierMap[level1Annual]  = "level_1";
+  if (level2Annual)  tierMap[level2Annual]  = "level_2";
+  if (level3Annual)  tierMap[level3Annual]  = "level_3";
+  if (level4Annual)  tierMap[level4Annual]  = "level_4";
+
+  const tier = tierMap[priceId];
+
+  if (!tier) {
+    throw new Error(
+      `[Stripe] Unknown price ID: "${priceId}". ` +
+        `Add the corresponding STRIPE_PRICE_LEVEL_*_MONTHLY/ANNUAL env var ` +
+        `and restart the server.`
+    );
+  }
+
+  return tier;
 }
 
 async function updateMemberSubscription(
