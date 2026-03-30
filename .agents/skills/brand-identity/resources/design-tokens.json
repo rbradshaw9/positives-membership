@@ -1,0 +1,77 @@
+{
+  "meta": {
+    "brand_name": "Positives",
+    "description": "Core design tokens for UI implementation. Positives should feel like a premium, expertly designed product with authority, calm, clarity, and optimism. The visual system should feel modern, intentional, and elevated — closer to Apple-grade product design than a typical wellness or self-help app."
+  },
+  "colors": {
+    "primary": {
+      "DEFAULT": "#2F6FED",
+      "hover": "#245DD0",
+      "foreground": "#FFFFFF"
+    },
+    "secondary": {
+      "DEFAULT": "#4E8C78",
+      "hover": "#427866",
+      "foreground": "#FFFFFF"
+    },
+    "background": "#F6F3EE",
+    "foreground": "#121417",
+    "muted": "#ECE7DF",
+    "muted_foreground": "#68707A",
+    "card": "#FFFFFF",
+    "card_foreground": "#121417",
+    "popover": "#FFFFFF",
+    "popover_foreground": "#121417",
+    "border": "#DDD7CF",
+    "input": "#DDD7CF",
+    "ring": "#2F6FED",
+    "accent": {
+      "DEFAULT": "#D98A4E",
+      "hover": "#C7793D",
+      "foreground": "#FFFFFF"
+    },
+    "destructive": "#B94A3F",
+    "success": "#3E7F67",
+    "warning": "#C7933D",
+    "surface_dark": "#171A1F",
+    "surface_tint": "#F1EEE8"
+  },
+  "typography": {
+    "font_family_headings": [
+      "Inter",
+      "SF Pro Display",
+      "Helvetica Neue",
+      "Arial",
+      "sans-serif"
+    ],
+    "font_family_body": [
+      "Inter",
+      "SF Pro Text",
+      "Helvetica Neue",
+      "Arial",
+      "sans-serif"
+    ],
+    "font_weight_bold": "700",
+    "font_weight_semibold": "600",
+    "font_weight_medium": "500",
+    "font_weight_normal": "400",
+    "line_height_tight": "1.08",
+    "line_height_heading": "1.16",
+    "line_height_body": "1.55",
+    "letter_spacing_headings": "-0.03em",
+    "letter_spacing_body": "-0.01em"
+  },
+  "ui": {
+    "border_radius_default": "1.25rem",
+    "border_radius_small": "0.875rem",
+    "border_radius_large": "1.75rem",
+    "border_radius_xlarge": "2.25rem",
+    "border_radius_pill": "9999px",
+    "spacing_base_unit": "4px",
+    "shadow_soft": "0 6px 24px rgba(18, 20, 23, 0.05)",
+    "shadow_medium": "0 12px 36px rgba(18, 20, 23, 0.08)",
+    "shadow_large": "0 18px 60px rgba(18, 20, 23, 0.12)",
+    "shadow_focus": "0 0 0 4px rgba(47, 111, 237, 0.18)",
+    "border_width_default": "1px"
+  }
+}
