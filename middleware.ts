@@ -10,6 +10,7 @@ import { updateSession } from "@/lib/supabase/middleware";
  * 2. Protect member routes — redirect to /login if unauthenticated
  * 3. Protect admin routes — redirect to /login if unauthenticated
  *    (role check happens inside the admin layout server component)
+ * 4. Forward x-pathname header so MemberNav can highlight the active tab
  */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -33,6 +34,11 @@ export async function middleware(request: NextRequest) {
     loginUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(loginUrl);
   }
+
+  // Forward the current pathname as a request header so Server Components
+  // (e.g. MemberLayout → MemberNav) can read the active route without
+  // requiring a client-side hook.
+  supabaseResponse.headers.set("x-pathname", pathname);
 
   return supabaseResponse;
 }

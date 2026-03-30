@@ -6,8 +6,11 @@ import { headers } from "next/headers";
  * app/(member)/layout.tsx
  * Protected layout for all member-area routes.
  *
- * Calls requireActiveMember() server-side — redirects to /login
- * if the user is unauthenticated or subscription is not active.
+ * Calls requireActiveMember() server-side:
+ * - Unauthenticated users → /login
+ * - Authenticated users with inactive subscription → /subscribe
+ * - Authenticated active members → renders children
+ *
  * Never relies on client-side billing state.
  */
 export default async function MemberLayout({

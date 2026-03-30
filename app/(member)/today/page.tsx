@@ -1,21 +1,24 @@
+import { getTodayContent } from "@/lib/queries/get-today-content";
 import { DailyPracticeCard } from "@/components/today/DailyPracticeCard";
 import { WeeklyPrincipleCard } from "@/components/today/WeeklyPrincipleCard";
 import { MonthlyThemeCard } from "@/components/today/MonthlyThemeCard";
 
 /**
  * app/(member)/today/page.tsx
- * The primary daily practice page — Milestone 01 shell.
+ * The primary daily practice page — Milestone 02.
  *
- * Today's Practice is always visually primary.
- * Layout is calm and mobile-first.
- * Placeholder content until the content query is wired in a later milestone.
+ * Server Component: fetches latest active daily_audio from Supabase.
+ * DailyPracticeCard handles both real content and no-content states.
+ * Layout is calm and mobile-first; Today's Practice is always primary.
  */
 export const metadata = {
   title: "Today's Practice — Positives",
   description: "Your daily grounding practice from Dr. Paul.",
 };
 
-export default function TodayPage() {
+export default async function TodayPage() {
+  const todayContent = await getTodayContent();
+
   return (
     <div className="px-5 py-8 max-w-lg mx-auto flex flex-col gap-5">
       <header className="mb-2">
@@ -24,10 +27,10 @@ export default function TodayPage() {
         </h1>
       </header>
 
-      {/* Daily practice is visually dominant */}
-      <DailyPracticeCard />
+      {/* Daily practice — always visually dominant, real data or graceful empty */}
+      <DailyPracticeCard content={todayContent} />
 
-      {/* Secondary rhythm sections */}
+      {/* Secondary rhythm context — placeholders until content pipeline wired */}
       <WeeklyPrincipleCard />
       <MonthlyThemeCard />
     </div>
