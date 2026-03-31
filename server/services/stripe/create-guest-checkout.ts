@@ -48,14 +48,9 @@ export async function createGuestCheckoutSession(
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
 
-    // customer_creation: "always" ensures session.customer is populated
-    // in the checkout.session.completed webhook even when no Stripe customer
-    // was pre-created. Without this, session.customer may be null for guests.
-    customer_creation: "always",
-
-    // Collect the customer's email — Stripe puts this in
-    // session.customer_details.email for the webhook handler to use.
-    customer_email: undefined, // let Stripe's UI collect it
+    // For subscription mode, Stripe always creates a customer automatically.
+    // session.customer is guaranteed to be populated in the webhook.
+    // (customer_creation: "always" is only valid in payment mode — not here.)
 
     line_items: [{ price: priceId, quantity: 1 }],
 
