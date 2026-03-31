@@ -2,11 +2,13 @@
  * components/marketing/PricingCard.tsx
  *
  * Purely presentational — no client state.
- * Billing state and active status are passed from PricingToggle.
+ * Billing state is passed from PricingToggle.
  *
- * Level 1 — active, billing-toggle-aware
- * Level 2, 3 — coming soon, disabled
+ * Level 1 — active, billing-toggle-aware, includes CTA button
+ * Level 2, 3 — coming soon, disabled CTA
  */
+
+import Link from "next/link";
 
 type Billing = "monthly" | "annual";
 type Level = 1 | 2 | 3;
@@ -96,7 +98,7 @@ function Level1Price({ billing }: { billing: Billing }) {
           <span style={{ fontSize: "0.9rem", color: "#9AA0A8" }}>/year</span>
         </div>
         <p className="text-xs font-semibold" style={{ color: "#4E8C78" }}>
-          Save $98 — equivalent to 2 months free
+          Get 2 months free
         </p>
       </div>
     );
@@ -105,12 +107,7 @@ function Level1Price({ billing }: { billing: Billing }) {
   return (
     <div>
       <div className="flex items-baseline gap-1 mb-1">
-        <span
-          className="text-sm line-through"
-          style={{ color: "#B0A89E" }}
-        >
-          $97
-        </span>
+        <span className="text-sm line-through" style={{ color: "#B0A89E" }}>$97</span>
         <span
           className="font-heading font-bold"
           style={{ fontSize: "2.75rem", letterSpacing: "-0.045em", color: "#121417", lineHeight: 1 }}
@@ -139,16 +136,16 @@ export function PricingCard({ level, billing, comingSoon = false }: PricingCardP
         boxShadow: isActive
           ? "0 16px 48px rgba(18,20,23,0.10), 0 2px 8px rgba(47,111,237,0.06)"
           : "0 2px 8px rgba(18,20,23,0.04)",
-        padding: "2rem",
+        padding: "1.75rem",
         opacity: comingSoon ? 0.72 : 1,
       }}
     >
       {/* ── Header ─────────────────────────────────────────── */}
-      <div className="mb-6">
-        <div className="flex items-start justify-between gap-3 mb-3">
+      <div className="mb-5">
+        <div className="flex items-start justify-between gap-3 mb-2.5">
           <h3
             className="font-heading font-bold"
-            style={{ fontSize: "1.2rem", letterSpacing: "-0.03em", color: "#121417", lineHeight: 1.2 }}
+            style={{ fontSize: "1.15rem", letterSpacing: "-0.03em", color: "#121417", lineHeight: 1.2 }}
           >
             {card.title}
           </h3>
@@ -164,37 +161,49 @@ export function PricingCard({ level, billing, comingSoon = false }: PricingCardP
             {card.badge}
           </span>
         </div>
-        <p style={{ fontSize: "0.9rem", color: "#9AA0A8", lineHeight: 1.5 }}>{card.tagline}</p>
+        <p style={{ fontSize: "0.875rem", color: "#9AA0A8", lineHeight: 1.5 }}>{card.tagline}</p>
       </div>
 
       {/* ── Pricing ─────────────────────────────────────────── */}
-      <div className="mb-7">
+      <div className="mb-6">
         {isActive ? (
           <Level1Price billing={billing} />
         ) : (
-          <p
-            className="text-sm font-medium"
-            style={{ color: "#B0A89E", fontStyle: "italic" }}
-          >
+          <p className="text-sm font-medium" style={{ color: "#B0A89E", fontStyle: "italic" }}>
             Pricing coming soon
           </p>
         )}
       </div>
 
       {/* ── Benefits ────────────────────────────────────────── */}
-      <ul className="space-y-3 flex-1 mb-8">
+      <ul className="space-y-2.5 flex-1 mb-7">
         {card.benefits.map((item) => (
           <li key={item} className="flex items-start gap-3">
             <CheckIcon muted={comingSoon} />
-            <span style={{ fontSize: "0.9rem", color: comingSoon ? "#9AA0A8" : "#4A5360", lineHeight: 1.65 }}>
+            <span style={{ fontSize: "0.875rem", color: comingSoon ? "#9AA0A8" : "#4A5360", lineHeight: 1.65 }}>
               {item}
             </span>
           </li>
         ))}
       </ul>
 
-      {/* ── Coming-soon CTA ─────────────────────────────────── */}
-      {comingSoon && (
+      {/* ── CTA ─────────────────────────────────────────────── */}
+      {isActive ? (
+        <Link
+          href="/login"
+          className="w-full inline-flex items-center justify-center font-semibold rounded-full"
+          style={{
+            background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
+            color: "#FFFFFF",
+            boxShadow: "0 6px 20px rgba(47,111,237,0.28)",
+            letterSpacing: "-0.01em",
+            fontSize: "0.9rem",
+            padding: "0.85rem 1.5rem",
+          }}
+        >
+          Start your practice →
+        </Link>
+      ) : (
         <button
           type="button"
           disabled
@@ -210,7 +219,6 @@ export function PricingCard({ level, billing, comingSoon = false }: PricingCardP
           Notify me when available
         </button>
       )}
-      {/* Level 1 CTA is rendered inside AuthGate below the cards */}
     </div>
   );
 }

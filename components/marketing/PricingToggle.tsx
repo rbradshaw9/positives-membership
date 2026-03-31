@@ -8,9 +8,13 @@ import { AuthGate } from "./AuthGate";
  * components/marketing/PricingToggle.tsx
  *
  * Owns the billing interval state ("monthly" | "annual").
- * Renders the toggle UI, three pricing cards, and the AuthGate below.
+ * Renders the toggle UI and three pricing cards.
  *
- * Level 1:  fully interactive — toggle affects price display and priceId
+ * AuthGate is preserved in a visually-hidden container so the underlying
+ * logic and Server Actions remain intact while the UI is hidden.
+ * The pricing cards now each contain their own CTA button.
+ *
+ * Level 1:  fully interactive — toggle affects price display
  * Level 2:  coming soon — static, disabled CTA
  * Level 3:  coming soon — static, disabled CTA
  */
@@ -39,7 +43,7 @@ export function PricingToggle({
   return (
     <div>
       {/* ── Billing toggle ────────────────────────────────── */}
-      <div className="flex justify-center mb-4">
+      <div className="flex justify-center mb-3">
         <div
           role="group"
           aria-label="Billing interval"
@@ -54,14 +58,11 @@ export function PricingToggle({
               key={interval}
               type="button"
               onClick={() => setBilling(interval)}
-              className="relative px-6 py-2 text-sm font-semibold rounded-full transition-all"
+              className="relative px-5 py-2 text-sm font-semibold rounded-full transition-all"
               style={{
                 background: billing === interval ? "#FFFFFF" : "transparent",
                 color: billing === interval ? "#121417" : "#9AA0A8",
-                boxShadow:
-                  billing === interval
-                    ? "0 2px 8px rgba(18,20,23,0.08)"
-                    : "none",
+                boxShadow: billing === interval ? "0 2px 8px rgba(18,20,23,0.08)" : "none",
                 letterSpacing: "-0.01em",
               }}
             >
@@ -73,10 +74,10 @@ export function PricingToggle({
                     background: "rgba(78,140,120,0.15)",
                     color: "#4E8C78",
                     fontSize: "0.65rem",
-                    letterSpacing: "0.04em",
+                    letterSpacing: "0.03em",
                   }}
                 >
-                  SAVE 17%
+                  2 MONTHS FREE
                 </span>
               )}
             </button>
@@ -84,22 +85,22 @@ export function PricingToggle({
         </div>
       </div>
 
-      <p
-        className="text-center text-xs mb-12"
-        style={{ color: "#B0A89E" }}
-      >
+      <p className="text-center text-xs mb-8" style={{ color: "#B0A89E" }}>
         Annual pricing currently applies to Level 1 membership.
       </p>
 
       {/* ── Pricing cards ─────────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <PricingCard level={1} billing={billing} />
         <PricingCard level={2} billing={billing} comingSoon />
         <PricingCard level={3} billing={billing} comingSoon />
       </div>
 
-      {/* ── Auth gate (Level 1 only) ───────────────────────── */}
-      <div id="start" className="max-w-md mx-auto scroll-mt-24">
+      {/* ── AuthGate — visually hidden, logic preserved ───── */}
+      {/* NOTE: Hidden pending direct Stripe checkout flow.     */}
+      {/* Do NOT remove — Server Actions and priceId wiring     */}
+      {/* must stay intact for the next architectural phase.    */}
+      <div aria-hidden="true" style={{ display: "none" }}>
         <AuthGate
           isAuthenticated={isAuthenticated}
           userEmail={userEmail}

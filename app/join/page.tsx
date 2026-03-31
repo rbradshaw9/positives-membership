@@ -162,44 +162,38 @@ export default async function JoinPage({
         />
         <div
           className="relative max-w-2xl mx-auto"
-          style={{ paddingTop: "clamp(4rem, 8vw, 7rem)", paddingBottom: "clamp(3rem, 5vw, 4.5rem)" }}
+          style={{ paddingTop: "clamp(2rem, 4vw, 3.5rem)", paddingBottom: "clamp(1.5rem, 2.5vw, 2.5rem)" }}
         >
           <p
-            className="text-xs font-semibold uppercase mb-6"
+            className="text-xs font-semibold uppercase mb-4"
             style={{ color: "#4E8C78", letterSpacing: "0.14em" }}
           >
             Dr. Paul Jenkins · Clinical Psychologist
           </p>
           <h1
-            className="font-heading font-bold mb-6"
+            className="font-heading font-bold mb-4"
             style={{
-              fontSize: "clamp(2.4rem, 5.5vw, 4.25rem)",
+              fontSize: "clamp(2.2rem, 4.5vw, 3.5rem)",
               letterSpacing: "-0.045em",
-              lineHeight: "1.04",
+              lineHeight: "1.06",
               color: "#121417",
-            }}
+              textWrap: "balance",
+            } as React.CSSProperties}
           >
-            Choose your starting point.
+            Choose your{" "}
+            <span style={{ whiteSpace: "nowrap" }}>starting point.</span>
           </h1>
           <p
-            className="mb-5 mx-auto"
+            className="mb-4 mx-auto"
             style={{
-              fontSize: "clamp(1rem, 1.8vw, 1.15rem)",
+              fontSize: "clamp(0.95rem, 1.5vw, 1.05rem)",
               color: "#68707A",
-              lineHeight: "1.72",
-              maxWidth: "520px",
+              lineHeight: "1.68",
+              maxWidth: "480px",
               letterSpacing: "-0.01em",
             }}
           >
-            Begin the Positives practice today and build a mindset that grows
-            stronger every day.
-          </p>
-          <p
-            className="text-sm mx-auto"
-            style={{ color: "#B0A89E", maxWidth: "440px", lineHeight: "1.65" }}
-          >
-            Start with the core practice and grow into live sessions, community,
-            and coaching as new levels become available.
+            Begin the Positives practice today and build a mindset that grows stronger every day.
           </p>
         </div>
       </section>
@@ -208,7 +202,7 @@ export default async function JoinPage({
       <section
         className="w-full px-6"
         style={{
-          paddingBottom: "clamp(5rem, 9vw, 8rem)",
+          paddingBottom: "clamp(4rem, 7vw, 6rem)",
           background: "#FAFAF8",
         }}
       >
