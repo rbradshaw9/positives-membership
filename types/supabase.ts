@@ -167,6 +167,8 @@ export type Database = {
           id: string
           last_practiced_at: string | null
           name: string | null
+          onboarding_token: string | null
+          password_set: boolean
           practice_streak: number
           stripe_customer_id: string | null
           subscription_end_date: string | null
@@ -182,6 +184,8 @@ export type Database = {
           id: string
           last_practiced_at?: string | null
           name?: string | null
+          onboarding_token?: string | null
+          password_set?: boolean
           practice_streak?: number
           stripe_customer_id?: string | null
           subscription_end_date?: string | null
@@ -197,6 +201,8 @@ export type Database = {
           id?: string
           last_practiced_at?: string | null
           name?: string | null
+          onboarding_token?: string | null
+          password_set?: boolean
           practice_streak?: number
           stripe_customer_id?: string | null
           subscription_end_date?: string | null
