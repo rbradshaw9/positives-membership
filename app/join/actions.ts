@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { createCheckoutSession } from "@/server/services/stripe/create-checkout-session";
+import { createGuestCheckoutSession } from "@/server/services/stripe/create-guest-checkout";
 
 /**
  * app/join/actions.ts
@@ -185,4 +186,34 @@ export async function sendMagicLinkForJoin(
   }
 
   redirect(`/join?step=check-email&email=${encodeURIComponent(email)}`);
+}
+
+// ── Guest checkout: payment-first, no prior auth required ─────────────────
+// This is the new primary checkout entry point.
+// The visitor's email is collected by Stripe during checkout.
+// After payment: checkout.session.completed fires → account created from email
+//                → login token generated → success page exchanges it → session.
+//
+// Existing actions above (signUpAndJoin, signInAndJoin, startCheckoutAuthenticated)
+// are preserved for the auth-first flow and will be removed in Pass 3 cleanup.
+export async function startGuestCheckout(
+  _prev: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  const priceId = (formData.get("priceId") as string | null)?.trim();
+
+  if (!priceId) {
+    return { error: "No plan selected. Please choose a plan and try again." };
+  }
+
+  console.log(`[Join] Guest checkout initiated — priceId: ${priceId}`);
+
+  try {
+    const { url } = await createGuestCheckoutSession(priceId);
+    redirect(url);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("[Join] Guest checkout creation failed:", message);
+    return { error: "Could not start checkout. Please try again." };
+  }
 }
