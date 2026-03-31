@@ -1,7 +1,11 @@
 import type Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
-import type { SubscriptionStatus, SubscriptionTier } from "@/types/supabase";
+import type { Enums } from "@/types/supabase";
 import { config } from "@/lib/config";
+
+type SubscriptionStatus = Enums<"subscription_status">;
+type SubscriptionTier = Enums<"subscription_tier">;
+
 
 /**
  * server/services/stripe/handle-subscription.ts

@@ -1,14 +1,12 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { SubscriptionStatus, SubscriptionTier } from "@/types/supabase";
+import type { Tables } from "@/types/supabase";
 
-type MemberProfile = {
-  id: string;
-  email: string;
-  name: string | null;
-  subscription_status: SubscriptionStatus;
-  subscription_tier: SubscriptionTier;
-};
+type MemberProfile = Pick<
+  Tables<"member">,
+  "id" | "email" | "name" | "subscription_status" | "subscription_tier"
+>;
+
 
 /**
  * lib/auth/require-active-member.ts
@@ -47,7 +45,7 @@ export async function requireActiveMember(): Promise<MemberProfile> {
     redirect("/subscribe");
   }
 
-  const member = data as MemberProfile;
+  const member = data;
 
   if (member.subscription_status !== "active") {
     // Authenticated but subscription is inactive, canceled, or past_due.

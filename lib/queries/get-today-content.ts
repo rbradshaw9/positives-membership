@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import type { Tables } from "@/types/supabase";
 
 /**
  * lib/queries/get-today-content.ts
@@ -7,19 +8,22 @@ import { createClient } from "@/lib/supabase/server";
  * Returns the most recently published active `daily_audio` content row,
  * or null if no content is available yet.
  *
- * Called from the /today Server Component page.
- * Never called client-side — this file is server-only.
+ * TodayContent is derived directly from the generated Database types —
+ * no manual type duplication.
  */
 
-export type TodayContent = {
-  id: string;
-  title: string;
-  description: string | null;
-  duration_seconds: number | null;
-  castos_episode_url: string | null;
-  s3_audio_key: string | null;
-  published_at: string | null;
-};
+// Pick only the fields consumed by the today page / DailyPracticeCard.
+// Derived from the generated Tables<"content"> Row type.
+export type TodayContent = Pick<
+  Tables<"content">,
+  | "id"
+  | "title"
+  | "description"
+  | "duration_seconds"
+  | "castos_episode_url"
+  | "s3_audio_key"
+  | "published_at"
+>;
 
 export async function getTodayContent(): Promise<TodayContent | null> {
   const supabase = await createClient();
@@ -36,10 +40,9 @@ export async function getTodayContent(): Promise<TodayContent | null> {
     .maybeSingle();
 
   if (error) {
-    // Log but don't throw — degrade gracefully to empty state on the page.
     console.error("[getTodayContent] Supabase query error:", error.message);
     return null;
   }
 
-  return data as TodayContent | null;
+  return data;
 }

@@ -5,21 +5,20 @@ import { AudioPlayer } from "@/components/today/AudioPlayer";
  * components/today/DailyPracticeCard.tsx
  * The primary card on the Today page — always visually dominant.
  *
+ * Props:
+ * - content: typed content row (Pick from generated DB types), or null
+ * - audioUrl: pre-resolved playable URL (or null) — resolved server-side
+ *   by app/(member)/today/page.tsx via lib/media/resolve-audio-url.ts
+ *
  * Three states:
  * 1. content === null          → no content yet ("Coming soon")
  * 2. content exists, no audio  → title + description shown, "Audio not yet available"
  * 3. content exists, has audio → title + description + real AudioPlayer
- *
- * Audio source priority:
- * - castos_episode_url  (preferred — direct Castos MP3)
- * - s3_audio_key        (future — S3 signed URL generation is Milestone 05+)
- *
- * AudioPlayer is a client component. This card is a server component wrapper
- * that resolves the audio URL before rendering.
  */
 
 interface DailyPracticeCardProps {
   content: TodayContent | null;
+  audioUrl: string | null;
 }
 
 function formatDuration(seconds: number | null): string {
@@ -29,20 +28,10 @@ function formatDuration(seconds: number | null): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-/**
- * Resolve the best available audio URL from the content row.
- * S3 key handling is a stub — signed URL generation comes in Milestone 05.
- */
-function resolveAudioUrl(content: TodayContent): string | null {
-  if (content.castos_episode_url) {
-    return content.castos_episode_url;
-  }
-  // S3 signed URL generation goes here in Milestone 05.
-  // For now, s3_audio_key alone is not a playable URL.
-  return null;
-}
-
-export function DailyPracticeCard({ content }: DailyPracticeCardProps) {
+export function DailyPracticeCard({
+  content,
+  audioUrl,
+}: DailyPracticeCardProps) {
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
@@ -50,7 +39,6 @@ export function DailyPracticeCard({ content }: DailyPracticeCardProps) {
   });
 
   const hasContent = content !== null;
-  const audioUrl = hasContent ? resolveAudioUrl(content) : null;
   const duration = hasContent ? formatDuration(content.duration_seconds) : "—";
 
   return (
