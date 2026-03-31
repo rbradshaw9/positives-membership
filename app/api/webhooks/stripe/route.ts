@@ -8,6 +8,7 @@ import {
   handleSubscriptionDeleted,
   handlePaymentFailed,
 } from "@/server/services/stripe/handle-subscription";
+import { handleCheckoutSessionCompleted } from "@/server/services/stripe/handle-checkout";
 
 /**
  * app/api/webhooks/stripe/route.ts
@@ -17,8 +18,22 @@ import {
  * This endpoint must receive the raw request body — Next.js passes it
  * automatically for route handlers.
  *
+ * Events handled:
+ *   checkout.session.completed      → activate member + ensure customer link
+ *   customer.subscription.created   → set status + tier from subscription
+ *   customer.subscription.updated   → update status + tier
+ *   customer.subscription.deleted   → mark canceled
+ *   invoice.payment_failed          → mark past_due
+ *
  * Configure your Stripe webhook to point to:
  *   https://your-domain.com/api/webhooks/stripe
+ *
+ * Required Stripe event subscriptions:
+ *   checkout.session.completed
+ *   customer.subscription.created
+ *   customer.subscription.updated
+ *   customer.subscription.deleted
+ *   invoice.payment_failed
  */
 export async function POST(request: Request) {
   const body = await request.text();
@@ -36,6 +51,7 @@ export async function POST(request: Request) {
   }
 
   if (!signature) {
+    console.warn("[Stripe Webhook] Request received with no stripe-signature header.");
     return NextResponse.json(
       { error: "Missing stripe-signature header." },
       { status: 400 }
@@ -56,9 +72,17 @@ export async function POST(request: Request) {
     );
   }
 
+  console.log(`[Stripe Webhook] Received verified event: ${event.type} (id: ${event.id})`);
+
   // Route verified events to their handlers
   try {
     switch (event.type) {
+      case "checkout.session.completed":
+        await handleCheckoutSessionCompleted(
+          event.data.object as Stripe.Checkout.Session
+        );
+        break;
+
       case "customer.subscription.created":
         await handleSubscriptionCreated(event.data.object as Stripe.Subscription);
         break;
@@ -81,12 +105,16 @@ export async function POST(request: Request) {
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    console.error(`[Stripe Webhook] Handler error for ${event.type}:`, message);
+    console.error(
+      `[Stripe Webhook] Handler error for ${event.type} (id: ${event.id}):`,
+      message
+    );
     return NextResponse.json(
       { error: "Internal handler error." },
       { status: 500 }
     );
   }
 
+  console.log(`[Stripe Webhook] Successfully processed: ${event.type} (id: ${event.id})`);
   return NextResponse.json({ received: true }, { status: 200 });
 }

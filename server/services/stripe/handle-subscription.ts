@@ -111,11 +111,38 @@ async function updateMemberSubscription(
 
   // current_period_end was removed in Stripe API 2026-03-25.dahlia.
   // Use cancel_at or ended_at as the effective subscription end date.
-  // TODO: review when Stripe finalizes the billing period field naming in this API version.
   const periodEndTs = subscription.cancel_at ?? subscription.ended_at;
   const subscriptionEndDate = periodEndTs
     ? new Date(periodEndTs * 1000).toISOString()
     : null;
+
+  // First verify the member row exists — a zero-row update is otherwise silent.
+  const { data: existing, error: lookupError } = await supabase
+    .from("member")
+    .select("id")
+    .eq("stripe_customer_id", customerId)
+    .maybeSingle();
+
+  if (lookupError) {
+    throw new Error(
+      `[Stripe] Failed to look up member for customer ${customerId}: ${lookupError.message}`
+    );
+  }
+
+  if (!existing) {
+    // This means stripe_customer_id was never written to the member row.
+    // checkout.session.completed should have handled this — if we're here,
+    // it either hasn't fired yet or also failed.
+    console.error(
+      `[Stripe] No member row found with stripe_customer_id: ${customerId}. ` +
+        `subscription: ${subscription.id}, status: ${status}. ` +
+        `Manual reconciliation required — check Supabase member table.`
+    );
+    // Throw so Stripe retries this event (gives checkout.session.completed time to run).
+    throw new Error(
+      `[Stripe] Member not found for customer ${customerId} — will retry.`
+    );
+  }
 
   const { error } = await supabase
     .from("member")
@@ -128,12 +155,12 @@ async function updateMemberSubscription(
 
   if (error) {
     throw new Error(
-      `Failed to update member for customer ${customerId}: ${error.message}`
+      `[Stripe] Failed to update member for customer ${customerId}: ${error.message}`
     );
   }
 
   console.log(
-    `[Stripe] Member updated — customer: ${customerId}, status: ${status}, tier: ${tier}`
+    `[Stripe] Member updated — customer: ${customerId}, memberId: ${existing.id}, status: ${status}, tier: ${tier}`
   );
 }
 
