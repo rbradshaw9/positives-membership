@@ -3,9 +3,11 @@ import { type NextRequest, NextResponse } from "next/server";
 import type { Database } from "@/types/supabase";
 
 /**
- * lib/supabase/middleware.ts
- * Session refresh helper called from middleware.ts on every request.
+ * lib/supabase/proxy.ts
+ * Session refresh helper called from proxy.ts on every request.
  * Returns the updated response with refreshed Supabase auth cookies.
+ *
+ * Renamed from lib/supabase/middleware.ts to match the proxy.ts convention.
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });

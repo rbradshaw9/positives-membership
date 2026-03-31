@@ -1,8 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { updateSession } from "@/lib/supabase/middleware";
+import { updateSession } from "@/lib/supabase/proxy";
 
 /**
- * middleware.ts
+ * proxy.ts
+ * Replaces the deprecated middleware.ts convention (Next.js v16+).
  * Runs on every request matching the config below.
  *
  * Responsibilities:
@@ -12,7 +13,7 @@ import { updateSession } from "@/lib/supabase/middleware";
  *    (role check happens inside the admin layout server component)
  * 4. Forward x-pathname header so MemberNav can highlight the active tab
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const { supabaseResponse, user } = await updateSession(request);
@@ -50,7 +51,7 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization API)
      * - favicon.ico, sitemap.xml, robots.txt
-     * - public directory
+     * - public directory assets
      */
     "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
