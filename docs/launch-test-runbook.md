@@ -16,6 +16,9 @@ Before running the test, confirm:
 - [ ] You have access to Vercel runtime logs
 - [ ] You have access to the Supabase table editor (member table)
 - [ ] You are using a **real email address** you can receive magic links on
+- [ ] **Supabase auth URLs are set correctly** (see `docs/setup/supabase-auth-urls.md`):
+  - Site URL = `https://positives-membership.vercel.app`
+  - Redirect URLs include `https://positives-membership.vercel.app/**` and `http://localhost:3000/**`
 
 ---
 
