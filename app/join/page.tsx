@@ -173,15 +173,14 @@ export default async function JoinPage({
           <h1
             className="font-heading font-bold mb-4"
             style={{
-              fontSize: "clamp(2.2rem, 4.5vw, 3.5rem)",
+              fontSize: "clamp(1.75rem, 3.5vw, 2.5rem)",
               letterSpacing: "-0.045em",
               lineHeight: "1.06",
               color: "#121417",
-              textWrap: "balance",
-            } as React.CSSProperties}
+              whiteSpace: "nowrap",
+            }}
           >
-            Choose your{" "}
-            <span style={{ whiteSpace: "nowrap" }}>starting point.</span>
+            Choose your starting point.
           </h1>
           <p
             className="mb-4 mx-auto"
