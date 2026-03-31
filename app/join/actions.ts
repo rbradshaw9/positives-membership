@@ -232,15 +232,20 @@ async function _startGuestCheckoutCore(
 
   console.log(`[Join] Guest checkout initiated — priceId: ${priceId}`);
 
+  // IMPORTANT: Next.js redirect() works by throwing a special NEXT_REDIRECT
+  // error internally. It MUST NOT be inside a try/catch that catches all errors,
+  // or the catch block will swallow the redirect and nothing happens.
+  // Solution: get the URL inside try/catch (to catch real Stripe errors),
+  // then call redirect() outside so its throw propagates correctly.
+  let checkoutUrl: string;
   try {
     const { url } = await createGuestCheckoutSession(priceId);
-    redirect(url);
+    checkoutUrl = url;
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("[Join] Guest checkout creation failed:", message);
     return { error: "Could not start checkout. Please try again." };
   }
 
-  // redirect() throws — this is unreachable but satisfies TypeScript
-  return {};
+  redirect(checkoutUrl);
 }
