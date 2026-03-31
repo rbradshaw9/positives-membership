@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { Logo } from "@/components/marketing/Logo";
 
 export const metadata = {
-  title: "Positives — A Daily Practice for Emotional Resilience with Dr. Paul Jenkins",
+  title: "Positives — A few minutes each day. A more positive life.",
   description:
-    "Positives is a practice-based membership with Dr. Paul Jenkins — daily audio, weekly principles, monthly masterclasses, and coaching. Build the habit that changes how you feel every day.",
+    "Positives is a guided daily practice with Dr. Paul Jenkins — daily audio, weekly principles, and monthly masterclasses to help you think more clearly, respond more calmly, and build a life you actually enjoy living.",
 };
 
 export default async function LandingPage() {
@@ -33,20 +34,15 @@ export default async function LandingPage() {
       <header
         className="sticky top-0 z-50 w-full"
         style={{
-          background: "rgba(246,243,238,0.85)",
+          background: "rgba(246,243,238,0.88)",
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
           borderBottom: "1px solid rgba(221,215,207,0.6)",
         }}
       >
         <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
-          <span
-            className="font-heading font-bold"
-            style={{ fontSize: "1.2rem", color: "#121417", letterSpacing: "-0.04em" }}
-          >
-            Positives
-          </span>
-          <div className="flex items-center gap-5">
+          <Logo height={26} />
+          <div className="flex items-center gap-6">
             <Link
               href="/login"
               className="text-sm font-medium"
@@ -58,13 +54,13 @@ export default async function LandingPage() {
               href="/join"
               className="text-sm font-semibold px-5 py-2.5 rounded-full"
               style={{
-                background: "#121417",
+                background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
                 color: "#FFFFFF",
                 letterSpacing: "-0.01em",
-                boxShadow: "0 2px 12px rgba(18,20,23,0.22)",
+                boxShadow: "0 4px 14px rgba(47,111,237,0.28)",
               }}
             >
-              Join today
+              Start today
             </Link>
           </div>
         </div>
@@ -75,12 +71,13 @@ export default async function LandingPage() {
         className="relative w-full"
         style={{ overflow: "hidden", minHeight: "calc(100vh - 57px)" }}
       >
+        {/* ambient glow */}
         <div
           aria-hidden="true"
           className="absolute inset-0 pointer-events-none"
           style={{
             background:
-              "radial-gradient(ellipse at 70% 20%, rgba(47,111,237,0.08) 0%, transparent 55%), radial-gradient(ellipse at 20% 80%, rgba(78,140,120,0.06) 0%, transparent 50%)",
+              "radial-gradient(ellipse at 70% 20%, rgba(47,111,237,0.07) 0%, transparent 55%), radial-gradient(ellipse at 10% 80%, rgba(78,140,120,0.06) 0%, transparent 50%)",
           }}
         />
 
@@ -102,15 +99,13 @@ export default async function LandingPage() {
             <h1
               className="font-heading font-bold mb-7"
               style={{
-                fontSize: "clamp(3rem, 5.5vw, 5.5rem)",
-                lineHeight: "1.02",
+                fontSize: "clamp(2.8rem, 5.2vw, 5.25rem)",
+                lineHeight: "1.03",
                 letterSpacing: "-0.045em",
                 color: "#121417",
-                textWrap: "balance",
-              } as React.CSSProperties}
+              }}
             >
-              Build the daily habit
-              <br />that makes you{" "}
+              A few minutes each day.{" "}
               <span
                 style={{
                   background: "linear-gradient(135deg, #2F6FED 20%, #4E8C78 100%)",
@@ -119,7 +114,7 @@ export default async function LandingPage() {
                   backgroundClip: "text",
                 }}
               >
-                genuinely more positive.
+                A more positive life.
               </span>
             </h1>
 
@@ -128,14 +123,13 @@ export default async function LandingPage() {
               style={{
                 fontSize: "1.1rem",
                 color: "#68707A",
-                lineHeight: "1.7",
+                lineHeight: "1.72",
                 maxWidth: "460px",
                 letterSpacing: "-0.01em",
               }}
             >
-              Every month, Dr. Paul Jenkins teaches a live masterclass on a different
-              dimension of positivity. Your membership gives you the daily audios, weekly
-              practices, and coaching support to make it stick — for good.
+              Positives is a guided daily practice designed to help you think more
+              clearly, respond more calmly, and build a life you actually enjoy living.
             </p>
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-8">
@@ -145,36 +139,27 @@ export default async function LandingPage() {
                 style={{
                   background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
                   color: "#FFFFFF",
-                  boxShadow: "0 8px 28px rgba(47,111,237,0.32)",
+                  boxShadow: "0 8px 28px rgba(47,111,237,0.30)",
                   letterSpacing: "-0.01em",
-                  fontSize: "0.9rem",
+                  fontSize: "0.95rem",
                 }}
               >
                 Start your practice →
               </Link>
-              <Link href="/login" className="text-sm font-medium" style={{ color: "#68707A" }}>
-                Already a member?
+              <Link
+                href="#how-it-works"
+                className="text-sm font-medium"
+                style={{ color: "#68707A" }}
+              >
+                See how it works
               </Link>
             </div>
 
-            <div className="flex flex-col gap-4">
-              <p className="text-sm" style={{ color: "#68707A" }}>
-                <span style={{ color: "#121417", fontWeight: 600 }}>$49/month</span>
-                {" "}· Cancel anytime · Secure checkout via Stripe
-              </p>
-              <div className="flex items-center gap-3">
-                <div className="flex -space-x-2">
-                  {["#D98A4E", "#4E8C78", "#2F6FED", "#B94A3F", "#8A7B6E"].map((color, i) => (
-                    <div key={i} className="w-7 h-7 rounded-full border-2"
-                      style={{ background: color, borderColor: "#F6F3EE" }}
-                      aria-hidden="true" />
-                  ))}
-                </div>
-                <p className="text-xs font-medium" style={{ color: "#68707A" }}>
-                  Hundreds of members. A practice that sticks.
-                </p>
-              </div>
-            </div>
+            <p className="text-sm" style={{ color: "#9AA0A8" }}>
+              From{" "}
+              <span style={{ color: "#3F4650", fontWeight: 600 }}>$49/month</span>
+              {" "}· Cancel anytime · Secure checkout
+            </p>
           </div>
 
           {/* RIGHT: Product Preview Card */}
@@ -183,9 +168,9 @@ export default async function LandingPage() {
               <div
                 className="absolute inset-0 rounded-3xl"
                 style={{
-                  background: "radial-gradient(ellipse at 50% 60%, rgba(47,111,237,0.18) 0%, transparent 70%)",
+                  background: "radial-gradient(ellipse at 50% 60%, rgba(47,111,237,0.16) 0%, transparent 70%)",
                   transform: "scale(1.15) translateY(8%)",
-                  filter: "blur(24px)",
+                  filter: "blur(28px)",
                 }}
               />
               <div
@@ -214,22 +199,22 @@ export default async function LandingPage() {
                       </svg>
                     </div>
                   </div>
-                  <div className="flex items-center gap-0.5 h-8 mb-4">
+                  <div className="flex items-center gap-0.5 h-8 mb-3">
                     {[3,5,8,6,9,12,14,10,8,11,13,9,7,11,14,12,9,6,8,10,7,5,9,11,8,6,4,7,9,6,4,3].map(
                       (h, i) => (
                         <div key={i} className="flex-1 rounded-full"
                           style={{
                             height: `${h * 2}px`,
-                            background: i < 10 ? "rgba(47,111,237,0.85)" : "rgba(18,20,23,0.12)",
+                            background: i < 10 ? "rgba(47,111,237,0.85)" : "rgba(18,20,23,0.10)",
                           }} />
                       )
                     )}
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-medium tabular-nums" style={{ color: "#2F6FED" }}>3:12</span>
                     <span className="text-xs" style={{ color: "#68707A" }}>8:00</span>
                   </div>
-                  <div className="mt-2 w-full rounded-full overflow-hidden" style={{ height: "3px", background: "rgba(18,20,23,0.08)" }}>
+                  <div className="w-full rounded-full overflow-hidden" style={{ height: "3px", background: "rgba(18,20,23,0.07)" }}>
                     <div className="h-full rounded-full" style={{ width: "40%", background: "#2F6FED" }} />
                   </div>
                 </div>
@@ -242,7 +227,9 @@ export default async function LandingPage() {
                   <div className="flex items-center gap-3 p-4 rounded-2xl" style={{ background: "#F6F3EE" }}>
                     <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
                       style={{ background: "rgba(47,111,237,0.10)" }}>
-                      <span style={{ fontSize: "0.9rem" }}>🎓</span>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2F6FED" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M22 10v6M2 10l10-5 10 5-10 5z" /><path d="M6 12v5c3 3 9 3 12 0v-5" />
+                      </svg>
                     </div>
                     <div>
                       <p className="text-xs font-semibold mb-0.5" style={{ color: "#121417", letterSpacing: "-0.01em" }}>
@@ -261,7 +248,10 @@ export default async function LandingPage() {
                   <div className="flex items-center gap-3 p-4 rounded-2xl" style={{ background: "#F6F3EE" }}>
                     <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
                       style={{ background: "rgba(78,140,120,0.12)" }}>
-                      <span style={{ fontSize: "0.9rem" }}>🌿</span>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4E8C78" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                      </svg>
                     </div>
                     <div>
                       <p className="text-xs font-semibold mb-0.5" style={{ color: "#121417", letterSpacing: "-0.01em" }}>
@@ -275,8 +265,10 @@ export default async function LandingPage() {
                 {/* Streak */}
                 <div className="px-7 py-5">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span style={{ fontSize: "1rem" }}>🔥</span>
+                    <div className="flex items-center gap-2.5">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D98A4E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+                      </svg>
                       <div>
                         <p className="text-sm font-bold" style={{ color: "#121417", letterSpacing: "-0.02em" }}>
                           12-day streak
@@ -294,6 +286,7 @@ export default async function LandingPage() {
                 </div>
               </div>
 
+              {/* Floating label */}
               <div
                 className="absolute -bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap"
                 style={{
@@ -313,59 +306,90 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* ━━ TRUST BAR ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      {/* ━━ THE PROBLEM ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section
-        className="w-full py-5"
+        className="w-full"
         style={{
           borderTop: "1px solid #DDD7CF",
-          borderBottom: "1px solid #DDD7CF",
-          background: "#FFFFFF",
+          background: "#121417",
+          overflow: "hidden",
         }}
       >
-        <div className="max-w-7xl mx-auto px-8 flex flex-wrap items-center justify-center gap-x-10 gap-y-3">
-          {[
-            { icon: "🎓", text: "Monthly masterclass with Dr. Paul" },
-            { icon: "🎧", text: "Daily audio · every morning" },
-            { icon: "📖", text: "Weekly principles & practices" },
-            { icon: "🎙️", text: "Private podcast feed" },
-            { icon: "📚", text: "Full content library" },
-          ].map(({ icon, text }) => (
-            <div key={text} className="flex items-center gap-2">
-              <span style={{ fontSize: "0.85rem" }}>{icon}</span>
-              <span className="text-xs font-medium" style={{ color: "#68707A", letterSpacing: "-0.01em" }}>
-                {text}
-              </span>
+        <div
+          aria-hidden="true"
+          className="absolute pointer-events-none"
+          style={{
+            inset: 0,
+            background: "radial-gradient(ellipse at 80% 50%, rgba(47,111,237,0.07) 0%, transparent 60%)",
+          }}
+        />
+        <div
+          className="relative max-w-7xl mx-auto px-8 py-24 grid grid-cols-1 lg:grid-cols-2 gap-16 items-start"
+        >
+          <div>
+            <h2
+              className="font-heading font-bold"
+              style={{
+                fontSize: "clamp(2rem, 4vw, 3.5rem)",
+                lineHeight: "1.05",
+                letterSpacing: "-0.04em",
+                color: "#FFFFFF",
+              }}
+            >
+              Life moves fast.{" "}
+              <span style={{ color: "#4A5360" }}>Your mind moves faster.</span>
+            </h2>
+          </div>
+          <div className="space-y-5" style={{ fontSize: "1.05rem", color: "#8A9199", lineHeight: "1.75" }}>
+            <p>Most people spend their days reacting.</p>
+            <div className="space-y-1.5 pl-5" style={{ borderLeft: "2px solid rgba(255,255,255,0.06)" }}>
+              <p>To stress.</p>
+              <p>To news.</p>
+              <p>To expectations.</p>
+              <p>To other people&apos;s emotions.</p>
             </div>
-          ))}
+            <p>It&apos;s exhausting.</p>
+            <p className="font-medium" style={{ color: "#CBD2D9" }}>
+              Positives is a daily mental reset — a structured practice that helps
+              you slow down, see clearly, and respond with intention.
+            </p>
+            <p>Just a few minutes each day can change how you experience the rest of it.</p>
+          </div>
         </div>
       </section>
 
       {/* ━━ HOW YOUR PRACTICE WORKS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <section className="relative w-full px-8 py-24" style={{ background: "#F6F3EE" }}>
+      <section
+        id="how-it-works"
+        className="relative w-full px-8 py-24"
+        style={{ background: "#F6F3EE", borderTop: "1px solid #DDD7CF" }}
+      >
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between mb-14 gap-4">
             <div>
               <p className="text-xs font-semibold uppercase mb-3"
-                style={{ color: "#68707A", letterSpacing: "0.14em" }}>
-                How it works
+                style={{ color: "#9AA0A8", letterSpacing: "0.14em" }}>
+                The practice
               </p>
               <h2
                 className="font-heading font-bold"
                 style={{
-                  fontSize: "clamp(2rem, 3.5vw, 2.75rem)",
+                  fontSize: "clamp(1.9rem, 3.5vw, 2.75rem)",
                   letterSpacing: "-0.04em",
                   lineHeight: "1.1",
                   color: "#121417",
-                  textWrap: "balance",
-                } as React.CSSProperties}
+                }}
               >
-                A layered practice that builds{" "}
-                <span style={{ color: "#4E8C78" }}>month by month.</span>
+                A simple practice that builds{" "}
+                <span style={{ color: "#4E8C78" }}>real change.</span>
               </h2>
             </div>
-            <Link href="/join" className="self-start lg:self-auto text-sm font-semibold"
-              style={{ color: "#2F6FED", letterSpacing: "-0.01em" }}>
-              See what's included →
+            <Link
+              href="/join"
+              className="self-start lg:self-auto text-sm font-semibold"
+              style={{ color: "#2F6FED", letterSpacing: "-0.01em" }}
+            >
+              See what&apos;s included →
             </Link>
           </div>
 
@@ -375,8 +399,8 @@ export default async function LandingPage() {
               {
                 label: "Daily",
                 number: "01",
-                title: "Guided audio from Dr. Paul",
-                body: "Every morning, a short audio message from Dr. Paul — 5 to 10 minutes of grounding, perspective, and practical tools that help you move through your day differently.",
+                title: "A short guided reset — every morning",
+                body: "A fresh 5–10 minute audio message from Dr. Paul, every single day. Grounding, perspective, and a specific tool to carry into your day. Just a few minutes is enough to shift your thinking.",
                 accent: "#2F6FED",
                 bg: "rgba(47,111,237,0.04)",
                 border: "rgba(47,111,237,0.12)",
@@ -384,8 +408,8 @@ export default async function LandingPage() {
               {
                 label: "Weekly",
                 number: "02",
-                title: "A principle with a practice",
-                body: "Each week introduces one research-backed principle tied to the monthly masterclass. One clear idea. One specific practice to apply. Your weekly content deepens your daily habit.",
+                title: "A powerful concept with a clear practice",
+                body: "Each week introduces a research-backed principle from positive psychology — tied to the monthly theme — with one specific practice attached. These ideas deepen the habit and help it stick.",
                 accent: "#4E8C78",
                 bg: "rgba(78,140,120,0.05)",
                 border: "rgba(78,140,120,0.14)",
@@ -394,7 +418,7 @@ export default async function LandingPage() {
                 label: "Monthly",
                 number: "03",
                 title: "A live masterclass with Dr. Paul",
-                body: "Every month, Dr. Paul teaches a live masterclass on a specific dimension of positivity and emotional resilience — drawing from 30 years of psychology research and his Seven Key Relationships framework.",
+                body: "Every month, Dr. Paul teaches a live masterclass on one meaningful area of life — relationships, purpose, resilience, and more — drawn from his Seven Key Relationships framework and 30 years of research.",
                 accent: "#D98A4E",
                 bg: "rgba(217,138,78,0.05)",
                 border: "rgba(217,138,78,0.14)",
@@ -420,27 +444,30 @@ export default async function LandingPage() {
                   style={{ fontSize: "1.075rem", letterSpacing: "-0.02em", color: "#121417", lineHeight: "1.35" }}>
                   {title}
                 </h3>
-                <p className="text-sm flex-1" style={{ color: "#68707A", lineHeight: "1.7" }}>
+                <p className="text-sm flex-1" style={{ color: "#68707A", lineHeight: "1.72" }}>
                   {body}
                 </p>
               </div>
             ))}
           </div>
 
-          {/* The Seven Key Relationships callout */}
+          {/* Seven Key Relationships callout */}
           <div
             className="rounded-3xl px-8 py-7 flex flex-col sm:flex-row items-start sm:items-center gap-5"
             style={{
-              background: "linear-gradient(135deg, rgba(47,111,237,0.06) 0%, rgba(78,140,120,0.06) 100%)",
-              border: "1px solid rgba(47,111,237,0.12)",
+              background: "linear-gradient(135deg, rgba(47,111,237,0.05) 0%, rgba(78,140,120,0.05) 100%)",
+              border: "1px solid rgba(47,111,237,0.10)",
             }}
           >
             <div
-              className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 text-2xl"
+              className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
               style={{ background: "#FFFFFF", border: "1px solid #DDD7CF" }}
               aria-hidden="true"
             >
-              🔑
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2F6FED" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 8v4l3 3" />
+              </svg>
             </div>
             <div>
               <p className="font-heading font-semibold mb-1"
@@ -448,10 +475,10 @@ export default async function LandingPage() {
                 Built on the Seven Key Relationships Framework
               </p>
               <p className="text-sm" style={{ color: "#68707A", lineHeight: "1.65", maxWidth: "560px" }}>
-                Dr. Paul&apos;s research shows that life satisfaction is shaped by seven core relationships —
-                with yourself, your partner, family, friends, your work, your community, and your spiritual life.
-                Each monthly masterclass explores one, giving your practice a clear direction that evolves
-                through the year.
+                Dr. Paul&apos;s research shows that life satisfaction is shaped by seven core
+                relationships — with yourself, your partner, family, friends, your work, your
+                community, and your spiritual life. Each monthly masterclass explores one,
+                giving your practice a clear direction that evolves through the year.
               </p>
             </div>
           </div>
@@ -461,51 +488,51 @@ export default async function LandingPage() {
       {/* ━━ DR. PAUL ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section
         className="relative w-full px-8 py-24"
-        style={{ background: "#121417", overflow: "hidden" }}
+        style={{ background: "#121417", overflow: "hidden", borderTop: "1px solid #1E2228" }}
       >
         <div
           aria-hidden="true"
           className="absolute inset-0 pointer-events-none"
           style={{
             background:
-              "radial-gradient(ellipse at 80% 40%, rgba(47,111,237,0.10) 0%, transparent 55%), radial-gradient(ellipse at 15% 75%, rgba(78,140,120,0.07) 0%, transparent 50%)",
+              "radial-gradient(ellipse at 80% 40%, rgba(47,111,237,0.09) 0%, transparent 55%), radial-gradient(ellipse at 15% 75%, rgba(78,140,120,0.06) 0%, transparent 50%)",
           }}
         />
         <div className="relative max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <div>
             <p className="text-xs font-semibold uppercase mb-6"
               style={{ color: "#4E8C78", letterSpacing: "0.14em" }}>
-              Your guide
+              Created by
             </p>
             <h2
               className="font-heading font-bold mb-5"
               style={{
-                fontSize: "clamp(2rem, 4vw, 3.25rem)",
+                fontSize: "clamp(1.9rem, 3.8vw, 3.25rem)",
                 letterSpacing: "-0.04em",
                 lineHeight: "1.08",
                 color: "#FFFFFF",
-                textWrap: "balance",
-              } as React.CSSProperties}
+              }}
             >
-              30 years of research.{" "}
-              <span style={{ color: "#4A5360" }}>One daily practice.</span>
+              Dr. Paul Jenkins
             </h2>
             <p className="text-base mb-8"
-              style={{ color: "#8A9199", lineHeight: "1.72", maxWidth: "420px" }}>
-              Dr. Paul Jenkins is a licensed clinical psychologist, bestselling author, and
-              sought-after speaker who has spent his career studying why some people become
-              genuinely more positive — and exactly how to replicate that in anyone willing
-              to practice. Positives is the result: a structured, daily membership that
-              delivers his methodology in a form you can actually sustain.
+              style={{ color: "#8A9199", lineHeight: "1.75", maxWidth: "400px" }}>
+              Dr. Paul Jenkins has spent decades helping people build stronger
+              relationships, healthier thinking, and more resilient lives. Through his work
+              with families, leaders, and communities, he has helped thousands develop the
+              mindset skills that make life calmer, clearer, and more meaningful.
             </p>
-            <div className="flex flex-wrap gap-2.5">
+            <p style={{ color: "#8A9199", lineHeight: "1.75", maxWidth: "400px", fontSize: "1rem" }}>
+              Positives brings the most powerful ideas from that work into a simple daily
+              practice anyone can follow.
+            </p>
+            <div className="flex flex-wrap gap-2 mt-7">
               {["Clinical Psychologist", "Bestselling Author", "Keynote Speaker", "30+ years research"].map((tag) => (
                 <span key={tag} className="text-xs font-medium px-3.5 py-1.5 rounded-full"
                   style={{
                     background: "rgba(255,255,255,0.05)",
                     border: "1px solid rgba(255,255,255,0.08)",
                     color: "#7A8390",
-                    letterSpacing: "-0.01em",
                   }}>
                   {tag}
                 </span>
@@ -522,7 +549,7 @@ export default async function LandingPage() {
           >
             <div
               className="absolute font-heading font-bold select-none"
-              style={{ top: "-6px", left: "28px", fontSize: "5rem", lineHeight: 1, color: "rgba(47,111,237,0.20)" }}
+              style={{ top: "-6px", left: "28px", fontSize: "5rem", lineHeight: 1, color: "rgba(47,111,237,0.18)" }}
               aria-hidden="true"
             >
               &ldquo;
@@ -531,14 +558,13 @@ export default async function LandingPage() {
               className="font-heading font-semibold relative z-10 mt-4"
               style={{
                 fontSize: "1.2rem",
-                lineHeight: "1.6",
+                lineHeight: "1.62",
                 color: "#FFFFFF",
                 letterSpacing: "-0.02em",
-                textWrap: "balance",
-              } as React.CSSProperties}
+              }}
             >
-              Positivity is a skill. It gets stronger with deliberate, consistent practice.
-              Most people never train it intentionally. Positives exists so you can.
+              Positivity is a skill. It gets stronger with deliberate, consistent
+              practice. Most people never train it intentionally. Positives exists so you can.
             </p>
             <p className="mt-6 text-sm font-medium" style={{ color: "#4A5360" }}>
               — Dr. Paul Jenkins, Ph.D.
@@ -555,13 +581,13 @@ export default async function LandingPage() {
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
           <div className="lg:sticky lg:top-28">
             <p className="text-xs font-semibold uppercase mb-5"
-              style={{ color: "#68707A", letterSpacing: "0.14em" }}>
-              Level 1 Membership
+              style={{ color: "#9AA0A8", letterSpacing: "0.14em" }}>
+              Level 1 — Membership
             </p>
             <h2
               className="font-heading font-bold mb-5"
               style={{
-                fontSize: "clamp(2rem, 3.5vw, 3rem)",
+                fontSize: "clamp(1.9rem, 3.5vw, 3rem)",
                 letterSpacing: "-0.04em",
                 lineHeight: "1.1",
                 color: "#121417",
@@ -574,27 +600,27 @@ export default async function LandingPage() {
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
                   backgroundClip: "text",
-                  whiteSpace: "nowrap",
                 }}
               >
                 on day one.
               </span>
             </h2>
-            <p className="text-base"
-              style={{ color: "#68707A", lineHeight: "1.72", maxWidth: "340px" }}>
-              The moment you join, you have full access to everything — including
-              every past masterclass, all past weekly principles, and the complete
-              audio library going back to Day 1.
+            <p className="text-base mb-2"
+              style={{ color: "#68707A", lineHeight: "1.75", maxWidth: "340px" }}>
+              The moment you join, you have full access to everything — including every
+              past masterclass, all past weekly principles, and the complete audio library.
             </p>
             <div className="mt-7">
-              <Link href="/join"
+              <Link
+                href="/join"
                 className="inline-flex items-center justify-center font-semibold text-sm px-7 py-3.5 rounded-full"
                 style={{
                   background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
                   color: "#FFFFFF",
-                  boxShadow: "0 6px 20px rgba(47,111,237,0.28)",
+                  boxShadow: "0 6px 20px rgba(47,111,237,0.26)",
                   letterSpacing: "-0.01em",
-                }}>
+                }}
+              >
                 Join Positives today →
               </Link>
             </div>
@@ -605,46 +631,79 @@ export default async function LandingPage() {
               {
                 title: "Monthly masterclass with Dr. Paul",
                 sub: "A live, in-depth teaching every month on one dimension of positivity — drawn from his Seven Key Relationships framework and 30 years of research. All past masterclasses included.",
-                icon: "🎓",
+                icon: (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2F6FED" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M22 10v6M2 10l10-5 10 5-10 5z" /><path d="M6 12v5c3 3 9 3 12 0v-5" />
+                  </svg>
+                ),
+                iconBg: "rgba(47,111,237,0.10)",
               },
               {
                 title: "Daily grounding audio — every morning",
-                sub: "A fresh 5–10 minute message from Dr. Paul, every single day. Grounding, perspective, and a specific tool or technique to carry into your day. Hundreds in the library.",
-                icon: "🎧",
+                sub: "A fresh 5–10 minute message from Dr. Paul, every single day. Grounding, perspective, and a specific tool to carry into your day. Hundreds in the library.",
+                icon: (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4E8C78" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
+                    <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
+                  </svg>
+                ),
+                iconBg: "rgba(78,140,120,0.10)",
               },
               {
                 title: "Weekly principles & practices",
-                sub: "One research-backed principle each week — tied to the monthly masterclass — with a specific practice attached. Your weekly work deepens your daily habit and compounds over time.",
-                icon: "📖",
+                sub: "One research-backed principle each week — with a specific practice attached. Your weekly work deepens your daily habit and compounds over time.",
+                icon: (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D98A4E" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                  </svg>
+                ),
+                iconBg: "rgba(217,138,78,0.10)",
               },
               {
                 title: "Complete content library",
-                sub: "Every past masterclass, daily audio, weekly principle, workshop, and resource — searchable and available on demand. Pick up anything you missed or revisit what resonates.",
-                icon: "📚",
+                sub: "Every past masterclass, daily audio, weekly principle, workshop, and resource — searchable and available on demand.",
+                icon: (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2F6FED" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
+                    <rect x="14" y="14" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" />
+                  </svg>
+                ),
+                iconBg: "rgba(47,111,237,0.10)",
               },
               {
                 title: "Private podcast feed",
-                sub: "Your daily audios and weekly content delivered straight to Apple Podcasts, Spotify, or any podcast app — so Positives fits naturally into your existing morning routine.",
-                icon: "🎙️",
+                sub: "Your daily audios and weekly content delivered to Apple Podcasts, Spotify, or any podcast app — so Positives fits naturally into your existing morning routine.",
+                icon: (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4E8C78" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="2" />
+                    <path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14" />
+                  </svg>
+                ),
+                iconBg: "rgba(78,140,120,0.10)",
               },
               {
                 title: "Reflection prompts & private journal",
                 sub: "Guided reflection after each session. Write privately, track your thinking over time, and watch yourself grow — one entry at a time.",
-                icon: "📓",
+                icon: (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D98A4E" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                  </svg>
+                ),
+                iconBg: "rgba(217,138,78,0.10)",
               },
-            ].map(({ title, sub, icon }) => (
+            ].map(({ title, sub, icon, iconBg }) => (
               <li key={title}
                 className="flex items-start gap-4 p-5 rounded-2xl"
                 style={{ background: "#F6F3EE", border: "1px solid #ECE7DF" }}>
                 <span
-                  className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-lg"
-                  style={{ background: "#FFFFFF", border: "1px solid #DDD7CF" }}
+                  className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center"
+                  style={{ background: iconBg, border: "1px solid rgba(18,20,23,0.06)" }}
                   aria-hidden="true"
                 >
                   {icon}
                 </span>
                 <div>
-                  <p className="font-semibold text-sm mb-0.5"
+                  <p className="font-semibold text-sm mb-1"
                     style={{ color: "#121417", letterSpacing: "-0.01em" }}>
                     {title}
                   </p>
@@ -658,32 +717,85 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* ━━ HIGHER LEVELS CALLOUT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      {/* ━━ WHAT BEGINS TO CHANGE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section
-        className="w-full px-8 py-16"
+        className="w-full px-8 py-20"
         style={{
-          background: "#F6F3EE",
+          background: "linear-gradient(135deg, #F1EEE8 0%, #E8E2D8 100%)",
           borderTop: "1px solid #DDD7CF",
         }}
+      >
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <div>
+            <p className="text-xs font-semibold uppercase mb-4"
+              style={{ color: "#9AA0A8", letterSpacing: "0.14em" }}>
+              The result
+            </p>
+            <h2
+              className="font-heading font-bold"
+              style={{
+                fontSize: "clamp(1.8rem, 3.2vw, 2.75rem)",
+                letterSpacing: "-0.04em",
+                lineHeight: "1.1",
+                color: "#121417",
+              }}
+            >
+              What begins to change
+            </h2>
+            <p className="mt-4 text-sm font-medium" style={{ color: "#9AA0A8", lineHeight: "1.6" }}>
+              Small daily shifts create powerful long-term change.
+            </p>
+          </div>
+          <div className="space-y-4">
+            {[
+              "You start the day with clarity instead of stress",
+              "You respond instead of reacting emotionally",
+              "Your thinking becomes calmer and more intentional",
+              "Relationships improve as your mindset shifts",
+              "You feel more grounded and resilient over time",
+            ].map((item) => (
+              <div key={item} className="flex items-start gap-4">
+                <span
+                  className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center mt-0.5"
+                  style={{ background: "rgba(78,140,120,0.18)" }}
+                  aria-hidden="true"
+                >
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#4E8C78" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </span>
+                <p style={{ fontSize: "1rem", color: "#3F4650", lineHeight: "1.65" }}>
+                  {item}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ━━ HIGHER LEVELS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <section
+        className="w-full px-8 py-16"
+        style={{ background: "#F6F3EE", borderTop: "1px solid #DDD7CF" }}
       >
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-10">
             <p className="text-xs font-semibold uppercase mb-3"
-              style={{ color: "#68707A", letterSpacing: "0.14em" }}>
+              style={{ color: "#9AA0A8", letterSpacing: "0.14em" }}>
               Want more?
             </p>
             <h2
               className="font-heading font-bold mb-3"
               style={{
-                fontSize: "clamp(1.75rem, 3vw, 2.25rem)",
+                fontSize: "clamp(1.6rem, 2.8vw, 2.1rem)",
                 letterSpacing: "-0.04em",
-                lineHeight: "1.12",
+                lineHeight: "1.1",
                 color: "#121417",
               }}
             >
               Higher levels add live coaching and events.
             </h2>
-            <p className="text-sm" style={{ color: "#68707A", maxWidth: "480px", margin: "0 auto" }}>
+            <p className="text-sm mx-auto" style={{ color: "#68707A", maxWidth: "480px" }}>
               For members who want direct access to Dr. Paul and certified Positives coaches —
               through live calls, quarterly events, and personal implementation support.
             </p>
@@ -770,7 +882,8 @@ export default async function LandingPage() {
                           <polyline points="20 6 9 17 4 12" />
                         </svg>
                       </span>
-                      <span className="text-xs" style={{ color: item.startsWith("Everything") ? "#68707A" : "#121417", lineHeight: "1.6" }}>
+                      <span className="text-xs"
+                        style={{ color: item.startsWith("Everything") ? "#68707A" : "#121417", lineHeight: "1.6" }}>
                         {item}
                       </span>
                     </li>
@@ -798,32 +911,41 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* ━━ PULL QUOTE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      {/* ━━ RISK REVERSAL ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section
         className="w-full px-8 py-20"
-        style={{
-          background: "linear-gradient(135deg, #F1EEE8 0%, #E8E2D8 100%)",
-          borderTop: "1px solid #DDD7CF",
-          borderBottom: "1px solid #DDD7CF",
-        }}
+        style={{ background: "#FFFFFF", borderTop: "1px solid #DDD7CF" }}
       >
-        <div className="max-w-3xl mx-auto text-center">
-          <p
-            className="font-heading font-bold mb-4"
-            style={{
-              fontSize: "clamp(1.5rem, 3vw, 2.25rem)",
-              letterSpacing: "-0.03em",
-              lineHeight: "1.3",
-              color: "#121417",
-              textWrap: "balance",
-            } as React.CSSProperties}
+        <div className="max-w-2xl mx-auto text-center">
+          <div
+            className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-7"
+            style={{ background: "#F6F3EE", border: "1px solid #ECE7DF" }}
+            aria-hidden="true"
           >
-            &ldquo;Positivity isn&apos;t a personality trait. It&apos;s a
-            practice. The people who feel better aren&apos;t luckier —
-            they&apos;ve trained themselves to think differently.&rdquo;
-          </p>
-          <p className="text-sm font-medium" style={{ color: "#68707A" }}>
-            — Dr. Paul Jenkins, Ph.D.
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4E8C78" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+          </div>
+          <h2
+            className="font-heading font-bold mb-5"
+            style={{
+              fontSize: "clamp(1.5rem, 2.8vw, 2.25rem)",
+              letterSpacing: "-0.04em",
+              lineHeight: "1.1",
+              color: "#121417",
+            }}
+          >
+            Try Positives for 30 days.
+          </h2>
+          <div className="space-y-3 mb-7" style={{ fontSize: "1.05rem", color: "#68707A", lineHeight: "1.75" }}>
+            <p>
+              If the practice doesn&apos;t meaningfully improve your days, simply email
+              us and we&apos;ll refund your membership.
+            </p>
+            <p>No hassle. No questions.</p>
+          </div>
+          <p className="font-semibold" style={{ color: "#121417" }}>
+            We believe the practice will speak for itself.
           </p>
         </div>
       </section>
@@ -831,14 +953,14 @@ export default async function LandingPage() {
       {/* ━━ CLOSING CTA ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section
         className="relative w-full px-8 py-28 text-center"
-        style={{ background: "#121417", overflow: "hidden" }}
+        style={{ background: "#121417", overflow: "hidden", borderTop: "1px solid #1E2228" }}
       >
         <div
           aria-hidden="true"
           className="absolute inset-0 pointer-events-none"
           style={{
             background:
-              "radial-gradient(ellipse at 50% -10%, rgba(47,111,237,0.18) 0%, transparent 60%)",
+              "radial-gradient(ellipse at 50% -10%, rgba(47,111,237,0.16) 0%, transparent 60%)",
           }}
         />
         <div className="relative max-w-xl mx-auto">
@@ -849,30 +971,21 @@ export default async function LandingPage() {
           <h2
             className="font-heading font-bold mb-5"
             style={{
-              fontSize: "clamp(2rem, 4vw, 3rem)",
-              letterSpacing: "-0.04em",
-              lineHeight: "1.1",
+              fontSize: "clamp(2rem, 4.5vw, 3.5rem)",
+              letterSpacing: "-0.045em",
+              lineHeight: "1.06",
               color: "#FFFFFF",
-              textWrap: "balance",
-            } as React.CSSProperties}
+            }}
           >
-            Start today.{" "}
-            <span style={{ color: "#4A5360" }}>Come back tomorrow.</span>
+            A few minutes each day.{" "}
+            <span style={{ color: "#4A5360" }}>A more positive life.</span>
           </h2>
           <p
             className="text-base mb-9"
-            style={{
-              color: "#8A9199",
-              lineHeight: "1.72",
-              textWrap: "balance",
-            } as React.CSSProperties}
+            style={{ color: "#8A9199", lineHeight: "1.72" }}
           >
-            Join Positives and you get immediate access to every masterclass, all
-            past daily audios, weekly principles, and the full content library.
-            At{" "}
-            <span style={{ color: "#FFFFFF", fontWeight: 600 }}>$49/month</span>,
-            it&apos;s the most complete daily practice for emotional resilience
-            available anywhere.
+            Join Positives and get immediate access to every masterclass, all past daily
+            audios, weekly principles, and the full content library.
           </p>
 
           <Link
@@ -885,26 +998,12 @@ export default async function LandingPage() {
               letterSpacing: "-0.01em",
             }}
           >
-            Join Positives today →
+            Start your practice →
           </Link>
 
           <p className="mt-5 text-xs" style={{ color: "#3A4148" }}>
-            Secure checkout via Stripe · Cancel anytime · No contracts
+            $49/month · Cancel anytime · No contracts
           </p>
-
-          <div className="mt-12 flex flex-wrap items-center justify-center gap-x-10 gap-y-3">
-            {[
-              "Monthly masterclass + daily audio",
-              "Weekly practices that compound",
-              "30 years of psychology research",
-            ].map((item) => (
-              <span key={item} className="flex items-center gap-2 text-xs font-medium"
-                style={{ color: "#4A5360" }}>
-                <span className="w-1 h-1 rounded-full" style={{ background: "#4E8C78" }} aria-hidden="true" />
-                {item}
-              </span>
-            ))}
-          </div>
         </div>
       </section>
 
@@ -913,13 +1012,22 @@ export default async function LandingPage() {
         className="w-full px-8 py-7"
         style={{ borderTop: "1px solid rgba(221,215,207,0.5)", background: "#F6F3EE" }}
       >
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <span className="text-xs font-medium" style={{ color: "#68707A" }}>
-            © {new Date().getFullYear()} Positives
-          </span>
-          <Link href="/login" className="text-xs font-medium" style={{ color: "#68707A" }}>
-            Member sign in
-          </Link>
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-5">
+            <Logo height={20} href={null} className="opacity-50" />
+            <div className="flex items-center gap-4">
+              <Link href="/privacy" className="text-xs" style={{ color: "#9AA0A8" }}>Privacy</Link>
+              <Link href="/terms" className="text-xs" style={{ color: "#9AA0A8" }}>Terms</Link>
+            </div>
+          </div>
+          <div className="flex items-center gap-5">
+            <span className="text-xs" style={{ color: "#C4BDB5" }}>
+              © {new Date().getFullYear()} Positives
+            </span>
+            <Link href="/login" className="text-xs font-medium" style={{ color: "#9AA0A8" }}>
+              Member sign in
+            </Link>
+          </div>
         </div>
       </footer>
 

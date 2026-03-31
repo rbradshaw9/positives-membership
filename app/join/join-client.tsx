@@ -9,6 +9,7 @@ import {
   sendMagicLinkForJoin,
 } from "./actions";
 import Link from "next/link";
+import { Logo } from "@/components/marketing/Logo";
 
 /**
  * app/join/join-client.tsx
@@ -79,19 +80,25 @@ export function JoinClient({
   return (
     <div className="min-h-dvh bg-background flex flex-col">
       {/* ── Nav ────────────────────────────────────────────────────── */}
-      <header className="px-6 py-4 flex items-center justify-between">
-        <Link
-          href="/"
-          className="font-heading font-bold text-lg tracking-tight text-foreground"
-        >
-          Positives
-        </Link>
-        <Link
-          href="/login"
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Sign in
-        </Link>
+      <header
+        className="sticky top-0 z-50 w-full"
+        style={{
+          background: "rgba(246,243,238,0.85)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          borderBottom: "1px solid rgba(221,215,207,0.6)",
+        }}
+      >
+        <div className="px-8 py-4 flex items-center justify-between">
+          <Logo height={26} />
+          <Link
+            href="/login"
+            className="text-sm font-medium"
+            style={{ color: "#68707A" }}
+          >
+            Sign in
+          </Link>
+        </div>
       </header>
 
       {/* ── Main content ───────────────────────────────────────────── */}

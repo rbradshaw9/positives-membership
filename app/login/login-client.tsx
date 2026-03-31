@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import Link from "next/link";
+import { Logo } from "@/components/marketing/Logo";
 
 /**
  * app/login/login-client.tsx
@@ -128,13 +129,9 @@ function LoginForm() {
     <div className="w-full max-w-sm mx-auto px-6">
       {/* Header */}
       <div className="mb-8 text-center">
-        <Link
-          href="/"
-          className="block font-heading font-bold text-2xl mb-2 hover:opacity-70 transition-opacity"
-          style={{ color: "#121417", letterSpacing: "-0.04em" }}
-        >
-          Positives
-        </Link>
+        <div className="flex justify-center mb-4">
+          <Logo height={30} />
+        </div>
         <p
           className="text-sm"
           style={{ color: "#68707A", lineHeight: "1.6" }}
@@ -294,24 +291,23 @@ export function LoginClient() {
       <header
         className="sticky top-0 z-50 w-full"
         style={{
-          background: "rgba(246,243,238,0.82)",
-          backdropFilter: "blur(18px)",
-          WebkitBackdropFilter: "blur(18px)",
-          borderBottom: "1px solid rgba(221,215,207,0.5)",
+          background: "rgba(246,243,238,0.85)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          borderBottom: "1px solid rgba(221,215,207,0.6)",
         }}
       >
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link
-            href="/"
-            className="font-heading font-bold text-xl hover:opacity-70 transition-opacity"
-            style={{ color: "#121417", letterSpacing: "-0.04em" }}
-          >
-            Positives
-          </Link>
+        <div className="max-w-6xl mx-auto px-8 py-4 flex items-center justify-between">
+          <Logo height={26} />
           <Link
             href="/join"
-            className="text-sm font-medium transition-colors"
-            style={{ color: "#68707A" }}
+            className="text-sm font-semibold px-5 py-2.5 rounded-full"
+            style={{
+              background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
+              color: "#FFFFFF",
+              letterSpacing: "-0.01em",
+              boxShadow: "0 4px 14px rgba(47,111,237,0.30)",
+            }}
           >
             Join today
           </Link>
@@ -319,7 +315,7 @@ export function LoginClient() {
       </header>
 
       {/* ── Form ── */}
-      <div className="flex-1 flex flex-col items-center justify-center py-16">
+      <div className="flex-1 flex flex-col items-center justify-center py-12">
         <Suspense>
           <LoginForm />
         </Suspense>
