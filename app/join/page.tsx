@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { config } from "@/lib/config";
@@ -7,7 +8,7 @@ import { PricingToggle } from "@/components/marketing/PricingToggle";
 export const metadata = {
   title: "Join Positives — Choose Your Membership",
   description:
-    "Start your Positives membership from $49/month. Daily grounding audio, weekly principles, and monthly themes guided by Dr. Paul Jenkins.",
+    "Start your Positives practice from $49/month. Daily guided audio, weekly principles, and monthly masterclasses with Dr. Paul Jenkins.",
 };
 
 /**
@@ -49,48 +50,96 @@ export default async function JoinPage({
   const monthlyPriceId = config.stripe.prices.level1Monthly;
   const annualPriceId = config.stripe.prices.level1Annual;
 
+  // ── Shared nav ────────────────────────────────────────────────────────────
+  const Nav = () => (
+    <header
+      className="sticky top-0 z-50 w-full"
+      style={{
+        background: "rgba(250,250,248,0.90)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        borderBottom: "1px solid rgba(221,215,207,0.55)",
+      }}
+    >
+      <div className="max-w-6xl mx-auto px-8 py-4 flex items-center justify-between">
+        <Link href="/">
+          <Image
+            src="/logos/positives-wordmark-dark.png"
+            alt="Positives"
+            width={120}
+            height={26}
+            style={{ height: 26, width: "auto" }}
+            priority
+          />
+        </Link>
+        <nav className="flex items-center gap-6" aria-label="Join page navigation">
+          <Link href="/" className="text-sm font-medium" style={{ color: "#68707A" }}>
+            Home
+          </Link>
+          <Link href="/login" className="text-sm font-medium" style={{ color: "#68707A" }}>
+            Sign in
+          </Link>
+        </nav>
+      </div>
+    </header>
+  );
+
   // ── Check-email holding screen ────────────────────────────────────────────
   if (step === "check-email") {
     return (
-      <div className="min-h-dvh bg-background flex flex-col items-center justify-center px-6 py-16">
-        <div className="w-full max-w-sm text-center">
-          <div
-            className="bg-card border border-border rounded-2xl p-8 mb-6"
-            style={{ boxShadow: "0 6px 24px rgba(18,20,23,0.06)" }}
-          >
-            <span className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 text-primary mb-4 mx-auto">
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
+      <div className="min-h-dvh flex flex-col" style={{ background: "#FAFAF8" }}>
+        <Nav />
+        <div className="flex-1 flex flex-col items-center justify-center px-6 py-16">
+          <div className="w-full max-w-sm text-center">
+            <div
+              className="rounded-3xl p-10 mb-6"
+              style={{
+                background: "#FFFFFF",
+                border: "1px solid rgba(221,215,207,0.7)",
+                boxShadow: "0 16px 48px rgba(18,20,23,0.08)",
+              }}
+            >
+              <div
+                className="inline-flex items-center justify-center w-14 h-14 rounded-full mx-auto mb-6"
+                style={{ background: "rgba(47,111,237,0.10)" }}
               >
-                <rect x="2" y="4" width="20" height="16" rx="2" />
-                <polyline points="22 7 12 13 2 7" />
-              </svg>
-            </span>
-            <h1 className="font-heading font-bold text-xl text-foreground mb-2">
-              Check your email
-            </h1>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              We sent a sign-in link to{" "}
-              <span className="text-foreground font-medium">
-                {emailParam ?? "your email"}
-              </span>
-              . Click it to complete your account and start checkout.
-            </p>
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#2F6FED"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="2" y="4" width="20" height="16" rx="2" />
+                  <polyline points="22 7 12 13 2 7" />
+                </svg>
+              </div>
+              <h1
+                className="font-heading font-bold mb-3"
+                style={{ fontSize: "1.5rem", letterSpacing: "-0.04em", color: "#121417" }}
+              >
+                Check your email
+              </h1>
+              <p className="text-sm" style={{ color: "#68707A", lineHeight: "1.72" }}>
+                We sent a sign-in link to{" "}
+                <span style={{ color: "#121417", fontWeight: 600 }}>
+                  {emailParam ?? "your email"}
+                </span>
+                . Click it to complete your account and start checkout.
+              </p>
+            </div>
+            <Link
+              href="/join"
+              className="text-xs"
+              style={{ color: "#9AA0A8" }}
+            >
+              ← Back to join
+            </Link>
           </div>
-          <a
-            href="/join"
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            ← Back to join
-          </a>
         </div>
       </div>
     );
@@ -98,93 +147,321 @@ export default async function JoinPage({
 
   // ── Main join page ────────────────────────────────────────────────────────
   return (
-    <div className="min-h-dvh flex flex-col" style={{ background: "#F6F3EE" }}>
+    <div className="min-h-dvh flex flex-col overflow-x-hidden" style={{ background: "#FAFAF8" }}>
+      <Nav />
 
-      {/* ── Nav — matches homepage ─────────────────────────────────────── */}
-      <header
-        className="sticky top-0 z-50 w-full"
+      {/* ━━ 1. PRICING INTRO ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <section
+        className="relative w-full text-center px-6 overflow-hidden"
+        style={{ background: "#FAFAF8" }}
+      >
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: "radial-gradient(ellipse at 50% 0%, rgba(47,111,237,0.06) 0%, transparent 60%)" }}
+        />
+        <div
+          className="relative max-w-2xl mx-auto"
+          style={{ paddingTop: "clamp(4rem, 8vw, 7rem)", paddingBottom: "clamp(3rem, 5vw, 4.5rem)" }}
+        >
+          <p
+            className="text-xs font-semibold uppercase mb-6"
+            style={{ color: "#4E8C78", letterSpacing: "0.14em" }}
+          >
+            Dr. Paul Jenkins · Clinical Psychologist
+          </p>
+          <h1
+            className="font-heading font-bold mb-6"
+            style={{
+              fontSize: "clamp(2.4rem, 5.5vw, 4.25rem)",
+              letterSpacing: "-0.045em",
+              lineHeight: "1.04",
+              color: "#121417",
+            }}
+          >
+            Choose your starting point.
+          </h1>
+          <p
+            className="mb-5 mx-auto"
+            style={{
+              fontSize: "clamp(1rem, 1.8vw, 1.15rem)",
+              color: "#68707A",
+              lineHeight: "1.72",
+              maxWidth: "520px",
+              letterSpacing: "-0.01em",
+            }}
+          >
+            Begin the Positives practice today and build a mindset that grows
+            stronger every day.
+          </p>
+          <p
+            className="text-sm mx-auto"
+            style={{ color: "#B0A89E", maxWidth: "440px", lineHeight: "1.65" }}
+          >
+            Start with the core practice and grow into live sessions, community,
+            and coaching as new levels become available.
+          </p>
+        </div>
+      </section>
+
+      {/* ━━ 2. PRICING TOGGLE + CARDS + AUTH GATE ━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <section
+        className="w-full px-6"
         style={{
-          background: "rgba(246,243,238,0.82)",
-          backdropFilter: "blur(18px)",
-          WebkitBackdropFilter: "blur(18px)",
-          borderBottom: "1px solid rgba(221,215,207,0.5)",
+          paddingBottom: "clamp(5rem, 9vw, 8rem)",
+          background: "#FAFAF8",
         }}
       >
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link
-            href="/"
-            className="font-heading font-bold text-xl transition-opacity hover:opacity-70"
-            style={{ color: "#121417", letterSpacing: "-0.04em" }}
-          >
-            Positives
-          </Link>
-          <Link
-            href="/login"
-            className="text-sm font-medium transition-colors"
-            style={{ color: "#68707A" }}
-          >
-            Sign in
-          </Link>
+        <div className="max-w-5xl mx-auto">
+          <PricingToggle
+            isAuthenticated={!!user}
+            userEmail={user?.email ?? null}
+            initialError={errorParam ?? null}
+            monthlyPriceId={monthlyPriceId}
+            annualPriceId={annualPriceId}
+          />
         </div>
-      </header>
-
-      {/* ── Pricing header ───────────────────────────────────────────────── */}
-      <section className="px-6 pt-16 pb-10 text-center">
-        <p
-          className="text-xs font-semibold uppercase mb-4"
-          style={{ color: "#68707A", letterSpacing: "0.14em" }}
-        >
-          Choose your level
-        </p>
-        <h1
-          className="font-heading font-bold mb-3"
-          style={{
-            fontSize: "clamp(2rem, 4.5vw, 3.25rem)",
-            letterSpacing: "-0.04em",
-            lineHeight: "1.08",
-            color: "#121417",
-          }}
-        >
-          Build your daily practice.
-        </h1>
-        <p
-          className="text-sm"
-          style={{ color: "#68707A", letterSpacing: "-0.01em" }}
-        >
-          Guided by Dr. Paul Jenkins · Cancel anytime · Secure checkout via Stripe
-        </p>
       </section>
 
-      {/* ── Pricing toggle + cards + auth gate ───────────────────────────── */}
-      <section className="px-6 pb-24 max-w-5xl mx-auto w-full">
-        <PricingToggle
-          isAuthenticated={!!user}
-          userEmail={user?.email ?? null}
-          initialError={errorParam ?? null}
-          monthlyPriceId={monthlyPriceId}
-          annualPriceId={annualPriceId}
-        />
-      </section>
-
-      {/* ── Footer ───────────────────────────────────────────────────────── */}
-      <footer
-        className="w-full px-6 py-7 mt-auto"
-        style={{ borderTop: "1px solid rgba(221,215,207,0.5)", background: "#F6F3EE" }}
+      {/* ━━ 3. VALUE SECTION ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <section
+        className="w-full"
+        style={{ background: "#121417", borderTop: "1px solid #1C2028" }}
       >
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <span className="text-xs font-medium" style={{ color: "#68707A" }}>
+        <div
+          className="max-w-6xl mx-auto px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center"
+          style={{ paddingTop: "clamp(5rem, 9vw, 8rem)", paddingBottom: "clamp(5rem, 9vw, 8rem)" }}
+        >
+          <div>
+            <p
+              className="text-xs font-semibold uppercase mb-6"
+              style={{ color: "#4E8C78", letterSpacing: "0.14em" }}
+            >
+              The system
+            </p>
+            <h2
+              className="font-heading font-bold mb-7"
+              style={{
+                fontSize: "clamp(2rem, 4.5vw, 3.75rem)",
+                letterSpacing: "-0.045em",
+                lineHeight: "1.06",
+                color: "#FFFFFF",
+              }}
+            >
+              More than a membership.
+            </h2>
+            <div
+              className="space-y-4"
+              style={{ fontSize: "1.05rem", color: "#8A9199", lineHeight: "1.78" }}
+            >
+              <p>Positives is a complete system for building a more positive life.</p>
+              <p>
+                The daily practice helps you reset your thinking. Weekly
+                principles deepen your understanding. Monthly themes create
+                lasting change.
+              </p>
+              <p style={{ color: "#CBD2D9" }}>
+                As the platform grows, members can join live sessions,
+                participate in workshops, and explore deeper coaching experiences.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            {[
+              { label: "Daily guided audio practice", sub: "Fresh every morning" },
+              { label: "Weekly mindset principles", sub: "Backed by research" },
+              { label: "Monthly masterclass with Dr. Paul", sub: "Live + replay" },
+              { label: "Complete member library", sub: "Every past session" },
+              { label: "Live sessions & workshops", sub: "As new levels launch" },
+            ].map(({ label, sub }) => (
+              <div
+                key={label}
+                className="flex items-center gap-5 py-4"
+                style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+              >
+                <span
+                  className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center"
+                  style={{ background: "rgba(78,140,120,0.18)" }}
+                  aria-hidden="true"
+                >
+                  <svg
+                    width="10"
+                    height="10"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#4E8C78"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </span>
+                <div>
+                  <p className="font-medium" style={{ fontSize: "1rem", color: "#CBD2D9", letterSpacing: "-0.01em" }}>
+                    {label}
+                  </p>
+                  <p className="text-xs" style={{ color: "#4A5360" }}>{sub}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ━━ 4. GUARANTEE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <section
+        className="w-full"
+        style={{ background: "#F6F3EE", borderTop: "1px solid #DDD7CF" }}
+      >
+        <div
+          className="max-w-6xl mx-auto px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center"
+          style={{ paddingTop: "clamp(5rem, 9vw, 8rem)", paddingBottom: "clamp(5rem, 9vw, 8rem)" }}
+        >
+          <div>
+            <div
+              className="w-14 h-14 rounded-2xl flex items-center justify-center mb-8"
+              style={{ background: "#FFFFFF", border: "1px solid #DDD7CF" }}
+              aria-hidden="true"
+            >
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#4E8C78"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              </svg>
+            </div>
+            <p
+              className="text-xs font-semibold uppercase mb-5"
+              style={{ color: "#9AA0A8", letterSpacing: "0.14em" }}
+            >
+              Our promise
+            </p>
+            <h2
+              className="font-heading font-bold"
+              style={{
+                fontSize: "clamp(2rem, 4.5vw, 3.75rem)",
+                letterSpacing: "-0.045em",
+                lineHeight: "1.06",
+                color: "#121417",
+              }}
+            >
+              30-day money-back guarantee.
+            </h2>
+          </div>
+
+          <div className="space-y-5" style={{ fontSize: "1.05rem", color: "#68707A", lineHeight: "1.78" }}>
+            <p>
+              We are confident this practice will make a real difference in your
+              life. But we also understand that trust has to be earned.
+            </p>
+            <p>
+              That&apos;s why every Positives membership comes with an
+              unconditional 30-day money-back guarantee. If you do the practice
+              and it doesn&apos;t meaningfully improve your days, simply email us
+              within 30 days and we&apos;ll refund your membership in full.
+            </p>
+            <p>No hoops to jump through. No questions asked. No hassle.</p>
+            <p className="font-semibold" style={{ color: "#121417" }}>
+              We believe the practice will speak for itself. This guarantee just
+              means there&apos;s nothing to risk.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ━━ 5. FINAL CTA ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <section
+        className="relative w-full text-center overflow-hidden"
+        style={{ background: "#121417", borderTop: "1px solid #1C2028" }}
+      >
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: "radial-gradient(ellipse at 50% -10%, rgba(47,111,237,0.18) 0%, transparent 60%)" }}
+        />
+        <div
+          className="relative max-w-4xl mx-auto px-8"
+          style={{ paddingTop: "clamp(5rem, 10vw, 9rem)", paddingBottom: "clamp(5rem, 10vw, 9rem)" }}
+        >
+          <h2
+            className="font-heading font-bold mb-8"
+            style={{
+              fontSize: "clamp(2.2rem, 5vw, 4.5rem)",
+              lineHeight: "1.04",
+              letterSpacing: "-0.05em",
+              color: "#FFFFFF",
+            }}
+          >
+            <span style={{ display: "block", whiteSpace: "nowrap" }}>A few minutes each day.</span>
+            <span
+              style={{
+                display: "block",
+                whiteSpace: "nowrap",
+                background: "linear-gradient(135deg, #6B9BF2 0%, #8FC4B5 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}
+            >
+              A more positive life.
+            </span>
+          </h2>
+
+          <Link
+            href="#start"
+            className="inline-flex items-center justify-center font-semibold rounded-full"
+            style={{
+              background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
+              color: "#FFFFFF",
+              boxShadow: "0 8px 32px rgba(47,111,237,0.35)",
+              letterSpacing: "-0.01em",
+              fontSize: "1rem",
+              padding: "1rem 2.5rem",
+            }}
+          >
+            Start your practice →
+          </Link>
+
+          <p className="mt-5 text-sm" style={{ color: "#68707A" }}>
+            From $49/month · Cancel anytime · 30-day guarantee
+          </p>
+        </div>
+      </section>
+
+      {/* ━━ FOOTER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <footer
+        className="w-full"
+        style={{ background: "#FAFAF8", borderTop: "1px solid rgba(221,215,207,0.55)" }}
+      >
+        <div className="max-w-6xl mx-auto px-8 py-10 flex flex-col sm:flex-row items-center justify-between gap-5">
+          <div className="flex items-center gap-6">
+            <Link href="/">
+              <Image
+                src="/logos/positives-wordmark-dark.png"
+                alt="Positives"
+                width={80}
+                height={20}
+                style={{ height: 20, width: "auto", opacity: 0.45 }}
+              />
+            </Link>
+            <div className="flex items-center gap-5">
+              <Link href="/privacy" className="text-xs" style={{ color: "#9AA0A8" }}>Privacy</Link>
+              <Link href="/terms" className="text-xs" style={{ color: "#9AA0A8" }}>Terms</Link>
+            </div>
+          </div>
+          <span className="text-xs" style={{ color: "#C4BDB5" }}>
             © {new Date().getFullYear()} Positives
           </span>
-          <Link
-            href="/"
-            className="text-xs font-medium transition-colors"
-            style={{ color: "#68707A" }}
-          >
-            Back to home
-          </Link>
         </div>
       </footer>
-
     </div>
   );
 }
