@@ -1,25 +1,24 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { JoinClient } from "./join-client";
+import { config } from "@/lib/config";
+import { PricingToggle } from "@/components/marketing/PricingToggle";
 
 export const metadata = {
-  title: "Join Positives — A Daily Practice for Calm & Resilience",
+  title: "Join Positives — Choose Your Membership",
   description:
-    "Start your Positives membership for $49/month. Daily grounding audio, weekly principles, and monthly themes guided by Dr. Paul Jenkins.",
+    "Start your Positives membership from $49/month. Daily grounding audio, weekly principles, and monthly themes guided by Dr. Paul Jenkins.",
 };
 
 /**
  * app/join/page.tsx
- * Public conversion + auth page.
+ * Public pricing and conversion page.
  *
- * Server component that detects auth state, then delegates to JoinClient
- * which renders the appropriate UI:
- *
- *   unauthenticated     → pricing + email/password signup form
- *   authenticated, active   → redirect to /today (already a member)
- *   authenticated, inactive → pricing + one-click checkout (no auth form)
- *
- * step=check-email    → confirmation holding screen
+ * Server component:
+ *   - Reads auth state
+ *   - Active members → /today
+ *   - Passes price IDs from server env to PricingToggle (never exposed to client bundle)
+ *   - Handles the check-email holding screen
  */
 export default async function JoinPage({
   searchParams,
@@ -28,7 +27,7 @@ export default async function JoinPage({
 }) {
   const { step, email: emailParam, error: errorParam } = await searchParams;
 
-  // ── Auth-aware redirect for active members ───────────────────────────────
+  // ── Active member redirect ────────────────────────────────────────────────
   const supabase = await createClient();
   const {
     data: { user },
@@ -42,19 +41,22 @@ export default async function JoinPage({
       .single();
 
     if (member?.subscription_status === "active") {
-      // Already a member — nothing to buy
       redirect("/today");
     }
   }
 
-  // ── Check-email holding screen ───────────────────────────────────────────
+  // ── Price IDs resolved server-side (never bundled into client JS) ─────────
+  const monthlyPriceId = config.stripe.prices.level1Monthly;
+  const annualPriceId = config.stripe.prices.level1Annual;
+
+  // ── Check-email holding screen ────────────────────────────────────────────
   if (step === "check-email") {
     return (
       <div className="min-h-dvh bg-background flex flex-col items-center justify-center px-6 py-16">
         <div className="w-full max-w-sm text-center">
           <div
             className="bg-card border border-border rounded-2xl p-8 mb-6"
-            style={{ boxShadow: "0 6px 24px rgba(18,20,23,0.05)" }}
+            style={{ boxShadow: "0 6px 24px rgba(18,20,23,0.06)" }}
           >
             <span className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 text-primary mb-4 mx-auto">
               <svg
@@ -94,12 +96,60 @@ export default async function JoinPage({
     );
   }
 
-  // ── Main join page ───────────────────────────────────────────────────────
+  // ── Main join page ────────────────────────────────────────────────────────
   return (
-    <JoinClient
-      isAuthenticated={!!user}
-      userEmail={user?.email ?? null}
-      initialError={errorParam ?? null}
-    />
+    <div className="min-h-dvh bg-background flex flex-col">
+
+      {/* ── Nav ──────────────────────────────────────────────────────────── */}
+      <header className="px-6 py-5 flex items-center justify-between max-w-5xl mx-auto w-full">
+        <Link
+          href="/"
+          className="font-heading font-bold text-lg tracking-tight text-foreground"
+        >
+          Positives
+        </Link>
+        <Link
+          href="/login"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Sign in
+        </Link>
+      </header>
+
+      {/* ── Pricing header ───────────────────────────────────────────────── */}
+      <section className="px-6 pt-16 pb-10 text-center">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-4">
+          Choose your level
+        </p>
+        <h1 className="font-heading font-bold text-4xl sm:text-5xl text-foreground tracking-tight mb-3">
+          Start your Positives practice.
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Founding member rate · Cancel anytime · Secure checkout via Stripe
+        </p>
+      </section>
+
+      {/* ── Pricing toggle + cards + auth gate ───────────────────────────── */}
+      <section className="px-6 pb-24 max-w-5xl mx-auto w-full">
+        <PricingToggle
+          isAuthenticated={!!user}
+          userEmail={user?.email ?? null}
+          initialError={errorParam ?? null}
+          monthlyPriceId={monthlyPriceId}
+          annualPriceId={annualPriceId}
+        />
+      </section>
+
+      {/* ── Footer ───────────────────────────────────────────────────────── */}
+      <footer className="px-6 py-8 border-t border-border text-center mt-auto">
+        <p className="text-xs text-muted-foreground">
+          © {new Date().getFullYear()} Positives ·{" "}
+          <Link href="/" className="hover:text-foreground transition-colors">
+            Home
+          </Link>
+        </p>
+      </footer>
+
+    </div>
   );
 }

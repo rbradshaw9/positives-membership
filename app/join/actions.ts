@@ -25,13 +25,14 @@ import { createCheckoutSession } from "@/server/services/stripe/create-checkout-
 
 type ActionResult = { error?: string };
 
-// ── New user: sign up with email + password ──────────────────────────────────
+// ── New user: sign up with email + password ────────────────────────────────────
 export async function signUpAndJoin(
   _prev: ActionResult,
   formData: FormData
 ): Promise<ActionResult> {
   const email = (formData.get("email") as string | null)?.trim();
   const password = formData.get("password") as string | null;
+  const priceId = (formData.get("priceId") as string | null) ?? undefined;
 
   if (!email || !password) {
     return { error: "Email and password are required." };
@@ -69,7 +70,7 @@ export async function signUpAndJoin(
   // Session established — proceed straight to checkout
   const user = data.user!;
   try {
-    const { url } = await createCheckoutSession(user.id, user.email!);
+    const { url } = await createCheckoutSession(user.id, user.email!, priceId);
     redirect(url);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -85,6 +86,7 @@ export async function signInAndJoin(
 ): Promise<ActionResult> {
   const email = (formData.get("email") as string | null)?.trim();
   const password = formData.get("password") as string | null;
+  const priceId = (formData.get("priceId") as string | null) ?? undefined;
 
   if (!email || !password) {
     return { error: "Email and password are required." };
@@ -123,7 +125,7 @@ export async function signInAndJoin(
 
   // Inactive — proceed to checkout
   try {
-    const { url } = await createCheckoutSession(user.id, user.email);
+    const { url } = await createCheckoutSession(user.id, user.email, priceId);
     redirect(url);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -135,8 +137,10 @@ export async function signInAndJoin(
 // ── Already authenticated + inactive: skip auth, go straight to checkout ─────
 export async function startCheckoutAuthenticated(
   _prev: ActionResult,
-  _formData: FormData
+  formData: FormData
 ): Promise<ActionResult> {
+  const priceId = (formData.get("priceId") as string | null) ?? undefined;
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -147,7 +151,7 @@ export async function startCheckoutAuthenticated(
   }
 
   try {
-    const { url } = await createCheckoutSession(user.id, user.email);
+    const { url } = await createCheckoutSession(user.id, user.email, priceId);
     redirect(url);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

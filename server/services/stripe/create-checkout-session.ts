@@ -4,7 +4,7 @@ import { config } from "@/lib/config";
 
 /**
  * server/services/stripe/create-checkout-session.ts
- * Creates a Stripe Checkout Session for Level 1 monthly membership.
+ * Creates a Stripe Checkout Session for a Positives membership.
  *
  * Customer linking strategy (idempotent):
  * 1. Check member.stripe_customer_id — if set, use it directly
@@ -13,7 +13,10 @@ import { config } from "@/lib/config";
  * 3. client_reference_id is set to userId so checkout.session.completed
  *    can locate the member row without depending on subscription metadata
  *
- * Called from a Server Action in /subscribe — never from client code.
+ * priceId — optional. Defaults to STRIPE_PRICE_LEVEL_1_MONTHLY.
+ *   Pass STRIPE_PRICE_LEVEL_1_ANNUAL for the annual billing flow.
+ *
+ * Called from Server Actions in /join — never from client code.
  */
 
 function getAdminClient() {
@@ -26,7 +29,8 @@ function getAdminClient() {
 
 export async function createCheckoutSession(
   userId: string,
-  email: string
+  email: string,
+  priceId?: string
 ): Promise<{ url: string }> {
   const stripe = getStripe();
   const supabase = getAdminClient();
@@ -87,10 +91,11 @@ export async function createCheckoutSession(
     console.log(`[Stripe] Existing customer: ${stripeCustomerId} for userId: ${userId}`);
   }
 
-  // ── Step 3: Resolve Level 1 monthly price ID ────────────────────────────
-  const priceId = config.stripe.prices.level1Monthly;
+  // ── Step 3: Resolve price ID ────────────────────────────────────────────
+  // Caller may pass a specific price (e.g. annual). Fall back to monthly.
+  const resolvedPriceId = priceId || config.stripe.prices.level1Monthly;
 
-  if (!priceId) {
+  if (!resolvedPriceId) {
     throw new Error(
       "[Stripe] STRIPE_PRICE_LEVEL_1_MONTHLY is not set. " +
         "Add it to .env.local to enable checkout."
@@ -100,7 +105,7 @@ export async function createCheckoutSession(
   const appUrl = config.app.url;
 
   // ── Step 4: Create Stripe Checkout Session ──────────────────────────────
-  console.log(`[Stripe] Creating checkout session — customer: ${stripeCustomerId}, price: ${priceId}`);
+  console.log(`[Stripe] Creating checkout session — customer: ${stripeCustomerId}, price: ${resolvedPriceId}`);
 
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
@@ -110,7 +115,7 @@ export async function createCheckoutSession(
     // member row directly via member.id lookup — the most reliable path,
     // independent of stripe_customer_id being pre-set on the member row.
     client_reference_id: userId,
-    line_items: [{ price: priceId, quantity: 1 }],
+    line_items: [{ price: resolvedPriceId, quantity: 1 }],
     success_url: `${appUrl}/subscribe/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${appUrl}/subscribe`,
     subscription_data: {

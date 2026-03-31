@@ -5,25 +5,19 @@ import { redirect } from "next/navigation";
 export const metadata = {
   title: "Positives — A Daily Practice for Calm, Clarity & Resilience",
   description:
-    "Positives is a practice-based membership with daily grounding audio, weekly principles, and monthly themes guided by Dr. Paul Jenkins. $49/month.",
+    "Positives is a practice-based membership guided by Dr. Paul Jenkins. A short daily habit that quietly changes how you feel over time. From $49/month.",
 };
 
 /**
  * app/(marketing)/page.tsx
- * Public landing page — the first thing a new visitor sees.
+ * Public landing page.
  *
- * Routing logic:
- * - Unauthenticated           → render this landing page
- * - Authenticated, active     → /today
- * - Authenticated, inactive   → /join
- *
- * This page is intentionally calm, focused, and conversion-oriented.
- * It does NOT redirect to /login. Visitors see the product first.
+ * Routing:
+ *   Unauthenticated         → render landing page
+ *   Authenticated, active   → /today
+ *   Authenticated, inactive → render landing page (CTAs guide them to /join)
  */
 export default async function LandingPage() {
-  // Active members go directly to their dashboard.
-  // Everyone else — unauthenticated or inactive — sees the landing page.
-  // The landing page CTAs route them to /join when they're ready.
   const supabase = await createClient();
   const {
     data: { user },
@@ -43,8 +37,9 @@ export default async function LandingPage() {
 
   return (
     <div className="min-h-dvh bg-background flex flex-col">
-      {/* ── Nav ──────────────────────────────────────────────────────── */}
-      <header className="px-6 py-4 flex items-center justify-between">
+
+      {/* ── Nav ──────────────────────────────────────────────────────────── */}
+      <header className="px-6 py-5 flex items-center justify-between max-w-5xl mx-auto w-full">
         <span className="font-heading font-bold text-lg tracking-tight text-foreground">
           Positives
         </span>
@@ -56,97 +51,96 @@ export default async function LandingPage() {
         </Link>
       </header>
 
-      {/* ── Hero ─────────────────────────────────────────────────────── */}
-      <section className="flex-1 flex flex-col items-center justify-center px-6 py-20 text-center">
-        <span className="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium mb-8 tracking-wide uppercase">
+      {/* ── Hero ─────────────────────────────────────────────────────────── */}
+      <section className="flex flex-col items-center justify-center px-6 pt-20 pb-28 text-center">
+        <span className="text-xs font-medium text-primary uppercase tracking-widest mb-8">
           A daily practice
         </span>
 
-        <h1 className="font-heading font-bold text-4xl sm:text-5xl md:text-6xl text-foreground max-w-2xl leading-tight tracking-tight mb-6">
-          Calm, clarity, and resilience —{" "}
-          <span className="text-primary">every day.</span>
+        <h1 className="font-heading font-bold text-5xl sm:text-6xl text-foreground max-w-2xl leading-tight tracking-tight mb-6">
+          A few minutes each day.{" "}
+          <span className="text-primary">A more positive life.</span>
         </h1>
 
         <p className="text-muted-foreground text-lg sm:text-xl max-w-xl leading-relaxed mb-10">
-          Positives is a practice-based membership guided by Dr. Paul Jenkins.
-          A short daily habit that quietly changes how you feel over time.
+          A practice-based membership guided by Dr. Paul Jenkins — built around
+          one simple daily habit.
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-3 mb-8">
-          <Link
-            href="/join"
-            className="inline-flex items-center justify-center px-8 py-3.5 rounded-full bg-primary text-white font-medium text-sm hover:bg-primary-hover transition-colors shadow-soft"
-          >
-            Start your practice →
-          </Link>
-          <Link
-            href="/login"
-            className="inline-flex items-center justify-center px-8 py-3.5 rounded-full border border-border text-foreground font-medium text-sm hover:bg-muted transition-colors"
-          >
-            Sign in
-          </Link>
-        </div>
+        <Link
+          href="/join"
+          className="inline-flex items-center justify-center px-9 py-3.5 rounded-full bg-primary text-white font-medium text-sm hover:bg-primary-hover transition-colors mb-4"
+          style={{ boxShadow: "0 4px 20px rgba(18,20,23,0.12)" }}
+        >
+          Start your practice →
+        </Link>
 
-        <p className="text-xs text-muted-foreground">
-          <span className="line-through">$97/month</span>
-          {" — "}
+        <p className="text-xs text-muted-foreground mb-1">
+          From{" "}
           <span className="text-foreground font-medium">$49/month</span>
-          {" · "} Founding member rate · Cancel anytime
+          {" · "}Founding member rate · Cancel anytime
         </p>
+
+        <Link
+          href="/login"
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors mt-3"
+        >
+          Already a member? Sign in
+        </Link>
       </section>
 
-      {/* ── About Dr. Paul ───────────────────────────────────────────── */}
-      <section className="px-6 py-20 bg-card border-t border-border">
+      {/* ── Dr. Paul ─────────────────────────────────────────────────────── */}
+      <section className="px-6 py-24 bg-card border-t border-border">
         <div className="max-w-2xl mx-auto text-center">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-4">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-5">
             Guided by
           </p>
-          <h2 className="font-heading font-bold text-2xl sm:text-3xl text-foreground mb-4">
+          <h2 className="font-heading font-bold text-3xl sm:text-4xl text-foreground mb-6">
             Dr. Paul Jenkins
           </h2>
           <p className="text-muted-foreground text-base sm:text-lg leading-relaxed max-w-lg mx-auto">
-            Psychologist, author, and coach. Dr. Paul has spent over 30 years
-            helping people cultivate lasting positivity — not as a mood, but as
-            a practiced skill. Positives is his daily methodology, made
-            accessible.
+            Dr. Paul is a psychologist, author, and speaker who has spent over
+            30 years researching and teaching the science of positivity — not as
+            an attitude, but as a skill. Positives is his daily methodology,
+            made accessible to anyone willing to show up for five minutes.
           </p>
         </div>
       </section>
 
-      {/* ── The Rhythm ───────────────────────────────────────────────── */}
-      <section className="px-6 py-20">
+      {/* ── The Practice ─────────────────────────────────────────────────── */}
+      <section className="px-6 py-24">
         <div className="max-w-3xl mx-auto">
-          <p className="text-center text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+          <p className="text-center text-xs font-medium text-muted-foreground uppercase tracking-widest mb-4">
             The practice
           </p>
-          <h2 className="font-heading font-bold text-2xl sm:text-3xl text-foreground text-center mb-12">
+          <h2 className="font-heading font-bold text-3xl sm:text-4xl text-foreground text-center mb-14">
             Simple. Consistent. Sustainable.
           </h2>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             {[
               {
                 label: "Daily",
                 title: "A short grounding audio",
-                body: "Each day begins with a short audio from Dr. Paul — a moment to reset, reframe, and return to yourself.",
+                body: "A moment to reset before the day pulls you in every direction. Short, direct, with Dr. Paul.",
               },
               {
                 label: "Weekly",
                 title: "A principle and practice",
-                body: "Each week, a guiding principle and a simple practice to carry through your day. No homework. No pressure.",
+                body: "One idea to carry through your week. One thing to try. No homework. No pressure.",
               },
               {
                 label: "Monthly",
                 title: "A theme for reflection",
-                body: "Each month has a theme designed to build the skills of positivity without rushing or forcing anything.",
+                body: "A lens for the month ahead — not a curriculum, not a course. A direction.",
               },
             ].map(({ label, title, body }) => (
               <div
                 key={label}
-                className="bg-card border border-border rounded-2xl p-6"
-                style={{ boxShadow: "0 6px 24px rgba(18,20,23,0.05)" }}
+                className="bg-card border border-border rounded-2xl p-8"
+                style={{ boxShadow: "0 2px 12px rgba(18,20,23,0.05)" }}
               >
-                <span className="inline-block text-xs font-medium text-primary uppercase tracking-wide mb-3">
+                <span className="inline-block text-xs font-medium text-primary uppercase tracking-widest mb-3">
                   {label}
                 </span>
                 <h3 className="font-heading font-semibold text-base text-foreground mb-2 leading-snug">
@@ -161,17 +155,20 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* ── What you get ─────────────────────────────────────────────── */}
-      <section className="px-6 py-20 bg-surface-tint border-t border-border">
-        <div className="max-w-2xl mx-auto">
-          <p className="text-center text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+      {/* ── Benefits ─────────────────────────────────────────────────────── */}
+      <section className="px-6 py-24 bg-card border-t border-border">
+        <div className="max-w-xl mx-auto">
+          <p className="text-center text-xs font-medium text-muted-foreground uppercase tracking-widest mb-4">
             Membership includes
           </p>
-          <h2 className="font-heading font-bold text-2xl sm:text-3xl text-foreground text-center mb-10">
-            Everything you need, nothing you don&apos;t.
+          <h2 className="font-heading font-bold text-3xl sm:text-4xl text-foreground text-center mb-12">
+            Everything you need.{" "}
+            <span className="text-muted-foreground font-normal">
+              Nothing you don&apos;t.
+            </span>
           </h2>
 
-          <ul className="space-y-4 mb-12">
+          <ul className="space-y-4">
             {[
               "Daily grounding audio from Dr. Paul",
               "Weekly principles and practices",
@@ -201,46 +198,42 @@ export default async function LandingPage() {
               </li>
             ))}
           </ul>
-
-          {/* Pricing */}
-          <div className="bg-card border border-border rounded-2xl p-8 text-center"
-            style={{ boxShadow: "0 6px 24px rgba(18,20,23,0.05)" }}
-          >
-            <p className="text-sm text-muted-foreground mb-1">
-              Founding member rate
-            </p>
-            <div className="flex items-baseline justify-center gap-2 mb-1">
-              <span className="text-muted-foreground text-sm line-through">
-                $97
-              </span>
-              <span className="font-heading font-bold text-4xl text-foreground">
-                $49
-              </span>
-              <span className="text-muted-foreground text-sm">/month</span>
-            </div>
-            <p className="text-xs text-muted-foreground mb-6">
-              Cancel anytime. No contracts.
-            </p>
-            <Link
-              href="/join"
-              className="inline-flex items-center justify-center w-full px-6 py-3.5 rounded-full bg-primary text-white font-medium text-sm hover:bg-primary-hover transition-colors"
-              style={{ boxShadow: "0 6px 24px rgba(18,20,23,0.05)" }}
-            >
-              Join Positives →
-            </Link>
-          </div>
         </div>
       </section>
 
-      {/* ── Footer ───────────────────────────────────────────────────── */}
+      {/* ── Closing CTA ──────────────────────────────────────────────────── */}
+      <section className="px-6 py-28 text-center">
+        <div className="max-w-xl mx-auto">
+          <h2 className="font-heading font-bold text-3xl sm:text-4xl text-foreground mb-4">
+            Start today. Come back tomorrow.
+          </h2>
+          <p className="text-muted-foreground text-base leading-relaxed mb-8">
+            Founding members join at $49/month — the lowest price this
+            membership will ever be. Annual option available. Cancel anytime.
+          </p>
+          <Link
+            href="/join"
+            className="inline-flex items-center justify-center px-9 py-3.5 rounded-full bg-primary text-white font-medium text-sm hover:bg-primary-hover transition-colors"
+            style={{ boxShadow: "0 4px 20px rgba(18,20,23,0.12)" }}
+          >
+            Join Positives →
+          </Link>
+          <p className="mt-4 text-xs text-muted-foreground">
+            Secure checkout via Stripe
+          </p>
+        </div>
+      </section>
+
+      {/* ── Footer ───────────────────────────────────────────────────────── */}
       <footer className="px-6 py-8 border-t border-border text-center">
         <p className="text-xs text-muted-foreground">
-          © {new Date().getFullYear()} Positives · Secure checkout by Stripe ·{" "}
+          © {new Date().getFullYear()} Positives ·{" "}
           <Link href="/login" className="hover:text-foreground transition-colors">
             Sign in
           </Link>
         </p>
       </footer>
+
     </div>
   );
 }
