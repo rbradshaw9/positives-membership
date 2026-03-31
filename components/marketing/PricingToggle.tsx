@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { PricingCard } from "./PricingCard";
-import { AuthGate } from "./AuthGate";
 
 /**
  * components/marketing/PricingToggle.tsx
@@ -10,28 +9,29 @@ import { AuthGate } from "./AuthGate";
  * Owns the billing interval state ("monthly" | "annual").
  * Renders the toggle UI and three pricing cards.
  *
- * AuthGate is preserved in a visually-hidden container so the underlying
- * logic and Server Actions remain intact while the UI is hidden.
- * The pricing cards now each contain their own CTA button.
+ * Pass 2 changes:
+ *   - Passes selectedPriceId down to Level 1 PricingCard
+ *   - Removed the visually-hidden AuthGate container
+ *   - AuthGate.tsx + auth-first Server Actions remain in the codebase
+ *     but are no longer referenced here; they will be cleaned up in Pass 3.
  *
- * Level 1:  fully interactive — toggle affects price display
+ * Level 1:  fully interactive — toggle switches priceId + price display
  * Level 2:  coming soon — static, disabled CTA
  * Level 3:  coming soon — static, disabled CTA
  */
 
 interface PricingToggleProps {
-  isAuthenticated: boolean;
-  userEmail: string | null;
-  initialError: string | null;
   /** Passed from server so price IDs are never bundled into client JS */
   monthlyPriceId: string;
   annualPriceId: string;
+  // isAuthenticated + userEmail retained in signature so JoinPage
+  // doesn't need to change. Will be removed in Pass 3 cleanup.
+  isAuthenticated?: boolean;
+  userEmail?: string | null;
+  initialError?: string | null;
 }
 
 export function PricingToggle({
-  isAuthenticated,
-  userEmail,
-  initialError,
   monthlyPriceId,
   annualPriceId,
 }: PricingToggleProps) {
@@ -62,7 +62,8 @@ export function PricingToggle({
               style={{
                 background: billing === interval ? "#FFFFFF" : "transparent",
                 color: billing === interval ? "#121417" : "#9AA0A8",
-                boxShadow: billing === interval ? "0 2px 8px rgba(18,20,23,0.08)" : "none",
+                boxShadow:
+                  billing === interval ? "0 2px 8px rgba(18,20,23,0.08)" : "none",
                 letterSpacing: "-0.01em",
               }}
             >
@@ -91,22 +92,9 @@ export function PricingToggle({
 
       {/* ── Pricing cards ─────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <PricingCard level={1} billing={billing} />
+        <PricingCard level={1} billing={billing} priceId={selectedPriceId} />
         <PricingCard level={2} billing={billing} comingSoon />
         <PricingCard level={3} billing={billing} comingSoon />
-      </div>
-
-      {/* ── AuthGate — visually hidden, logic preserved ───── */}
-      {/* NOTE: Hidden pending direct Stripe checkout flow.     */}
-      {/* Do NOT remove — Server Actions and priceId wiring     */}
-      {/* must stay intact for the next architectural phase.    */}
-      <div aria-hidden="true" style={{ display: "none" }}>
-        <AuthGate
-          isAuthenticated={isAuthenticated}
-          userEmail={userEmail}
-          initialError={initialError}
-          priceId={selectedPriceId}
-        />
       </div>
     </div>
   );

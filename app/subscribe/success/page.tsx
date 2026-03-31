@@ -1,27 +1,39 @@
 import Link from "next/link";
 import Image from "next/image";
+import { SuccessClient } from "./success-client";
 
 export const metadata = {
-  title: "You're In — Positives",
-  description: "Your Positives membership is now active. Start your first practice today.",
+  title: "Setting Up — Positives",
+  description: "Your Positives membership is being activated.",
 };
 
 /**
  * app/subscribe/success/page.tsx
- * Return page shown after Stripe Checkout completes.
+ * Server-rendered shell for the post-checkout success flow.
  *
- * Important: this page does NOT assume the webhook has already fired.
- * Stripe Checkout completing does not mean the member row is updated yet.
- * The webhook handles subscription_status — this page explains that
- * access may take a moment and invites the member to proceed.
+ * Reads session_id from search params and passes it to the SuccessClient
+ * component which handles:
+ *   - polling /api/auth/exchange for the one-time login token
+ *   - calling supabase.auth.verifyOtp() to establish a session
+ *   - redirecting to /today on success
+ *   - showing a graceful fallback after 30s
  *
- * Server-side access control on /today handles the actual gate.
+ * This page intentionally shows NO static checkout confirmation content.
+ * For guests (new payment-first path), the SuccessClient handles the full UX.
+ * For existing auth-first users (who will be logged in already), the server
+ * access guard on /today handles enforcement — they can navigate directly.
  */
-export default function SubscribeSuccessPage() {
+export default async function SubscribeSuccessPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ session_id?: string }>;
+}) {
+  const { session_id } = await searchParams;
+
   return (
     <div className="min-h-dvh flex flex-col" style={{ background: "#FAFAF8" }}>
 
-      {/* ── Minimal nav ─────────────────────────────────────────────────── */}
+      {/* ── Minimal nav ──────────────────────────────────────────────────── */}
       <header
         className="w-full"
         style={{
@@ -45,199 +57,16 @@ export default function SubscribeSuccessPage() {
         </div>
       </header>
 
-      {/* ── Main content ─────────────────────────────────────────────────── */}
+      {/* ── Main: centred client-controlled content ───────────────────────── */}
       <main className="flex-1 flex flex-col items-center justify-center px-6">
         <div
-          className="w-full max-w-xl text-center"
-          style={{ paddingTop: "clamp(4rem, 8vw, 6rem)", paddingBottom: "clamp(4rem, 8vw, 6rem)" }}
+          className="w-full"
+          style={{
+            paddingTop: "clamp(4rem, 8vw, 6rem)",
+            paddingBottom: "clamp(4rem, 8vw, 6rem)",
+          }}
         >
-
-          {/* ── Section 1: Success confirmation ──────────────────────────── */}
-          <div
-            className="inline-flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-10"
-            style={{
-              background: "rgba(78,140,120,0.12)",
-              border: "1.5px solid rgba(78,140,120,0.22)",
-            }}
-            aria-hidden="true"
-          >
-            <svg
-              width="26"
-              height="26"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#4E8C78"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          </div>
-
-          <p
-            className="text-xs font-semibold uppercase mb-5"
-            style={{ color: "#4E8C78", letterSpacing: "0.14em" }}
-          >
-            Membership Active
-          </p>
-
-          <h1
-            className="font-heading font-bold mb-5"
-            style={{
-              fontSize: "clamp(3.5rem, 9vw, 7rem)",
-              letterSpacing: "-0.055em",
-              lineHeight: "1.0",
-              color: "#121417",
-            }}
-          >
-            You&apos;re in.
-          </h1>
-
-          <p
-            className="mb-16 mx-auto"
-            style={{
-              fontSize: "clamp(1rem, 1.8vw, 1.15rem)",
-              color: "#68707A",
-              lineHeight: "1.72",
-              maxWidth: "420px",
-              letterSpacing: "-0.01em",
-            }}
-          >
-            Your Positives membership is now active.
-          </p>
-
-          {/* ── Divider ──────────────────────────────────────────────────── */}
-          <div
-            className="w-full mx-auto mb-16"
-            style={{ height: "1px", background: "rgba(221,215,207,0.7)", maxWidth: "320px" }}
-          />
-
-          {/* ── Section 2: Welcome ───────────────────────────────────────── */}
-          <h2
-            className="font-heading font-bold mb-5"
-            style={{
-              fontSize: "clamp(1.6rem, 3.5vw, 2.5rem)",
-              letterSpacing: "-0.04em",
-              lineHeight: "1.08",
-              color: "#121417",
-            }}
-          >
-            Welcome to Positives.
-          </h2>
-
-          <p
-            className="mb-16 mx-auto"
-            style={{
-              fontSize: "1.05rem",
-              color: "#68707A",
-              lineHeight: "1.78",
-              maxWidth: "480px",
-              letterSpacing: "-0.01em",
-            }}
-          >
-            Positives is a simple daily practice designed to help you think more
-            clearly, respond more calmly, and build a more positive life.
-            The best way to begin is simply to start today&apos;s practice.
-          </p>
-
-          {/* ── Section 3: What happens next ─────────────────────────────── */}
-          <div
-            className="w-full rounded-3xl mx-auto mb-14 text-left"
-            style={{
-              background: "#FFFFFF",
-              border: "1px solid rgba(221,215,207,0.7)",
-              boxShadow: "0 8px 32px rgba(18,20,23,0.06)",
-              padding: "clamp(1.75rem, 4vw, 2.5rem)",
-              maxWidth: "480px",
-            }}
-          >
-            <p
-              className="text-xs font-semibold uppercase mb-8"
-              style={{ color: "#9AA0A8", letterSpacing: "0.14em" }}
-            >
-              What happens next
-            </p>
-
-            <div className="space-y-8">
-              {[
-                {
-                  step: "1",
-                  title: "Listen to today's practice",
-                  desc: "A short guided audio designed to reset your mindset.",
-                },
-                {
-                  step: "2",
-                  title: "Reflect on the idea",
-                  desc: "Carry the concept with you throughout the day.",
-                },
-                {
-                  step: "3",
-                  title: "Return tomorrow",
-                  desc: "Consistency is what makes the practice powerful.",
-                },
-              ].map(({ step, title, desc }) => (
-                <div key={step} className="flex items-start gap-5">
-                  <span
-                    className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-heading font-bold"
-                    style={{
-                      background: "rgba(47,111,237,0.08)",
-                      color: "#2F6FED",
-                      fontSize: "0.8rem",
-                      letterSpacing: "-0.02em",
-                    }}
-                  >
-                    {step}
-                  </span>
-                  <div>
-                    <p
-                      className="font-semibold mb-1"
-                      style={{ fontSize: "0.975rem", color: "#121417", letterSpacing: "-0.02em" }}
-                    >
-                      {title}
-                    </p>
-                    <p style={{ fontSize: "0.9rem", color: "#9AA0A8", lineHeight: "1.65" }}>
-                      {desc}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* ── Section 4: Start practice CTA ────────────────────────────── */}
-          <Link
-            href="/today"
-            className="inline-flex items-center justify-center font-semibold rounded-full mb-5"
-            style={{
-              background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
-              color: "#FFFFFF",
-              boxShadow: "0 8px 28px rgba(47,111,237,0.30)",
-              letterSpacing: "-0.01em",
-              fontSize: "1rem",
-              padding: "1rem 2.5rem",
-            }}
-          >
-            Start today&apos;s practice →
-          </Link>
-
-          {/* ── Section 5: Reassurance ────────────────────────────────────── */}
-          <p
-            className="text-sm"
-            style={{ color: "#B0A89E", lineHeight: "1.65", maxWidth: "380px", margin: "0 auto" }}
-          >
-            Your membership is active and you can access your practice anytime
-            by signing in.
-          </p>
-
-          {/* ── Webhook timing note ───────────────────────────────────────── */}
-          <p
-            className="mt-5 text-xs"
-            style={{ color: "#C4BDB5" }}
-          >
-            If your access isn&apos;t ready immediately, wait a few seconds and
-            try again — billing confirmation happens automatically.
-          </p>
+          <SuccessClient sessionId={session_id ?? null} />
         </div>
       </main>
 

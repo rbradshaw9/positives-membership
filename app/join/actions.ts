@@ -196,8 +196,32 @@ export async function sendMagicLinkForJoin(
 //
 // Existing actions above (signUpAndJoin, signInAndJoin, startCheckoutAuthenticated)
 // are preserved for the auth-first flow and will be removed in Pass 3 cleanup.
+
+/**
+ * useActionState-compatible variant (two-arg).
+ * Used when you need to thread state through useActionState.
+ */
 export async function startGuestCheckout(
   _prev: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  return _startGuestCheckoutCore(formData);
+}
+
+/**
+ * Single-arg form action variant — compatible with <form action={...}>.
+ * Use this when no state threading is needed (e.g. PricingCard).
+ * Redirects on success; throws on unrecoverable error.
+ */
+export async function startGuestCheckoutFormAction(
+  formData: FormData
+): Promise<void> {
+  await _startGuestCheckoutCore(formData);
+}
+
+// ── Shared implementation ──────────────────────────────────────────────────
+
+async function _startGuestCheckoutCore(
   formData: FormData
 ): Promise<ActionResult> {
   const priceId = (formData.get("priceId") as string | null)?.trim();
@@ -216,4 +240,7 @@ export async function startGuestCheckout(
     console.error("[Join] Guest checkout creation failed:", message);
     return { error: "Could not start checkout. Please try again." };
   }
+
+  // redirect() throws — this is unreachable but satisfies TypeScript
+  return {};
 }

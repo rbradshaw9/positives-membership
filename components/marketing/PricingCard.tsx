@@ -1,14 +1,20 @@
+"use client";
+
 /**
  * components/marketing/PricingCard.tsx
  *
- * Purely presentational — no client state.
- * Billing state is passed from PricingToggle.
+ * Payment-first: Level 1 CTA submits directly to startGuestCheckout
+ * via a <form> with a hidden priceId input. No auth required before
+ * Stripe Checkout.
  *
- * Level 1 — active, billing-toggle-aware, includes CTA button
- * Level 2, 3 — coming soon, disabled CTA
+ * Level 2, 3 — coming soon, disabled CTA (unchanged).
+ *
+ * Props change from Pass 1:
+ *   Added: priceId (string | null) — only meaningful for Level 1
  */
 
-import Link from "next/link";
+import { useFormStatus } from "react-dom";
+import { startGuestCheckoutFormAction } from "@/app/join/actions";
 
 type Billing = "monthly" | "annual";
 type Level = 1 | 2 | 3;
@@ -17,6 +23,8 @@ interface PricingCardProps {
   level: Level;
   billing: Billing;
   comingSoon?: boolean;
+  /** Stripe price ID for this card — required for Level 1 */
+  priceId?: string;
 }
 
 // ── Card data ───────────────────────────────────────────────────────────────
@@ -121,9 +129,61 @@ function Level1Price({ billing }: { billing: Billing }) {
   );
 }
 
+// ── Submit button — shows pending state via useFormStatus ───────────────────
+
+function CheckoutButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      id="pricing-card-level1-cta"
+      className="w-full inline-flex items-center justify-center font-semibold rounded-full transition-opacity"
+      style={{
+        background: pending
+          ? "linear-gradient(135deg, #5A8FF4 0%, #4A7DE0 100%)"
+          : "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
+        color: "#FFFFFF",
+        boxShadow: pending ? "none" : "0 6px 20px rgba(47,111,237,0.28)",
+        letterSpacing: "-0.01em",
+        fontSize: "0.9rem",
+        padding: "0.85rem 1.5rem",
+        cursor: pending ? "wait" : "pointer",
+        opacity: pending ? 0.8 : 1,
+      }}
+    >
+      {pending ? (
+        <span className="flex items-center gap-2">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            aria-hidden="true"
+            style={{ animation: "spin 0.8s linear infinite" }}
+          >
+            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+          </svg>
+          Preparing checkout…
+        </span>
+      ) : (
+        "Start your practice →"
+      )}
+    </button>
+  );
+}
+
 // ── Main card ───────────────────────────────────────────────────────────────
 
-export function PricingCard({ level, billing, comingSoon = false }: PricingCardProps) {
+export function PricingCard({
+  level,
+  billing,
+  comingSoon = false,
+  priceId,
+}: PricingCardProps) {
   const card = CARDS[level];
   const isActive = level === 1 && !comingSoon;
 
@@ -132,7 +192,9 @@ export function PricingCard({ level, billing, comingSoon = false }: PricingCardP
       className="relative flex flex-col rounded-3xl"
       style={{
         background: isActive ? "#FFFFFF" : "#F9F7F4",
-        border: isActive ? "1.5px solid rgba(47,111,237,0.22)" : "1.5px solid rgba(221,215,207,0.7)",
+        border: isActive
+          ? "1.5px solid rgba(47,111,237,0.22)"
+          : "1.5px solid rgba(221,215,207,0.7)",
         boxShadow: isActive
           ? "0 16px 48px rgba(18,20,23,0.10), 0 2px 8px rgba(47,111,237,0.06)"
           : "0 2px 8px rgba(18,20,23,0.04)",
@@ -189,20 +251,11 @@ export function PricingCard({ level, billing, comingSoon = false }: PricingCardP
 
       {/* ── CTA ─────────────────────────────────────────────── */}
       {isActive ? (
-        <Link
-          href="/login"
-          className="w-full inline-flex items-center justify-center font-semibold rounded-full"
-          style={{
-            background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
-            color: "#FFFFFF",
-            boxShadow: "0 6px 20px rgba(47,111,237,0.28)",
-            letterSpacing: "-0.01em",
-            fontSize: "0.9rem",
-            padding: "0.85rem 1.5rem",
-          }}
-        >
-          Start your practice →
-        </Link>
+        // Guest checkout: submit priceId directly to Stripe — no prior auth needed
+        <form action={startGuestCheckoutFormAction}>
+          <input type="hidden" name="priceId" value={priceId ?? ""} />
+          <CheckoutButton />
+        </form>
       ) : (
         <button
           type="button"
