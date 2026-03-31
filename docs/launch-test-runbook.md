@@ -112,6 +112,11 @@ On `/subscribe` confirm you see:
 [Stripe] Member updated — customer: cus_xxx, memberId: <uuid>, status: active, tier: level_1
 ```
 
+> `userId` in the `checkout.session.completed` log comes from `session.client_reference_id`,
+> which is set explicitly to the authenticated app user ID during checkout session creation.
+> If the log shows `userId: none`, the session was created without `client_reference_id` — the
+> fallback path via `stripe_customer_id` will be attempted instead.
+
 **Check Stripe Dashboard → Webhooks → your endpoint → Recent deliveries:**
 - Both events should show `200` response
 

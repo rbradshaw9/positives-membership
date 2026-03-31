@@ -105,15 +105,21 @@ export async function createCheckoutSession(
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     customer: stripeCustomerId,
-    // client_reference_id lets checkout.session.completed find the member
-    // row by userId even if stripe_customer_id lookup fails on the webhook.
+    // client_reference_id is a first-class Stripe Session field.
+    // Setting it to userId lets checkout.session.completed recover the
+    // member row directly via member.id lookup — the most reliable path,
+    // independent of stripe_customer_id being pre-set on the member row.
     client_reference_id: userId,
     line_items: [{ price: priceId, quantity: 1 }],
     success_url: `${appUrl}/subscribe/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${appUrl}/subscribe`,
     subscription_data: {
+      // userId in subscription metadata is for Stripe Dashboard traceability
+      // and does NOT flow back to checkout.session.completed automatically.
       metadata: { userId },
     },
+    // Redundant copy in session metadata — secondary fallback in the handler
+    // if client_reference_id is somehow absent.
     metadata: { userId },
   });
 

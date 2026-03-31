@@ -12,13 +12,22 @@ import { createClient } from "@supabase/supabase-js";
  * updates 0 rows and the member never gets access.
  *
  * checkout.session.completed fires before subscription.created and carries
- * both the customer ID and the client_reference_id (userId). This handler:
+ * the customer ID and the app user identity. This handler:
  *   1. Ensures stripe_customer_id is written to the member row
  *   2. Sets subscription_status → "active" as an immediate signal
  *
  * The subsequent subscription.created/updated events are still handled
  * and will overwrite with the full tier + end_date — this is safe and
  * idempotent. checkout.session.completed is the reliability backstop.
+ *
+ * Identity fields used from Stripe Checkout Session:
+ *   session.customer            — Stripe customer ID (string after session completes)
+ *   session.client_reference_id — Primary: app userId, set explicitly in
+ *                                 create-checkout-session.ts via client_reference_id.
+ *                                 This is the most reliable identity source.
+ *   session.metadata.userId     — Secondary fallback only. Redundant copy stored
+ *                                 in session metadata during session creation.
+ *                                 Used only if client_reference_id is somehow absent.
  */
 
 function getAdminClient() {
@@ -35,8 +44,11 @@ export async function handleCheckoutSessionCompleted(
   const customerId =
     typeof session.customer === "string" ? session.customer : null;
 
-  // client_reference_id is set via subscription_data.metadata.userId
-  // in create-checkout-session.ts. Fall back to session.metadata.userId.
+  // Primary identity: session.client_reference_id — set explicitly to the
+  // authenticated app userId in create-checkout-session.ts. This is a
+  // first-class Stripe Session field, not derived from metadata.
+  // Fallback: session.metadata.userId — redundant copy also written at
+  // session creation, used only if client_reference_id is somehow absent.
   const userId =
     session.client_reference_id ??
     session.metadata?.userId ??
@@ -56,7 +68,11 @@ export async function handleCheckoutSessionCompleted(
 
   const supabase = getAdminClient();
 
-  // ── Strategy A: look up by userId (most reliable) ────────────────────────
+  // ── Strategy A: look up by userId via client_reference_id (primary) ────────
+  // client_reference_id is the strongest identity signal — it is the
+  // authenticated Supabase user ID, set server-side at session creation.
+  // If present, it allows a direct member.id lookup, bypassing any
+  // dependency on stripe_customer_id being pre-set on the member row.
   if (userId) {
     const { data: member, error: lookupError } = await supabase
       .from("member")
