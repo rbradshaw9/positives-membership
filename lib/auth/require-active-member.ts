@@ -14,11 +14,12 @@ type MemberProfile = Pick<
  *
  * Redirect logic:
  * - Unauthenticated (no session)        → /login
- * - Authenticated, no member row        → /subscribe
+ * - Authenticated, no member row        → /join
  *   (brief race on first sign-in before trigger runs)
- * - Authenticated, subscription not active → /subscribe
+ * - Authenticated, subscription not active → /join
  * - Authenticated, active subscription  → returns MemberProfile
  *
+ * /join is now the conversion surface (was /subscribe).
  * Use at the top of protected Server Component layouts/pages.
  */
 export async function requireActiveMember(): Promise<MemberProfile> {
@@ -41,16 +42,17 @@ export async function requireActiveMember(): Promise<MemberProfile> {
 
   if (memberError || !data) {
     // Member row missing — trigger may not have run yet (first sign-in race).
-    // User IS authenticated, so redirect to /subscribe not /login.
-    redirect("/subscribe");
+    // User IS authenticated, so redirect to /join not /login.
+    redirect("/join");
   }
 
   const member = data;
 
   if (member.subscription_status !== "active") {
     // Authenticated but subscription is inactive, canceled, or past_due.
-    redirect("/subscribe");
+    redirect("/join");
   }
 
   return member;
 }
+
