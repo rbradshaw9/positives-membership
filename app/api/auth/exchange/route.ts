@@ -97,8 +97,9 @@ export async function GET(request: NextRequest) {
   }
 
   // ── Step 4: If token not ready, tell client to keep polling ─────────────
+  // Include email so the fallback magic-link sender has it without a second Stripe call.
   if (!member?.onboarding_token) {
-    return Response.json({ status: "pending" });
+    return Response.json({ status: "pending", email });
   }
 
   // ── Step 5: Return token and immediately clear it ────────────────────────
@@ -121,5 +122,5 @@ export async function GET(request: NextRequest) {
 
   console.log(`[Exchange] Token exchanged for ${email} — session: ${sessionId}`);
 
-  return Response.json({ status: "ready", token_hash: tokenHash });
+  return Response.json({ status: "ready", token_hash: tokenHash, email });
 }

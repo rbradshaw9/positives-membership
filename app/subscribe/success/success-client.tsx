@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import Link from "next/link";
 
 /**
  * app/subscribe/success/success-client.tsx
@@ -12,24 +11,33 @@ import Link from "next/link";
  *
  * Flow:
  *   1. Mounts → starts polling /api/auth/exchange?session_id=...
- *   2. If { status: "pending" } → wait 1.5s → poll again
+ *   2. If { status: "pending" } → wait 2s → poll again
  *   3. If { status: "ready", token_hash } → call supabase.auth.verifyOtp()
  *   4. On success → show "You're in" state → router.push("/today") after 1.5s
- *   5. On timeout (30s) → show fallback state ("payment received, take a moment")
- *   6. On verifyOtp error → show same gentle fallback
+ *   5. On timeout (60s) → fetch email from session → auto-send magic link
+ *   6. On verifyOtp error → same magic-link fallback
  *
  * ─── State machine ───────────────────────────────────────────────────────────
  *
- *   "setting-up"  — polling in progress, webhook may still be processing
- *   "authing"     — token received, verifyOtp in flight
- *   "success"     — session established, about to redirect
- *   "fallback"    — timeout or verifyOtp failure; payment confirmed, manual login
+ *   "setting-up"   — polling in progress, webhook may still be processing
+ *   "authing"      — token received, verifyOtp in flight
+ *   "success"      — session established, about to redirect
+ *   "sending-link" — timeout/error, fetching email & sending magic link
+ *   "link-sent"    — magic link dispatched, show inbox prompt
+ *   "fallback"     — magic link send also failed, manual login prompt
  */
 
-type Phase = "setting-up" | "authing" | "success" | "fallback";
+type Phase =
+  | "setting-up"
+  | "authing"
+  | "success"
+  | "sending-link"
+  | "link-sent"
+  | "fallback";
 
-const POLL_INTERVAL_MS = 1500;
-const POLL_TIMEOUT_MS = 30_000;
+const POLL_INTERVAL_MS = 2000;
+// 60 seconds — gives the webhook plenty of time even under load
+const POLL_TIMEOUT_MS = 60_000;
 
 interface SuccessClientProps {
   sessionId: string | null;
@@ -40,7 +48,7 @@ export function SuccessClient({ sessionId }: SuccessClientProps) {
   const supabase = createClient();
 
   const [phase, setPhase] = useState<Phase>("setting-up");
-  const [errorContext, setErrorContext] = useState<string | null>(null);
+  const [magicLinkEmail, setMagicLinkEmail] = useState<string | null>(null);
 
   // Stable refs so interval/timeout callbacks don't capture stale state
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -65,18 +73,72 @@ export function SuccessClient({ sessionId }: SuccessClientProps) {
 
     if (error) {
       console.error("[Success] verifyOtp failed:", error.message);
-      setErrorContext(error.message);
-      setPhase("fallback");
+      // Don't just show fallback — try to send a magic link
+      await sendMagicLink();
       return;
     }
 
     console.log("[Success] verifyOtp succeeded — session established.");
     setPhase("success");
 
-    // Brief pause so the success state is visible before redirect
     setTimeout(() => {
       router.push("/today");
     }, 1600);
+  }
+
+  /**
+   * Fetch the email from the Stripe session via the exchange endpoint
+   * (it validates the session_id before returning anything), then
+   * dispatch a magic link so the user can get in with one click.
+   */
+  async function sendMagicLink() {
+    if (!sessionId) {
+      setPhase("fallback");
+      return;
+    }
+
+    setPhase("sending-link");
+    console.log("[Success] Timeout/error — attempting to send magic link…");
+
+    try {
+      // The exchange endpoint validates the session and extracts the email.
+      // We ping it (even if still "pending") just to get the email from Stripe.
+      const res = await fetch(
+        `/api/auth/exchange?session_id=${encodeURIComponent(sessionId)}`
+      );
+      const data = await res.json().catch(() => ({}));
+
+      // The endpoint returns the email in all non-error paths
+      // (it's embedded in the Stripe session). We add it to the response now.
+      const email = data.email;
+
+      if (!email) {
+        console.warn("[Success] No email from exchange — falling back to manual.");
+        setPhase("fallback");
+        return;
+      }
+
+      const { error: otpError } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: false, // User was already created by webhook
+          emailRedirectTo: `${window.location.origin}/today`,
+        },
+      });
+
+      if (otpError) {
+        console.error("[Success] Magic link send failed:", otpError.message);
+        setPhase("fallback");
+        return;
+      }
+
+      setMagicLinkEmail(email);
+      setPhase("link-sent");
+      console.log(`[Success] Magic link sent to ${email}`);
+    } catch (err) {
+      console.error("[Success] sendMagicLink threw:", err);
+      setPhase("fallback");
+    }
   }
 
   async function pollExchange() {
@@ -97,7 +159,11 @@ export function SuccessClient({ sessionId }: SuccessClientProps) {
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        console.error("[Success] Exchange endpoint error:", res.status, body?.error);
+        console.error(
+          "[Success] Exchange endpoint error:",
+          res.status,
+          body?.error
+        );
         // Don't immediately fall back — could be a transient error
         return;
       }
@@ -106,7 +172,7 @@ export function SuccessClient({ sessionId }: SuccessClientProps) {
 
       if (data.status === "pending") {
         console.log("[Success] Token pending — continuing to poll…");
-        return; // interval fires again in 1.5s
+        return; // interval fires again in 2s
       }
 
       if (data.status === "ready" && data.token_hash) {
@@ -124,17 +190,17 @@ export function SuccessClient({ sessionId }: SuccessClientProps) {
   }
 
   useEffect(() => {
-    // Start polling
+    // Start polling immediately
     pollExchange();
 
     pollIntervalRef.current = setInterval(pollExchange, POLL_INTERVAL_MS);
 
-    // Absolute timeout — after 30s show fallback regardless
+    // After 60 seconds: stop polling, auto-send magic link
     timeoutRef.current = setTimeout(() => {
       if (completedRef.current) return;
-      console.warn("[Success] 30s timeout — showing fallback state.");
+      console.warn("[Success] 60s timeout — sending magic link fallback.");
       stopPolling();
-      setPhase("fallback");
+      sendMagicLink();
     }, POLL_TIMEOUT_MS);
 
     return () => stopPolling();
@@ -159,8 +225,8 @@ export function SuccessClient({ sessionId }: SuccessClientProps) {
         }
       `}</style>
 
-      {/* ── Phase: setting-up ─────────────────────────────────────── */}
-      {(phase === "setting-up" || phase === "authing") && (
+      {/* ── Phase: setting-up / authing ────────────────────────────── */}
+      {(phase === "setting-up" || phase === "authing" || phase === "sending-link") && (
         <div className="positives-animate-in text-center">
           {/* Spinning ring */}
           <div
@@ -190,7 +256,11 @@ export function SuccessClient({ sessionId }: SuccessClientProps) {
             className="text-xs font-semibold uppercase mb-5"
             style={{ color: "#9AA0A8", letterSpacing: "0.14em" }}
           >
-            {phase === "authing" ? "Signing you in…" : "Setting up your account"}
+            {phase === "authing"
+              ? "Signing you in…"
+              : phase === "sending-link"
+              ? "Sending your access link…"
+              : "Setting up your account"}
           </p>
 
           <h1
@@ -217,6 +287,8 @@ export function SuccessClient({ sessionId }: SuccessClientProps) {
           >
             {phase === "authing"
               ? "Establishing your session — you'll be taken straight in."
+              : phase === "sending-link"
+              ? "Preparing your sign-in link — check your inbox in a moment."
               : "Payment confirmed. We're preparing your membership now."}
           </p>
         </div>
@@ -281,10 +353,97 @@ export function SuccessClient({ sessionId }: SuccessClientProps) {
         </div>
       )}
 
+      {/* ── Phase: link-sent ──────────────────────────────────────── */}
+      {phase === "link-sent" && (
+        <div className="positives-animate-in text-center w-full max-w-xl mx-auto">
+          <div
+            className="inline-flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-10"
+            style={{
+              background: "rgba(47,111,237,0.08)",
+              border: "1.5px solid rgba(47,111,237,0.20)",
+            }}
+            aria-hidden="true"
+          >
+            {/* Envelope icon */}
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#2F6FED"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="2" y="4" width="20" height="16" rx="2" />
+              <path d="m2 7 10 7 10-7" />
+            </svg>
+          </div>
+
+          <p
+            className="text-xs font-semibold uppercase mb-5"
+            style={{ color: "#2F6FED", letterSpacing: "0.14em" }}
+          >
+            Check Your Inbox
+          </p>
+
+          <h1
+            className="font-heading font-bold mb-5"
+            style={{
+              fontSize: "clamp(2.5rem, 6vw, 5rem)",
+              letterSpacing: "-0.05em",
+              lineHeight: "1.04",
+              color: "#121417",
+            }}
+          >
+            Your membership
+            <br />
+            is active.
+          </h1>
+
+          <p
+            className="mb-3 mx-auto"
+            style={{
+              fontSize: "clamp(1rem, 1.6vw, 1.05rem)",
+              color: "#68707A",
+              lineHeight: "1.72",
+              maxWidth: "420px",
+              letterSpacing: "-0.01em",
+            }}
+          >
+            We&apos;ve sent a sign-in link to{" "}
+            {magicLinkEmail ? (
+              <strong style={{ color: "#121417" }}>{magicLinkEmail}</strong>
+            ) : (
+              "your email"
+            )}
+            . Click it to access your practice instantly — no password needed.
+          </p>
+
+          <p
+            className="text-sm mt-8"
+            style={{
+              color: "#B0A89E",
+              lineHeight: "1.65",
+              maxWidth: "360px",
+              margin: "2rem auto 0",
+            }}
+          >
+            Don&apos;t see it? Check your spam folder, or{" "}
+            <a
+              href="/login"
+              style={{ color: "#68707A", textDecoration: "underline" }}
+            >
+              sign in manually
+            </a>
+            .
+          </p>
+        </div>
+      )}
+
       {/* ── Phase: fallback ───────────────────────────────────────── */}
       {phase === "fallback" && (
         <div className="positives-animate-in text-center w-full max-w-xl mx-auto">
-          {/* Gentle icon — clock / hourglass feel */}
           <div
             className="inline-flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-10"
             style={{
@@ -340,11 +499,10 @@ export function SuccessClient({ sessionId }: SuccessClientProps) {
             }}
           >
             Your payment was received and your Positives membership is now
-            active. Setup is taking a moment longer than usual — sign in to
-            access your practice right now.
+            active. Use the email you provided at checkout to sign in.
           </p>
 
-          <Link
+          <a
             href="/login"
             id="success-fallback-login"
             className="inline-flex items-center justify-center font-semibold rounded-full mb-6"
@@ -355,14 +513,20 @@ export function SuccessClient({ sessionId }: SuccessClientProps) {
               letterSpacing: "-0.01em",
               fontSize: "1rem",
               padding: "1rem 2.5rem",
+              textDecoration: "none",
             }}
           >
             Sign in to Positives →
-          </Link>
+          </a>
 
           <p
             className="text-sm"
-            style={{ color: "#B0A89E", lineHeight: "1.65", maxWidth: "360px", margin: "0 auto" }}
+            style={{
+              color: "#B0A89E",
+              lineHeight: "1.65",
+              maxWidth: "360px",
+              margin: "0 auto",
+            }}
           >
             Use the email you provided at checkout. Check your inbox for a
             sign-in link if you haven&apos;t set a password yet.
