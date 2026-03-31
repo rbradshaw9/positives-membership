@@ -146,7 +146,7 @@ export function JoinClient({
             <span className="text-muted-foreground text-sm">/month</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Founding member rate · Cancel anytime · Secure checkout via Stripe
+            Cancel anytime · No contracts · Secure checkout via Stripe
           </p>
         </div>
 

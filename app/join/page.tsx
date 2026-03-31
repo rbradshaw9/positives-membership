@@ -145,13 +145,13 @@ export default async function JoinPage({
             color: "#121417",
           }}
         >
-          Start your Positives practice.
+          Build your daily practice.
         </h1>
         <p
           className="text-sm"
           style={{ color: "#68707A", letterSpacing: "-0.01em" }}
         >
-          Founding member rate · Cancel anytime · Secure checkout via Stripe
+          Guided by Dr. Paul Jenkins · Cancel anytime · Secure checkout via Stripe
         </p>
       </section>
 

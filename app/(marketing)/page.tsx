@@ -3,9 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
 export const metadata = {
-  title: "Positives — A Daily Practice for Calm, Clarity & Resilience",
+  title: "Positives — Daily Guided Audio with Dr. Paul Jenkins",
   description:
-    "Positives is a practice-based membership guided by Dr. Paul Jenkins. A short daily habit that quietly changes how you feel over time. From $49/month.",
+    "Start each morning with a short guided audio from Dr. Paul Jenkins — psychologist, author, and 30-year researcher on the science of positivity. From $49/month.",
 };
 
 export default async function LandingPage() {
@@ -70,16 +70,11 @@ export default async function LandingPage() {
         </div>
       </header>
 
-      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-          HERO — Full-width two-column split
-          Left: large left-aligned editorial headline + CTA
-          Right: product UI preview card
-      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      {/* ━━ HERO ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section
         className="relative w-full"
         style={{ overflow: "hidden", minHeight: "calc(100vh - 57px)" }}
       >
-        {/* Background gradient — subtle warmth */}
         <div
           aria-hidden="true"
           className="absolute inset-0 pointer-events-none"
@@ -91,10 +86,10 @@ export default async function LandingPage() {
 
         <div className="relative max-w-7xl mx-auto px-8 grid grid-cols-1 lg:grid-cols-2 gap-0 items-center min-h-[calc(100vh-57px)]">
 
-          {/* ── LEFT: Editorial text ───────────────────────────────────────── */}
+          {/* LEFT: Copy */}
           <div className="py-20 lg:py-0 lg:pr-16 flex flex-col justify-center">
 
-            {/* Eyebrow */}
+            {/* Eyebrow — tells them WHO and WHAT immediately */}
             <div className="flex items-center gap-2.5 mb-8">
               <span
                 className="w-1.5 h-1.5 rounded-full"
@@ -104,11 +99,11 @@ export default async function LandingPage() {
                 className="text-xs font-semibold uppercase"
                 style={{ color: "#4E8C78", letterSpacing: "0.12em" }}
               >
-                Founding member rate — now open
+                Dr. Paul Jenkins · Clinical Psychologist
               </span>
             </div>
 
-            {/* Main Headline — left-aligned, large, full column width */}
+            {/* H1 — outcome-first, benefit-led */}
             <h1
               className="font-heading font-bold mb-7"
               style={{
@@ -119,8 +114,8 @@ export default async function LandingPage() {
                 textWrap: "balance",
               } as React.CSSProperties}
             >
-              A few minutes<br />
-              each day.{" "}
+              Train your mind<br />
+              to feel better —{" "}
               <span
                 style={{
                   background: "linear-gradient(135deg, #2F6FED 20%, #4E8C78 100%)",
@@ -129,11 +124,11 @@ export default async function LandingPage() {
                   backgroundClip: "text",
                 }}
               >
-                A more<br className="hidden lg:block" /> positive life.
+                every single day.
               </span>
             </h1>
 
-            {/* Subhead */}
+            {/* Subhead — what it is, who it's for, how it works */}
             <p
               className="mb-9"
               style={{
@@ -144,16 +139,16 @@ export default async function LandingPage() {
                 letterSpacing: "-0.01em",
               }}
             >
-              A practice-based membership guided by Dr. Paul Jenkins — one
-              simple daily habit that quietly changes how you move through
-              the world.
+              Positives delivers fresh guided audio from Dr. Paul Jenkins every
+              morning — backed by 30 years of psychology research — so you
+              build real emotional resilience, one short session at a time.
             </p>
 
             {/* CTA */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-8">
               <Link
                 href="/join"
-                className="inline-flex items-center justify-center font-semibold text-sm px-8 py-4 rounded-full"
+                className="inline-flex items-center justify-center font-semibold px-8 py-4 rounded-full"
                 style={{
                   background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
                   color: "#FFFFFF",
@@ -173,11 +168,11 @@ export default async function LandingPage() {
               </Link>
             </div>
 
-            {/* Pricing anchor + social proof */}
+            {/* Price + social proof */}
             <div className="flex flex-col gap-4">
               <p className="text-sm" style={{ color: "#68707A" }}>
                 <span style={{ color: "#121417", fontWeight: 600 }}>$49/month</span>
-                {" "}· Founding member rate · Cancel anytime
+                {" "}· Cancel anytime · Secure checkout via Stripe
               </p>
 
               <div className="flex items-center gap-3">
@@ -187,31 +182,25 @@ export default async function LandingPage() {
                       <div
                         key={i}
                         className="w-7 h-7 rounded-full border-2"
-                        style={{
-                          background: color,
-                          borderColor: "#F6F3EE",
-                        }}
+                        style={{ background: color, borderColor: "#F6F3EE" }}
                         aria-hidden="true"
                       />
                     )
                   )}
                 </div>
                 <p className="text-xs font-medium" style={{ color: "#68707A" }}>
-                  Members building a daily practice
+                  Hundreds of members. A practice that sticks.
                 </p>
               </div>
             </div>
           </div>
 
-          {/* ── RIGHT: Product UI Preview ──────────────────────────────────── */}
+          {/* RIGHT: Product UI Preview */}
           <div
             className="hidden lg:flex flex-col justify-center items-center py-16"
             aria-hidden="true"
           >
-            {/* Outer glow container */}
             <div className="relative w-full max-w-sm xl:max-w-md">
-
-              {/* Glow behind the card */}
               <div
                 className="absolute inset-0 rounded-3xl"
                 style={{
@@ -222,7 +211,6 @@ export default async function LandingPage() {
                 }}
               />
 
-              {/* ── Daily practice card ───────────────────────────────────── */}
               <div
                 className="relative rounded-3xl overflow-hidden"
                 style={{
@@ -232,171 +220,91 @@ export default async function LandingPage() {
                     "0 24px 64px rgba(18,20,23,0.10), 0 4px 16px rgba(18,20,23,0.06)",
                 }}
               >
-                {/* Card top bar */}
-                <div
-                  className="px-7 pt-7 pb-5"
-                  style={{ borderBottom: "1px solid #F1EEE8" }}
-                >
+                {/* Card top */}
+                <div className="px-7 pt-7 pb-5" style={{ borderBottom: "1px solid #F1EEE8" }}>
                   <div className="flex items-center justify-between mb-5">
                     <div>
-                      <p
-                        className="text-xs font-semibold uppercase mb-1"
-                        style={{ color: "#4E8C78", letterSpacing: "0.12em" }}
-                      >
+                      <p className="text-xs font-semibold uppercase mb-1"
+                        style={{ color: "#4E8C78", letterSpacing: "0.12em" }}>
                         Today
                       </p>
-                      <p
-                        className="font-heading font-bold"
-                        style={{
-                          fontSize: "1.1rem",
-                          color: "#121417",
-                          letterSpacing: "-0.03em",
-                        }}
-                      >
+                      <p className="font-heading font-bold"
+                        style={{ fontSize: "1.1rem", color: "#121417", letterSpacing: "-0.03em" }}>
                         Morning Practice
                       </p>
                     </div>
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center"
-                      style={{ background: "#F6F3EE", border: "1px solid #DDD7CF" }}
-                    >
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="#2F6FED"
-                      >
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center"
+                      style={{ background: "#F6F3EE", border: "1px solid #DDD7CF" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="#2F6FED">
                         <path d="M5 3l14 9-14 9V3z" />
                       </svg>
                     </div>
                   </div>
 
-                  {/* Waveform — decorative */}
+                  {/* Waveform */}
                   <div className="flex items-center gap-0.5 h-8 mb-4">
                     {[3,5,8,6,9,12,14,10,8,11,13,9,7,11,14,12,9,6,8,10,7,5,9,11,8,6,4,7,9,6,4,3].map(
                       (h, i) => (
-                        <div
-                          key={i}
-                          className="flex-1 rounded-full"
+                        <div key={i} className="flex-1 rounded-full"
                           style={{
                             height: `${h * 2}px`,
-                            background:
-                              i < 10
-                                ? "rgba(47,111,237,0.85)"
-                                : "rgba(18,20,23,0.12)",
+                            background: i < 10 ? "rgba(47,111,237,0.85)" : "rgba(18,20,23,0.12)",
                           }}
                         />
                       )
                     )}
                   </div>
 
-                  {/* Progress */}
                   <div className="flex items-center justify-between">
-                    <span
-                      className="text-xs font-medium tabular-nums"
-                      style={{ color: "#2F6FED" }}
-                    >
-                      3:12
-                    </span>
-                    <span
-                      className="text-xs"
-                      style={{ color: "#68707A" }}
-                    >
-                      8:00
-                    </span>
+                    <span className="text-xs font-medium tabular-nums" style={{ color: "#2F6FED" }}>3:12</span>
+                    <span className="text-xs" style={{ color: "#68707A" }}>8:00</span>
                   </div>
-                  <div
-                    className="mt-2 w-full rounded-full overflow-hidden"
-                    style={{
-                      height: "3px",
-                      background: "rgba(18,20,23,0.08)",
-                    }}
-                  >
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: "40%",
-                        background: "#2F6FED",
-                      }}
-                    />
+                  <div className="mt-2 w-full rounded-full overflow-hidden" style={{ height: "3px", background: "rgba(18,20,23,0.08)" }}>
+                    <div className="h-full rounded-full" style={{ width: "40%", background: "#2F6FED" }} />
                   </div>
                 </div>
 
-                {/* Card middle — week + month context */}
+                {/* Week context */}
                 <div className="px-7 py-5" style={{ borderBottom: "1px solid #F1EEE8" }}>
-                  <p
-                    className="text-xs font-semibold uppercase mb-3"
-                    style={{ color: "#68707A", letterSpacing: "0.10em" }}
-                  >
+                  <p className="text-xs font-semibold uppercase mb-3" style={{ color: "#68707A", letterSpacing: "0.10em" }}>
                     This week
                   </p>
-                  <div
-                    className="flex items-center gap-3 p-4 rounded-2xl"
-                    style={{ background: "#F6F3EE" }}
-                  >
-                    <div
-                      className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-                      style={{ background: "rgba(78,140,120,0.12)" }}
-                    >
+                  <div className="flex items-center gap-3 p-4 rounded-2xl" style={{ background: "#F6F3EE" }}>
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{ background: "rgba(78,140,120,0.12)" }}>
                       <span style={{ fontSize: "0.9rem" }}>🌿</span>
                     </div>
                     <div>
-                      <p
-                        className="text-xs font-semibold mb-0.5"
-                        style={{ color: "#121417", letterSpacing: "-0.01em" }}
-                      >
+                      <p className="text-xs font-semibold mb-0.5" style={{ color: "#121417", letterSpacing: "-0.01em" }}>
                         The practice of perspective
                       </p>
-                      <p
-                        className="text-xs"
-                        style={{ color: "#68707A" }}
-                      >
-                        Week 4 of April
-                      </p>
+                      <p className="text-xs" style={{ color: "#68707A" }}>Week 4 of April</p>
                     </div>
                   </div>
                 </div>
 
-                {/* Card bottom — streak */}
+                {/* Streak */}
                 <div className="px-7 py-5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span style={{ fontSize: "1rem" }}>🔥</span>
                       <div>
-                        <p
-                          className="text-sm font-bold"
-                          style={{ color: "#121417", letterSpacing: "-0.02em" }}
-                        >
+                        <p className="text-sm font-bold" style={{ color: "#121417", letterSpacing: "-0.02em" }}>
                           12-day streak
                         </p>
-                        <p
-                          className="text-xs"
-                          style={{ color: "#68707A" }}
-                        >
-                          Keep going
-                        </p>
+                        <p className="text-xs" style={{ color: "#68707A" }}>Keep going</p>
                       </div>
                     </div>
-
-                    {/* Day dots */}
                     <div className="flex gap-1.5">
                       {[true,true,true,true,true,false,false].map((done, i) => (
-                        <div
-                          key={i}
-                          className="w-2 h-2 rounded-full"
-                          style={{
-                            background: done
-                              ? "#4E8C78"
-                              : "rgba(18,20,23,0.10)",
-                          }}
-                        />
+                        <div key={i} className="w-2 h-2 rounded-full"
+                          style={{ background: done ? "#4E8C78" : "rgba(18,20,23,0.10)" }} />
                       ))}
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Floating label below card */}
               <div
                 className="absolute -bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap"
                 style={{
@@ -407,27 +315,13 @@ export default async function LandingPage() {
                   boxShadow: "0 4px 12px rgba(18,20,23,0.06)",
                 }}
               >
-                <p
-                  className="text-xs font-medium"
-                  style={{ color: "#68707A" }}
-                >
-                  Your daily practice · every morning
+                <p className="text-xs font-medium" style={{ color: "#68707A" }}>
+                  A fresh episode · every morning
                 </p>
               </div>
             </div>
           </div>
-
         </div>
-
-        {/* Bottom fade into next section */}
-        <div
-          aria-hidden="true"
-          className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none"
-          style={{
-            background:
-              "linear-gradient(to bottom, transparent, rgba(246,243,238,0.5))",
-          }}
-        />
       </section>
 
       {/* ━━ TRUST BAR ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
@@ -441,18 +335,15 @@ export default async function LandingPage() {
       >
         <div className="max-w-7xl mx-auto px-8 flex flex-wrap items-center justify-center gap-x-12 gap-y-3">
           {[
-            { icon: "🎧", text: "Daily audio from Dr. Paul" },
+            { icon: "🎧", text: "Fresh audio from Dr. Paul · every morning" },
             { icon: "📖", text: "Weekly principles & practices" },
             { icon: "🌙", text: "Monthly themes" },
             { icon: "🎙️", text: "Private podcast feed" },
-            { icon: "📚", text: "Full content library" },
+            { icon: "📚", text: "Full episode library" },
           ].map(({ icon, text }) => (
             <div key={text} className="flex items-center gap-2">
               <span style={{ fontSize: "0.85rem" }}>{icon}</span>
-              <span
-                className="text-xs font-medium"
-                style={{ color: "#68707A", letterSpacing: "-0.01em" }}
-              >
+              <span className="text-xs font-medium" style={{ color: "#68707A", letterSpacing: "-0.01em" }}>
                 {text}
               </span>
             </div>
@@ -460,7 +351,7 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* ━━ DR. PAUL — EDITORIAL ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      {/* ━━ DR. PAUL ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section
         className="relative w-full px-8 py-24"
         style={{ background: "#121417", overflow: "hidden" }}
@@ -475,13 +366,10 @@ export default async function LandingPage() {
         />
 
         <div className="relative max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-          {/* Left */}
           <div>
-            <p
-              className="text-xs font-semibold uppercase mb-6"
-              style={{ color: "#4E8C78", letterSpacing: "0.14em" }}
-            >
-              Guided by
+            <p className="text-xs font-semibold uppercase mb-6"
+              style={{ color: "#4E8C78", letterSpacing: "0.14em" }}>
+              Your guide
             </p>
             <h2
               className="font-heading font-bold mb-5"
@@ -493,39 +381,32 @@ export default async function LandingPage() {
                 textWrap: "balance",
               } as React.CSSProperties}
             >
-              Dr. Paul Jenkins.{" "}
-              <span style={{ color: "#4A5360" }}>
-                30 years. One practice.
-              </span>
+              30 years studying what makes people{" "}
+              <span style={{ color: "#4A5360" }}>genuinely happier.</span>
             </h2>
-            <p
-              className="text-base mb-8"
-              style={{ color: "#8A9199", lineHeight: "1.72", maxWidth: "420px" }}
-            >
-              Dr. Paul is a psychologist, author, and speaker who has spent over
-              30 years researching the science of positivity — not as an
-              attitude, but as a cultivated skill. Positives is his daily
-              methodology, made accessible to anyone willing to show up.
+            <p className="text-base mb-8"
+              style={{ color: "#8A9199", lineHeight: "1.72", maxWidth: "420px" }}>
+              Dr. Paul Jenkins is a licensed clinical psychologist, bestselling
+              author, and sought-after speaker who has dedicated his career to
+              one question: what actually makes people more positive? Positives
+              is his answer — a structured daily practice that applies decades
+              of research to a simple, repeatable habit anyone can build.
             </p>
             <div className="flex flex-wrap gap-2.5">
-              {["Psychologist", "Author", "Speaker", "30+ years"].map((tag) => (
-                <span
-                  key={tag}
-                  className="text-xs font-medium px-3.5 py-1.5 rounded-full"
+              {["Clinical Psychologist", "Author", "Speaker", "30+ years research"].map((tag) => (
+                <span key={tag} className="text-xs font-medium px-3.5 py-1.5 rounded-full"
                   style={{
                     background: "rgba(255,255,255,0.05)",
                     border: "1px solid rgba(255,255,255,0.08)",
                     color: "#7A8390",
                     letterSpacing: "-0.01em",
-                  }}
-                >
+                  }}>
                   {tag}
                 </span>
               ))}
             </div>
           </div>
 
-          {/* Right — pull quote */}
           <div
             className="relative p-9 rounded-3xl"
             style={{
@@ -536,10 +417,8 @@ export default async function LandingPage() {
             <div
               className="absolute font-heading font-bold select-none"
               style={{
-                top: "-6px",
-                left: "28px",
-                fontSize: "5rem",
-                lineHeight: 1,
+                top: "-6px", left: "28px",
+                fontSize: "5rem", lineHeight: 1,
                 color: "rgba(47,111,237,0.20)",
               }}
               aria-hidden="true"
@@ -556,26 +435,25 @@ export default async function LandingPage() {
                 textWrap: "balance",
               } as React.CSSProperties}
             >
-              Positivity is not something that happens to you. It&apos;s a
-              skill you practice — one day at a time. This is how we build it.
+              Positivity is a skill. Like any skill, it gets stronger with
+              practice. Most people never train it intentionally. This is how
+              we do that.
             </p>
             <p className="mt-6 text-sm font-medium" style={{ color: "#4A5360" }}>
-              — Dr. Paul Jenkins
+              — Dr. Paul Jenkins, Ph.D.
             </p>
           </div>
         </div>
       </section>
 
-      {/* ━━ THE PRACTICE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      {/* ━━ HOW IT WORKS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section className="relative w-full px-8 py-24" style={{ background: "#F6F3EE" }}>
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between mb-14 gap-4">
             <div>
-              <p
-                className="text-xs font-semibold uppercase mb-3"
-                style={{ color: "#68707A", letterSpacing: "0.14em" }}
-              >
-                The practice
+              <p className="text-xs font-semibold uppercase mb-3"
+                style={{ color: "#68707A", letterSpacing: "0.14em" }}>
+                How it works
               </p>
               <h2
                 className="font-heading font-bold"
@@ -586,8 +464,8 @@ export default async function LandingPage() {
                   color: "#121417",
                 }}
               >
-                Simple. Consistent.{" "}
-                <span style={{ color: "#4E8C78" }}>Sustainable.</span>
+                Your practice.{" "}
+                <span style={{ color: "#4E8C78" }}>Every day.</span>
               </h2>
             </div>
             <Link
@@ -595,7 +473,7 @@ export default async function LandingPage() {
               className="self-start lg:self-auto text-sm font-semibold"
               style={{ color: "#2F6FED", letterSpacing: "-0.01em" }}
             >
-              See all membership includes →
+              See full membership details →
             </Link>
           </div>
 
@@ -604,8 +482,8 @@ export default async function LandingPage() {
               {
                 label: "Daily",
                 number: "01",
-                title: "A short grounding audio",
-                body: "A moment to reset before the day takes over. Short, direct, and personal — with Dr. Paul.",
+                title: "Guided audio — every morning",
+                body: "A new episode from Dr. Paul, every day. Five to ten minutes of focused guidance designed to shift your mindset before the rest of your day begins.",
                 accent: "#2F6FED",
                 bg: "rgba(47,111,237,0.04)",
                 border: "rgba(47,111,237,0.12)",
@@ -613,8 +491,8 @@ export default async function LandingPage() {
               {
                 label: "Weekly",
                 number: "02",
-                title: "A principle and practice",
-                body: "One idea to carry through your week. One thing to try. No homework. No pressure.",
+                title: "A principle with a practice",
+                body: "Each week brings one research-backed principle and a specific action to apply. It deepens your daily habit and gives your week a meaningful direction.",
                 accent: "#4E8C78",
                 bg: "rgba(78,140,120,0.05)",
                 border: "rgba(78,140,120,0.14)",
@@ -622,8 +500,8 @@ export default async function LandingPage() {
               {
                 label: "Monthly",
                 number: "03",
-                title: "A theme for reflection",
-                body: "A direction for the month ahead — not a curriculum, not a course. A place to return to.",
+                title: "A theme that ties it together",
+                body: "Every month has a unifying focus that connects your daily and weekly work. Your practice compounds — so each month builds on the last.",
                 accent: "#D98A4E",
                 bg: "rgba(217,138,78,0.05)",
                 border: "rgba(217,138,78,0.14)",
@@ -632,48 +510,26 @@ export default async function LandingPage() {
               <div
                 key={label}
                 className="relative rounded-3xl p-8 flex flex-col overflow-hidden"
-                style={{
-                  background: bg,
-                  border: `1px solid ${border}`,
-                }}
+                style={{ background: bg, border: `1px solid ${border}` }}
               >
                 <span
                   className="absolute top-4 right-5 font-heading font-bold select-none pointer-events-none"
-                  style={{
-                    fontSize: "4.5rem",
-                    lineHeight: 1,
-                    color: accent,
-                    opacity: 0.07,
-                  }}
+                  style={{ fontSize: "4.5rem", lineHeight: 1, color: accent, opacity: 0.07 }}
                   aria-hidden="true"
                 >
                   {number}
                 </span>
                 <span
                   className="inline-block text-xs font-bold uppercase mb-5 px-3 py-1 rounded-full w-fit"
-                  style={{
-                    color: accent,
-                    background: `${accent}14`,
-                    letterSpacing: "0.10em",
-                  }}
+                  style={{ color: accent, background: `${accent}14`, letterSpacing: "0.10em" }}
                 >
                   {label}
                 </span>
-                <h3
-                  className="font-heading font-semibold mb-3"
-                  style={{
-                    fontSize: "1.075rem",
-                    letterSpacing: "-0.02em",
-                    color: "#121417",
-                    lineHeight: "1.35",
-                  }}
-                >
+                <h3 className="font-heading font-semibold mb-3"
+                  style={{ fontSize: "1.075rem", letterSpacing: "-0.02em", color: "#121417", lineHeight: "1.35" }}>
                   {title}
                 </h3>
-                <p
-                  className="text-sm flex-1"
-                  style={{ color: "#68707A", lineHeight: "1.7" }}
-                >
+                <p className="text-sm flex-1" style={{ color: "#68707A", lineHeight: "1.7" }}>
                   {body}
                 </p>
               </div>
@@ -682,18 +538,16 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* ━━ BENEFITS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      {/* ━━ WHAT'S INCLUDED ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section
         className="w-full px-8 py-24"
         style={{ background: "#FFFFFF", borderTop: "1px solid #DDD7CF" }}
       >
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
           <div className="lg:sticky lg:top-28">
-            <p
-              className="text-xs font-semibold uppercase mb-5"
-              style={{ color: "#68707A", letterSpacing: "0.14em" }}
-            >
-              Membership includes
+            <p className="text-xs font-semibold uppercase mb-5"
+              style={{ color: "#68707A", letterSpacing: "0.14em" }}>
+              Your membership
             </p>
             <h2
               className="font-heading font-bold mb-5"
@@ -704,7 +558,7 @@ export default async function LandingPage() {
                 color: "#121417",
               }}
             >
-              Everything you{" "}
+              Everything you get{" "}
               <span
                 style={{
                   background: "linear-gradient(135deg, #2F6FED 0%, #4E8C78 100%)",
@@ -714,25 +568,44 @@ export default async function LandingPage() {
                   whiteSpace: "nowrap",
                 }}
               >
-                need.
+                on day one.
               </span>
             </h2>
-            <p
-              className="text-base"
-              style={{ color: "#68707A", lineHeight: "1.72", maxWidth: "340px" }}
-            >
-              No courses. No modules. No feeling behind. Just a daily practice
-              that meets you where you are.
+            <p className="text-base"
+              style={{ color: "#68707A", lineHeight: "1.72", maxWidth: "340px" }}>
+              From the moment you join, you have access to everything — including
+              hundreds of past episodes, all past principles, and the full
+              history of monthly themes going back to Day 1.
             </p>
           </div>
 
           <ul className="space-y-4">
             {[
-              { title: "Daily grounding audio", sub: "From Dr. Paul — 5–10 minutes, every morning.", icon: "🎧" },
-              { title: "Weekly principles & practices", sub: "One idea, one action. Simple and sustainable.", icon: "📖" },
-              { title: "Monthly themes for reflection", sub: "A direction for the month, not a deadline.", icon: "🌙" },
-              { title: "Full content library", sub: "Every past audio and principle, on demand.", icon: "📚" },
-              { title: "Private member podcast feed", sub: "The daily practice in your favorite podcast app.", icon: "🎙️" },
+              {
+                title: "Daily guided audio",
+                sub: "A new episode from Dr. Paul every morning. Never miss a day — catch up in the library anytime.",
+                icon: "🎧",
+              },
+              {
+                title: "Weekly principles & practices",
+                sub: "One research-backed idea each week, with a specific practice to make it real.",
+                icon: "📖",
+              },
+              {
+                title: "Monthly themes",
+                sub: "A unifying focus each month so your daily and weekly habits build toward something meaningful.",
+                icon: "🌙",
+              },
+              {
+                title: "Complete episode library",
+                sub: "Instant access to every past episode, principle, and theme from the very beginning.",
+                icon: "📚",
+              },
+              {
+                title: "Private podcast feed",
+                sub: "Listen inside Apple Podcasts, Spotify, or any podcast app — built into your existing routine.",
+                icon: "🎙️",
+              },
             ].map(({ title, sub, icon }) => (
               <li
                 key={title}
@@ -747,10 +620,8 @@ export default async function LandingPage() {
                   {icon}
                 </span>
                 <div>
-                  <p
-                    className="font-semibold text-sm mb-0.5"
-                    style={{ color: "#121417", letterSpacing: "-0.01em" }}
-                  >
+                  <p className="font-semibold text-sm mb-0.5"
+                    style={{ color: "#121417", letterSpacing: "-0.01em" }}>
                     {title}
                   </p>
                   <p className="text-xs leading-relaxed" style={{ color: "#68707A" }}>
@@ -783,11 +654,12 @@ export default async function LandingPage() {
               textWrap: "balance",
             } as React.CSSProperties}
           >
-            &ldquo;It&apos;s not about being happy all the time. It&apos;s about
-            knowing how to return to yourself when you&apos;re not.&rdquo;
+            &ldquo;Positivity isn&apos;t a personality trait. It&apos;s a
+            practice. The people who feel better aren&apos;t luckier —
+            they&apos;ve trained themselves to think differently.&rdquo;
           </p>
           <p className="text-sm font-medium" style={{ color: "#68707A" }}>
-            — The Positives Method
+            — Dr. Paul Jenkins, Ph.D.
           </p>
         </div>
       </section>
@@ -806,11 +678,9 @@ export default async function LandingPage() {
           }}
         />
         <div className="relative max-w-xl mx-auto">
-          <p
-            className="text-xs font-semibold uppercase mb-5"
-            style={{ color: "#4E8C78", letterSpacing: "0.14em" }}
-          >
-            Start your practice
+          <p className="text-xs font-semibold uppercase mb-5"
+            style={{ color: "#4E8C78", letterSpacing: "0.14em" }}>
+            Join today
           </p>
           <h2
             className="font-heading font-bold mb-5"
@@ -822,8 +692,8 @@ export default async function LandingPage() {
               textWrap: "balance",
             } as React.CSSProperties}
           >
-            Start today.{" "}
-            <span style={{ color: "#4A5360" }}>Come back tomorrow.</span>
+            Your first practice is{" "}
+            <span style={{ color: "#4A5360" }}>waiting for you.</span>
           </h2>
           <p
             className="text-base mb-9"
@@ -833,10 +703,12 @@ export default async function LandingPage() {
               textWrap: "balance",
             } as React.CSSProperties}
           >
-            Founding members join at{" "}
-            <span style={{ color: "#FFFFFF", fontWeight: 600 }}>$49/month</span>{" "}
-            — the lowest price this membership will ever be. Annual billing
-            available. Cancel anytime.
+            Join Positives and start each morning with Dr. Paul Jenkins — fresh
+            guided audio every day, weekly principles, and full access to
+            everything from Day 1. At{" "}
+            <span style={{ color: "#FFFFFF", fontWeight: 600 }}>$49/month</span>,
+            it&apos;s the most affordable and consistent way to build a
+            genuinely positive mindset.
           </p>
 
           <Link
@@ -853,25 +725,18 @@ export default async function LandingPage() {
           </Link>
 
           <p className="mt-5 text-xs" style={{ color: "#3A4148" }}>
-            Secure checkout via Stripe · No contract · Cancel anytime
+            Secure checkout via Stripe · Cancel anytime · No contracts
           </p>
 
           <div className="mt-12 flex flex-wrap items-center justify-center gap-x-10 gap-y-3">
             {[
-              "30 years of research",
-              "Practice-based, not course-based",
-              "5 minutes a day",
+              "30 years of psychology research",
+              "Fresh audio every morning",
+              "5 minutes is all it takes",
             ].map((item) => (
-              <span
-                key={item}
-                className="flex items-center gap-2 text-xs font-medium"
-                style={{ color: "#4A5360" }}
-              >
-                <span
-                  className="w-1 h-1 rounded-full"
-                  style={{ background: "#4E8C78" }}
-                  aria-hidden="true"
-                />
+              <span key={item} className="flex items-center gap-2 text-xs font-medium"
+                style={{ color: "#4A5360" }}>
+                <span className="w-1 h-1 rounded-full" style={{ background: "#4E8C78" }} aria-hidden="true" />
                 {item}
               </span>
             ))}
@@ -882,20 +747,13 @@ export default async function LandingPage() {
       {/* ━━ FOOTER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <footer
         className="w-full px-8 py-7"
-        style={{
-          borderTop: "1px solid rgba(221,215,207,0.5)",
-          background: "#F6F3EE",
-        }}
+        style={{ borderTop: "1px solid rgba(221,215,207,0.5)", background: "#F6F3EE" }}
       >
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <span className="text-xs font-medium" style={{ color: "#68707A" }}>
             © {new Date().getFullYear()} Positives
           </span>
-          <Link
-            href="/login"
-            className="text-xs font-medium"
-            style={{ color: "#68707A" }}
-          >
+          <Link href="/login" className="text-xs font-medium" style={{ color: "#68707A" }}>
             Member sign in
           </Link>
         </div>

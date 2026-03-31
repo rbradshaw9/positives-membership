@@ -70,9 +70,8 @@ export function PricingToggle({
         </div>
       </div>
 
-      {/* Toggle explanatory note */}
       <p className="text-center text-xs text-muted-foreground mb-10">
-        Annual pricing applies to Level 1 · Other tiers coming soon
+        Save two months with annual billing
       </p>
 
       {/* ── Pricing cards ──────────────────────────────────────── */}

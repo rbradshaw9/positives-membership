@@ -24,14 +24,14 @@ interface PricingCardProps {
 const CARDS = {
   1: {
     title: "Membership",
-    tagline: "The daily practice. Everything you need.",
-    badge: "Founding Rate",
+    tagline: "Daily guided audio with Dr. Paul Jenkins.",
+    badge: "Most popular",
     benefits: [
-      "Daily grounding audio from Dr. Paul",
-      "Weekly principles and practices",
-      "Monthly themes for reflection",
-      "Full content library",
-      "Private member podcast feed",
+      "Fresh guided audio from Dr. Paul · every morning",
+      "Weekly principles and research-backed practices",
+      "Monthly themes that compound your progress",
+      "Complete episode library from Day 1",
+      "Private podcast feed for your favorite app",
     ],
   },
   2: {
@@ -87,7 +87,6 @@ function Level1Price({ billing }: { billing: Billing }) {
     return (
       <div>
         <div className="flex items-baseline gap-1.5 mb-1">
-          <span className="text-muted-foreground text-sm line-through">$970</span>
           <span className="font-heading font-bold text-4xl text-foreground">$490</span>
           <span className="text-muted-foreground text-sm">/year</span>
         </div>
@@ -101,11 +100,10 @@ function Level1Price({ billing }: { billing: Billing }) {
   return (
     <div>
       <div className="flex items-baseline gap-1.5 mb-1">
-        <span className="text-muted-foreground text-sm line-through">$97</span>
         <span className="font-heading font-bold text-4xl text-foreground">$49</span>
         <span className="text-muted-foreground text-sm">/month</span>
       </div>
-      <p className="text-xs text-muted-foreground">Founding member rate</p>
+      <p className="text-xs text-muted-foreground">Cancel anytime · No contracts</p>
     </div>
   );
 }
