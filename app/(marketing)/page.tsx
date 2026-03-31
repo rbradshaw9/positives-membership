@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { Logo } from "@/components/marketing/Logo";
@@ -318,7 +319,7 @@ export default async function LandingPage() {
           <p className="text-sm" style={{ color: "#B0A89E" }}>
             From{" "}
             <span style={{ color: "#68707A" }}>$49/month</span>
-            {" "}· Founding member rate · Cancel anytime
+            {" "}· Cancel anytime
           </p>
         </div>
       </section>
@@ -336,8 +337,8 @@ export default async function LandingPage() {
         <div
           className="max-w-6xl mx-auto px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-start"
           style={{
-            paddingTop: "clamp(4.5rem, 8vw, 7.5rem)",
-            paddingBottom: "clamp(4.5rem, 8vw, 7.5rem)",
+            paddingTop: "clamp(5rem, 9vw, 8rem)",
+            paddingBottom: "clamp(5rem, 9vw, 8rem)",
           }}
         >
           {/* Left: Headline */}
@@ -345,8 +346,8 @@ export default async function LandingPage() {
             <h2
               className="font-heading font-bold"
               style={{
-                fontSize: "clamp(2rem, 4.5vw, 4rem)",
-                lineHeight: "1.05",
+                fontSize: "clamp(2.2rem, 5vw, 4.5rem)",
+                lineHeight: "1.04",
                 letterSpacing: "-0.045em",
                 color: "#FFFFFF",
               }}
@@ -405,12 +406,12 @@ export default async function LandingPage() {
         <div
           className="max-w-6xl mx-auto px-8"
           style={{
-            paddingTop: "clamp(4.5rem, 8vw, 7.5rem)",
-            paddingBottom: "clamp(4.5rem, 8vw, 7.5rem)",
+            paddingTop: "clamp(5rem, 9vw, 8rem)",
+            paddingBottom: "clamp(5rem, 9vw, 8rem)",
           }}
         >
           {/* Section header */}
-          <div className="max-w-xl mb-16">
+          <div className="max-w-2xl mb-16">
             <p
               className="text-xs font-semibold uppercase mb-5"
               style={{ color: "#9AA0A8", letterSpacing: "0.14em" }}
@@ -420,36 +421,36 @@ export default async function LandingPage() {
             <h2
               className="font-heading font-bold mb-5"
               style={{
-                fontSize: "clamp(2rem, 4vw, 3.5rem)",
+                fontSize: "clamp(2.2rem, 4.5vw, 4rem)",
                 letterSpacing: "-0.045em",
-                lineHeight: "1.07",
+                lineHeight: "1.06",
                 color: "#121417",
               }}
             >
               A simple practice that builds real change.
             </h2>
             <p style={{ fontSize: "1.05rem", color: "#68707A", lineHeight: "1.72" }}>
-              Positives isn&apos;t about motivation.
-              {" "}It&apos;s about building a mindset practice that works every day.
+              Positives isn&apos;t about motivation.{" "}
+              It&apos;s about building a mindset practice that works — every single day.
             </p>
           </div>
 
           {/* Three columns */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-12 gap-y-12">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-12 gap-y-14">
             {[
               {
                 freq: "Daily",
                 accent: "#2F6FED",
                 title: "Daily Practice",
                 body1:
-                  "Short guided audio designed to reset your thinking and refocus your day.",
+                  "A short guided audio session designed to reset your thinking and refocus your day.",
                 body2:
                   "Just a few minutes is enough to shift your perspective and move forward with clarity.",
               },
               {
                 freq: "Weekly",
                 accent: "#4E8C78",
-                title: "Weekly Principle",
+                title: "Weekly Reflection",
                 body1:
                   "Each week introduces a powerful concept from positive psychology and practical life philosophy.",
                 body2:
@@ -458,11 +459,11 @@ export default async function LandingPage() {
               {
                 freq: "Monthly",
                 accent: "#D98A4E",
-                title: "Monthly Theme",
+                title: "Monthly Masterclass",
                 body1:
-                  "Every month focuses on one meaningful area of life — relationships, purpose, resilience, and more.",
+                  "Every month, Dr. Paul leads a deep-dive masterclass on one meaningful area of life — relationships, purpose, resilience, and more.",
                 body2:
-                  "The result is steady growth that compounds over time.",
+                  "The result is steady, compounding growth in the areas that matter most.",
               },
             ].map(({ freq, accent, title, body1, body2 }) => (
               <div key={freq}>
@@ -481,7 +482,7 @@ export default async function LandingPage() {
                 <h3
                   className="font-heading font-semibold mb-4"
                   style={{
-                    fontSize: "1.15rem",
+                    fontSize: "1.2rem",
                     letterSpacing: "-0.025em",
                     lineHeight: "1.3",
                     color: "#121417",
@@ -492,7 +493,7 @@ export default async function LandingPage() {
                 <p
                   className="mb-3"
                   style={{
-                    fontSize: "0.95rem",
+                    fontSize: "0.975rem",
                     color: "#68707A",
                     lineHeight: "1.75",
                   }}
@@ -501,7 +502,7 @@ export default async function LandingPage() {
                 </p>
                 <p
                   style={{
-                    fontSize: "0.95rem",
+                    fontSize: "0.975rem",
                     color: "#9AA0A8",
                     lineHeight: "1.75",
                   }}
@@ -527,8 +528,8 @@ export default async function LandingPage() {
         <div
           className="max-w-6xl mx-auto px-8"
           style={{
-            paddingTop: "clamp(4.5rem, 8vw, 7.5rem)",
-            paddingBottom: "clamp(4.5rem, 8vw, 7.5rem)",
+            paddingTop: "clamp(4rem, 7vw, 6.5rem)",
+            paddingBottom: "clamp(4rem, 7vw, 6.5rem)",
           }}
         >
           <p
@@ -538,7 +539,7 @@ export default async function LandingPage() {
             Sample
           </p>
           <h2
-            className="font-heading font-bold mb-5"
+            className="font-heading font-bold mb-4"
             style={{
               fontSize: "clamp(2rem, 4vw, 3.25rem)",
               letterSpacing: "-0.045em",
@@ -546,10 +547,10 @@ export default async function LandingPage() {
               color: "#121417",
             }}
           >
-            Try today&apos;s practice
+            Hear today&apos;s practice
           </h2>
           <p
-            className="mb-12 mx-auto"
+            className="mb-10 mx-auto"
             style={{
               fontSize: "1.05rem",
               color: "#68707A",
@@ -589,8 +590,8 @@ export default async function LandingPage() {
         <div
           className="max-w-6xl mx-auto px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-start"
           style={{
-            paddingTop: "clamp(4.5rem, 8vw, 7.5rem)",
-            paddingBottom: "clamp(4.5rem, 8vw, 7.5rem)",
+            paddingTop: "clamp(5rem, 9vw, 8rem)",
+            paddingBottom: "clamp(5rem, 9vw, 8rem)",
           }}
         >
           {/* Left: copy */}
@@ -604,9 +605,9 @@ export default async function LandingPage() {
             <h2
               className="font-heading font-bold mb-7"
               style={{
-                fontSize: "clamp(2rem, 4vw, 3.5rem)",
+                fontSize: "clamp(2.2rem, 4.5vw, 4rem)",
                 letterSpacing: "-0.045em",
-                lineHeight: "1.07",
+                lineHeight: "1.06",
                 color: "#FFFFFF",
               }}
             >
@@ -635,7 +636,7 @@ export default async function LandingPage() {
                 background:
                   "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
                 color: "#FFFFFF",
-                boxShadow: "0 8px 28px rgba(47,111,237,0.30)",
+                boxShadow: "0 8px 28px rgba(47,111,237,0.25)",
                 letterSpacing: "-0.01em",
                 fontSize: "0.95rem",
                 padding: "0.9rem 2rem",
@@ -647,22 +648,22 @@ export default async function LandingPage() {
 
           {/* Right: benefits grid */}
           <div>
-            <div className="space-y-5 mb-8">
+            <div className="space-y-1 mb-8">
               {[
-                "Daily guided practices",
-                "Weekly mindset principles",
-                "Monthly growth themes",
+                "Daily guided audio practices",
+                "Weekly reflections & mindset principles",
+                "Monthly masterclass with Dr. Paul",
                 "Member community",
                 "Live group sessions",
                 "Workshops and coaching opportunities",
               ].map((item) => (
                 <div
                   key={item}
-                  className="flex items-start gap-4 py-4"
-                  style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}
+                  className="flex items-center gap-4 py-4"
+                  style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
                 >
                   <span
-                    className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-0.5"
+                    className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center"
                     style={{ background: "rgba(78,140,120,0.15)" }}
                     aria-hidden="true"
                   >
@@ -700,13 +701,35 @@ export default async function LandingPage() {
         }}
       >
         <div
-          className="max-w-6xl mx-auto px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-start"
+          className="max-w-6xl mx-auto px-8 grid grid-cols-1 lg:grid-cols-[1fr_1.6fr] gap-12 lg:gap-20 items-center"
           style={{
-            paddingTop: "clamp(4.5rem, 8vw, 7.5rem)",
-            paddingBottom: "clamp(4.5rem, 8vw, 7.5rem)",
+            paddingTop: "clamp(5rem, 9vw, 8rem)",
+            paddingBottom: "clamp(5rem, 9vw, 8rem)",
           }}
         >
-          {/* Left */}
+          {/* Left: Photo */}
+          <div className="flex justify-center lg:justify-start">
+            <div
+              className="relative overflow-hidden rounded-2xl"
+              style={{
+                width: "100%",
+                maxWidth: "340px",
+                aspectRatio: "4 / 5",
+                boxShadow: "0 24px 60px rgba(18,20,23,0.12)",
+              }}
+            >
+              <Image
+                src="/Dr._Paul_Jenkins.jpg"
+                alt="Dr. Paul Jenkins — Clinical Psychologist and creator of Positives"
+                fill
+                className="object-cover object-top"
+                sizes="(max-width: 768px) 80vw, 340px"
+                priority={false}
+              />
+            </div>
+          </div>
+
+          {/* Right: Copy */}
           <div>
             <p
               className="text-xs font-semibold uppercase mb-6"
@@ -715,34 +738,32 @@ export default async function LandingPage() {
               Your guide
             </p>
             <h2
-              className="font-heading font-bold"
+              className="font-heading font-bold mb-7"
               style={{
-                fontSize: "clamp(2rem, 4vw, 3.5rem)",
+                fontSize: "clamp(2.2rem, 4.5vw, 4rem)",
                 letterSpacing: "-0.045em",
-                lineHeight: "1.07",
+                lineHeight: "1.06",
                 color: "#121417",
               }}
             >
               Created by Dr. Paul Jenkins
             </h2>
-          </div>
-
-          {/* Right */}
-          <div className="lg:pt-4 space-y-5">
-            <p style={{ fontSize: "1.05rem", color: "#68707A", lineHeight: "1.78" }}>
-              Dr. Paul Jenkins has spent decades helping people build stronger
-              relationships, healthier thinking, and more resilient lives.
-            </p>
-            <p style={{ fontSize: "1.05rem", color: "#68707A", lineHeight: "1.78" }}>
-              Through his work with families, leaders, and communities, he has
-              helped thousands of people develop the mindset skills that make
-              life calmer, clearer, and more meaningful.
-            </p>
-            <p style={{ fontSize: "1.05rem", color: "#68707A", lineHeight: "1.78" }}>
-              Positives brings the most powerful ideas from that work into a
-              simple daily practice anyone can follow.
-            </p>
-            <div className="flex flex-wrap gap-2 pt-2">
+            <div className="space-y-5 mb-8">
+              <p style={{ fontSize: "1.05rem", color: "#68707A", lineHeight: "1.78" }}>
+                Dr. Paul Jenkins has spent decades helping people build stronger
+                relationships, healthier thinking, and more resilient lives.
+              </p>
+              <p style={{ fontSize: "1.05rem", color: "#68707A", lineHeight: "1.78" }}>
+                Through his work with families, leaders, and communities, he has
+                helped thousands of people develop the mindset skills that make
+                life calmer, clearer, and more meaningful.
+              </p>
+              <p style={{ fontSize: "1.05rem", color: "#68707A", lineHeight: "1.78" }}>
+                Positives brings the most powerful ideas from that work into a
+                simple daily practice anyone can follow.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
               {[
                 "Clinical Psychologist",
                 "Bestselling Author",
@@ -779,8 +800,8 @@ export default async function LandingPage() {
         <div
           className="max-w-6xl mx-auto px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center"
           style={{
-            paddingTop: "clamp(4.5rem, 8vw, 7.5rem)",
-            paddingBottom: "clamp(4.5rem, 8vw, 7.5rem)",
+            paddingTop: "clamp(5rem, 9vw, 8rem)",
+            paddingBottom: "clamp(5rem, 9vw, 8rem)",
           }}
         >
           {/* Left */}
@@ -794,9 +815,9 @@ export default async function LandingPage() {
             <h2
               className="font-heading font-bold"
               style={{
-                fontSize: "clamp(2rem, 4vw, 3.5rem)",
+                fontSize: "clamp(2.2rem, 4.5vw, 4rem)",
                 letterSpacing: "-0.045em",
-                lineHeight: "1.07",
+                lineHeight: "1.06",
                 color: "#121417",
               }}
             >
@@ -813,6 +834,7 @@ export default async function LandingPage() {
                 "Your thinking becomes calmer and more intentional",
                 "Relationships improve as your mindset shifts",
                 "You feel more grounded and resilient",
+                "Life becomes something you shape, not just survive",
               ].map((item) => (
                 <div key={item} className="flex items-start gap-4">
                   <span
@@ -839,7 +861,7 @@ export default async function LandingPage() {
       </section>
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-          9. RISK REVERSAL
+          9. GUARANTEE
       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section
         className="w-full text-center"
@@ -851,8 +873,8 @@ export default async function LandingPage() {
         <div
           className="max-w-xl mx-auto px-8"
           style={{
-            paddingTop: "clamp(4.5rem, 8vw, 7.5rem)",
-            paddingBottom: "clamp(4.5rem, 8vw, 7.5rem)",
+            paddingTop: "clamp(5rem, 9vw, 8rem)",
+            paddingBottom: "clamp(5rem, 9vw, 8rem)",
           }}
         >
           {/* Shield icon */}
@@ -878,13 +900,13 @@ export default async function LandingPage() {
           <h2
             className="font-heading font-bold mb-6"
             style={{
-              fontSize: "clamp(1.7rem, 3.5vw, 2.5rem)",
+              fontSize: "clamp(1.8rem, 3.5vw, 2.6rem)",
               letterSpacing: "-0.04em",
               lineHeight: "1.1",
               color: "#121417",
             }}
           >
-            Try Positives for 30 days.
+            30-day money-back guarantee.
           </h2>
 
           <div
@@ -892,13 +914,13 @@ export default async function LandingPage() {
             style={{ fontSize: "1.05rem", color: "#68707A", lineHeight: "1.78" }}
           >
             <p>
-              If the practice doesn&apos;t meaningfully improve your days, simply
-              email us and we&apos;ll refund your membership.
+              If the practice doesn&apos;t meaningfully improve your days within 30 days,
+              simply email us and we&apos;ll refund your membership in full.
             </p>
             <p>
               No hassle.
               <br />
-              No questions.
+              No questions asked.
             </p>
             <p className="font-medium" style={{ color: "#121417" }}>
               We believe the practice will speak for itself.
@@ -922,11 +944,11 @@ export default async function LandingPage() {
           className="absolute inset-0 pointer-events-none"
           style={{
             background:
-              "radial-gradient(ellipse at 50% -10%, rgba(47,111,237,0.14) 0%, transparent 60%)",
+              "radial-gradient(ellipse at 50% -10%, rgba(47,111,237,0.18) 0%, transparent 60%)",
           }}
         />
         <div
-          className="relative max-w-xl mx-auto px-8"
+          className="relative max-w-2xl mx-auto px-8"
           style={{
             paddingTop: "clamp(5rem, 10vw, 9rem)",
             paddingBottom: "clamp(5rem, 10vw, 9rem)",
@@ -935,7 +957,7 @@ export default async function LandingPage() {
           <h2
             className="font-heading font-bold mb-8"
             style={{
-              fontSize: "clamp(2.2rem, 5.5vw, 5rem)",
+              fontSize: "clamp(2.4rem, 6vw, 5.5rem)",
               lineHeight: "1.03",
               letterSpacing: "-0.05em",
               color: "#FFFFFF",
@@ -943,7 +965,16 @@ export default async function LandingPage() {
           >
             A few minutes each day.
             <br />
-            <span style={{ color: "#3A4148" }}>A more positive life.</span>
+            <span
+              style={{
+                background: "linear-gradient(135deg, #6B9BF2 0%, #8FC4B5 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}
+            >
+              A more positive life.
+            </span>
           </h2>
 
           <Link
@@ -954,15 +985,15 @@ export default async function LandingPage() {
               color: "#FFFFFF",
               boxShadow: "0 8px 32px rgba(47,111,237,0.35)",
               letterSpacing: "-0.01em",
-              fontSize: "0.95rem",
+              fontSize: "1rem",
               padding: "1rem 2.5rem",
             }}
           >
             Start your practice →
           </Link>
 
-          <p className="mt-5 text-sm" style={{ color: "#3A4148" }}>
-            Founding member rate · $49/month
+          <p className="mt-5 text-sm" style={{ color: "#68707A" }}>
+            From $49/month · Cancel anytime · 30-day guarantee
           </p>
         </div>
       </section>
@@ -978,7 +1009,7 @@ export default async function LandingPage() {
         }}
       >
         <div
-          className="max-w-6xl mx-auto px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-5"
+          className="max-w-6xl mx-auto px-8 py-10 flex flex-col sm:flex-row items-center justify-between gap-5"
         >
           {/* Left: Logo + links */}
           <div className="flex items-center gap-6">
