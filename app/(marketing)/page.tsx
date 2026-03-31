@@ -21,7 +21,9 @@ export const metadata = {
  * It does NOT redirect to /login. Visitors see the product first.
  */
 export default async function LandingPage() {
-  // Smart redirect for returning users
+  // Active members go directly to their dashboard.
+  // Everyone else — unauthenticated or inactive — sees the landing page.
+  // The landing page CTAs route them to /join when they're ready.
   const supabase = await createClient();
   const {
     data: { user },
@@ -37,7 +39,6 @@ export default async function LandingPage() {
     if (member?.subscription_status === "active") {
       redirect("/today");
     }
-    redirect("/join");
   }
 
   return (
