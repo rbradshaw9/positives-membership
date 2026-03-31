@@ -270,10 +270,11 @@ export function LandingPageClient() {
               color: "#121417",
             }}
           >
-            A few minutes each day.
-            <br />
+            <span style={{ display: "block", whiteSpace: "nowrap" }}>A few minutes each day.</span>
             <span
               style={{
+                display: "block",
+                whiteSpace: "nowrap",
                 background: "linear-gradient(135deg, #2F6FED 20%, #4E8C78 100%)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
@@ -723,9 +724,11 @@ export function LandingPageClient() {
               color: "#FFFFFF",
             }}
           >
-            A few minutes each day.{" "}
+            <span style={{ display: "block", whiteSpace: "nowrap" }}>A few minutes each day.</span>
             <span
               style={{
+                display: "block",
+                whiteSpace: "nowrap",
                 background: "linear-gradient(135deg, #6B9BF2 0%, #8FC4B5 100%)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
