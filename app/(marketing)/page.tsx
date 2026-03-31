@@ -32,17 +32,18 @@ export default async function LandingPage() {
         style={{
           background: "rgba(246,243,238,0.82)",
           backdropFilter: "blur(18px)",
+          WebkitBackdropFilter: "blur(18px)",
           borderBottom: "1px solid rgba(221,215,207,0.5)",
         }}
       >
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <span
-            className="font-heading font-bold text-xl tracking-tight"
+            className="font-heading font-bold text-xl"
             style={{ color: "#121417", letterSpacing: "-0.04em" }}
           >
             Positives
           </span>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-5">
             <Link
               href="/login"
               className="text-sm font-medium transition-colors"
@@ -52,11 +53,12 @@ export default async function LandingPage() {
             </Link>
             <Link
               href="/join"
-              className="text-sm font-medium px-5 py-2 rounded-full transition-all"
+              className="text-sm font-semibold px-5 py-2 rounded-full transition-all"
               style={{
                 background: "#121417",
                 color: "#FFFFFF",
                 letterSpacing: "-0.01em",
+                boxShadow: "0 2px 8px rgba(18,20,23,0.18)",
               }}
             >
               Join today
@@ -67,7 +69,7 @@ export default async function LandingPage() {
 
       {/* ━━ HERO ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section
-        className="relative w-full flex flex-col items-center justify-center text-center px-6 pt-28 pb-36"
+        className="relative w-full flex flex-col items-center justify-center text-center px-6 pt-24 pb-32"
         style={{ overflow: "hidden" }}
       >
         {/* Ambient orbs */}
@@ -75,14 +77,13 @@ export default async function LandingPage() {
           aria-hidden="true"
           className="pointer-events-none absolute"
           style={{
-            top: "-120px",
+            top: "-80px",
             left: "50%",
             transform: "translateX(-50%)",
             width: "900px",
             height: "600px",
             background:
-              "radial-gradient(ellipse at 50% 30%, rgba(47,111,237,0.13) 0%, rgba(217,138,78,0.07) 45%, transparent 70%)",
-            filter: "blur(1px)",
+              "radial-gradient(ellipse at 50% 30%, rgba(47,111,237,0.12) 0%, rgba(217,138,78,0.06) 45%, transparent 70%)",
           }}
         />
         <div
@@ -90,20 +91,20 @@ export default async function LandingPage() {
           className="pointer-events-none absolute"
           style={{
             bottom: 0,
-            left: "10%",
+            left: "5%",
             width: "500px",
             height: "400px",
             background:
-              "radial-gradient(ellipse, rgba(78,140,120,0.10) 0%, transparent 70%)",
+              "radial-gradient(ellipse, rgba(78,140,120,0.08) 0%, transparent 70%)",
           }}
         />
 
         {/* Pill badge */}
         <div
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-10"
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-9"
           style={{
-            background: "rgba(47,111,237,0.08)",
-            border: "1px solid rgba(47,111,237,0.18)",
+            background: "rgba(47,111,237,0.07)",
+            border: "1px solid rgba(47,111,237,0.16)",
           }}
         >
           <span
@@ -111,21 +112,23 @@ export default async function LandingPage() {
             style={{ background: "#2F6FED" }}
           />
           <span
-            className="text-xs font-semibold uppercase tracking-widest"
-            style={{ color: "#2F6FED", letterSpacing: "0.12em" }}
+            className="text-xs font-semibold uppercase"
+            style={{ color: "#2F6FED", letterSpacing: "0.10em" }}
           >
             Now enrolling founding members
           </span>
         </div>
 
+        {/* H1 — text-balance prevents orphaned words */}
         <h1
-          className="font-heading font-bold max-w-3xl mx-auto mb-7"
+          className="font-heading font-bold max-w-2xl mx-auto mb-6"
           style={{
-            fontSize: "clamp(2.6rem, 6vw, 4.5rem)",
+            fontSize: "clamp(2.4rem, 5.5vw, 4.25rem)",
             lineHeight: "1.05",
             letterSpacing: "-0.04em",
             color: "#121417",
-          }}
+            textWrap: "balance",
+          } as React.CSSProperties}
         >
           A few minutes each day.{" "}
           <span
@@ -141,21 +144,26 @@ export default async function LandingPage() {
         </h1>
 
         <p
-          className="max-w-lg mx-auto mb-10 text-lg leading-relaxed"
-          style={{ color: "#68707A", letterSpacing: "-0.01em" }}
+          className="max-w-md mx-auto mb-10 text-lg"
+          style={{
+            color: "#68707A",
+            letterSpacing: "-0.01em",
+            lineHeight: "1.65",
+            textWrap: "balance",
+          } as React.CSSProperties}
         >
           A practice-based membership guided by Dr. Paul Jenkins — built around
-          one simple daily habit that quietly changes everything.
+          one simple daily habit.
         </p>
 
-        <div className="flex flex-col sm:flex-row items-center gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-7">
           <Link
             href="/join"
             className="inline-flex items-center justify-center font-semibold text-sm px-8 py-4 rounded-full transition-all"
             style={{
               background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
               color: "#FFFFFF",
-              boxShadow: "0 8px 32px rgba(47,111,237,0.30)",
+              boxShadow: "0 8px 28px rgba(47,111,237,0.32)",
               letterSpacing: "-0.01em",
             }}
           >
@@ -178,20 +186,20 @@ export default async function LandingPage() {
           {" · "}Founding member rate · Cancel anytime
         </p>
 
-        {/* Floating social proof strip */}
+        {/* Social proof strip */}
         <div
-          className="mt-16 inline-flex items-center gap-3 px-5 py-3 rounded-2xl"
+          className="mt-14 inline-flex items-center gap-3 px-5 py-3 rounded-2xl"
           style={{
             background: "#FFFFFF",
             border: "1px solid #DDD7CF",
-            boxShadow: "0 4px 20px rgba(18,20,23,0.06)",
+            boxShadow: "0 4px 16px rgba(18,20,23,0.06)",
           }}
         >
           <div className="flex -space-x-2">
             {["#D98A4E", "#4E8C78", "#2F6FED", "#B94A3F"].map((color, i) => (
               <div
                 key={i}
-                className="w-7 h-7 rounded-full border-2 border-white flex items-center justify-center"
+                className="w-7 h-7 rounded-full border-2 border-white"
                 style={{ background: color }}
                 aria-hidden="true"
               />
@@ -205,60 +213,63 @@ export default async function LandingPage() {
 
       {/* ━━ DR. PAUL — EDITORIAL ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section
-        className="relative w-full px-6 py-28"
+        className="relative w-full px-6 py-24"
         style={{ background: "#121417", overflow: "hidden" }}
       >
-        {/* Dark background texture */}
         <div
           aria-hidden="true"
           className="absolute inset-0 pointer-events-none"
           style={{
             background:
-              "radial-gradient(ellipse at 80% 50%, rgba(47,111,237,0.12) 0%, transparent 60%), radial-gradient(ellipse at 20% 80%, rgba(78,140,120,0.08) 0%, transparent 50%)",
+              "radial-gradient(ellipse at 80% 50%, rgba(47,111,237,0.11) 0%, transparent 58%), radial-gradient(ellipse at 15% 80%, rgba(78,140,120,0.07) 0%, transparent 50%)",
           }}
         />
 
-        <div className="relative max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+        <div className="relative max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
           {/* Left — copy */}
           <div>
             <p
-              className="text-xs font-semibold uppercase tracking-widest mb-6"
+              className="text-xs font-semibold uppercase mb-5"
               style={{ color: "#4E8C78", letterSpacing: "0.14em" }}
             >
               Guided by
             </p>
             <h2
-              className="font-heading font-bold mb-6"
+              className="font-heading font-bold mb-5"
               style={{
-                fontSize: "clamp(2rem, 4vw, 3.25rem)",
+                fontSize: "clamp(1.9rem, 3.8vw, 3rem)",
                 letterSpacing: "-0.04em",
-                lineHeight: "1.08",
+                lineHeight: "1.1",
                 color: "#FFFFFF",
-              }}
+                textWrap: "balance",
+              } as React.CSSProperties}
             >
               Dr. Paul Jenkins.{" "}
-              <span style={{ color: "#68707A" }}>30 years. One practice.</span>
+              <span style={{ color: "#5A636D" }}>
+                30 years. One practice.
+              </span>
             </h2>
             <p
-              className="text-base leading-relaxed mb-8 max-w-md"
-              style={{ color: "#A1A9B3", lineHeight: "1.7" }}
+              className="text-base mb-8 max-w-md"
+              style={{ color: "#A1A9B3", lineHeight: "1.72" }}
             >
               Dr. Paul is a psychologist, author, and speaker who has spent over
               30 years researching the science of positivity — not as an
               attitude, but as a cultivated skill. Positives is his daily
-              methodology, distilled into a practice anyone can build.
+              methodology, made accessible to anyone willing to show up.
             </p>
 
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2.5">
               {["Psychologist", "Author", "Speaker", "30+ years research"].map(
                 (tag) => (
                   <span
                     key={tag}
                     className="text-xs font-medium px-3.5 py-1.5 rounded-full"
                     style={{
-                      background: "rgba(255,255,255,0.07)",
-                      border: "1px solid rgba(255,255,255,0.10)",
-                      color: "#A1A9B3",
+                      background: "rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(255,255,255,0.09)",
+                      color: "#8A9199",
+                      letterSpacing: "-0.01em",
                     }}
                   >
                     {tag}
@@ -268,41 +279,45 @@ export default async function LandingPage() {
             </div>
           </div>
 
-          {/* Right — pull quote */}
+          {/* Right — pull quote card */}
           <div
-            className="relative p-10 rounded-3xl"
+            className="relative p-9 rounded-3xl"
             style={{
               background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.08)",
+              border: "1px solid rgba(255,255,255,0.07)",
               backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
             }}
           >
             <div
-              className="absolute -top-4 -left-2 font-heading font-bold select-none"
+              className="absolute font-heading font-bold select-none"
               style={{
-                fontSize: "6rem",
+                top: "-8px",
+                left: "28px",
+                fontSize: "5rem",
                 lineHeight: 1,
-                color: "rgba(47,111,237,0.25)",
+                color: "rgba(47,111,237,0.22)",
               }}
               aria-hidden="true"
             >
               &ldquo;
             </div>
             <p
-              className="font-heading font-semibold leading-relaxed relative z-10"
+              className="font-heading font-semibold relative z-10 mt-4"
               style={{
-                fontSize: "1.25rem",
-                lineHeight: "1.55",
+                fontSize: "1.2rem",
+                lineHeight: "1.6",
                 color: "#FFFFFF",
                 letterSpacing: "-0.02em",
-              }}
+                textWrap: "balance",
+              } as React.CSSProperties}
             >
               Positivity is not something that happens to you. It&apos;s a
               skill you practice, one day at a time. This is how we build it.
             </p>
             <p
               className="mt-5 text-sm font-medium"
-              style={{ color: "#68707A" }}
+              style={{ color: "#5A636D" }}
             >
               — Dr. Paul Jenkins
             </p>
@@ -310,12 +325,15 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* ━━ THE PRACTICE — VISUAL RHYTHM ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <section className="relative w-full px-6 py-28" style={{ background: "#F6F3EE" }}>
+      {/* ━━ THE PRACTICE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <section
+        className="relative w-full px-6 py-24"
+        style={{ background: "#F6F3EE" }}
+      >
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
+          <div className="text-center mb-14">
             <p
-              className="text-xs font-semibold uppercase tracking-widest mb-4"
+              className="text-xs font-semibold uppercase mb-3"
               style={{ color: "#68707A", letterSpacing: "0.14em" }}
             >
               The practice
@@ -323,7 +341,7 @@ export default async function LandingPage() {
             <h2
               className="font-heading font-bold"
               style={{
-                fontSize: "clamp(2rem, 4vw, 3rem)",
+                fontSize: "clamp(1.9rem, 3.8vw, 2.9rem)",
                 letterSpacing: "-0.04em",
                 lineHeight: "1.1",
                 color: "#121417",
@@ -334,33 +352,33 @@ export default async function LandingPage() {
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {[
               {
                 label: "Daily",
                 number: "01",
                 title: "A short grounding audio",
-                body: "A moment to reset before the day pulls you away. Short, direct, and personal — with Dr. Paul.",
+                body: "A moment to reset before the day takes over. Short, direct, and personal — with Dr. Paul.",
                 accent: "#2F6FED",
                 bg: "rgba(47,111,237,0.04)",
-                border: "rgba(47,111,237,0.14)",
+                border: "rgba(47,111,237,0.12)",
               },
               {
                 label: "Weekly",
                 number: "02",
                 title: "A principle and practice",
-                body: "One idea to carry through your week. One thing to try. No homework. No pressure. Just a direction.",
+                body: "One idea to carry through your week. One thing to try. No homework. No pressure.",
                 accent: "#4E8C78",
-                bg: "rgba(78,140,120,0.04)",
+                bg: "rgba(78,140,120,0.05)",
                 border: "rgba(78,140,120,0.14)",
               },
               {
                 label: "Monthly",
                 number: "03",
                 title: "A theme for reflection",
-                body: "A lens for the month ahead — not a curriculum, not a course. A place to keep coming back to.",
+                body: "A direction for the month ahead — not a curriculum, not a course. A place to return to.",
                 accent: "#D98A4E",
-                bg: "rgba(217,138,78,0.04)",
+                bg: "rgba(217,138,78,0.05)",
                 border: "rgba(217,138,78,0.14)",
               },
             ].map(({ label, number, title, body, accent, bg, border }) => (
@@ -370,17 +388,16 @@ export default async function LandingPage() {
                 style={{
                   background: bg,
                   border: `1px solid ${border}`,
-                  boxShadow: "0 2px 16px rgba(18,20,23,0.04)",
+                  boxShadow: "0 2px 12px rgba(18,20,23,0.03)",
                 }}
               >
-                {/* Large faded number */}
                 <span
-                  className="absolute top-4 right-6 font-heading font-bold select-none pointer-events-none"
+                  className="absolute top-4 right-5 font-heading font-bold select-none pointer-events-none"
                   style={{
-                    fontSize: "5rem",
+                    fontSize: "4.5rem",
                     lineHeight: 1,
                     color: accent,
-                    opacity: 0.08,
+                    opacity: 0.07,
                   }}
                   aria-hidden="true"
                 >
@@ -388,11 +405,11 @@ export default async function LandingPage() {
                 </span>
 
                 <span
-                  className="inline-block text-xs font-bold uppercase tracking-widest mb-5 px-3 py-1 rounded-full w-fit"
+                  className="inline-block text-xs font-bold uppercase mb-5 px-3 py-1 rounded-full w-fit"
                   style={{
                     color: accent,
-                    background: `${accent}15`,
-                    letterSpacing: "0.12em",
+                    background: `${accent}14`,
+                    letterSpacing: "0.10em",
                   }}
                 >
                   {label}
@@ -400,16 +417,16 @@ export default async function LandingPage() {
                 <h3
                   className="font-heading font-semibold mb-3"
                   style={{
-                    fontSize: "1.15rem",
+                    fontSize: "1.075rem",
                     letterSpacing: "-0.02em",
                     color: "#121417",
-                    lineHeight: "1.3",
+                    lineHeight: "1.35",
                   }}
                 >
                   {title}
                 </h3>
                 <p
-                  className="text-sm leading-relaxed flex-1"
+                  className="text-sm flex-1"
                   style={{ color: "#68707A", lineHeight: "1.7" }}
                 >
                   {body}
@@ -420,52 +437,54 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* ━━ BENEFITS — FULL-WIDTH STATEMENT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      {/* ━━ BENEFITS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section
-        className="w-full px-6 py-28"
+        className="w-full px-6 py-24"
         style={{ background: "#FFFFFF", borderTop: "1px solid #DDD7CF" }}
       >
-        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-20 items-start">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
           {/* Left */}
-          <div>
+          <div className="lg:sticky lg:top-28">
             <p
-              className="text-xs font-semibold uppercase tracking-widest mb-5"
+              className="text-xs font-semibold uppercase mb-5"
               style={{ color: "#68707A", letterSpacing: "0.14em" }}
             >
               Membership includes
             </p>
             <h2
-              className="font-heading font-bold mb-6"
+              className="font-heading font-bold mb-5"
               style={{
-                fontSize: "clamp(2rem, 4vw, 3rem)",
+                fontSize: "clamp(1.9rem, 3.8vw, 3rem)",
                 letterSpacing: "-0.04em",
-                lineHeight: "1.08",
+                lineHeight: "1.1",
                 color: "#121417",
               }}
             >
               Everything you{" "}
               <span
                 style={{
-                  background: "linear-gradient(135deg, #2F6FED 0%, #4E8C78 100%)",
+                  background:
+                    "linear-gradient(135deg, #2F6FED 0%, #4E8C78 100%)",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
                   backgroundClip: "text",
+                  whiteSpace: "nowrap",
                 }}
               >
                 need.
               </span>
             </h2>
             <p
-              className="text-base leading-relaxed max-w-sm"
-              style={{ color: "#68707A", lineHeight: "1.7" }}
+              className="text-base"
+              style={{ color: "#68707A", lineHeight: "1.72", maxWidth: "340px" }}
             >
               No courses. No modules. No feeling behind. Just a daily practice
-              that meets you where you are, every single day.
+              that meets you where you are.
             </p>
           </div>
 
           {/* Right — feature list */}
-          <ul className="space-y-5">
+          <ul className="space-y-4">
             {[
               {
                 title: "Daily grounding audio",
@@ -489,13 +508,13 @@ export default async function LandingPage() {
               },
               {
                 title: "Private member podcast feed",
-                sub: "The daily in your favorite podcast app.",
+                sub: "The daily practice in your favorite podcast app.",
                 icon: "🎙️",
               },
             ].map(({ title, sub, icon }) => (
               <li
                 key={title}
-                className="flex items-start gap-5 p-5 rounded-2xl transition-all"
+                className="flex items-start gap-4 p-5 rounded-2xl"
                 style={{
                   background: "#F6F3EE",
                   border: "1px solid #ECE7DF",
@@ -515,7 +534,10 @@ export default async function LandingPage() {
                   >
                     {title}
                   </p>
-                  <p className="text-xs leading-relaxed" style={{ color: "#68707A" }}>
+                  <p
+                    className="text-xs leading-relaxed"
+                    style={{ color: "#68707A" }}
+                  >
                     {sub}
                   </p>
                 </div>
@@ -525,28 +547,33 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* ━━ PULL QUOTE BREAKOUT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      {/* ━━ PULL QUOTE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section
-        className="w-full px-6 py-24"
+        className="w-full px-6 py-20"
         style={{
-          background: "linear-gradient(135deg, #F1EEE8 0%, #EAE4DC 100%)",
+          background: "linear-gradient(135deg, #F1EEE8 0%, #E8E2D8 100%)",
           borderTop: "1px solid #DDD7CF",
+          borderBottom: "1px solid #DDD7CF",
         }}
       >
-        <div className="max-w-3xl mx-auto text-center">
+        <div className="max-w-2xl mx-auto text-center">
           <p
-            className="font-heading font-bold mb-6"
+            className="font-heading font-bold mb-4"
             style={{
-              fontSize: "clamp(1.5rem, 3.5vw, 2.5rem)",
+              fontSize: "clamp(1.4rem, 3vw, 2.25rem)",
               letterSpacing: "-0.03em",
-              lineHeight: "1.25",
+              lineHeight: "1.3",
               color: "#121417",
-            }}
+              textWrap: "balance",
+            } as React.CSSProperties}
           >
             &ldquo;It&apos;s not about being happy all the time. It&apos;s
             about knowing how to return to yourself when you&apos;re not.&rdquo;
           </p>
-          <p className="text-sm font-medium" style={{ color: "#68707A" }}>
+          <p
+            className="text-sm font-medium"
+            style={{ color: "#68707A" }}
+          >
             — The Positives Method
           </p>
         </div>
@@ -554,7 +581,7 @@ export default async function LandingPage() {
 
       {/* ━━ CLOSING CTA — DARK ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section
-        className="relative w-full px-6 py-32 text-center"
+        className="relative w-full px-6 py-28 text-center"
         style={{ background: "#121417", overflow: "hidden" }}
       >
         <div
@@ -562,12 +589,12 @@ export default async function LandingPage() {
           className="absolute inset-0 pointer-events-none"
           style={{
             background:
-              "radial-gradient(ellipse at 50% 0%, rgba(47,111,237,0.18) 0%, transparent 60%)",
+              "radial-gradient(ellipse at 50% -10%, rgba(47,111,237,0.20) 0%, transparent 60%)",
           }}
         />
-        <div className="relative max-w-xl mx-auto">
+        <div className="relative max-w-lg mx-auto">
           <p
-            className="text-xs font-semibold uppercase tracking-widest mb-6"
+            className="text-xs font-semibold uppercase mb-5"
             style={{ color: "#4E8C78", letterSpacing: "0.14em" }}
           >
             Start your practice
@@ -575,48 +602,46 @@ export default async function LandingPage() {
           <h2
             className="font-heading font-bold mb-5"
             style={{
-              fontSize: "clamp(2rem, 4vw, 3.25rem)",
+              fontSize: "clamp(2rem, 4vw, 3rem)",
               letterSpacing: "-0.04em",
-              lineHeight: "1.08",
+              lineHeight: "1.1",
               color: "#FFFFFF",
-            }}
+              textWrap: "balance",
+            } as React.CSSProperties}
           >
             Start today.{" "}
-            <span style={{ color: "#68707A" }}>Come back tomorrow.</span>
+            <span style={{ color: "#5A636D" }}>Come back tomorrow.</span>
           </h2>
           <p
-            className="text-base leading-relaxed mb-10"
-            style={{ color: "#A1A9B3", lineHeight: "1.7" }}
+            className="text-base mb-9"
+            style={{ color: "#A1A9B3", lineHeight: "1.72", textWrap: "balance" } as React.CSSProperties}
           >
             Founding members join at{" "}
-            <span className="text-white font-semibold">$49/month</span> — the
-            lowest price this membership will ever be. Annual billing available.
-            Cancel anytime, no questions.
+            <span style={{ color: "#FFFFFF", fontWeight: 600 }}>
+              $49/month
+            </span>{" "}
+            — the lowest price this membership will ever be. Annual billing
+            available. Cancel anytime.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
-              href="/join"
-              className="inline-flex items-center justify-center font-semibold text-sm px-10 py-4 rounded-full transition-all"
-              style={{
-                background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
-                color: "#FFFFFF",
-                boxShadow: "0 8px 32px rgba(47,111,237,0.35)",
-                letterSpacing: "-0.01em",
-              }}
-            >
-              Join Positives today →
-            </Link>
-          </div>
+          <Link
+            href="/join"
+            className="inline-flex items-center justify-center font-semibold text-sm px-10 py-4 rounded-full transition-all"
+            style={{
+              background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
+              color: "#FFFFFF",
+              boxShadow: "0 8px 32px rgba(47,111,237,0.35)",
+              letterSpacing: "-0.01em",
+            }}
+          >
+            Join Positives today →
+          </Link>
 
-          <p className="mt-6 text-xs" style={{ color: "#4A5058" }}>
+          <p className="mt-5 text-xs" style={{ color: "#3E4550" }}>
             Secure checkout via Stripe · No contract · Cancel anytime
           </p>
 
-          {/* Trust row */}
-          <div
-            className="mt-14 flex flex-wrap items-center justify-center gap-x-8 gap-y-3"
-          >
+          <div className="mt-12 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
             {[
               "30 years of research",
               "Practice-based, not course-based",
@@ -625,7 +650,7 @@ export default async function LandingPage() {
               <span
                 key={item}
                 className="flex items-center gap-2 text-xs font-medium"
-                style={{ color: "#6B7280" }}
+                style={{ color: "#5A636D" }}
               >
                 <span
                   className="w-1 h-1 rounded-full"
@@ -641,22 +666,24 @@ export default async function LandingPage() {
 
       {/* ━━ FOOTER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <footer
-        className="w-full px-6 py-8 flex items-center justify-between max-w-6xl mx-auto"
-        style={{ borderTop: "1px solid rgba(221,215,207,0.4)" }}
+        className="w-full px-6 py-7"
+        style={{ borderTop: "1px solid rgba(221,215,207,0.5)", background: "#F6F3EE" }}
       >
-        <span
-          className="text-xs font-medium"
-          style={{ color: "#68707A" }}
-        >
-          © {new Date().getFullYear()} Positives
-        </span>
-        <Link
-          href="/login"
-          className="text-xs font-medium transition-colors"
-          style={{ color: "#68707A" }}
-        >
-          Member sign in
-        </Link>
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <span
+            className="text-xs font-medium"
+            style={{ color: "#68707A" }}
+          >
+            © {new Date().getFullYear()} Positives
+          </span>
+          <Link
+            href="/login"
+            className="text-xs font-medium transition-colors"
+            style={{ color: "#68707A" }}
+          >
+            Member sign in
+          </Link>
+        </div>
       </footer>
 
     </div>

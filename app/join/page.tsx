@@ -98,33 +98,59 @@ export default async function JoinPage({
 
   // ── Main join page ────────────────────────────────────────────────────────
   return (
-    <div className="min-h-dvh bg-background flex flex-col">
+    <div className="min-h-dvh flex flex-col" style={{ background: "#F6F3EE" }}>
 
-      {/* ── Nav ──────────────────────────────────────────────────────────── */}
-      <header className="px-6 py-5 flex items-center justify-between max-w-5xl mx-auto w-full">
-        <Link
-          href="/"
-          className="font-heading font-bold text-lg tracking-tight text-foreground"
-        >
-          Positives
-        </Link>
-        <Link
-          href="/login"
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Sign in
-        </Link>
+      {/* ── Nav — matches homepage ─────────────────────────────────────── */}
+      <header
+        className="sticky top-0 z-50 w-full"
+        style={{
+          background: "rgba(246,243,238,0.82)",
+          backdropFilter: "blur(18px)",
+          WebkitBackdropFilter: "blur(18px)",
+          borderBottom: "1px solid rgba(221,215,207,0.5)",
+        }}
+      >
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+          <Link
+            href="/"
+            className="font-heading font-bold text-xl transition-opacity hover:opacity-70"
+            style={{ color: "#121417", letterSpacing: "-0.04em" }}
+          >
+            Positives
+          </Link>
+          <Link
+            href="/login"
+            className="text-sm font-medium transition-colors"
+            style={{ color: "#68707A" }}
+          >
+            Sign in
+          </Link>
+        </div>
       </header>
 
       {/* ── Pricing header ───────────────────────────────────────────────── */}
       <section className="px-6 pt-16 pb-10 text-center">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-4">
+        <p
+          className="text-xs font-semibold uppercase mb-4"
+          style={{ color: "#68707A", letterSpacing: "0.14em" }}
+        >
           Choose your level
         </p>
-        <h1 className="font-heading font-bold text-4xl sm:text-5xl text-foreground tracking-tight mb-3">
+        <h1
+          className="font-heading font-bold mb-3"
+          style={{
+            fontSize: "clamp(2rem, 4.5vw, 3.25rem)",
+            letterSpacing: "-0.04em",
+            lineHeight: "1.08",
+            color: "#121417",
+          }}
+        >
           Start your Positives practice.
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <p
+          className="text-sm"
+          style={{ color: "#68707A", letterSpacing: "-0.01em" }}
+        >
           Founding member rate · Cancel anytime · Secure checkout via Stripe
         </p>
       </section>
@@ -141,13 +167,22 @@ export default async function JoinPage({
       </section>
 
       {/* ── Footer ───────────────────────────────────────────────────────── */}
-      <footer className="px-6 py-8 border-t border-border text-center mt-auto">
-        <p className="text-xs text-muted-foreground">
-          © {new Date().getFullYear()} Positives ·{" "}
-          <Link href="/" className="hover:text-foreground transition-colors">
-            Home
+      <footer
+        className="w-full px-6 py-7 mt-auto"
+        style={{ borderTop: "1px solid rgba(221,215,207,0.5)", background: "#F6F3EE" }}
+      >
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <span className="text-xs font-medium" style={{ color: "#68707A" }}>
+            © {new Date().getFullYear()} Positives
+          </span>
+          <Link
+            href="/"
+            className="text-xs font-medium transition-colors"
+            style={{ color: "#68707A" }}
+          >
+            Back to home
           </Link>
-        </p>
+        </div>
       </footer>
 
     </div>

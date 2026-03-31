@@ -127,14 +127,18 @@ function LoginForm() {
   return (
     <div className="w-full max-w-sm mx-auto px-6">
       {/* Header */}
-      <div className="mb-7 text-center">
+      <div className="mb-8 text-center">
         <Link
           href="/"
-          className="block font-heading font-bold text-2xl tracking-tight mb-1 text-foreground"
+          className="block font-heading font-bold text-2xl mb-2 hover:opacity-70 transition-opacity"
+          style={{ color: "#121417", letterSpacing: "-0.04em" }}
         >
           Positives
         </Link>
-        <p className="text-muted-foreground text-sm">
+        <p
+          className="text-sm"
+          style={{ color: "#68707A", lineHeight: "1.6" }}
+        >
           {reason === "subscription_inactive"
             ? "Your membership is inactive. Sign in to manage your account."
             : "Welcome back. Sign in to continue your practice."}
@@ -146,27 +150,43 @@ function LoginForm() {
         className="bg-card border border-border rounded-2xl p-7"
         style={{ boxShadow: "0 12px 36px rgba(18,20,23,0.08)" }}
       >
-        {/* Mode tabs */}
-        <div className="flex rounded-xl border border-border overflow-hidden mb-6">
+        {/* Mode tabs — segmented control */}
+        <div
+          className="flex rounded-xl overflow-hidden mb-6"
+          style={{
+            background: "#F6F3EE",
+            border: "1px solid #DDD7CF",
+            padding: "3px",
+            gap: "3px",
+          }}
+        >
           <button
             type="button"
             onClick={() => { setMode("password"); setError(null); }}
-            className={`flex-1 py-2.5 text-xs font-medium transition-colors ${
+            className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
               mode === "password"
-                ? "bg-primary text-white"
-                : "bg-transparent text-muted-foreground hover:text-foreground"
+                ? "text-foreground"
+                : "text-muted-foreground hover:text-foreground"
             }`}
+            style={{
+              background: mode === "password" ? "#FFFFFF" : "transparent",
+              boxShadow: mode === "password" ? "0 1px 4px rgba(18,20,23,0.08)" : "none",
+              color: mode === "password" ? "#121417" : "#68707A",
+              border: mode === "password" ? "1px solid #DDD7CF" : "1px solid transparent",
+            }}
           >
             Password
           </button>
           <button
             type="button"
             onClick={() => { setMode("magic"); setError(null); }}
-            className={`flex-1 py-2.5 text-xs font-medium transition-colors border-l border-border ${
-              mode === "magic"
-                ? "bg-primary text-white"
-                : "bg-transparent text-muted-foreground hover:text-foreground"
-            }`}
+            className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all`}
+            style={{
+              background: mode === "magic" ? "#FFFFFF" : "transparent",
+              boxShadow: mode === "magic" ? "0 1px 4px rgba(18,20,23,0.08)" : "none",
+              color: mode === "magic" ? "#121417" : "#68707A",
+              border: mode === "magic" ? "1px solid #DDD7CF" : "1px solid transparent",
+            }}
           >
             Email link
           </button>
@@ -266,10 +286,44 @@ function LoginForm() {
 
 export function LoginClient() {
   return (
-    <div className="min-h-dvh flex flex-col items-center justify-center bg-background py-16">
-      <Suspense>
-        <LoginForm />
-      </Suspense>
+    <div
+      className="min-h-dvh flex flex-col"
+      style={{ background: "#F6F3EE" }}
+    >
+      {/* ── Nav ── */}
+      <header
+        className="sticky top-0 z-50 w-full"
+        style={{
+          background: "rgba(246,243,238,0.82)",
+          backdropFilter: "blur(18px)",
+          WebkitBackdropFilter: "blur(18px)",
+          borderBottom: "1px solid rgba(221,215,207,0.5)",
+        }}
+      >
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+          <Link
+            href="/"
+            className="font-heading font-bold text-xl hover:opacity-70 transition-opacity"
+            style={{ color: "#121417", letterSpacing: "-0.04em" }}
+          >
+            Positives
+          </Link>
+          <Link
+            href="/join"
+            className="text-sm font-medium transition-colors"
+            style={{ color: "#68707A" }}
+          >
+            Join today
+          </Link>
+        </div>
+      </header>
+
+      {/* ── Form ── */}
+      <div className="flex-1 flex flex-col items-center justify-center py-16">
+        <Suspense>
+          <LoginForm />
+        </Suspense>
+      </div>
     </div>
   );
 }
