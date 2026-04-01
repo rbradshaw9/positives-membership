@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import type { TodayContent } from "@/lib/queries/get-today-content";
 import { AudioPlayer } from "@/components/today/AudioPlayer";
 import { NoteSheet } from "@/components/notes/NoteSheet";
-import { markListened } from "@/app/(member)/today/actions";
 import { getNoteForContent } from "@/app/(member)/notes/actions";
 
 /**
@@ -45,7 +44,6 @@ export function DailyPracticeCard({
   hasListened = false,
   todayLabel,
 }: DailyPracticeCardProps) {
-  const [, startTransition] = useTransition();
   const [noteOpen, setNoteOpen] = useState(false);
   const [existingNote, setExistingNote] = useState("");
   const [noteExists, setNoteExists] = useState(initialHasNote);
@@ -54,14 +52,6 @@ export function DailyPracticeCard({
 
   const hasContent = content !== null;
   const duration = hasContent ? formatDuration(content.duration_seconds) : "—";
-
-  function handleComplete() {
-    if (!content) return;
-    setListened(true);
-    startTransition(async () => {
-      await markListened(content.id);
-    });
-  }
 
   async function handleOpenNote() {
     if (!content) return;
@@ -136,7 +126,7 @@ export function DailyPracticeCard({
             </>
           ) : (
             <>
-              <h2 className="font-heading font-bold text-2xl md:text-3xl leading-heading tracking-[-0.03em] mb-2">
+              <h2 className="heading-balance font-heading font-bold text-2xl md:text-3xl leading-heading tracking-[-0.03em] mb-2">
                 {content.title}
               </h2>
               {(content.excerpt ?? content.description) && (
@@ -148,10 +138,13 @@ export function DailyPracticeCard({
               {audioUrl ? (
                 <div className="mt-2 mb-1">
                   <AudioPlayer
+                    trackId={content.id}
                     src={audioUrl}
                     title={content.title}
+                    subtitle="Today’s Practice"
                     duration={duration}
-                    onComplete={handleComplete}
+                    onCompleteContentId={content.id}
+                    onMarkedComplete={() => setListened(true)}
                   />
                 </div>
               ) : (

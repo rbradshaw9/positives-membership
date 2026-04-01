@@ -22,14 +22,21 @@ export default function AdminPage() {
             href: "/admin/content",
             title: "Content Management",
             description: "Review and publish daily audio, principles, and themes.",
-            status: "Placeholder",
+            status: "Live",
+          },
+          {
+            href: "/admin/members",
+            title: "Members",
+            description:
+              "View member status, subscription tier, streak, and recent activity.",
+            status: "Live",
           },
           {
             href: "/admin/ingestion",
             title: "Ingestion Review",
             description:
               "Review AI-generated titles and descriptions for incoming audio.",
-            status: "Placeholder",
+            status: "Planned",
           },
         ].map(({ href, title, description, status }) => (
           <a

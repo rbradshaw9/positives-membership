@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 
 /**
@@ -50,31 +49,26 @@ export function MemberTopNav({ streak = 0, tier }: MemberTopNavProps) {
 
   return (
     <>
-      {/* ── Desktop + tablet top bar ─────────────────────────────────── */}
-      <header
-        className="sticky top-0 z-50 w-full border-b border-border bg-card/90"
-        style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}
-      >
-        <div className="member-container flex items-center h-14 md:h-16 gap-6">
-          {/* Wordmark — opacity 0.8 (up from 0.65 for stronger brand presence) */}
-          <Link href="/today" aria-label="Positives — go to Today" className="flex-shrink-0 mr-auto md:mr-0">
-            <Image
-              src="/logos/positives-wordmark-dark.png"
-              alt="Positives"
-              width={100}
-              height={22}
-              style={{ height: 18, width: "auto", opacity: 0.8 }}
-              priority
-            />
+      <header className="member-shell__nav">
+        <div className="member-container flex h-14 items-center gap-4 md:h-16">
+          <Link
+            href="/today"
+            aria-label="Positives — go to Today"
+            className="mr-auto flex-shrink-0"
+          >
+            <span
+              className="font-heading text-lg font-extrabold italic tracking-[-0.03em] text-white"
+              style={{ textWrap: "balance" } as React.CSSProperties}
+            >
+              Positives
+            </span>
           </Link>
 
-          {/* Streak chip — centred area */}
           {streak > 0 && (
             <span
-              className="hidden md:inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ml-auto"
+              className="hidden rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-medium text-white/70 md:inline-flex md:items-center md:gap-1.5"
               style={{
-                color: streak >= 7 ? "var(--color-secondary)" : "var(--color-muted-fg)",
-                background: streak >= 7 ? "color-mix(in srgb, var(--color-secondary) 10%, transparent)" : "var(--color-muted)",
+                color: streak >= 7 ? "var(--color-primary)" : "rgba(255,255,255,0.65)",
               }}
             >
               <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -84,11 +78,7 @@ export function MemberTopNav({ streak = 0, tier }: MemberTopNavProps) {
             </span>
           )}
 
-          {/* Nav links — hidden on mobile, shown on md+ */}
-          <nav
-            aria-label="Member navigation"
-            className="hidden md:flex items-center gap-0.5"
-          >
+          <nav aria-label="Member navigation" className="hidden items-center gap-1 md:flex">
             {navItems.map(({ href, label }) => {
               const isActive = pathname === href || (href !== "/today" && pathname.startsWith(href));
               return (
@@ -97,10 +87,10 @@ export function MemberTopNav({ streak = 0, tier }: MemberTopNavProps) {
                   href={href}
                   aria-current={isActive ? "page" : undefined}
                   className={[
-                    "px-3.5 py-2 text-sm rounded-lg transition-colors",
+                    "rounded-full px-3.5 py-2 text-sm font-medium transition-colors",
                     isActive
-                      ? "text-primary bg-primary/8 font-semibold"
-                      : "font-medium text-muted-foreground hover:text-foreground hover:bg-foreground/4",
+                      ? "bg-white/8 text-primary"
+                      : "text-white/58 hover:bg-white/6 hover:text-white",
                   ].join(" ")}
                 >
                   {label}
@@ -111,12 +101,10 @@ export function MemberTopNav({ streak = 0, tier }: MemberTopNavProps) {
         </div>
       </header>
 
-      {/* ── Mobile bottom bar ─────────────────────────────────────────── */}
-      {/* Shown only on mobile (md:hidden) — icons + labels + active dot */}
       <nav
         aria-label="Member navigation"
-        className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-card/95 border-t border-border"
-        style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", paddingBottom: "env(safe-area-inset-bottom)" }}
+        className="member-shell__tabbar safe-area-pb md:hidden"
+        style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}
       >
         <ul className="flex items-center justify-around px-2">
           {navItems.map(({ href, label }) => {
@@ -128,7 +116,7 @@ export function MemberTopNav({ streak = 0, tier }: MemberTopNavProps) {
                   aria-current={isActive ? "page" : undefined}
                   className={[
                     "flex flex-col items-center gap-1 py-3 px-2 text-[10px] font-semibold uppercase tracking-wide transition-colors",
-                    isActive ? "text-primary" : "text-muted-foreground hover:text-foreground",
+                    isActive ? "text-primary" : "text-white/45 hover:text-white",
                   ].join(" ")}
                 >
                   <NavIcon href={href} />

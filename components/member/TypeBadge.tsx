@@ -17,16 +17,19 @@ const TYPE_LABEL: Record<string, string> = {
   daily_audio: "Daily",
   weekly_principle: "Weekly",
   monthly_theme: "Monthly",
+  coaching_call: "Coaching",
 };
 
 // Subtle tonal chip per content type
 const TYPE_STYLE: Record<string, string> = {
   daily_audio:
-    "text-primary bg-primary/8 ring-1 ring-primary/15",
+    "text-primary bg-primary/10 ring-1 ring-primary/20",
   weekly_principle:
-    "text-secondary bg-secondary/8 ring-1 ring-secondary/15",
+    "text-secondary bg-secondary/10 ring-1 ring-secondary/20",
   monthly_theme:
-    "text-accent bg-accent/8 ring-1 ring-accent/15",
+    "text-accent bg-accent/10 ring-1 ring-accent/20",
+  coaching_call:
+    "text-foreground bg-foreground/6 ring-1 ring-border",
 };
 
 const DEFAULT_STYLE = "text-muted-foreground bg-muted ring-1 ring-border";
@@ -38,7 +41,7 @@ export function TypeBadge({ type, size = "sm" }: TypeBadgeProps) {
 
   return (
     <span
-      className={`${textSize} font-semibold uppercase tracking-widest px-2 py-0.5 rounded-full ${style}`}
+      className={`${textSize} inline-flex items-center rounded-full px-2.5 py-1 font-semibold uppercase tracking-[0.12em] ${style}`}
     >
       {label}
     </span>

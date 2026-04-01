@@ -1,7 +1,7 @@
 # Positives Platform — Roadmap & System Architecture
 
 > **Canonical planning document for ongoing development**
-> Prepared April 2026 · Replaces all prior sprint-level plans as the authoritative forward-looking roadmap
+> Prepared April 2026 · Updated April 2026 (roadmap reality pass) · Supersedes all prior sprint-level plans
 > Grounded in `PROJECT_BRIEF.md`, `CONTRIBUTING.md`, `member-experience-implementation-plan.md`, `sprint-1-build-plan.md`, and current repository source code
 
 ---
@@ -107,8 +107,11 @@ Browsable archive of all published content at `/library`.
 | TypeBadge component for content type labeling | ✅ |
 | Note existence indicator per item | ✅ |
 | Empty state for search + browse | ✅ |
+| **Library detail page** (`/library/[id]`) | ✅ |
 
 **Query chain:** `getLibraryContent()` (browse mode) and `searchLibraryContent()` (FTS mode) in `lib/queries/`.
+
+**Library detail page:** Each content item has a dedicated detail route (`/library/[id]`) rendering the full title, TypeBadge, description, body (with markdown), audio player or video embed, resource links, and inline NoteSheet. Shipped in the member UI stabilisation pass.
 
 #### 1.5 Notes / Journal ✅
 
@@ -143,12 +146,15 @@ Two complementary views of the same underlying data:
 | Edit existing content | ✅ | `/admin/content/[id]/edit` |
 | Resource Links Editor | ✅ | Integrated into create/edit forms |
 | Media URL auto-detect | ✅ | YouTube/Vimeo ID extraction from pasted URLs |
-| Ingestion queue (preview) | ✅ (shell) | `/admin/ingestion` |
+| **Tiptap rich-text body editor** | ✅ | Inline WYSIWYG in create/edit forms |
+| Ingestion queue (preview) | ✅ (UI shell only — pipeline not yet built) | `/admin/ingestion` |
 | Admin layout guard | ✅ | `requireAdmin()` middleware |
 
 **Server actions:** `createContent`, `updateContent` in `app/admin/content/actions.ts`. Handles JSON parsing of resource links, media URL normalization, and all content fields.
 
-#### 1.8 Member Navigation & Layout ✅ (Sprint 9)
+**Tiptap body editor:** Replaces raw textarea for the `body` field. Produces markdown-compatible output. Admin can write rich body copy with headings, bold, lists, and links directly in the edit form.
+
+#### 1.8 Member Navigation, Layout & Account ✅ (Sprint 9 + content stabilisation pass)
 
 | Component | Purpose |
 |-----------|---------|
@@ -156,10 +162,15 @@ Two complementary views of the same underlying data:
 | `MemberLayout` | Server component shell — auth guard, streak fetch, password nudge banner |
 | `.member-container` | CSS utility: `max-width: 52rem`, responsive horizontal padding |
 | `PageHeader` | Display heading (`text-3xl/4xl`) + optional subtitle, used across all member pages |
+| **Sign-out / logout** | ✅ — Sign-out action available from Account page and nav. Clears Supabase session server-side. |
 
-#### 1.9 Vector-Ready Schema ✅ (Foundation Only)
+#### 1.9a Markdown Rendering ✅ (Content stabilisation pass)
 
-Created in migration 0010, these tables are empty and await data:
+All `body` fields in content records are rendered as rich markdown (headings, bold, italic, lists, links, blockquotes) in both the Library detail page and any member-facing content view that exposes the body field. Uses a lightweight markdown-to-HTML renderer, not raw `dangerouslySetInnerHTML`. Consistent with brand typography.
+
+#### 1.10a Vector-Ready Schema ✅ (Foundation Only)
+
+Created in migration 0010, these tables are empty and await data (ingestion pipeline must run first):
 
 | Table | Purpose |
 |-------|---------|
@@ -182,85 +193,68 @@ The `pgvector` extension is enabled. IVFFlat indexes are deferred until tables h
 
 ## 2. Development Phases Roadmap
 
-### Phase 1 — Core Product Completion + Coaching + Tier Gating
+### Phase 1 — ✅ Core Product + Coaching + Tier Gating (Shipped)
+
+**Status:** Complete. The items described here have been implemented.
+
+#### What Shipped in This Phase
+
+| Capability | Status | Notes |
+|-----------|--------|-------|
+| Tier-gated content access (`tier_min` column + query filter) | ✅ | All content queries enforce tier |
+| `coaching_call` content type | ✅ | Uses existing `content` table |
+| `/coaching` route (Level 3+) | ✅ | Server-side `requireTierAccess('level_3')` guard |
+| Coaching card on Today (Level 3+) | ✅ | Upcoming call / join / replay states |
+| Admin coaching management | ✅ | `coaching_call` type in content create/edit form |
+| Tier-aware navigation | ✅ | Coaching link only visible to Level 3+ |
+| Library detail page (`/library/[id]`) | ✅ | Full content detail with media + body + notes |
+| Markdown body rendering | ✅ | All `body` fields render as rich markdown |
+| Tiptap rich-text body editor (admin) | ✅ | WYSIWYG in content create/edit |
+| Sign-out / logout | ✅ | Available from Account page and nav |
+| Seed content for dev/QA | ✅ | Realistic daily/weekly/monthly/coaching records in place |
+
+**Outcome:** Platform supports all 4 tiers with proper gating. Coaching calls are live for Level 3+. Content body renders as rich text. Admin can manage all content types end-to-end. Dev environment has realistic test data.
+
+---
+
+### Phase 1-Current — Admin Operations (Active Near-Term Work)
 
 **Timeline:** Next 2–4 weeks
-**Goal:** Close the remaining functional gaps, add the coaching system (Level 3+), wire universal tier-based access control, seed realistic dev content, and prepare for onboarding.
+**Goal:** Complete the admin toolset so the team can operate the platform day-to-day without engineering support. The most important near-term work is **member management** and **admin operations** — not coaching or tier gating, which are already shipped.
 
-#### 1A. Tier-Gated Content Access (Schema)
+#### 1-Current A. Admin Member Management (Highest Priority)
 
-Add universal access control to the `content` table:
-
-| Change | Details |
-|--------|----------|
-| Add `coaching_call` to `content_type` enum | Coaching replays stored as content records |
-| Add `tier_min` column to `content` table | `subscription_tier` type, nullable. NULL = all tiers. Values: `level_1`, `level_2`, `level_3`, `level_4` |
-| Update all content queries | Add `WHERE tier_min IS NULL OR tier_min <= member.subscription_tier` filter |
-
-#### 1B. Coaching System (Level 3+)
+The team needs operational visibility into member status, subscription tier, and engagement to support members and make informed decisions.
 
 | Feature | Description | Priority |
 |---------|-------------|----------|
-| **`/coaching` route** | Tier-gated server component (Level 3+). Shows next upcoming call + replay archive. | Critical |
-| **Zoom join flow** | One recurring Zoom meeting, same link weekly. Waiting room enabled. No registration, no public email link. Join link rendered only on the protected coaching page. | Critical |
-| **Coaching card on Today** | Optional card for Level 3+ members. If call within 30 min → "Join Live Now". Otherwise → "Add to Calendar". After call → "Replay Available". | High |
-| **Coaching replays** | Recording uploaded to Vimeo post-call → new `coaching_call` content record with `vimeo_video_id`. | High |
-| **Admin coaching management** | Create/edit coaching calls in existing admin content form. Type = `coaching_call`. Fields: title, publish_date, vimeo_video_id, summary (body), tier_min = level_3. | High |
+| **Member list view** | `/admin/members` — paginated list with search by email, tier filter, subscription status, streak, last active. | Critical |
+| **Member detail view** | `/admin/members/[id]` — full profile: subscription status, tier, streak, last activity, notes count, activity timeline. | Critical |
+| **Member status at a glance** | Active / Past Due / Canceled indicators. Current tier badge. | Critical |
+| **Activity timeline** | Chronological list of `activity_event` records per member for support visibility. | High |
+| **Notes count** | Total journal entries per member, visible in detail view. | High |
 
-**Coaching content model:** Uses existing `content` table:
-- `type = 'coaching_call'`
-- `title` — call title / topic
-- `publish_date` — scheduled date
-- `vimeo_video_id` — replay video (null until uploaded)
-- `body` — call summary / description
-- `resource_links` — Zoom join link stored as `[{"label": "Join Zoom", "url": "..."}]`
-- `tier_min = 'level_3'`
+**Implementation approach:** Read-only operational view. No manual billing mutations — all billing changes go through Stripe Dashboard or Customer Portal. This is a support and visibility tool, not a CRM.
 
-**Security:** Page gated server-side by `requireTierAccess('level_3')` helper. Cancelled members lose access automatically via existing `requireActiveMember()` guard.
-
-#### 1C. Core Admin + Product Gaps
+#### 1-Current B. Admin Content Operations
 
 | Feature | Description | Priority |
 |---------|-------------|----------|
-| **Admin content calendar** | 4-week calendar view of scheduled daily/weekly/monthly content. Missing-day gap detection. Click-to-create. | High |
-| **Admin member viewer** | `/admin/members` — paginated list with search by email, tier filter, subscription status, streak, last active. Detail view at `/admin/members/[id]`. | High |
-| **Content preview** | Preview a content item as members would see it before publishing. | Medium |
+| **Admin content calendar** | 4-week calendar view of scheduled daily/weekly/monthly content. Missing-day cells highlighted. Click to create. | High |
+| **Gap detection** | Visual alert when a future day has no published `daily_audio`. | High |
+| **Content preview** | "Preview as member" renders the content item in member-facing layout before publishing. | Medium |
+| **Admin dashboard home** | Landing page with key metrics: active members, content published this week, engagement rates. | Medium |
+| **Publish/unpublish toggle** | One-click status toggle in content list (currently requires full edit form). | Medium |
+
+#### 1-Current C. Product Experience
+
+| Feature | Description | Priority |
+|---------|-------------|----------|
 | **Streak milestone recognition** | Inline celebration on Today page at 7, 30, 90, 365 days. Warm, not gamified. | Medium |
 | **Streak grace period** | 1-day grace window before streak resets. Prevents guilt over one missed day. | Medium |
-| **Admin dashboard landing** | Summary metrics: active members, content published this week, engagement rates. | Medium |
 | **Private podcast feed (Castos)** | Generate per-member private RSS feed URL. Display in Account page. | Medium |
-| **Tier-aware navigation** | `MemberTopNav` renders Coaching link for Level 3+. Level 1/2 members see a calm upgrade prompt if navigating directly. | High |
 
-#### 1D. Seed Content for Development
-
-Before launch validation, seed realistic test content:
-
-| Type | Count | Requirements |
-|------|-------|--------------|
-| `daily_audio` | 10 | Spread across 10 consecutive days. Placeholder audio URLs. Mixed with/without notes. |
-| `weekly_principle` | 5 | 5 consecutive weeks. Each has title, excerpt, body, reflection_prompt. |
-| `monthly_theme` | 3 | 3 consecutive months. Each has title, description, vimeo_video_id placeholder. |
-| `coaching_call` | 3 | 2 past (with vimeo_video_id), 1 upcoming (no replay). All `tier_min = 'level_3'`. |
-
-Seed data should exercise: library browsing, search, engagement tracking, journal notes, content cards, coaching replay, and tier gating.
-
-#### 1E. Today Page Evolution
-
-Maintain practice-first hierarchy. Add optional secondary cards below the main content stream:
-
-| Card | Condition | Behavior |
-|------|-----------|----------|
-| **Upcoming Coaching Call** | Level 3+ member + call within 7 days | If ≤30 min → "Join Live Now" button. Otherwise → "Add to Calendar" link. After call → "Replay Available" with Vimeo player. |
-| **Streak Milestone** | Member just hit 7, 30, 90, 365 | Warm congratulatory card. Disappears after 24h. |
-| **Journal Prompt** | No note written today | Gentle nudge: "Take a moment to reflect on today's practice." |
-
-Priority order on Today page:
-1. Daily practice (always first)
-2. Weekly principle
-3. Monthly theme
-4. Secondary cards (coaching → milestone → journal prompt)
-
-**Outcome:** Platform supports all 4 tiers with proper gating. Coaching calls are live for Level 3+. Admin can manage all content types end-to-end. Dev environment has realistic test data.
+**Outcome:** Admin team can look up any member's status, see their engagement history, manage the content calendar, and identify scheduling gaps — all without engineering involvement.
 
 ---
 
@@ -386,21 +380,25 @@ The admin system must be fully capable before scaling the product or onboarding 
 | Content list view (all types) | ✅ |
 | Create new content (all fields including resource links, media embeds) | ✅ |
 | Edit existing content | ✅ |
+| Tiptap rich-text body editor | ✅ |
 | Resource Links Editor (repeatable label + URL) | ✅ |
 | Media URL auto-detect (YouTube/Vimeo from pasted URL) | ✅ |
-| Ingestion queue shell | ✅ (UI only, no pipeline) |
+| Coaching call management (`coaching_call` type + `tier_min`) | ✅ |
+| Ingestion queue shell | ✅ (UI only — live pipeline is Phase 3) |
 | Admin layout with `requireAdmin()` guard | ✅ |
 
-### Must Build Before Phase 2
+### Must Build Next (Before Phase 2)
+
+**The most important near-term admin work is member management, then content calendar/gap detection.**
 
 | Capability | Description | Priority |
 |-----------|-------------|----------|
-| **Content calendar view** | 4-week grid showing scheduled daily/weekly/monthly. Missing-day cells highlighted. Click to create. | Critical |
-| **Gap detection** | Visual alert in content list when a day has no published `daily_audio`. | Critical |
+| **Member list view** | `/admin/members` — paginated list of all members with search, filter by tier, filter by status. Shows email, name, tier, streak, last active. | **Critical** |
+| **Member detail view** | `/admin/members/[id]` — full member profile: subscription status, tier, streak, last activity, activity timeline, notes count. Read-only. | **Critical** |
+| **Content calendar view** | 4-week grid showing scheduled daily/weekly/monthly. Missing-day cells highlighted. Click to create. | High |
+| **Gap detection** | Visual alert in content list when a future day has no published `daily_audio`. | High |
 | **Content preview** | "Preview as member" button renders the content item in a member-facing layout without publishing. | High |
-| **Admin dashboard home** | Landing page with key metrics: members active today, content items published this week, streak distribution, latest engagement events. | High |
-| **Member list view** | `/admin/members` — paginated list of all members with search, filter by tier, filter by status. Shows email, name, tier, streak, last active. | High |
-| **Member detail view** | `/admin/members/[id]` — full member profile with subscription history, engagement timeline, notes count, streak graph. | Medium |
+| **Admin dashboard home** | Landing page with key metrics: members active today, content items published this week, streak distribution, latest engagement events. | Medium |
 | **Publish/unpublish toggle** | One-click status toggle in content list (currently requires full edit form). | Medium |
 | **Duplicate detection** | Warn admin when creating a `daily_audio` with a `publish_date` that already has a published record. | Medium |
 | **Override Today** | Admin checkbox to force a content item onto Today regardless of publish_date. Auto-expires at midnight Eastern. | Medium |
@@ -408,15 +406,15 @@ The admin system must be fully capable before scaling the product or onboarding 
 ### Admin Capability Rollout Timeline
 
 ```
-Phase 1:
-  ├── Content calendar view
-  ├── Gap detection
+Phase 1-Current (active):
+  ├── ✅ Coaching call management (type + tier_min)  [DONE]
+  ├── ✅ Tiptap body editor                          [DONE]
+  ├── Member list + detail views                    [NEXT]
+  ├── Content calendar view                         [NEXT]
+  ├── Gap detection                                 [NEXT]
   ├── Content preview
   ├── Admin dashboard home
-  ├── Member list + detail views
   ├── Publish/unpublish toggle
-  ├── Coaching call management (type + tier_min)
-  ├── Seed content script
   └── Override Today
 
 Phase 1.5:
@@ -428,7 +426,7 @@ Phase 2:
   └── Tier-gated content management
 
 Phase 3:
-  ├── Ingestion queue (live pipeline integration)
+  ├── Ingestion queue (live pipeline integration)   [NOT YET BUILT]
   ├── Quick-approve flow
   └── Ingestion job monitoring
 ```
@@ -920,27 +918,35 @@ Positives begins as a daily audio practice platform. Over time, it evolves into 
 ### Evolution Timeline
 
 ```
-NOW
-├── Daily audio practice
-├── Weekly principles
-├── Monthly themes
-├── Content library
-├── Notes / journal
-├── Search
-└── Engagement tracking
+SHIPPED
+├── ✅ Daily audio practice
+├── ✅ Weekly principles
+├── ✅ Monthly themes
+├── ✅ Content library (browse + search + detail pages)
+├── ✅ Notes / journal
+├── ✅ Full-text search
+├── ✅ Engagement tracking (streaks, activity events)
+├── ✅ Tier-gated content access (tier_min)
+├── ✅ Coaching system (Level 3+)
+├── ✅ Library detail page (/library/[id])
+├── ✅ Markdown body rendering
+├── ✅ Tiptap admin body editor
+├── ✅ Sign-out / logout
+└── ✅ Seed content for dev/QA
 
-PHASE 1 (Next 2–4 weeks)
-├── ✚ Weekly coaching calls (Level 3+)
-├── ✚ Tier-gated content access (tier_min)
-├── ✚ Admin content calendar + member viewer
-├── ✚ Seed content for dev/QA
-├── ✚ Today page secondary cards
-└── ✚ Coaching card on Today (Level 3+)
+PHASE 1-CURRENT (Active — Next 2–4 weeks)
+├── ✚ Admin member list + detail views  ← HIGHEST PRIORITY
+├── ✚ Admin content calendar
+├── ✚ Gap detection
+├── ✚ Content preview
+├── ✚ Admin dashboard home
+├── ✚ Streak milestone recognition
+└── ✚ Today page secondary cards (coaching, milestone, journal prompt)
 
-PHASE 1.5 (Week 4–5)
+PHASE 1.5 (After admin ops are complete)
 ├── ✚ In-product onboarding (first login)
 ├── ✚ First-week email lifecycle (ActiveCampaign)
-└── ✚ Streak milestone recognition
+└── ✚ Streak grace period
 
 PHASE 2 (Month 2–3)
 ├── ✚ Live events + replays (Level 2+)
@@ -949,11 +955,14 @@ PHASE 2 (Month 2–3)
 ├── ✚ Support infrastructure (Help Scout)
 └── ✚ Email lifecycle automation
 
-PHASE 3 (Month 3–4)
-├── ✚ Automated content ingestion
-├── ✚ Private podcast delivery
-├── ✚ Notification system
-└── ✚ Admin analytics
+PHASE 3 (Month 3–4) — Content Ingestion Engine
+├── ✚ Google Drive → S3 audio ingestion pipeline
+├── ✚ OpenAI Whisper transcription
+├── ✚ AI metadata enrichment (title, description, tags)
+├── ✚ Admin ingestion queue (live, not UI shell)
+├── ✚ Castos publishing automation
+├── ✚ Private podcast delivery per member
+└── ✚ Notification system
 
 PHASE 4 (Month 4–5)
 ├── ✚ AI-powered semantic search
@@ -1011,6 +1020,9 @@ These hold true regardless of phase:
 | Sprint 7 | Member UI Cleanup · Login redesign, MemberHeader, wider layout, shared components | ✅ Complete |
 | Sprint 8 | Content Polish + Engagement Tracking · Resource links editor, weekly/monthly viewed tracking, journal month-grouping, TypeBadge | ✅ Complete |
 | Sprint 9 | Member UI Visual System · Premium top nav, hero section, typed cards, responsive layout system | ✅ Complete |
+| Sprint 10 | Platform Foundation + Live Activation · Vercel production env, Stripe live webhooks, auth + subscription access verified end-to-end | ✅ Complete |
+| Sprint 11 | Content Experience Stabilisation · Markdown rendering, library detail page, Tiptap admin body editor, Reflect pill CTA, logout/sign-out, mobile layout fixes | ✅ Complete |
+| Sprint 12 | Coaching + Tier Gating · coaching_call content type, /coaching route, tier_min column, coaching card on Today, seed content | ✅ Complete |
 
 ## Appendix B: Database Migration Index
 
@@ -1026,6 +1038,7 @@ These hold true regardless of phase:
 | `0008_journal_rls_and_index.sql` | Journal RLS policies and indexes |
 | `0009_sprint5_rich_content_search_vector.sql` | Rich content fields (body, reflection_prompt, download_url, youtube_video_id, resource_links), FTS search_vector, content_embedding + content_chunk tables |
 | `0010_sprint5_rls_vector_tables.sql` | RLS for vector/embedding tables |
+| `0011_coaching_tier_gating.sql` | Add `coaching_call` to content_type enum; add `tier_min` column (subscription_tier, nullable) to content table; update partial indexes |
 
 ## Appendix C: Key File Index
 

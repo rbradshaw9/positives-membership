@@ -8,7 +8,8 @@ import {
 import { searchLibraryContent } from "@/lib/queries/search-library-content";
 import { LibraryList } from "@/components/library/LibraryList";
 import { PageHeader } from "@/components/member/PageHeader";
-import { EmptyState } from "@/components/member/EmptyState";
+import { FilterChip } from "@/components/ui/FilterChip";
+import { SearchField } from "@/components/ui/SearchField";
 
 /**
  * app/(member)/library/page.tsx
@@ -89,6 +90,10 @@ export default async function LibraryPage(props: { searchParams: SearchParams })
       title: r.title,
       excerpt: r.excerpt,
       description: r.description,
+      vimeo_video_id: r.vimeo_video_id,
+      youtube_video_id: r.youtube_video_id,
+      castos_episode_url: r.castos_episode_url,
+      s3_audio_key: r.s3_audio_key,
       download_url: null,
       resource_links: null,
       publish_date: r.publish_date,
@@ -118,108 +123,95 @@ export default async function LibraryPage(props: { searchParams: SearchParams })
     <div>
       <PageHeader
         title="Library"
-        subtitle="Your archive of practices, principles, and themes."
+        subtitle="Browse daily grounding, weekly principles, monthly themes, and coaching content in one premium archive."
         hero
       />
       <div className="member-container py-8 md:py-10">
-
-      {/* Search bar */}
-      <form action="/library" method="GET" className="mb-5">
-        {/* Preserve tab when searching */}
+      <form action="/library" method="GET" className="mb-6">
         {activeTab !== "all" && (
           <input type="hidden" name="tab" value={activeTab} />
         )}
-        <div className="relative">
-          <svg
-            width="15"
-            height="15"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-            aria-hidden="true"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <path d="M21 21l-4.35-4.35" />
-          </svg>
-          <input
+        <SearchField
             id="library-search"
-            type="search"
             name="q"
             defaultValue={searchQuery}
             placeholder="Search practices, principles, themes…"
-            className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-muted border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40 transition-colors"
-            aria-label="Search library content"
-            autoComplete="off"
+            ariaLabel="Search library content"
+            trailing={
+              isSearchMode ? (
+                <a
+                  href={clearHref}
+                  className="text-muted-foreground transition-colors hover:text-foreground"
+                  aria-label="Clear search"
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </a>
+              ) : null
+            }
           />
-          {/* Clear ×  button — only visible when there's a query */}
-          {isSearchMode && (
-            <a
-              href={clearHref}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Clear search"
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </a>
-          )}
-        </div>
 
-        {/* Result count row */}
         {isSearchMode && (
-          <p className="text-xs text-muted-foreground mt-2">
+          <p className="mt-2 text-xs text-muted-foreground">
             {enriched.length === 0
               ? "No results"
               : enriched.length === 1
                 ? "1 result"
-                : `${enriched.length} results`}{" "}
-            for &ldquo;<span className="text-foreground font-medium">{searchQuery}</span>&rdquo;
+              : `${enriched.length} results`}{" "}
+            for &ldquo;<span className="font-medium text-foreground">{searchQuery}</span>&rdquo;
           </p>
         )}
       </form>
 
-      {/* Filter tabs — hidden during search */}
       {!isSearchMode && (
-        <nav
-          aria-label="Content filter"
-          className="flex gap-1 mb-6 bg-muted p-1 rounded-xl"
-        >
+        <nav aria-label="Content filter" className="mb-6 flex flex-wrap gap-2">
           {TAB_LABELS.map(({ key, label }) => (
-            <a
+            <FilterChip
               key={key}
               href={key === "all" ? "/library" : `/library?tab=${key}`}
-              className={[
-                "flex-1 text-center text-sm font-medium py-2 rounded-lg transition-colors",
-                activeTab === key
-                  ? "bg-card text-foreground shadow-soft"
-                  : "text-muted-foreground hover:text-foreground",
-              ].join(" ")}
-              aria-current={activeTab === key ? "page" : undefined}
+              active={activeTab === key}
             >
               {label}
-            </a>
+            </FilterChip>
           ))}
         </nav>
       )}
 
-      {/* Results or empty state */}
+      <div className="mb-6 grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
+        <div className="surface-card surface-card--tint p-5">
+          <p className="ui-section-eyebrow mb-2">Browse by Rhythm</p>
+          <h2 className="heading-balance font-heading text-xl font-semibold tracking-[-0.02em] text-foreground">
+            A premium archive built around Today, This Week, and This Month
+          </h2>
+          <p className="mt-2 text-sm leading-body text-muted-foreground">
+            Search across your library or browse by content rhythm without turning Positives into a course platform.
+          </p>
+        </div>
+        <div className="surface-card p-5">
+          <p className="ui-section-eyebrow mb-2">Coverage</p>
+          <p className="font-heading text-3xl font-bold tracking-[-0.03em] text-foreground">
+            {enriched.length}
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {isSearchMode ? "matching results" : "items in this view"}
+          </p>
+        </div>
+      </div>
+
       {enriched.length === 0 ? (
-        <div className="text-center py-16 flex flex-col items-center gap-3">
+        <div className="surface-card py-16 text-center flex flex-col items-center gap-3">
           {isSearchMode ? (
             <>
               <svg
@@ -258,7 +250,6 @@ export default async function LibraryPage(props: { searchParams: SearchParams })
         <LibraryList items={enriched} />
       )}
 
-      {/* Pagination — browse mode only */}
       {!isSearchMode && (page > 1 || hasMore) && (
         <nav
           aria-label="Library pagination"

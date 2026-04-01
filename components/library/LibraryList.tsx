@@ -24,6 +24,10 @@ type EnrichedLibraryItem = {
   description: string | null;
   download_url: string | null;
   resource_links: Json | null;
+  vimeo_video_id: string | null;
+  youtube_video_id: string | null;
+  castos_episode_url: string | null;
+  s3_audio_key: string | null;
   duration_seconds: number | null;
   typeLabel: string;
   dateContext: string | null;
@@ -32,6 +36,22 @@ type EnrichedLibraryItem = {
 
 interface LibraryListProps {
   items: EnrichedLibraryItem[];
+}
+
+function thumbClasses(type: string): string {
+  if (type === "weekly_principle") return "bg-[linear-gradient(160deg,#16364B_0%,#0B1E29_100%)]";
+  if (type === "monthly_theme") return "bg-[linear-gradient(160deg,#3B2A12_0%,#171108_100%)]";
+  if (type === "coaching_call") return "bg-[linear-gradient(160deg,#1A1B2A_0%,#0F1018_100%)]";
+  return "bg-[linear-gradient(160deg,#14312D_0%,#0A1715_100%)]";
+}
+
+function mediaBadges(item: EnrichedLibraryItem): string[] {
+  const badges: string[] = [];
+  if (item.castos_episode_url || item.s3_audio_key) badges.push("Audio");
+  if (item.vimeo_video_id || item.youtube_video_id) badges.push("Video");
+  if (item.download_url) badges.push("Download");
+  if (badges.length === 0) badges.push(item.typeLabel);
+  return badges;
 }
 
 export function LibraryList({ items }: LibraryListProps) {
@@ -69,100 +89,109 @@ export function LibraryList({ items }: LibraryListProps) {
 
   return (
     <>
-      <ul className="flex flex-col gap-3" role="list">
+      <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" role="list">
         {items.map((item) => (
           <li key={item.id}>
-            <article className="bg-card rounded-xl border border-border shadow-soft p-5">
-              {/* Type + date row */}
-              <div className="flex items-center justify-between mb-2">
-                <TypeBadge type={item.type} />
-                {item.dateContext && (
-                  <span className="text-xs text-muted-foreground">
-                    {item.dateContext}
-                  </span>
-                )}
+            <article className="surface-card h-full overflow-hidden">
+              <div className={`relative aspect-[16/10] ${thumbClasses(item.type)}`}>
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    backgroundImage:
+                      "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.08) 1px, transparent 0)",
+                    backgroundSize: "20px 20px",
+                  }}
+                />
+                <div className="absolute inset-0 flex flex-col justify-between p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <TypeBadge type={item.type} />
+                    {item.dateContext && (
+                      <span className="rounded-full bg-black/35 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white/80">
+                        {item.dateContext}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {mediaBadges(item).map((badge) => (
+                      <span
+                        key={badge}
+                        className="rounded-full bg-black/40 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white/78"
+                      >
+                        {badge}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </div>
 
-              {/* Title — links to detail page */}
-              <h2 className="font-heading font-semibold text-base text-foreground leading-heading tracking-[-0.02em] mb-1">
-                <Link
-                  href={`/library/${item.id}`}
-                  className="hover:text-primary transition-colors"
-                >
-                  {item.title}
-                </Link>
-              </h2>
-
-              {/* Excerpt */}
-              {(item.excerpt ?? item.description) && (
-                <p className="text-sm text-muted-foreground leading-body line-clamp-2 mb-3">
-                  {item.excerpt ?? item.description}
-                </p>
-              )}
-
-              {/* Duration chip — only for audio */}
-              {item.type === "daily_audio" && item.duration_seconds && (
-                <p className="text-xs text-muted-foreground mb-3">
-                  {Math.floor(item.duration_seconds / 60)} min
-                </p>
-              )}
-
-              {/* Resource links */}
-              {(item.download_url || item.resource_links) && (
-                <div className="mb-3">
-                  <ResourceLinks
-                    downloadUrl={item.download_url}
-                    resourceLinks={item.resource_links}
-                    accentClass={accentClassForType(item.type)}
-                  />
-                </div>
-              )}
-
-              {/* Note action + detail link */}
-              <div className="pt-3 border-t border-border flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={() => openNote(item)}
-                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all"
-                  style={{
-                    background: noteHasMap[item.id]
-                      ? "color-mix(in srgb, var(--color-secondary) 12%, transparent)"
-                      : "color-mix(in srgb, var(--color-secondary) 8%, transparent)",
-                    color: "var(--color-secondary)",
-                    border: "1px solid color-mix(in srgb, var(--color-secondary) 20%, transparent)",
-                  }}
-                >
-                  <svg
-                    width="11"
-                    height="11"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
+              <div className="flex h-full flex-col p-5">
+                <h2 className="mb-2 font-heading text-xl font-semibold leading-heading tracking-[-0.025em] text-foreground">
+                  <Link
+                    href={`/library/${item.id}`}
+                    className="heading-balance hover:text-primary transition-colors"
                   >
-                    <path d="M12 20h9" />
-                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-                  </svg>
-                  <span>
-                    {noteHasMap[item.id] ? "View note" : "Reflect"}
-                  </span>
-                  {noteHasMap[item.id] && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-secondary/70 inline-block" aria-label="Note exists" />
-                  )}
-                </button>
+                    {item.title}
+                  </Link>
+                </h2>
 
-                <Link
-                  href={`/library/${item.id}`}
-                  className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <span>Read more</span>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
-                </Link>
+                {(item.excerpt ?? item.description) && (
+                  <p className="mb-4 line-clamp-3 text-sm leading-body text-muted-foreground">
+                    {item.excerpt ?? item.description}
+                  </p>
+                )}
+
+                {item.duration_seconds && (
+                  <p className="mb-4 text-xs text-muted-foreground">
+                    {Math.floor(item.duration_seconds / 60)} min
+                  </p>
+                )}
+
+                {(item.download_url || item.resource_links) && (
+                  <div className="mb-4">
+                    <ResourceLinks
+                      downloadUrl={item.download_url}
+                      resourceLinks={item.resource_links}
+                      accentClass={accentClassForType(item.type)}
+                    />
+                  </div>
+                )}
+
+                <div className="mt-auto flex items-center justify-between gap-3 border-t border-border pt-4">
+                  <button
+                    type="button"
+                    onClick={() => openNote(item)}
+                    className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/8 px-3.5 py-1.5 text-xs font-semibold text-primary transition-all"
+                  >
+                    <svg
+                      width="11"
+                      height="11"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                    </svg>
+                    <span>{noteHasMap[item.id] ? "View note" : "Reflect"}</span>
+                    {noteHasMap[item.id] && (
+                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary/80" />
+                    )}
+                  </button>
+
+                  <Link
+                    href={`/library/${item.id}`}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <span>Open</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </Link>
+                </div>
               </div>
             </article>
           </li>
@@ -182,4 +211,3 @@ export function LibraryList({ items }: LibraryListProps) {
     </>
   );
 }
-

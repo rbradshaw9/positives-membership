@@ -1,13 +1,17 @@
 import { createClient } from "@/lib/supabase/server";
+import { getMemberPracticeSummary } from "@/lib/queries/get-member-practice-summary";
 import { AccountClient } from "./account-client";
 import { TimezoneForm } from "./timezone-form";
 import { BillingButton } from "./billing-button";
 import { PageHeader } from "@/components/member/PageHeader";
 import { SectionLabel } from "@/components/member/SectionLabel";
+import { Button } from "@/components/ui/Button";
+import { StatCard } from "@/components/ui/StatCard";
+import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { signOut } from "./actions";
 
 export const metadata = {
-  title: "Account — Positives",
+  title: "My Practice — Positives",
   description: "Manage your Positives membership settings.",
 };
 
@@ -24,6 +28,38 @@ const PLAN_NAMES: Record<string, string> = {
   level_3: "Positives Circle",
   level_4: "Executive Coaching",
 };
+
+function Heatmap({ values }: { values: Array<{ date: string; active: boolean }> }) {
+  return (
+    <div>
+      <div className="grid grid-cols-10 gap-2 sm:grid-cols-14">
+        {values.map((cell) => (
+          <div
+            key={cell.date}
+            className="aspect-square rounded-[4px]"
+            style={{
+              background: cell.active
+                ? "var(--color-primary)"
+                : "color-mix(in srgb, var(--color-muted) 85%, white)",
+              opacity: cell.active ? 1 : 0.95,
+            }}
+            title={cell.date}
+          />
+        ))}
+      </div>
+      <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
+        <span className="inline-flex items-center gap-2">
+          <span className="h-2.5 w-2.5 rounded-[3px] bg-muted inline-block" />
+          No practice
+        </span>
+        <span className="inline-flex items-center gap-2">
+          <span className="h-2.5 w-2.5 rounded-[3px] bg-primary inline-block" />
+          Practiced
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export default async function AccountPage() {
   const supabase = await createClient();
@@ -46,71 +82,102 @@ export default async function AccountPage() {
   const timezone = member?.timezone ?? "America/New_York";
   const hasBillingPortal = !!member?.stripe_customer_id;
   const status = member?.subscription_status ?? "active";
+  const summary = user ? await getMemberPracticeSummary(user.id) : null;
+  const memberName = member?.name?.trim() || "Member";
+  const initials = memberName.charAt(0).toUpperCase();
+  const joinedLabel = user?.created_at
+    ? new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(
+        new Date(user.created_at)
+      )
+    : "Recently";
 
   return (
     <div>
-      {/* ── Hero ─────────────────────────────────────────────────────────── */}
-      <PageHeader title="Account" hero />
+      <PageHeader
+        title="My Practice"
+        subtitle="Your rhythm, membership settings, and progress all in one place."
+        hero
+      />
 
       <div className="member-container py-8 md:py-10 flex flex-col gap-8">
-        {/* ── 1. Membership ──────────────────────────────────────────────── */}
-        <section aria-labelledby="section-membership">
-          <SectionLabel id="section-membership">Membership</SectionLabel>
-          {/* Elevated card — shadow-large + green left accent border */}
-          <div
-            className="bg-card rounded-2xl border border-border border-l-[3px] border-l-secondary p-6 flex items-center justify-between"
-            style={{ boxShadow: "var(--shadow-large)" }}
-          >
-            <div>
-              <p className="font-heading font-semibold text-base text-foreground tracking-[-0.02em]">
-                {planName}
-              </p>
-              <span className="flex items-center gap-1.5 text-xs text-muted-foreground capitalize mt-0.5">
-                <span
-                  className="w-2 h-2 rounded-full bg-secondary inline-block flex-shrink-0"
-                  aria-hidden="true"
-                />
-                {status}
-              </span>
+        <SurfaceCard
+          tone="dark"
+          padding="lg"
+          className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between"
+        >
+          <div className="flex items-start gap-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/10 text-lg font-bold text-white">
+              {initials}
             </div>
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-secondary bg-secondary/10 px-2.5 py-1 rounded-full">
-              Active
-            </span>
+            <div>
+              <p className="ui-section-eyebrow mb-2 text-white/60">Member Profile</p>
+              <h2
+                className="heading-balance font-heading text-2xl font-bold tracking-[-0.03em] text-white"
+              >
+                {memberName}
+              </h2>
+              <p className="mt-1 text-sm text-white/60">{email}</p>
+              <p className="mt-2 text-sm text-white/72">
+                {planName} · {status} · Member since {joinedLabel}
+              </p>
+            </div>
           </div>
+
+          <div className="grid grid-cols-3 gap-3 md:min-w-[360px]">
+            <StatCard label="Streak" value={summary?.practiceStreak ?? 0} />
+            <StatCard label="Listens" value={summary?.listenCount ?? 0} />
+            <StatCard label="Notes" value={summary?.journalCount ?? 0} />
+          </div>
+        </SurfaceCard>
+
+        <section aria-labelledby="section-history">
+          <SectionLabel id="section-history">Practice History</SectionLabel>
+          <SurfaceCard elevated className="overflow-hidden">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="heading-balance font-heading text-xl font-semibold tracking-[-0.02em] text-foreground">
+                  Last 10 weeks
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Your activity map is based on completed listens recorded in Positives.
+                </p>
+              </div>
+            </div>
+            <Heatmap values={summary?.heatmap ?? []} />
+          </SurfaceCard>
         </section>
 
-        {/* ── 2. Billing ─────────────────────────────────────────────────── */}
         <section aria-labelledby="section-billing">
-          <SectionLabel id="section-billing">Billing</SectionLabel>
+          <SectionLabel id="section-billing">Membership & Billing</SectionLabel>
           {hasBillingPortal ? (
             <BillingButton />
           ) : (
-            <div className="bg-card rounded-2xl border border-border p-6" style={{ boxShadow: "var(--shadow-medium)" }}>
+            <SurfaceCard elevated>
               <p className="text-sm text-muted-foreground">
                 Billing management will be available once your account is fully set up.
               </p>
-            </div>
+            </SurfaceCard>
           )}
         </section>
 
-        {/* ── 3. Timezone ────────────────────────────────────────────────── */}
         <section aria-labelledby="section-timezone">
           <SectionLabel id="section-timezone">Timezone</SectionLabel>
           <TimezoneForm currentTimezone={timezone} />
         </section>
 
-        {/* ── 4. Security ────────────────────────────────────────────────── */}
         <section aria-labelledby="section-security">
           <SectionLabel id="section-security">Security</SectionLabel>
           <div className="flex flex-col gap-3">
-            {/* Email — read-only display */}
-            <div className="bg-muted/60 rounded-2xl px-4 py-3 text-sm text-muted-foreground border border-border">
+            <SurfaceCard padding="sm" className="text-sm text-muted-foreground">
               {email}
-            </div>
+            </SurfaceCard>
 
-            {/* Password */}
             {passwordSet ? (
-              <div className="bg-card rounded-2xl border border-border px-4 py-3 flex items-center gap-3" style={{ boxShadow: "var(--shadow-medium)" }}>
+              <SurfaceCard
+                elevated
+                padding="sm"
+                className="flex items-center gap-3"
+              >
                 <svg
                   width="14"
                   height="14"
@@ -127,29 +194,29 @@ export default async function AccountPage() {
                 <span className="text-sm font-medium text-secondary">
                   Password is set
                 </span>
-              </div>
+              </SurfaceCard>
             ) : (
-              <div className="bg-card rounded-2xl border border-border p-6" style={{ boxShadow: "var(--shadow-medium)" }}>
+              <SurfaceCard elevated padding="lg">
                 <p className="text-sm text-muted-foreground leading-body mb-5">
                   You signed up via a magic link. Add a password so you can sign in
                   anytime.
                 </p>
                 <AccountClient />
-              </div>
+              </SurfaceCard>
             )}
           </div>
         </section>
-        {/* ── 5. Sign out ─────────────────────────────────────────────────── */}
+
         <section aria-labelledby="section-signout">
           <SectionLabel id="section-signout">Session</SectionLabel>
           <form action={signOut}>
-            <button
+            <Button
               type="submit"
-              className="w-full text-left px-4 py-3 rounded-2xl border border-border bg-card text-sm text-destructive hover:bg-destructive/5 transition-colors"
-              style={{ boxShadow: "var(--shadow-medium)" }}
+              variant="outline"
+              className="w-full justify-start text-sm text-destructive hover:text-destructive"
             >
               Sign out
-            </button>
+            </Button>
           </form>
         </section>
       </div>

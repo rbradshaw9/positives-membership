@@ -36,6 +36,8 @@ export default async function AdminLayout({
             {[
               { href: "/admin", label: "Overview" },
               { href: "/admin/content", label: "Content" },
+              { href: "/admin/content/calendar", label: "Calendar" },
+              { href: "/admin/members", label: "Members" },
               { href: "/admin/ingestion", label: "Ingestion" },
             ].map(({ href, label }) => (
               <li key={href}>

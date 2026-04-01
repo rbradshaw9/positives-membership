@@ -15,7 +15,13 @@ export const metadata = {
   title: "New Content — Positives Admin",
 };
 
-type SearchParams = Promise<{ error?: string; type?: string }>;
+type SearchParams = Promise<{
+  error?: string;
+  type?: string;
+  publish_date?: string;
+  week_start?: string;
+  month_year?: string;
+}>;
 
 export default async function AdminContentNewPage({
   searchParams,
@@ -56,6 +62,11 @@ export default async function AdminContentNewPage({
         defaultType={defaultType}
         todayEastern={todayEastern}
         submitLabel="Create content"
+        dateDefaults={{
+          publish_date: params.publish_date,
+          week_start: params.week_start,
+          month_year: params.month_year,
+        }}
       />
     </div>
   );
@@ -109,12 +120,18 @@ export function ContentForm({
   todayEastern,
   submitLabel,
   values,
+  dateDefaults,
 }: {
   action: (formData: FormData) => Promise<void>;
   defaultType: string;
   todayEastern: string;
   submitLabel: string;
   values?: ContentFormValues;
+  dateDefaults?: {
+    publish_date?: string;
+    week_start?: string;
+    month_year?: string;
+  };
 }) {
   const type = values?.type ?? defaultType;
   const isDaily = type === "daily_audio";
@@ -287,7 +304,7 @@ export function ContentForm({
               id="publish_date"
               name="publish_date"
               type="date"
-              defaultValue={values?.publish_date ?? todayEastern}
+              defaultValue={values?.publish_date ?? dateDefaults?.publish_date ?? todayEastern}
               className="admin-input"
             />
             <p className="text-xs text-muted-foreground">
@@ -305,7 +322,7 @@ export function ContentForm({
               id="week_start"
               name="week_start"
               type="date"
-              defaultValue={values?.week_start ?? ""}
+              defaultValue={values?.week_start ?? dateDefaults?.week_start ?? ""}
               className="admin-input"
             />
             <p className="text-xs text-muted-foreground">
@@ -323,7 +340,7 @@ export function ContentForm({
               id="month_year"
               name="month_year"
               type="month"
-              defaultValue={values?.month_year ?? ""}
+              defaultValue={values?.month_year ?? dateDefaults?.month_year ?? ""}
               className="admin-input"
             />
             <p className="text-xs text-muted-foreground">

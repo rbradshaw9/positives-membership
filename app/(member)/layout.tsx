@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveMember } from "@/lib/auth/require-active-member";
-import { MemberTopNav } from "@/components/member/MemberTopNav";
 import { PasswordNudgeBanner } from "@/components/member/PasswordNudgeBanner";
+import { MemberShellClient } from "@/components/member/MemberShellClient";
 
 /**
  * app/(member)/layout.tsx
@@ -30,10 +30,9 @@ export default async function MemberLayout({
   const streak = streakRow?.practice_streak ?? 0;
 
   return (
-    <div className="min-h-dvh bg-background flex flex-col">
-      <MemberTopNav streak={streak} tier={member.subscription_tier} />
+    <MemberShellClient streak={streak} tier={member.subscription_tier}>
       {showPasswordNudge && <PasswordNudgeBanner />}
-      <main className="flex-1 pb-24 md:pb-12">{children}</main>
-    </div>
+      {children}
+    </MemberShellClient>
   );
 }

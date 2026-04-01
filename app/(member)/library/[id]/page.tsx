@@ -4,12 +4,15 @@ import type { Metadata } from "next";
 import { requireActiveMember } from "@/lib/auth/require-active-member";
 import { checkTierAccess } from "@/lib/auth/check-tier-access";
 import { getLibraryItem } from "@/lib/queries/get-library-item";
+import { resolveAudioUrl } from "@/lib/media/resolve-audio-url";
 import { getNoteForContent } from "@/app/(member)/notes/actions";
 import { MarkdownBody } from "@/components/content/MarkdownBody";
 import { TypeBadge } from "@/components/member/TypeBadge";
 import { VideoEmbed } from "@/components/media/VideoEmbed";
 import { ResourceLinks } from "@/components/media/ResourceLinks";
 import { LibraryReflectSection } from "@/components/library/LibraryReflectSection";
+import { AudioPlayer } from "@/components/today/AudioPlayer";
+import { SurfaceCard } from "@/components/ui/SurfaceCard";
 
 /**
  * app/(member)/library/[id]/page.tsx
@@ -97,6 +100,11 @@ export default async function LibraryItemPage({ params }: Props) {
   const bodyContent = item.body || item.description || "";
   const dateContext = getDateContext(item);
   const accentClass = accentClassForType(item.type);
+  const audioUrl = await resolveAudioUrl(item.castos_episode_url, item.s3_audio_key);
+  const audioDuration =
+    item.duration_seconds != null
+      ? `${Math.floor(item.duration_seconds / 60)}:${String(item.duration_seconds % 60).padStart(2, "0")}`
+      : "—";
 
   return (
     <div className="member-container py-8 md:py-12">
@@ -121,7 +129,7 @@ export default async function LibraryItemPage({ params }: Props) {
         <span>Library</span>
       </Link>
 
-      <article>
+      <article className="space-y-6">
         {/* ── Meta row ──────────────────────────────────────────────────────── */}
         <div className="flex items-center gap-3 mb-4">
           <TypeBadge type={item.type} />
@@ -131,7 +139,7 @@ export default async function LibraryItemPage({ params }: Props) {
         </div>
 
         {/* ── Title ─────────────────────────────────────────────────────────── */}
-        <h1 className="font-heading font-bold text-2xl md:text-3xl text-foreground leading-heading tracking-[-0.03em] mb-3">
+        <h1 className="heading-balance font-heading font-bold text-2xl md:text-3xl text-foreground leading-heading tracking-[-0.03em] mb-3">
           {item.title}
         </h1>
 
@@ -144,10 +152,7 @@ export default async function LibraryItemPage({ params }: Props) {
 
         {/* ── Video embed ───────────────────────────────────────────────────── */}
         {hasVideo && (
-          <div
-            className="rounded-2xl overflow-hidden mb-6"
-            style={{ border: "1px solid var(--color-border)" }}
-          >
+          <div className="overflow-hidden rounded-2xl border border-border">
             <VideoEmbed
               vimeoId={item.vimeo_video_id}
               youtubeId={item.youtube_video_id}
@@ -156,18 +161,25 @@ export default async function LibraryItemPage({ params }: Props) {
           </div>
         )}
 
-        {/* ── Full body ─────────────────────────────────────────────────────── */}
+        {audioUrl && (
+          <SurfaceCard elevated>
+            <p className="ui-section-eyebrow mb-3">Listen</p>
+            <AudioPlayer
+              trackId={item.id}
+              src={audioUrl}
+              title={item.title}
+              subtitle={item.type === "daily_audio" ? "Daily Practice" : "Library Audio"}
+              duration={audioDuration}
+              tone="light"
+              onCompleteContentId={item.type === "daily_audio" ? item.id : undefined}
+            />
+          </SurfaceCard>
+        )}
+
         {hasBody && (
-          <div
-            className="rounded-2xl p-6 mb-6"
-            style={{
-              background: "var(--color-card)",
-              border: "1px solid var(--color-border)",
-              boxShadow: "var(--shadow-soft)",
-            }}
-          >
+          <SurfaceCard padding="lg" elevated>
             <MarkdownBody content={bodyContent} />
-          </div>
+          </SurfaceCard>
         )}
 
         {/* ── Resource links ────────────────────────────────────────────────── */}
@@ -185,20 +197,14 @@ export default async function LibraryItemPage({ params }: Props) {
         )}
 
         {/* ── Reflect section ───────────────────────────────────────────────── */}
-        <div
-          className="rounded-2xl p-6"
-          style={{
-            background: "var(--color-surface-tint)",
-            border: "1px solid var(--color-border)",
-          }}
-        >
+        <SurfaceCard tone="tint" padding="lg">
           <LibraryReflectSection
             contentId={item.id}
             contentTitle={item.title}
             reflectionPrompt={item.reflection_prompt}
             initialHasNote={hasNote}
           />
-        </div>
+        </SurfaceCard>
       </article>
     </div>
   );

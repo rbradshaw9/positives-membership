@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/Button";
+import { SurfaceCard } from "@/components/ui/SurfaceCard";
+
 /**
  * components/coaching/CoachingUpgradePrompt.tsx
  * Sprint 10: Shown to Level 1 and Level 2 members on /coaching.
@@ -10,12 +13,9 @@ export function CoachingUpgradePrompt({ tier }: { tier: string | null }) {
 
   return (
     <div className="member-container py-12 md:py-16">
-      <div
-        className="max-w-lg mx-auto text-center rounded-2xl px-8 py-12 flex flex-col items-center gap-5"
-        style={{
-          background: "var(--color-card)",
-          border: "1px solid var(--color-border)",
-        }}
+      <SurfaceCard
+        className="mx-auto flex max-w-lg flex-col items-center gap-5 px-8 py-12 text-center"
+        elevated
       >
         {/* Icon */}
         <div
@@ -43,8 +43,7 @@ export function CoachingUpgradePrompt({ tier }: { tier: string | null }) {
 
         <div>
           <h1
-            className="font-heading font-bold text-xl tracking-tight mb-2"
-            style={{ color: "var(--color-foreground)" }}
+            className="heading-balance font-heading font-bold text-xl tracking-tight mb-2"
           >
             Weekly Coaching Calls
           </h1>
@@ -57,19 +56,12 @@ export function CoachingUpgradePrompt({ tier }: { tier: string | null }) {
           </p>
         </div>
 
-        <a
-          href="/join"
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
-          style={{
-            background: "var(--color-primary)",
-            color: "var(--color-primary-foreground)",
-          }}
-        >
+        <Button href="/join">
           Explore higher levels
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M5 12h14M12 5l7 7-7 7" />
           </svg>
-        </a>
+        </Button>
 
         <p className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>
           Questions? Email us at{" "}
@@ -77,7 +69,7 @@ export function CoachingUpgradePrompt({ tier }: { tier: string | null }) {
             hello@livetoday.com
           </a>
         </p>
-      </div>
+      </SurfaceCard>
     </div>
   );
 }

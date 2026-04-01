@@ -89,41 +89,33 @@ export default async function TodayPage() {
         className="relative overflow-hidden border-b border-border"
         style={{
           background:
-            "radial-gradient(ellipse at 60% 0%, rgba(47,111,237,0.07) 0%, transparent 65%), var(--color-card)",
+            "radial-gradient(ellipse at 12% 0%, rgba(46,196,182,0.14) 0%, transparent 48%), radial-gradient(ellipse at 88% 18%, rgba(68,168,216,0.10) 0%, transparent 40%), var(--color-card)",
         }}
       >
         <div className="member-container py-10 md:py-14">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground/70 mb-3">
-            {todayLabel}
-          </p>
-          <h1 className="font-heading font-bold text-3xl md:text-4xl text-foreground tracking-[-0.035em] leading-tight mb-2">
-            {greeting}
-          </h1>
-          <p className="text-base text-muted-foreground leading-body">
-            {todayContent
-              ? "Here's your practice for today."
-              : "Your practice will be here soon — come back a little later."}
-          </p>
-
-          {/* Streak display — visible in hero on mobile (nav chip is desktop-only) */}
-          {streak > 0 && (
-            <div className="mt-5 inline-flex items-center gap-1.5 md:hidden">
-              <span
-                className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full"
-                style={{
-                  color: streak >= 7 ? "var(--color-secondary)" : "var(--color-muted-fg)",
-                  background: streak >= 7
-                    ? "color-mix(in srgb, var(--color-secondary) 10%, transparent)"
-                    : "var(--color-muted)",
-                }}
-              >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2z" />
-                </svg>
-                Day {streak}
-              </span>
+          <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_260px] md:items-end">
+            <div>
+              <p className="ui-section-eyebrow mb-3">{todayLabel}</p>
+              <h1 className="heading-balance font-heading font-bold text-3xl md:text-4xl text-foreground tracking-[-0.035em] leading-tight mb-2">
+                {greeting}
+              </h1>
+              <p className="max-w-2xl text-base text-muted-foreground leading-body">
+                {todayContent
+                  ? "Your daily practice is ready. Start here, then carry the rhythm into the rest of your week."
+                  : "Your practice will be here soon — come back a little later."}
+              </p>
             </div>
-          )}
+
+            <div className="surface-card p-5">
+              <p className="ui-section-eyebrow mb-2">My Rhythm</p>
+              <p className="font-heading text-3xl font-bold tracking-[-0.03em] text-foreground">
+                {streak}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                day streak {streak > 0 ? "and counting" : "ready to begin"}
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 

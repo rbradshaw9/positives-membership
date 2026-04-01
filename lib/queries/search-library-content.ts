@@ -15,6 +15,10 @@ export interface SearchResult {
   title: string;
   excerpt: string | null;
   description: string | null;
+  vimeo_video_id: string | null;
+  youtube_video_id: string | null;
+  castos_episode_url: string | null;
+  s3_audio_key: string | null;
   publish_date: string | null;
   week_start: string | null;
   month_year: string | null;
@@ -34,7 +38,7 @@ export async function searchLibraryContent(
   let q = supabase
     .from("content")
     .select(
-      "id, type, title, excerpt, description, publish_date, week_start, month_year, duration_seconds"
+      "id, type, title, excerpt, description, vimeo_video_id, youtube_video_id, castos_episode_url, s3_audio_key, publish_date, week_start, month_year, duration_seconds"
     )
     .eq("status", "published")
     .in("type", ["daily_audio", "weekly_principle", "monthly_theme", "coaching_call"])

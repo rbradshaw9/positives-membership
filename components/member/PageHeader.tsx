@@ -1,3 +1,5 @@
+import { PageHero } from "@/components/ui/PageHero";
+
 /**
  * components/member/PageHeader.tsx
  * Sprint 9: larger display heading to match marketing site typography scale.
@@ -23,10 +25,14 @@ interface PageHeaderProps {
 }
 
 export function PageHeader({ title, subtitle, right, hero = false }: PageHeaderProps) {
+  if (hero) {
+    return <PageHero title={title} subtitle={subtitle} right={right} />;
+  }
+
   const inner = (
     <div className="member-container py-10 md:py-14">
       <div className="flex items-start justify-between gap-4">
-        <h1 className="font-heading font-bold text-3xl md:text-4xl text-foreground tracking-[-0.035em] leading-tight">
+        <h1 className="heading-balance font-heading font-bold text-3xl md:text-4xl text-foreground tracking-[-0.035em] leading-tight">
           {title}
         </h1>
         {right && <div className="flex-shrink-0 mt-1.5">{right}</div>}
@@ -38,10 +44,6 @@ export function PageHeader({ title, subtitle, right, hero = false }: PageHeaderP
       )}
     </div>
   );
-
-  if (hero) {
-    return <section className="member-hero">{inner}</section>;
-  }
 
   return (
     <header className="mb-8">

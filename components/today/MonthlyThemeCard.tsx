@@ -82,7 +82,7 @@ export function MonthlyThemeCard({
 
           {content ? (
             <>
-              <h2 className="font-heading font-bold text-xl text-foreground leading-heading tracking-[-0.02em] mb-2">
+              <h2 className="heading-balance font-heading font-bold text-xl text-foreground leading-heading tracking-[-0.02em] mb-2">
                 {content.title}
               </h2>
               {content.excerpt && (

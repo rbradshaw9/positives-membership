@@ -47,6 +47,12 @@ const config: Config = {
         warning: "var(--color-warning)",
         "surface-dark": "var(--color-surface-dark)",
         "surface-tint": "var(--color-surface-tint)",
+        "surface-shell": "var(--color-surface-shell)",
+        "shell-border": "var(--color-shell-border)",
+        "shell-foreground": "var(--color-shell-foreground)",
+        "player-bg": "var(--color-player-bg)",
+        "player-track": "var(--color-player-track)",
+        "player-bar": "var(--color-player-bar)",
       },
       borderRadius: {
         sm: "var(--radius-sm)",
@@ -60,6 +66,8 @@ const config: Config = {
         medium: "var(--shadow-medium)",
         large: "var(--shadow-large)",
         focus: "var(--shadow-focus)",
+        glow: "var(--shadow-glow)",
+        player: "var(--shadow-player)",
       },
       lineHeight: {
         tight: "1.08",

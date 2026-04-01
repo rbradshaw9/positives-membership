@@ -124,12 +124,20 @@ export default async function AdminContentPage({
             {typeFilter ? ` · ${formatType(typeFilter)}` : ""}
           </p>
         </div>
-        <Link
-          href="/admin/content/new"
-          className="px-4 py-2 rounded bg-primary text-primary-foreground font-medium text-sm hover:bg-primary-hover transition-colors shadow-soft"
-        >
-          + New content
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/admin/content/calendar"
+            className="px-4 py-2 rounded border border-border text-muted-foreground font-medium text-sm hover:text-foreground hover:bg-muted transition-colors"
+          >
+            Calendar
+          </Link>
+          <Link
+            href="/admin/content/new"
+            className="px-4 py-2 rounded bg-primary text-primary-foreground font-medium text-sm hover:bg-primary-hover transition-colors shadow-soft"
+          >
+            + New content
+          </Link>
+        </div>
       </div>
 
       {/* Success / error banners */}

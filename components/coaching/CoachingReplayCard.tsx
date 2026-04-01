@@ -1,3 +1,5 @@
+import { SurfaceCard } from "@/components/ui/SurfaceCard";
+
 /**
  * components/coaching/CoachingReplayCard.tsx
  * Sprint 10: Card for past coaching call replays.
@@ -40,13 +42,7 @@ export function CoachingReplayCard({
   const hasVideo = !!(vimeoVideoId || youtubeVideoId);
 
   return (
-    <div
-      className="rounded-xl p-5 flex flex-col gap-3"
-      style={{
-        background: "var(--color-card)",
-        border: "1px solid var(--color-border)",
-      }}
-    >
+    <SurfaceCard elevated className="flex flex-col gap-3">
       <div className="flex items-start gap-3">
         {/* Video badge */}
         <div
@@ -149,6 +145,6 @@ export function CoachingReplayCard({
           )}
         </div>
       )}
-    </div>
+    </SurfaceCard>
   );
 }

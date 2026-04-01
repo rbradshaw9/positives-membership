@@ -1,3 +1,5 @@
+import { SectionEyebrow } from "@/components/ui/SectionEyebrow";
+
 /**
  * components/member/SectionLabel.tsx
  * Sprint 7: shared uppercase eyebrow label for content sections.
@@ -12,12 +14,5 @@ interface SectionLabelProps {
 }
 
 export function SectionLabel({ id, children }: SectionLabelProps) {
-  return (
-    <h2
-      id={id}
-      className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3"
-    >
-      {children}
-    </h2>
-  );
+  return <SectionEyebrow id={id} as="h2" className="mb-3">{children}</SectionEyebrow>;
 }

@@ -86,7 +86,7 @@ export function WeeklyPrincipleCard({
 
           {content ? (
             <>
-              <h2 className="font-heading font-bold text-xl text-foreground leading-heading tracking-[-0.02em] mb-2">
+              <h2 className="heading-balance font-heading font-bold text-xl text-foreground leading-heading tracking-[-0.02em] mb-2">
                 {content.title}
               </h2>
               {content.excerpt && (
@@ -133,13 +133,16 @@ export function WeeklyPrincipleCard({
           >
             <div className="bg-surface-dark/80 rounded-xl px-4 py-4">
               <AudioPlayer
+                trackId={content.id}
                 src={audioUrl!}
                 title={content.title}
+                subtitle="This Week"
                 duration={
                   content.duration_seconds
                     ? `${Math.floor(content.duration_seconds / 60)}:${String(content.duration_seconds % 60).padStart(2, "0")}`
                     : "—"
                 }
+                tone="light"
               />
             </div>
           </div>
