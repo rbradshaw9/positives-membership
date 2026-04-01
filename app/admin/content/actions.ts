@@ -92,9 +92,11 @@ function buildRow(input: ContentInput) {
     resource_links: (() => {
       try {
         const parsed = JSON.parse(input.resource_links);
-        return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
+        // resource_links is NOT NULL in DB (default '[]'::jsonb).
+        // Must never write null — return empty array instead.
+        return Array.isArray(parsed) ? parsed : [];
       } catch {
-        return null;
+        return [];
       }
     })(),
     status: input.status,
