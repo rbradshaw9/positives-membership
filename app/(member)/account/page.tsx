@@ -4,6 +4,7 @@ import { TimezoneForm } from "./timezone-form";
 import { BillingButton } from "./billing-button";
 import { PageHeader } from "@/components/member/PageHeader";
 import { SectionLabel } from "@/components/member/SectionLabel";
+import { signOut } from "./actions";
 
 export const metadata = {
   title: "Account — Positives",
@@ -137,6 +138,19 @@ export default async function AccountPage() {
               </div>
             )}
           </div>
+        </section>
+        {/* ── 5. Sign out ─────────────────────────────────────────────────── */}
+        <section aria-labelledby="section-signout">
+          <SectionLabel id="section-signout">Session</SectionLabel>
+          <form action={signOut}>
+            <button
+              type="submit"
+              className="w-full text-left px-4 py-3 rounded-2xl border border-border bg-card text-sm text-destructive hover:bg-destructive/5 transition-colors"
+              style={{ boxShadow: "var(--shadow-medium)" }}
+            >
+              Sign out
+            </button>
+          </form>
         </section>
       </div>
     </div>

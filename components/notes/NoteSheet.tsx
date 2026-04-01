@@ -166,10 +166,11 @@ export function NoteSheet({
           "md:hidden",
           "bottom-0 left-0 right-0",
           "rounded-t-[1.75rem]",
-          "max-h-[70dvh]",
+          "max-h-[80dvh]",
           "transition-transform duration-200 ease-out",
           isOpen ? "translate-y-0" : "translate-y-full",
         ].join(" ")}
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
         {/* Grab handle — wider and softer */}
         <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
@@ -276,7 +277,10 @@ function NoteSheetContent({
         </p>
       )}
 
-      <div className="flex gap-3 flex-shrink-0">
+      <div
+        className="flex gap-3 flex-shrink-0"
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      >
         {/* Cancel — ghost treatment */}
         <button
           type="button"

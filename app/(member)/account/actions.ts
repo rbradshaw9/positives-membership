@@ -11,9 +11,10 @@ type ActionResult = { error?: string; success?: true };
  * app/(member)/account/actions.ts
  * Server actions for the /account page.
  *
- * setPassword   — set/change password for guest-onboarded members
- * updateTimezone — save member's preferred timezone
+ * setPassword          — set/change password for guest-onboarded members
+ * updateTimezone       — save member's preferred timezone
  * redirectToBillingPortal — create a Stripe Customer Portal session and redirect
+ * signOut              — sign the current user out and redirect to /login
  */
 
 export async function setPassword(
@@ -137,4 +138,14 @@ export async function redirectToBillingPortal(): Promise<void> {
   });
 
   redirect(session.url);
+}
+
+/**
+ * signOut — invalidates the Supabase session and redirects to /login.
+ * Safe to call with a form action (no return value needed).
+ */
+export async function signOut(): Promise<never> {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  redirect("/login");
 }
