@@ -5,6 +5,7 @@ import type { MonthlyContent } from "@/lib/queries/get-monthly-content";
 import { NoteSheet } from "@/components/notes/NoteSheet";
 import { VideoEmbed } from "@/components/media/VideoEmbed";
 import { ResourceLinks } from "@/components/media/ResourceLinks";
+import { MarkdownBody } from "@/components/content/MarkdownBody";
 import { getNoteForContent } from "@/app/(member)/notes/actions";
 import { trackMonthlyViewed } from "@/app/(member)/today/engagement-actions";
 
@@ -117,12 +118,12 @@ export function MonthlyThemeCard({
           </div>
         )}
 
-        {/* ── Body text (ambient — capped, no expand) ─────────────────── */}
+        {/* ── Body text (ambient — capped at 4 lines, no expand) ─────────── */}
         {content && hasBody && (
           <div className="px-5 md:px-6 pt-3">
-            <p className="text-sm text-foreground/55 leading-relaxed line-clamp-4 whitespace-pre-line">
-              {bodyText}
-            </p>
+            <div className="line-clamp-4 overflow-hidden">
+              <MarkdownBody content={bodyText} />
+            </div>
           </div>
         )}
 
@@ -145,16 +146,23 @@ export function MonthlyThemeCard({
                 &ldquo;{content.reflection_prompt}&rdquo;
               </p>
             )}
-            <div className="pt-3 border-t border-border/60">
+            <div className="pt-3 border-t border-border/60 flex items-center justify-between">
               <button
                 type="button"
                 onClick={handleOpenNote}
                 disabled={loadingNote}
-                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
+                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all disabled:opacity-40"
+                style={{
+                  background: noteExists
+                    ? "color-mix(in srgb, var(--color-accent) 12%, transparent)"
+                    : "color-mix(in srgb, var(--color-accent) 10%, transparent)",
+                  color: "var(--color-accent)",
+                  border: "1px solid color-mix(in srgb, var(--color-accent) 22%, transparent)",
+                }}
               >
                 <svg
-                  width="12"
-                  height="12"
+                  width="11"
+                  height="11"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -171,7 +179,7 @@ export function MonthlyThemeCard({
                 </span>
                 {noteExists && (
                   <span
-                    className="w-1.5 h-1.5 rounded-full bg-accent/60 inline-block"
+                    className="w-1.5 h-1.5 rounded-full bg-accent/70 inline-block"
                     aria-label="Note exists"
                   />
                 )}

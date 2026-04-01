@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createContent } from "../actions";
 import { getEffectiveDate } from "@/lib/dates/effective-date";
 import { ResourceLinksEditor } from "@/components/admin/ResourceLinksEditor";
+import { BodyEditor } from "@/components/admin/BodyEditor";
 
 /**
  * app/admin/content/new/page.tsx
@@ -342,16 +343,12 @@ export function ContentForm({
           <label htmlFor="body" className="text-sm font-medium text-foreground">
             Body / supporting notes
           </label>
-          <textarea
-            id="body"
-            name="body"
-            rows={6}
+          <BodyEditor
             defaultValue={values?.body ?? ""}
-            placeholder="Markdown-supported. Supporting text shown to members on the Today card and in the Library."
-            className="admin-input resize-none font-mono text-sm"
+            placeholder="Write body content\u2026 Headings, bold, lists, and links supported."
           />
           <p className="text-xs text-muted-foreground">
-            Shown below the excerpt on Weekly/Monthly cards. Supports Markdown.
+            Shown below the excerpt on Weekly/Monthly cards. Saves as Markdown.
           </p>
         </div>
 

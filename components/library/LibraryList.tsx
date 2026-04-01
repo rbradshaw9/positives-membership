@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { NoteSheet } from "@/components/notes/NoteSheet";
 import { ResourceLinks } from "@/components/media/ResourceLinks";
 import { getNoteForContent } from "@/app/(member)/notes/actions";
@@ -82,9 +83,14 @@ export function LibraryList({ items }: LibraryListProps) {
                 )}
               </div>
 
-              {/* Title */}
+              {/* Title — links to detail page */}
               <h2 className="font-heading font-semibold text-base text-foreground leading-heading tracking-[-0.02em] mb-1">
-                {item.title}
+                <Link
+                  href={`/library/${item.id}`}
+                  className="hover:text-primary transition-colors"
+                >
+                  {item.title}
+                </Link>
               </h2>
 
               {/* Excerpt */}
@@ -112,16 +118,23 @@ export function LibraryList({ items }: LibraryListProps) {
                 </div>
               )}
 
-              {/* Note action */}
-              <div className="pt-3 border-t border-border">
+              {/* Note action + detail link */}
+              <div className="pt-3 border-t border-border flex items-center justify-between">
                 <button
                   type="button"
                   onClick={() => openNote(item)}
-                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all"
+                  style={{
+                    background: noteHasMap[item.id]
+                      ? "color-mix(in srgb, var(--color-secondary) 12%, transparent)"
+                      : "color-mix(in srgb, var(--color-secondary) 8%, transparent)",
+                    color: "var(--color-secondary)",
+                    border: "1px solid color-mix(in srgb, var(--color-secondary) 20%, transparent)",
+                  }}
                 >
                   <svg
-                    width="12"
-                    height="12"
+                    width="11"
+                    height="11"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -137,9 +150,19 @@ export function LibraryList({ items }: LibraryListProps) {
                     {noteHasMap[item.id] ? "View note" : "Reflect"}
                   </span>
                   {noteHasMap[item.id] && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-secondary inline-block ml-0.5" aria-label="Note exists" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-secondary/70 inline-block" aria-label="Note exists" />
                   )}
                 </button>
+
+                <Link
+                  href={`/library/${item.id}`}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <span>Read more</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </Link>
               </div>
             </article>
           </li>

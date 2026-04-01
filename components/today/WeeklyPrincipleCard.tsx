@@ -6,6 +6,7 @@ import { NoteSheet } from "@/components/notes/NoteSheet";
 import { VideoEmbed } from "@/components/media/VideoEmbed";
 import { AudioPlayer } from "@/components/today/AudioPlayer";
 import { ResourceLinks } from "@/components/media/ResourceLinks";
+import { MarkdownBody } from "@/components/content/MarkdownBody";
 import { getNoteForContent } from "@/app/(member)/notes/actions";
 import { trackWeeklyViewed } from "@/app/(member)/today/engagement-actions";
 
@@ -147,13 +148,9 @@ export function WeeklyPrincipleCard({
         {/* ── Body / supporting text ──────────────────────────────────── */}
         {content && hasBody && (
           <div className="px-5 md:px-6 pt-4">
-            <p
-              className={`text-sm text-foreground/60 leading-relaxed whitespace-pre-line ${
-                !bodyExpanded && isLong ? "line-clamp-3" : ""
-              }`}
-            >
-              {bodyText}
-            </p>
+            <div className={!bodyExpanded && isLong ? "line-clamp-3 overflow-hidden" : undefined}>
+              <MarkdownBody content={bodyText} />
+            </div>
             {isLong && (
               <button
                 type="button"
@@ -185,16 +182,23 @@ export function WeeklyPrincipleCard({
                 &ldquo;{content.reflection_prompt}&rdquo;
               </p>
             )}
-            <div className="pt-3 border-t border-border/60">
+            <div className="pt-3 border-t border-border/60 flex items-center justify-between">
               <button
                 type="button"
                 onClick={handleOpenNote}
                 disabled={loadingNote}
-                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
+                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all disabled:opacity-40"
+                style={{
+                  background: noteExists
+                    ? "color-mix(in srgb, var(--color-secondary) 12%, transparent)"
+                    : "color-mix(in srgb, var(--color-secondary) 10%, transparent)",
+                  color: "var(--color-secondary)",
+                  border: "1px solid color-mix(in srgb, var(--color-secondary) 22%, transparent)",
+                }}
               >
                 <svg
-                  width="12"
-                  height="12"
+                  width="11"
+                  height="11"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -211,7 +215,7 @@ export function WeeklyPrincipleCard({
                 </span>
                 {noteExists && (
                   <span
-                    className="w-1.5 h-1.5 rounded-full bg-secondary/60 inline-block"
+                    className="w-1.5 h-1.5 rounded-full bg-secondary/70 inline-block"
                     aria-label="Note exists"
                   />
                 )}
