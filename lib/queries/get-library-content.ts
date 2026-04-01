@@ -5,8 +5,9 @@ import type { Tables } from "@/types/supabase";
  * lib/queries/get-library-content.ts
  * Returns published content for the Library page.
  *
- * Supports optional type filter ('daily_audio' | 'weekly_principle' | 'monthly_theme').
- * Ordered by most recent first using the most relevant date field per type.
+ * Sprint 10: accepts memberTier for tier_min filtering.
+ * Content with tier_min = NULL is visible to all members.
+ * Content with tier_min set is only visible to members at that tier or above.
  *
  * Does NOT join with journal — Library page fetches note existence separately.
  */
@@ -30,12 +31,14 @@ export type ContentTypeFilter =
   | "daily_audio"
   | "weekly_principle"
   | "monthly_theme"
+  | "coaching_call"
   | null; // null = all
 
 export async function getLibraryContent(
   typeFilter: ContentTypeFilter = null,
   limit = 50,
-  offset = 0
+  offset = 0,
+  memberTier: string | null = null
 ): Promise<LibraryItem[]> {
   const supabase = await createClient();
 
@@ -51,8 +54,22 @@ export async function getLibraryContent(
   if (typeFilter) {
     query = query.eq("type", typeFilter);
   } else {
-    // All three primary content types only — exclude library/workshop until those features exist
-    query = query.in("type", ["daily_audio", "weekly_principle", "monthly_theme"]);
+    // Primary content types visible in library — coaching_call included when member is Level 3+
+    query = query.in("type", ["daily_audio", "weekly_principle", "monthly_theme", "coaching_call"]);
+  }
+
+  // Tier-min filter: null tier_min = all members; set tier_min = only that tier and above.
+  // We apply this at the query level by filtering out rows where tier_min is set
+  // and the member's tier doesn't meet it. The safest implementation: only show rows
+  // where tier_min IS NULL. If the member has a tier, also show rows where tier_min
+  // equals a tier they can access. We compute the allowed tiers in application code.
+  if (memberTier) {
+    const allowedTiers = getAllowedTiers(memberTier);
+    // Show content where tier_min is null OR tier_min is one of the allowed tiers
+    query = query.or(`tier_min.is.null,tier_min.in.(${allowedTiers.join(",")})`);
+  } else {
+    // No tier info available — only show ungated content
+    query = query.is("tier_min", null);
   }
 
   const { data, error } = await query;
@@ -63,6 +80,18 @@ export async function getLibraryContent(
   }
 
   return data ?? [];
+}
+
+/**
+ * Returns the list of tier values accessible to the given member tier.
+ * level_3 can access level_1, level_2, level_3 content.
+ * This avoids relying on Postgres enum ordering comparison.
+ */
+function getAllowedTiers(memberTier: string): string[] {
+  const order = ["level_1", "level_2", "level_3", "level_4"];
+  const idx = order.indexOf(memberTier);
+  if (idx === -1) return [];
+  return order.slice(0, idx + 1);
 }
 
 /**

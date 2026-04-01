@@ -1,11 +1,13 @@
 import { getMemberNotes } from "@/lib/queries/get-member-notes";
 import { JournalList } from "@/components/journal/JournalList";
+import { NewJournalEntryButton } from "@/components/journal/NewJournalEntryButton";
 import { PageHeader } from "@/components/member/PageHeader";
 import { EmptyState } from "@/components/member/EmptyState";
 
 /**
  * app/(member)/journal/page.tsx
  * Sprint 7: wider container, PageHeader, EmptyState, month grouping.
+ * Sprint 10: "New entry" button added.
  */
 
 export const metadata = {
@@ -18,10 +20,15 @@ export default async function JournalPage() {
 
   return (
     <div className="member-container py-8 md:py-10">
-      <PageHeader
-        title="Your Notes"
-        subtitle="Reflections from your practice, in your own words."
-      />
+      <div className="flex items-start justify-between gap-4 mb-6">
+        <PageHeader
+          title="Your Notes"
+          subtitle="Reflections from your practice, in your own words."
+        />
+        <div className="flex-shrink-0 pt-1">
+          <NewJournalEntryButton />
+        </div>
+      </div>
 
       {notes.length === 0 ? (
         <EmptyState

@@ -182,38 +182,125 @@ The `pgvector` extension is enabled. IVFFlat indexes are deferred until tables h
 
 ## 2. Development Phases Roadmap
 
-### Phase 1 — Core Product Completion
+### Phase 1 — Core Product Completion + Coaching + Tier Gating
 
 **Timeline:** Next 2–4 weeks
-**Goal:** Close the remaining functional gaps so the product delivers its full Level 1 value proposition without manual workarounds.
+**Goal:** Close the remaining functional gaps, add the coaching system (Level 3+), wire universal tier-based access control, seed realistic dev content, and prepare for onboarding.
+
+#### 1A. Tier-Gated Content Access (Schema)
+
+Add universal access control to the `content` table:
+
+| Change | Details |
+|--------|----------|
+| Add `coaching_call` to `content_type` enum | Coaching replays stored as content records |
+| Add `tier_min` column to `content` table | `subscription_tier` type, nullable. NULL = all tiers. Values: `level_1`, `level_2`, `level_3`, `level_4` |
+| Update all content queries | Add `WHERE tier_min IS NULL OR tier_min <= member.subscription_tier` filter |
+
+#### 1B. Coaching System (Level 3+)
+
+| Feature | Description | Priority |
+|---------|-------------|----------|
+| **`/coaching` route** | Tier-gated server component (Level 3+). Shows next upcoming call + replay archive. | Critical |
+| **Zoom join flow** | One recurring Zoom meeting, same link weekly. Waiting room enabled. No registration, no public email link. Join link rendered only on the protected coaching page. | Critical |
+| **Coaching card on Today** | Optional card for Level 3+ members. If call within 30 min → "Join Live Now". Otherwise → "Add to Calendar". After call → "Replay Available". | High |
+| **Coaching replays** | Recording uploaded to Vimeo post-call → new `coaching_call` content record with `vimeo_video_id`. | High |
+| **Admin coaching management** | Create/edit coaching calls in existing admin content form. Type = `coaching_call`. Fields: title, publish_date, vimeo_video_id, summary (body), tier_min = level_3. | High |
+
+**Coaching content model:** Uses existing `content` table:
+- `type = 'coaching_call'`
+- `title` — call title / topic
+- `publish_date` — scheduled date
+- `vimeo_video_id` — replay video (null until uploaded)
+- `body` — call summary / description
+- `resource_links` — Zoom join link stored as `[{"label": "Join Zoom", "url": "..."}]`
+- `tier_min = 'level_3'`
+
+**Security:** Page gated server-side by `requireTierAccess('level_3')` helper. Cancelled members lose access automatically via existing `requireActiveMember()` guard.
+
+#### 1C. Core Admin + Product Gaps
 
 | Feature | Description | Priority |
 |---------|-------------|----------|
 | **Admin content calendar** | 4-week calendar view of scheduled daily/weekly/monthly content. Missing-day gap detection. Click-to-create. | High |
-| **Admin member viewer** | List members, search by email/name, view subscription tier and engagement summary. | High |
+| **Admin member viewer** | `/admin/members` — paginated list with search by email, tier filter, subscription status, streak, last active. Detail view at `/admin/members/[id]`. | High |
 | **Content preview** | Preview a content item as members would see it before publishing. | Medium |
 | **Streak milestone recognition** | Inline celebration on Today page at 7, 30, 90, 365 days. Warm, not gamified. | Medium |
 | **Streak grace period** | 1-day grace window before streak resets. Prevents guilt over one missed day. | Medium |
-| **Vimeo domain restriction documentation** | Document the recommended Vimeo privacy settings (unlisted + domain-restricted). | Low |
 | **Admin dashboard landing** | Summary metrics: active members, content published this week, engagement rates. | Medium |
 | **Private podcast feed (Castos)** | Generate per-member private RSS feed URL. Display in Account page. | Medium |
-| **Account profile editing** | Name, avatar URL edit form in `/account`. | Low |
-| **Notification preferences** | Email preference toggles in Account (placeholder for integrations). | Low |
+| **Tier-aware navigation** | `MemberTopNav` renders Coaching link for Level 3+. Level 1/2 members see a calm upgrade prompt if navigating directly. | High |
 
-**Outcome:** The platform is fully operational for Level 1 members. Admin can manage content lifecycle end-to-end. Streak system is complete with milestone moments.
+#### 1D. Seed Content for Development
+
+Before launch validation, seed realistic test content:
+
+| Type | Count | Requirements |
+|------|-------|--------------|
+| `daily_audio` | 10 | Spread across 10 consecutive days. Placeholder audio URLs. Mixed with/without notes. |
+| `weekly_principle` | 5 | 5 consecutive weeks. Each has title, excerpt, body, reflection_prompt. |
+| `monthly_theme` | 3 | 3 consecutive months. Each has title, description, vimeo_video_id placeholder. |
+| `coaching_call` | 3 | 2 past (with vimeo_video_id), 1 upcoming (no replay). All `tier_min = 'level_3'`. |
+
+Seed data should exercise: library browsing, search, engagement tracking, journal notes, content cards, coaching replay, and tier gating.
+
+#### 1E. Today Page Evolution
+
+Maintain practice-first hierarchy. Add optional secondary cards below the main content stream:
+
+| Card | Condition | Behavior |
+|------|-----------|----------|
+| **Upcoming Coaching Call** | Level 3+ member + call within 7 days | If ≤30 min → "Join Live Now" button. Otherwise → "Add to Calendar" link. After call → "Replay Available" with Vimeo player. |
+| **Streak Milestone** | Member just hit 7, 30, 90, 365 | Warm congratulatory card. Disappears after 24h. |
+| **Journal Prompt** | No note written today | Gentle nudge: "Take a moment to reflect on today's practice." |
+
+Priority order on Today page:
+1. Daily practice (always first)
+2. Weekly principle
+3. Monthly theme
+4. Secondary cards (coaching → milestone → journal prompt)
+
+**Outcome:** Platform supports all 4 tiers with proper gating. Coaching calls are live for Level 3+. Admin can manage all content types end-to-end. Dev environment has realistic test data.
+
+---
+
+### Phase 1.5 — Member Onboarding
+
+**Timeline:** 1–2 weeks after Phase 1
+**Goal:** First-login and first-week experience that activates new members into the daily habit.
+
+#### In-Product Onboarding (First Login)
+
+| Step | Screen | Action |
+|------|--------|--------|
+| 1 | "Welcome to Positives" | Full-screen welcome card with Dr. Paul's message. |
+| 2 | "Start your first practice" | Auto-scroll to Daily card with pulsing play indicator. |
+| 3 | "Write your first reflection" | Open NoteSheet with gentle prompt after first listen. |
+
+**Implementation:** `member.onboarding_completed_at` column (nullable TIMESTAMPTZ). If NULL on Today page load → render onboarding overlay. Set timestamp on completion.
+
+#### First-Week Lifecycle (ActiveCampaign)
+
+| Day | Email | Content |
+|-----|-------|---------|
+| Day 0 | Welcome | Getting started, how the practice works |
+| Day 2 | Weekly principle intro | Explains how weekly content deepens the daily practice |
+| Day 5 | Journal prompt | Encourages first reflection |
+| Day 7 | Streak milestone | Celebrates 7-day streak (if achieved) |
+
+**Outcome:** New members are guided into the daily habit within their first week. Activation rate measurably improves.
 
 ---
 
 ### Phase 2 — Community Features
 
-**Timeline:** 2–3 weeks after Phase 1
+**Timeline:** 2–3 weeks after Phase 1.5
 **Goal:** Deliver the Level 2 (Positives Plus) tier value: live events, replays, and Q&A.
 
 | Feature | Description |
 |---------|-------------|
 | **Events system** | `/events` route gated to Level 2+. Event records in content table with `type = 'event'`. Upcoming events show Zoom link; past events show Vimeo replay. |
 | **Q&A system** | `/qa` route gated to Level 2+. `qa_thread` and `qa_reply` tables. Member submits question → admin review queue → coach/Dr. Paul responds → featured Q&A list. |
-| **Tier-aware navigation** | `MemberTopNav` accepts `tier` and renders Events + Q&A links for Level 2+. Level 1 members see a calm upgrade prompt if they navigate directly. |
 | **Upgrade prompt UX** | Guided upgrade component — shows value, never shows restriction. "This is included in Positives Plus" framing. |
 | **Admin event management** | Create/edit events with Vimeo ID, Zoom link, date, status. |
 | **Admin Q&A moderation** | Question review queue, answer composition, feature toggle. |
@@ -221,7 +308,6 @@ The `pgvector` extension is enabled. IVFFlat indexes are deferred until tables h
 **Schema additions:**
 - Add `event` to `content_type` enum
 - Create `qa_thread` and `qa_reply` tables
-- Add `tier_min` column to `content` table for access gating
 
 **Outcome:** Positives Plus tier has differentiated value. Upgrade prompts create natural expansion revenue path.
 
@@ -265,40 +351,22 @@ The `pgvector` extension is enabled. IVFFlat indexes are deferred until tables h
 | **AI assistant (RAG)** | Conversational interface: "What did Dr. Paul teach about forgiveness?" → retrieves relevant chunks → generates grounded answer | Embeddings + chunks |
 | **Auto-tagging** | AI generates tags on content creation/ingestion. Improves library filtering. | Phase 3 pipeline |
 
-**Architecture:**
-
-```
-Member query
-    ↓
-Generate query embedding (OpenAI)
-    ↓
-Vector similarity search against content_chunk (pgvector)
-    ↓
-Retrieve top-k chunks
-    ↓
-Feed chunks + query to LLM (OpenAI GPT-4o)
-    ↓
-Return grounded answer with source citations
-```
-
 **Index creation:** IVFFlat index on `content_chunk.embedding` created after initial backfill when table has >1000 rows.
 
 **Outcome:** Members can find any practice, principle, or theme through natural language. The content library becomes exponentially more useful as the archive grows.
 
 ---
 
-### Phase 5 — Growth Systems & Premium Tiers
+### Phase 5 — Growth Systems
 
 **Timeline:** Ongoing after Phase 4
-**Goal:** Revenue growth, retention optimization, and higher-tier delivery.
+**Goal:** Revenue growth, retention optimization, and advanced tier delivery.
 
 | Feature | Description |
 |---------|-------------|
-| **Coaching Circle (Level 3)** | Weekly group coaching sessions. Zoom integration for live sessions, Vimeo for replays. Coaching schedule in member nav. |
 | **Executive Coaching (Level 4)** | Bi-weekly 1:1 sessions. Scheduling integration (Calendly or similar). Personalized coaching notes visible to member. |
 | **Referral system** | Member referral codes tracked in Supabase. Reward discounts via Stripe coupons. Referral dashboard in Account. |
 | **Annual billing** | Stripe Price for annual subscription. Toggle on Join page. Savings display. |
-| **Onboarding optimization** | First-week experience: guided tour, first-listen celebration, early engagement hooks. |
 | **Churn prediction** | Activity event analysis: members with declining engagement flagged for re-activation email. |
 | **Admin analytics dashboard** | Engagement trends, content performance, retention cohorts, revenue metrics. |
 | **Mobile app wrapper** | PWA or Capacitor wrapper for iOS/Android store presence. Push notifications. |
@@ -347,7 +415,12 @@ Phase 1:
   ├── Admin dashboard home
   ├── Member list + detail views
   ├── Publish/unpublish toggle
+  ├── Coaching call management (type + tier_min)
+  ├── Seed content script
   └── Override Today
+
+Phase 1.5:
+  └── Onboarding overlay management
 
 Phase 2:
   ├── Event management (create/edit events)
@@ -856,11 +929,24 @@ NOW
 ├── Search
 └── Engagement tracking
 
-PHASE 1–2 (Next 2 months)
-├── ✚ Live events + replays
-├── ✚ Q&A with coaches
-├── ✚ Tier-gated upgrade paths
-├── ✚ Support infrastructure
+PHASE 1 (Next 2–4 weeks)
+├── ✚ Weekly coaching calls (Level 3+)
+├── ✚ Tier-gated content access (tier_min)
+├── ✚ Admin content calendar + member viewer
+├── ✚ Seed content for dev/QA
+├── ✚ Today page secondary cards
+└── ✚ Coaching card on Today (Level 3+)
+
+PHASE 1.5 (Week 4–5)
+├── ✚ In-product onboarding (first login)
+├── ✚ First-week email lifecycle (ActiveCampaign)
+└── ✚ Streak milestone recognition
+
+PHASE 2 (Month 2–3)
+├── ✚ Live events + replays (Level 2+)
+├── ✚ Q&A with coaches (Level 2+)
+├── ✚ Upgrade prompt UX
+├── ✚ Support infrastructure (Help Scout)
 └── ✚ Email lifecycle automation
 
 PHASE 3 (Month 3–4)
@@ -876,7 +962,6 @@ PHASE 4 (Month 4–5)
 └── ✚ Auto-tagging
 
 PHASE 5+ (Month 6+)
-├── ✚ Weekly group coaching
 ├── ✚ 1:1 executive coaching
 ├── ✚ Referral program
 ├── ✚ Mobile app (PWA/Capacitor)

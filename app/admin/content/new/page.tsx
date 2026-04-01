@@ -5,8 +5,9 @@ import { ResourceLinksEditor } from "@/components/admin/ResourceLinksEditor";
 
 /**
  * app/admin/content/new/page.tsx
- * Create a new content record (Daily / Weekly / Monthly).
+ * Create a new content record (Daily / Weekly / Monthly / Coaching).
  * Sprint 5 — richer content fields + media URL auto-detect.
+ * Sprint 10 — coaching_call type, tier_min, starts_at.
  */
 
 export const metadata = {
@@ -81,6 +82,8 @@ export interface ContentFormValues {
   youtube_video_id?: string | null;
   admin_notes?: string | null;
   id?: string;
+  tier_min?: string | null;   // Sprint 10
+  starts_at?: string | null;  // Sprint 10
 }
 
 /**
@@ -115,6 +118,12 @@ export function ContentForm({
   const isDaily = type === "daily_audio";
   const isWeekly = type === "weekly_principle";
   const isMonthly = type === "monthly_theme";
+  const isCoaching = type === "coaching_call";
+
+  // Format stored ISO string back to datetime-local input value (YYYY-MM-DDTHH:mm)
+  const startsAtLocal = values?.starts_at
+    ? values.starts_at.slice(0, 16)
+    : "";
 
   return (
     <form
@@ -139,6 +148,7 @@ export function ContentForm({
           <option value="daily_audio">Daily — audio practice</option>
           <option value="weekly_principle">Weekly — principle</option>
           <option value="monthly_theme">Monthly — theme</option>
+          <option value="coaching_call">Coaching call (Level 3+)</option>
         </select>
         <p className="text-xs text-muted-foreground">
           Determines which Today card this appears in
@@ -210,6 +220,54 @@ export function ContentForm({
           <option value="published">Published — live on Today</option>
           <option value="archived">Archived</option>
         </select>
+      </div>
+
+      {/* ─── Tier & scheduling (Sprint 10) ──────────────────────────────── */}
+      <div className="border-t border-border pt-4 flex flex-col gap-4">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          Access &amp; scheduling
+        </p>
+
+        {/* Tier min */}
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="tier_min" className="text-sm font-medium text-foreground">
+            Minimum tier
+          </label>
+          <select
+            id="tier_min"
+            name="tier_min"
+            defaultValue={values?.tier_min ?? ""}
+            className="admin-input"
+          >
+            <option value="">All tiers (no restriction)</option>
+            <option value="level_1">Level 1+</option>
+            <option value="level_2">Level 2+</option>
+            <option value="level_3">Level 3+ (default for coaching)</option>
+            <option value="level_4">Level 4 only</option>
+          </select>
+          <p className="text-xs text-muted-foreground">
+            Members below this tier will not see this content in library or search.
+          </p>
+        </div>
+
+        {/* starts_at — relevant for coaching calls and future events */}
+        {(isCoaching || !!values?.starts_at) && (
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="starts_at" className="text-sm font-medium text-foreground">
+              Call date &amp; time
+            </label>
+            <input
+              id="starts_at"
+              name="starts_at"
+              type="datetime-local"
+              defaultValue={startsAtLocal}
+              className="admin-input"
+            />
+            <p className="text-xs text-muted-foreground">
+              When the live call happens. Leave blank for replays with no scheduled time.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* ─── Publishing date ─────────────────────────────────────────────── */}
@@ -367,6 +425,65 @@ export function ContentForm({
               type="text"
               defaultValue={values?.s3_audio_key ?? ""}
               placeholder="audio/daily/2026-04-01-morning-grounding.mp3"
+              className="admin-input"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Coaching: Zoom join URL + optional replay video */}
+      {isCoaching && (
+        <div className="border-t border-border pt-4 flex flex-col gap-4">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Coaching (call details)
+          </p>
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="castos_episode_url" className="text-sm font-medium text-foreground">
+              Zoom join URL
+            </label>
+            <input
+              id="castos_episode_url"
+              name="castos_episode_url"
+              type="url"
+              defaultValue={values?.castos_episode_url ?? ""}
+              placeholder="https://us02web.zoom.us/j/…"
+              className="admin-input"
+            />
+            <p className="text-xs text-muted-foreground">
+              Server-side only. Never exposed in client JS.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="media_url" className="text-sm font-medium text-foreground">
+              Replay video URL (after call)
+            </label>
+            <input
+              id="media_url"
+              name="media_url"
+              type="url"
+              defaultValue={reconstructMediaUrl(values)}
+              placeholder="Paste Vimeo or YouTube URL after the call"
+              className="admin-input"
+            />
+            <p className="text-xs text-muted-foreground">
+              Auto-detected: Vimeo or YouTube. Add after the call ends.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="duration_seconds" className="text-sm font-medium text-foreground">
+              Duration (seconds)
+            </label>
+            <input
+              id="duration_seconds"
+              name="duration_seconds"
+              type="number"
+              min="0"
+              step="1"
+              defaultValue={values?.duration_seconds ?? ""}
+              placeholder="e.g. 3600 = 60 min"
               className="admin-input"
             />
           </div>

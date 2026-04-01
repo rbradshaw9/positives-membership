@@ -31,7 +31,7 @@ export default async function MemberLayout({
 
   return (
     <div className="min-h-dvh bg-background flex flex-col">
-      <MemberTopNav streak={streak} />
+      <MemberTopNav streak={streak} tier={member.subscription_tier} />
       {showPasswordNudge && <PasswordNudgeBanner />}
       <main className="flex-1 pb-24 md:pb-12">{children}</main>
     </div>

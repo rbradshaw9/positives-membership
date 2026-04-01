@@ -2,6 +2,7 @@
 // Regenerate with: npx supabase gen types typescript --project-id qdnojizzldilqpyocora > types/supabase.ts
 // Last generated: 2026-04-01 from live project qdnojizzldilqpyocora
 // Sprint 5: manually added body, reflection_prompt, download_url, youtube_video_id, resource_links
+// Sprint 10: manually added tier_min, starts_at to content; coaching_call to content_type; coaching_attended to activity_event_type
 
 export type Json =
   | string
@@ -128,8 +129,10 @@ export type Database = {
           search_vector: string | null
           source: Database["public"]["Enums"]["content_source"]
           source_ref: string | null
+          starts_at: string | null
           status: Database["public"]["Enums"]["content_status"]
           tags: string[]
+          tier_min: Database["public"]["Enums"]["subscription_tier"] | null
           title: string
           transcription: string | null
           type: Database["public"]["Enums"]["content_type"]
@@ -161,8 +164,10 @@ export type Database = {
           s3_audio_key?: string | null
           source?: Database["public"]["Enums"]["content_source"]
           source_ref?: string | null
+          starts_at?: string | null
           status?: Database["public"]["Enums"]["content_status"]
           tags?: string[]
+          tier_min?: Database["public"]["Enums"]["subscription_tier"] | null
           title: string
           transcription?: string | null
           type: Database["public"]["Enums"]["content_type"]
@@ -194,8 +199,10 @@ export type Database = {
           s3_audio_key?: string | null
           source?: Database["public"]["Enums"]["content_source"]
           source_ref?: string | null
+          starts_at?: string | null
           status?: Database["public"]["Enums"]["content_status"]
           tags?: string[]
+          tier_min?: Database["public"]["Enums"]["subscription_tier"] | null
           title?: string
           transcription?: string | null
           type?: Database["public"]["Enums"]["content_type"]
@@ -379,6 +386,7 @@ export type Database = {
         | "monthly_theme"
         | "library"
         | "workshop"
+        | "coaching_call"
       subscription_status:
         | "active"
         | "past_due"
@@ -538,6 +546,7 @@ export const Constants = {
         "monthly_theme",
         "library",
         "workshop",
+        "coaching_call",
       ],
       subscription_status: [
         "active",

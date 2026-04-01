@@ -82,7 +82,7 @@ export default async function LibraryPage(props: { searchParams: SearchParams })
   // Content fetch — FTS search or browse
   let content: LibraryItem[];
   if (isSearchMode) {
-    const searchResults = await searchLibraryContent(searchQuery, PAGE_SIZE);
+    const searchResults = await searchLibraryContent(searchQuery, PAGE_SIZE, member.subscription_tier);
     content = searchResults.map((r) => ({
       id: r.id,
       type: r.type as LibraryItem["type"],
@@ -97,7 +97,7 @@ export default async function LibraryPage(props: { searchParams: SearchParams })
       duration_seconds: r.duration_seconds,
     }));
   } else {
-    content = await getLibraryContent(typeFilter, PAGE_SIZE + 1, offset);
+    content = await getLibraryContent(typeFilter, PAGE_SIZE + 1, offset, member.subscription_tier);
   }
 
   const noteContentIds = await getMemberNoteContentIds(member.id);

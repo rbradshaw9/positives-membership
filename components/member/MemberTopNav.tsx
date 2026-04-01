@@ -7,9 +7,10 @@ import { usePathname } from "next/navigation";
 /**
  * components/member/MemberTopNav.tsx
  * Sprint 9: premium sticky top navigation bar for all member pages.
+ * Sprint 10: tier-aware — Coaching link shown only for Level 3+.
  *
  * Layout:
- *   [Positives wordmark]   [streak chip]   [Today · Library · Journal · Account]
+ *   [Positives wordmark]   [streak chip]   [Today · Library · Journal · Coaching? · Account]
  *
  * Design:
  *   - White/card background with subtle border-b
@@ -20,19 +21,33 @@ import { usePathname } from "next/navigation";
  * Accessibility: aria-current="page" on active link.
  */
 
-const NAV_ITEMS = [
+const COACHING_TIERS = new Set(["level_3", "level_4"]);
+
+const BASE_NAV_ITEMS = [
   { href: "/today",   label: "Today"   },
   { href: "/library", label: "Library" },
   { href: "/journal", label: "Journal" },
-  { href: "/account", label: "Account" },
 ] as const;
+
+const ACCOUNT_NAV_ITEM = { href: "/account", label: "Account" } as const;
+const COACHING_NAV_ITEM = { href: "/coaching", label: "Coaching" } as const;
+
+type NavItem = { href: string; label: string };
 
 interface MemberTopNavProps {
   streak?: number;
+  tier?: string | null;
 }
 
-export function MemberTopNav({ streak = 0 }: MemberTopNavProps) {
+export function MemberTopNav({ streak = 0, tier }: MemberTopNavProps) {
   const pathname = usePathname();
+  const showCoaching = COACHING_TIERS.has(tier ?? "");
+
+  const navItems: NavItem[] = [
+    ...BASE_NAV_ITEMS,
+    ...(showCoaching ? [COACHING_NAV_ITEM] : []),
+    ACCOUNT_NAV_ITEM,
+  ];
 
   return (
     <>
@@ -75,7 +90,7 @@ export function MemberTopNav({ streak = 0 }: MemberTopNavProps) {
             aria-label="Member navigation"
             className="hidden md:flex items-center gap-0.5"
           >
-            {NAV_ITEMS.map(({ href, label }) => {
+            {navItems.map(({ href, label }) => {
               const isActive = pathname === href || (href !== "/today" && pathname.startsWith(href));
               return (
                 <Link
@@ -105,7 +120,7 @@ export function MemberTopNav({ streak = 0 }: MemberTopNavProps) {
         style={{ backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <ul className="flex items-center justify-around px-2">
-          {NAV_ITEMS.map(({ href, label }) => {
+          {navItems.map(({ href, label }) => {
             const isActive = pathname === href || (href !== "/today" && pathname.startsWith(href));
             return (
               <li key={href} className="flex-1">
@@ -134,5 +149,6 @@ function NavIcon({ href }: { href: string }) {
   if (href === "/today") return <svg {...props}><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>;
   if (href === "/library") return <svg {...props}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>;
   if (href === "/journal") return <svg {...props}><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>;
+  if (href === "/coaching") return <svg {...props}><path d="M15 10l4.553-2.069A1 1 0 0 1 21 8.868v6.264a1 1 0 0 1-1.447.899L15 14"/><rect x="1" y="6" width="15" height="12" rx="2" ry="2"/></svg>;
   return <svg {...props}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
 }

@@ -37,6 +37,8 @@ type ContentInput = {
   s3_audio_key: string;
   media_url: string; // single paste field — auto-detected
   admin_notes: string;
+  tier_min: string;   // Sprint 10
+  starts_at: string;  // Sprint 10 (ISO datetime-local string)
 };
 
 function adminClient() {
@@ -67,11 +69,14 @@ function parseFormData(formData: FormData): ContentInput {
     s3_audio_key: formData.get("s3_audio_key")?.toString().trim() ?? "",
     media_url: formData.get("media_url")?.toString().trim() ?? "",
     admin_notes: formData.get("admin_notes")?.toString().trim() ?? "",
+    tier_min: formData.get("tier_min")?.toString() ?? "",
+    starts_at: formData.get("starts_at")?.toString() ?? "",
   };
 }
 
 function buildRow(input: ContentInput) {
   const isDaily = input.type === "daily_audio";
+  const isCoaching = input.type === "coaching_call";
 
   // Base row with all standard + new rich fields
   const row: Record<string, unknown> = {
@@ -99,12 +104,26 @@ function buildRow(input: ContentInput) {
       : null,
     admin_notes: input.admin_notes || null,
     source: "admin" as const,
+    // Sprint 10 fields
+    tier_min: input.tier_min || null,
+    starts_at: input.starts_at ? new Date(input.starts_at).toISOString() : null,
   };
 
   if (isDaily) {
     // Daily audio uses explicit Castos/S3 fields
     row.castos_episode_url = input.castos_episode_url || null;
     row.s3_audio_key = input.s3_audio_key || null;
+  } else if (isCoaching) {
+    // Coaching: castos_episode_url stores the Zoom/join URL (never audio)
+    row.castos_episode_url = input.castos_episode_url || null;
+    row.vimeo_video_id = null;
+    row.youtube_video_id = null;
+    // Handle replay media URL if admin pastes a Vimeo/YouTube URL
+    if (input.media_url) {
+      const parsed = parseMediaUrl(input.media_url);
+      const mediaColumns = mediaColumnsFromParsed(parsed);
+      Object.assign(row, mediaColumns);
+    }
   } else {
     // Weekly/Monthly: auto-detect media from the pasted URL
     if (input.media_url) {
