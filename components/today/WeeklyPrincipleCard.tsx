@@ -34,7 +34,6 @@ export function WeeklyPrincipleCard({
   const [existingNote, setExistingNote] = useState("");
   const [noteExists, setNoteExists] = useState(initialHasNote);
   const [loadingNote, setLoadingNote] = useState(false);
-  const [bodyExpanded, setBodyExpanded] = useState(false);
   const trackFired = useRef(false);
 
   function fireTrack() {
@@ -62,7 +61,8 @@ export function WeeklyPrincipleCard({
   const hasAudio = !hasVideo && !!audioUrl;
   const hasBody = !!(content?.body || content?.description);
   const bodyText = content?.body || content?.description || "";
-  const isLong = bodyText.length > 240;
+  // Use contained scroll for longer prose; short content renders naturally
+  const useScroll = bodyText.replace(/\\n/g, "\n").length > 320;
 
   return (
     <>
@@ -148,17 +148,20 @@ export function WeeklyPrincipleCard({
         {/* ── Body / supporting text ──────────────────────────────────── */}
         {content && hasBody && (
           <div className="px-5 md:px-6 pt-4">
-            <div className={!bodyExpanded && isLong ? "line-clamp-3 overflow-hidden" : undefined}>
-              <MarkdownBody content={bodyText} />
-            </div>
-            {isLong && (
-              <button
-                type="button"
-                onClick={() => { setBodyExpanded(!bodyExpanded); fireTrack(); }}
-                className="text-xs text-secondary hover:text-secondary-hover transition-colors mt-1.5"
+            {useScroll ? (
+              <div
+                className="overflow-y-auto rounded-xl"
+                style={{
+                  maxHeight: "11rem",
+                  maskImage: "linear-gradient(to bottom, black 80%, transparent 100%)",
+                  WebkitMaskImage: "linear-gradient(to bottom, black 80%, transparent 100%)",
+                  paddingBottom: "1.25rem",
+                }}
               >
-                {bodyExpanded ? "Show less" : "Read more"}
-              </button>
+                <MarkdownBody content={bodyText} />
+              </div>
+            ) : (
+              <MarkdownBody content={bodyText} />
             )}
           </div>
         )}

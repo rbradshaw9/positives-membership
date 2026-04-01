@@ -61,6 +61,7 @@ export function MonthlyThemeCard({
   const hasVideo = !!(content?.vimeo_video_id || content?.youtube_video_id);
   const hasBody = !!(content?.body || content?.description);
   const bodyText = content?.body || content?.description || "";
+  const useScroll = bodyText.replace(/\\n/g, "\n").length > 320;
 
   return (
     <>
@@ -118,12 +119,24 @@ export function MonthlyThemeCard({
           </div>
         )}
 
-        {/* ── Body text (ambient — capped at 4 lines, no expand) ─────────── */}
+        {/* ── Body text ─────────────────────────────────────────────── */}
         {content && hasBody && (
           <div className="px-5 md:px-6 pt-3">
-            <div className="line-clamp-4 overflow-hidden">
+            {useScroll ? (
+              <div
+                className="overflow-y-auto rounded-xl"
+                style={{
+                  maxHeight: "10rem",
+                  maskImage: "linear-gradient(to bottom, black 80%, transparent 100%)",
+                  WebkitMaskImage: "linear-gradient(to bottom, black 80%, transparent 100%)",
+                  paddingBottom: "1rem",
+                }}
+              >
+                <MarkdownBody content={bodyText} />
+              </div>
+            ) : (
               <MarkdownBody content={bodyText} />
-            </div>
+            )}
           </div>
         )}
 
