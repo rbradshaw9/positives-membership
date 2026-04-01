@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import type { MonthlyContent } from "@/lib/queries/get-monthly-content";
 import { NoteSheet } from "@/components/notes/NoteSheet";
 import { VideoEmbed } from "@/components/media/VideoEmbed";
 import { ResourceLinks } from "@/components/media/ResourceLinks";
 import { getNoteForContent } from "@/app/(member)/notes/actions";
+import { trackMonthlyViewed } from "@/app/(member)/today/engagement-actions";
 
 /**
  * components/today/MonthlyThemeCard.tsx
@@ -33,9 +34,17 @@ export function MonthlyThemeCard({
   const [existingNote, setExistingNote] = useState("");
   const [noteExists, setNoteExists] = useState(initialHasNote);
   const [loadingNote, setLoadingNote] = useState(false);
+  const trackFired = useRef(false);
+
+  function fireTrack() {
+    if (trackFired.current || !content) return;
+    trackFired.current = true;
+    void trackMonthlyViewed(content.id);
+  }
 
   async function handleOpenNote() {
     if (!content) return;
+    fireTrack();
     setLoadingNote(true);
     const existing = await getNoteForContent(content.id);
     setExistingNote(existing?.entry_text ?? "");

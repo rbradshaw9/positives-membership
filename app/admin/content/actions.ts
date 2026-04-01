@@ -27,6 +27,7 @@ type ContentInput = {
   body: string;
   reflection_prompt: string;
   download_url: string;
+  resource_links: string; // JSON string from hidden input
   status: string;
   publish_date: string;
   week_start: string;
@@ -56,6 +57,7 @@ function parseFormData(formData: FormData): ContentInput {
     body: formData.get("body")?.toString().trim() ?? "",
     reflection_prompt: formData.get("reflection_prompt")?.toString().trim() ?? "",
     download_url: formData.get("download_url")?.toString().trim() ?? "",
+    resource_links: formData.get("resource_links")?.toString() ?? "[]",
     status: formData.get("status")?.toString() ?? "draft",
     publish_date: formData.get("publish_date")?.toString() ?? "",
     week_start: formData.get("week_start")?.toString() ?? "",
@@ -80,6 +82,14 @@ function buildRow(input: ContentInput) {
     body: input.body || null,
     reflection_prompt: input.reflection_prompt || null,
     download_url: input.download_url || null,
+    resource_links: (() => {
+      try {
+        const parsed = JSON.parse(input.resource_links);
+        return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
+      } catch {
+        return null;
+      }
+    })(),
     status: input.status,
     publish_date: input.publish_date || null,
     week_start: input.week_start || null,

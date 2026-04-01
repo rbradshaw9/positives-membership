@@ -30,7 +30,7 @@ export default async function AdminContentEditPage({ params, searchParams }: Pro
   const { data: row, error } = await supabase
     .from("content")
     .select(
-      "id, type, title, excerpt, description, body, reflection_prompt, download_url, status, publish_date, week_start, month_year, duration_seconds, castos_episode_url, s3_audio_key, vimeo_video_id, youtube_video_id, admin_notes"
+      "id, type, title, excerpt, description, body, reflection_prompt, download_url, resource_links, status, publish_date, week_start, month_year, duration_seconds, castos_episode_url, s3_audio_key, vimeo_video_id, youtube_video_id, admin_notes"
     )
     .eq("id", id)
     .single();
@@ -86,6 +86,7 @@ export default async function AdminContentEditPage({ params, searchParams }: Pro
           body: row.body,
           reflection_prompt: row.reflection_prompt,
           download_url: row.download_url,
+          resource_links: row.resource_links as unknown as Array<{ label: string; url: string }> | null,
           status: row.status,
           publish_date: row.publish_date,
           week_start: row.week_start,

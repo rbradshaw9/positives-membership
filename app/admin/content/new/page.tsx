@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createContent } from "../actions";
 import { getEffectiveDate } from "@/lib/dates/effective-date";
+import { ResourceLinksEditor } from "@/components/admin/ResourceLinksEditor";
 
 /**
  * app/admin/content/new/page.tsx
@@ -68,6 +69,7 @@ export interface ContentFormValues {
   body?: string | null;
   reflection_prompt?: string | null;
   download_url?: string | null;
+  resource_links?: Array<{ label: string; url: string }> | null;
   status?: string;
   publish_date?: string | null;
   week_start?: string | null;
@@ -435,6 +437,16 @@ export function ContentForm({
           <p className="text-xs text-muted-foreground">
             Optional — shown as a download link on the Today card
           </p>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-foreground">
+            Resource links
+          </label>
+          <p className="text-xs text-muted-foreground mb-1">
+            Additional links shown beneath the content (e.g. articles, tools, worksheets).
+          </p>
+          <ResourceLinksEditor initialValue={values?.resource_links} />
         </div>
       </div>
 

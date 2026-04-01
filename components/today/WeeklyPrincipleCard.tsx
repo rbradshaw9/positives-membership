@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import type { WeeklyContent } from "@/lib/queries/get-weekly-content";
 import { NoteSheet } from "@/components/notes/NoteSheet";
 import { VideoEmbed } from "@/components/media/VideoEmbed";
 import { AudioPlayer } from "@/components/today/AudioPlayer";
 import { ResourceLinks } from "@/components/media/ResourceLinks";
 import { getNoteForContent } from "@/app/(member)/notes/actions";
+import { trackWeeklyViewed } from "@/app/(member)/today/engagement-actions";
 
 /**
  * components/today/WeeklyPrincipleCard.tsx
@@ -33,9 +34,17 @@ export function WeeklyPrincipleCard({
   const [noteExists, setNoteExists] = useState(initialHasNote);
   const [loadingNote, setLoadingNote] = useState(false);
   const [bodyExpanded, setBodyExpanded] = useState(false);
+  const trackFired = useRef(false);
+
+  function fireTrack() {
+    if (trackFired.current || !content) return;
+    trackFired.current = true;
+    void trackWeeklyViewed(content.id);
+  }
 
   async function handleOpenNote() {
     if (!content) return;
+    fireTrack();
     setLoadingNote(true);
     const existing = await getNoteForContent(content.id);
     setExistingNote(existing?.entry_text ?? "");
@@ -130,7 +139,7 @@ export function WeeklyPrincipleCard({
             {isLong && (
               <button
                 type="button"
-                onClick={() => setBodyExpanded(!bodyExpanded)}
+                onClick={() => { setBodyExpanded(!bodyExpanded); fireTrack(); }}
                 className="text-xs text-secondary hover:text-secondary-hover transition-colors mt-1.5"
               >
                 {bodyExpanded ? "Show less" : "Read more"}

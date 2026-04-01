@@ -4,6 +4,7 @@ import { useState } from "react";
 import { NoteSheet } from "@/components/notes/NoteSheet";
 import { ResourceLinks } from "@/components/media/ResourceLinks";
 import { getNoteForContent } from "@/app/(member)/notes/actions";
+import { TypeBadge } from "@/components/member/TypeBadge";
 import type { Json } from "@/types/supabase";
 
 /**
@@ -73,7 +74,7 @@ export function LibraryList({ items }: LibraryListProps) {
             <article className="bg-card rounded-xl border border-border shadow-soft p-5">
               {/* Type + date row */}
               <div className="flex items-center justify-between mb-2">
-                <TypeBadge type={item.type} label={item.typeLabel} />
+                <TypeBadge type={item.type} />
                 {item.dateContext && (
                   <span className="text-xs text-muted-foreground">
                     {item.dateContext}
@@ -159,17 +160,3 @@ export function LibraryList({ items }: LibraryListProps) {
   );
 }
 
-function TypeBadge({ type, label }: { type: string; label: string }) {
-  const colorMap: Record<string, string> = {
-    daily_audio: "text-primary bg-primary/10",
-    weekly_principle: "text-secondary bg-secondary/10",
-    monthly_theme: "text-accent bg-accent/10",
-  };
-  const cls = colorMap[type] ?? "text-muted-foreground bg-muted";
-
-  return (
-    <span className={`text-[10px] font-medium uppercase tracking-widest px-2 py-0.5 rounded-full ${cls}`}>
-      {label}
-    </span>
-  );
-}
