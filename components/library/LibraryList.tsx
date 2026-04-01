@@ -45,6 +45,11 @@ function thumbClasses(type: string): string {
   return "bg-[linear-gradient(160deg,#14312D_0%,#0A1715_100%)]";
 }
 
+function youtubeThumbnailUrl(item: EnrichedLibraryItem): string | null {
+  if (!item.youtube_video_id) return null;
+  return `https://img.youtube.com/vi/${item.youtube_video_id}/hqdefault.jpg`;
+}
+
 function mediaBadges(item: EnrichedLibraryItem): string[] {
   const badges: string[] = [];
   if (item.castos_episode_url || item.s3_audio_key) badges.push("Audio");
@@ -92,8 +97,16 @@ export function LibraryList({ items }: LibraryListProps) {
       <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" role="list">
         {items.map((item) => (
           <li key={item.id}>
-            <article className="surface-card h-full overflow-hidden">
+            <article className="surface-card group flex h-full flex-col overflow-hidden transition-transform duration-200 hover:-translate-y-1 hover:shadow-medium focus-within:-translate-y-1 focus-within:shadow-medium">
               <div className={`relative aspect-[16/10] ${thumbClasses(item.type)}`}>
+                {youtubeThumbnailUrl(item) ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={youtubeThumbnailUrl(item)!}
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-cover opacity-35 transition-opacity duration-200 group-hover:opacity-50"
+                  />
+                ) : null}
                 <div
                   className="absolute inset-0"
                   style={{
@@ -128,7 +141,7 @@ export function LibraryList({ items }: LibraryListProps) {
                 <h2 className="mb-2 font-heading text-xl font-semibold leading-heading tracking-[-0.025em] text-foreground">
                   <Link
                     href={`/library/${item.id}`}
-                    className="heading-balance hover:text-primary transition-colors"
+                    className="heading-balance rounded-sm transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
                   >
                     {item.title}
                   </Link>
@@ -160,7 +173,7 @@ export function LibraryList({ items }: LibraryListProps) {
                   <button
                     type="button"
                     onClick={() => openNote(item)}
-                    className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/8 px-3.5 py-1.5 text-xs font-semibold text-primary transition-all"
+                    className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/8 px-3.5 py-1.5 text-xs font-semibold text-primary transition-all hover:border-primary/30 hover:bg-primary/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                   >
                     <svg
                       width="11"
@@ -184,7 +197,7 @@ export function LibraryList({ items }: LibraryListProps) {
 
                   <Link
                     href={`/library/${item.id}`}
-                    className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                    className="inline-flex items-center gap-1 rounded-sm text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                   >
                     <span>Open</span>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

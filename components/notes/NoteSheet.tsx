@@ -45,9 +45,11 @@ export function NoteSheet({
   // Sync initialText when sheet opens with different content
   useEffect(() => {
     if (isOpen) {
-      setText(initialText);
-      setSaveState("idle");
-      const t = setTimeout(() => textareaRef.current?.focus(), 80);
+      const t = window.setTimeout(() => {
+        setText(initialText);
+        setSaveState("idle");
+        textareaRef.current?.focus();
+      }, 0);
 
       if (!eventFiredRef.current) {
         eventFiredRef.current = true;
@@ -56,8 +58,10 @@ export function NoteSheet({
         });
       }
 
-      return () => clearTimeout(t);
+      return () => window.clearTimeout(t);
     }
+
+    eventFiredRef.current = false;
   }, [isOpen, initialText, contentId]);
 
   // Dismiss on Escape key
@@ -126,7 +130,7 @@ export function NoteSheet({
       <div
         role="presentation"
         onClick={handleCancel}
-        className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-[2px] md:bg-foreground/10"
+        className="fixed inset-0 z-[70] bg-foreground/20 backdrop-blur-[2px] md:bg-foreground/10"
         aria-hidden="true"
       />
 
@@ -136,7 +140,7 @@ export function NoteSheet({
         aria-modal="true"
         aria-label={headerTitle}
         className={[
-          "fixed z-50 flex flex-col bg-card shadow-large",
+          "fixed z-[80] flex flex-col bg-card shadow-large",
           "hidden md:flex",
           "top-0 right-0 bottom-0 w-[380px]",
           "border-l border-border",
@@ -162,7 +166,7 @@ export function NoteSheet({
         aria-modal="true"
         aria-label={headerTitle}
         className={[
-          "fixed z-50 flex flex-col bg-card shadow-large",
+          "fixed z-[80] flex flex-col bg-card shadow-large",
           "md:hidden",
           "bottom-0 left-0 right-0",
           "rounded-t-[1.75rem]",

@@ -7,19 +7,21 @@ import { PersistentAudioPlayer } from "@/components/member/PersistentAudioPlayer
 interface MemberShellClientProps {
   streak: number;
   tier: string | null;
+  memberName?: string | null;
   children: React.ReactNode;
 }
 
 export function MemberShellClient({
   streak,
   tier,
+  memberName,
   children,
 }: MemberShellClientProps) {
   return (
     <MemberAudioProvider>
       <div className="member-shell min-h-dvh">
-        <MemberTopNav streak={streak} tier={tier} />
-        <main className="flex-1 pb-44 md:pb-32">{children}</main>
+        <MemberTopNav streak={streak} tier={tier} memberName={memberName} />
+        <main className="member-shell__content flex-1">{children}</main>
         <PersistentAudioPlayer />
       </div>
     </MemberAudioProvider>

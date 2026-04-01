@@ -1,8 +1,8 @@
 import Link from "next/link";
-import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { config } from "@/lib/config";
+import { Logo } from "@/components/marketing/Logo";
 import { PricingToggle } from "@/components/marketing/PricingToggle";
 
 export const metadata = {
@@ -10,6 +10,32 @@ export const metadata = {
   description:
     "Start your Positives practice from $49/month. Daily guided audio, weekly principles, and monthly masterclasses with Dr. Paul Jenkins.",
 };
+
+function JoinPageNav() {
+  return (
+    <header
+      className="sticky top-0 z-50 w-full"
+      style={{
+        background: "rgba(250,250,248,0.90)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        borderBottom: "1px solid rgba(221,215,207,0.55)",
+      }}
+    >
+      <div className="max-w-6xl mx-auto flex items-center justify-between px-8 py-4">
+        <Logo href="/" kind="full" height={28} />
+        <nav className="flex items-center gap-6" aria-label="Join page navigation">
+          <Link href="/" className="text-sm font-medium" style={{ color: "#68707A" }}>
+            Home
+          </Link>
+          <Link href="/login" className="text-sm font-medium" style={{ color: "#68707A" }}>
+            Sign in
+          </Link>
+        </nav>
+      </div>
+    </header>
+  );
+}
 
 /**
  * app/join/page.tsx
@@ -50,45 +76,11 @@ export default async function JoinPage({
   const monthlyPriceId = config.stripe.prices.level1Monthly;
   const annualPriceId = config.stripe.prices.level1Annual;
 
-  // ── Shared nav ────────────────────────────────────────────────────────────
-  const Nav = () => (
-    <header
-      className="sticky top-0 z-50 w-full"
-      style={{
-        background: "rgba(250,250,248,0.90)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        borderBottom: "1px solid rgba(221,215,207,0.55)",
-      }}
-    >
-      <div className="max-w-6xl mx-auto px-8 py-4 flex items-center justify-between">
-        <Link href="/">
-          <Image
-            src="/logos/positives-wordmark-dark.png"
-            alt="Positives"
-            width={120}
-            height={26}
-            style={{ height: 26, width: "auto" }}
-            priority
-          />
-        </Link>
-        <nav className="flex items-center gap-6" aria-label="Join page navigation">
-          <Link href="/" className="text-sm font-medium" style={{ color: "#68707A" }}>
-            Home
-          </Link>
-          <Link href="/login" className="text-sm font-medium" style={{ color: "#68707A" }}>
-            Sign in
-          </Link>
-        </nav>
-      </div>
-    </header>
-  );
-
   // ── Check-email holding screen ────────────────────────────────────────────
   if (step === "check-email") {
     return (
       <div className="min-h-dvh flex flex-col" style={{ background: "#FAFAF8" }}>
-        <Nav />
+        <JoinPageNav />
         <div className="flex-1 flex flex-col items-center justify-center px-6 py-16">
           <div className="w-full max-w-sm text-center">
             <div
@@ -148,7 +140,7 @@ export default async function JoinPage({
   // ── Main join page ────────────────────────────────────────────────────────
   return (
     <div className="min-h-dvh flex flex-col overflow-x-hidden" style={{ background: "#FAFAF8" }}>
-      <Nav />
+      <JoinPageNav />
 
       {/* ━━ 1. PRICING INTRO ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section
@@ -437,15 +429,7 @@ export default async function JoinPage({
       >
         <div className="max-w-6xl mx-auto px-8 py-10 flex flex-col sm:flex-row items-center justify-between gap-5">
           <div className="flex items-center gap-6">
-            <Link href="/">
-              <Image
-                src="/logos/positives-wordmark-dark.png"
-                alt="Positives"
-                width={80}
-                height={20}
-                style={{ height: 20, width: "auto", opacity: 0.45 }}
-              />
-            </Link>
+            <Logo href="/" kind="full" height={22} className="opacity-45" />
             <div className="flex items-center gap-5">
               <Link href="/privacy" className="text-xs" style={{ color: "#9AA0A8" }}>Privacy</Link>
               <Link href="/terms" className="text-xs" style={{ color: "#9AA0A8" }}>Terms</Link>

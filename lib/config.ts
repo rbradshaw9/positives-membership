@@ -23,6 +23,9 @@ export const config = {
   app: {
     get url() { return optional("NEXT_PUBLIC_APP_URL", "http://localhost:3000"); },
     get nodeEnv() { return optional("NODE_ENV", "development"); },
+    get communityPreviewEnabled() {
+      return optional("ENABLE_COMMUNITY_PREVIEW", "false") === "true";
+    },
     get adminEmails() {
       return optional("ADMIN_EMAILS")
         .split(",")

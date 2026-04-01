@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { NoteSheet } from "@/components/notes/NoteSheet";
 
 /**
@@ -13,6 +14,8 @@ import { NoteSheet } from "@/components/notes/NoteSheet";
  */
 
 export function NewJournalEntryButton() {
+  const router = useRouter();
+  const [, startTransition] = useTransition();
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -47,7 +50,9 @@ export function NewJournalEntryButton() {
         contentTitle="Free-form entry"
         onSaved={() => {
           setIsOpen(false);
-          window.location.reload();
+          startTransition(() => {
+            router.refresh();
+          });
         }}
       />
     </>

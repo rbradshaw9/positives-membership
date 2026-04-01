@@ -14,23 +14,41 @@ import Link from "next/link";
 
 interface LogoProps {
   variant?: "dark" | "light";
+  kind?: "full" | "wordmark" | "icon";
   /** Height in px. Width is inferred from the image aspect ratio (~5.6:1). */
   height?: number;
   href?: string | null;
   className?: string;
 }
 
+const LOGO_CONFIG = {
+  full: {
+    src: "/logos/png/positives-logos_Positives-logo-full.png",
+    ratio: 1577 / 585,
+  },
+  wordmark: {
+    src: "/logos/png/positives-logos_positives-wordmark.png",
+    ratio: 1577 / 458,
+  },
+  icon: {
+    src: "/logos/png/positives-logos_positives-icon.png",
+    ratio: 450 / 419,
+  },
+} as const;
+
 export function Logo({
   variant = "dark",
+  kind = "full",
   height = 28,
   href = "/",
   className = "",
 }: LogoProps) {
+  const { src, ratio } = LOGO_CONFIG[kind];
   const img = (
     <Image
-      src="/logos/png/positives-logos_positives-wordmark.png"
+      src={src}
       alt="Positives"
-      width={Math.round(height * 5.6)}
+      width={Math.round(height * ratio)}
       height={height}
       priority
       style={{

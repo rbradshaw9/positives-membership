@@ -4,23 +4,18 @@ import {
   createContext,
   useContext,
   useEffect,
-  useMemo,
   useRef,
-  useState,
+  useSyncExternalStore,
 } from "react";
-import { markListened } from "@/app/(member)/today/actions";
-
-export type MemberAudioTrack = {
-  id: string;
-  title: string;
-  subtitle?: string;
-  src: string;
-  durationLabel: string;
-  onCompleteAction?: {
-    kind: "daily_listened";
-    contentId: string;
-  };
-};
+import {
+  markListened,
+  markTrackCompleted,
+  syncListeningProgress,
+} from "@/app/(member)/today/actions";
+import {
+  MemberAudioTrack,
+  memberAudioStore,
+} from "@/lib/audio/member-audio-store";
 
 type MemberAudioContextValue = {
   currentTrack: MemberAudioTrack | null;
@@ -46,15 +41,85 @@ export function MemberAudioProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const shouldAutoplayRef = useRef(false);
-  const completedTrackRef = useRef<string | null>(null);
+  const snapshot = useSyncExternalStore(
+    memberAudioStore.subscribe,
+    memberAudioStore.getSnapshot,
+    memberAudioStore.getSnapshot
+  );
 
-  const [currentTrack, setCurrentTrack] = useState<MemberAudioTrack | null>(null);
-  const [completedTrackId, setCompletedTrackId] = useState<string | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const pendingResumeTimeRef = useRef(0);
+  const completionTrackRef = useRef<string | null>(null);
+  const lastPersistedResumeRef = useRef<{ trackId: string | null; seconds: number }>({
+    trackId: null,
+    seconds: 0,
+  });
+  const lastProgressSyncRef = useRef<{ trackId: string | null; at: number }>({
+    trackId: null,
+    at: 0,
+  });
+
+  useEffect(() => {
+    memberAudioStore.hydrate();
+  }, []);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (!snapshot.currentTrack) {
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
+      completionTrackRef.current = null;
+      pendingResumeTimeRef.current = 0;
+      return;
+    }
+
+    if (
+      audio.dataset.trackId !== snapshot.currentTrack.id ||
+      audio.dataset.trackSrc !== snapshot.currentTrack.src
+    ) {
+      audio.dataset.trackId = snapshot.currentTrack.id;
+      audio.dataset.trackSrc = snapshot.currentTrack.src;
+      audio.src = snapshot.currentTrack.src;
+      pendingResumeTimeRef.current =
+        memberAudioStore.getResumePosition(snapshot.currentTrack.id) ?? 0;
+      lastPersistedResumeRef.current = {
+        trackId: snapshot.currentTrack.id,
+        seconds: pendingResumeTimeRef.current,
+      };
+      completionTrackRef.current = null;
+      audio.load();
+    }
+  }, [snapshot.currentTrack]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !snapshot.currentTrack) return;
+
+    if (snapshot.isPlaying) {
+      audio.play().catch((err) => {
+        console.warn("[MemberAudioProvider] play() blocked:", err);
+        memberAudioStore.pause();
+      });
+      return;
+    }
+
+    audio.pause();
+  }, [snapshot.currentTrack, snapshot.isPlaying]);
+
+  useEffect(() => {
+    function handleBeforeUnload() {
+      if (!snapshot.currentTrack) return;
+      memberAudioStore.storeResumePosition(snapshot.currentTrack.id, snapshot.currentTime);
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [snapshot.currentTime, snapshot.currentTrack]);
 
   function formatTime(seconds: number): string {
     const safeSeconds = Number.isFinite(seconds) ? seconds : 0;
@@ -64,54 +129,33 @@ export function MemberAudioProvider({
   }
 
   function playTrack(track: MemberAudioTrack) {
-    if (currentTrack?.id === track.id && currentTrack.src === track.src) {
-      if (!isPlaying) {
-        audioRef.current?.play().catch((err) => {
-          console.warn("[MemberAudioProvider] play() blocked:", err);
-        });
-      }
-      return;
-    }
-
-    shouldAutoplayRef.current = true;
-    completedTrackRef.current = null;
-    setCurrentTime(0);
-    setDuration(0);
-    setCurrentTrack(track);
+    memberAudioStore.playTrack(track);
   }
 
   function togglePlayback() {
-    const audio = audioRef.current;
-    if (!audio || !currentTrack) return;
-
-    if (isPlaying) {
-      audio.pause();
-    } else {
-      audio.play().catch((err) => {
-        console.warn("[MemberAudioProvider] play() blocked:", err);
-      });
-    }
+    memberAudioStore.togglePlayback();
   }
 
   function pause() {
-    audioRef.current?.pause();
+    memberAudioStore.pause();
   }
 
   function clearTrack() {
-    audioRef.current?.pause();
-    shouldAutoplayRef.current = false;
-    completedTrackRef.current = null;
-    setIsPlaying(false);
-    setCurrentTime(0);
-    setDuration(0);
-    setCurrentTrack(null);
+    memberAudioStore.clearTrack();
   }
 
   function seekTo(seconds: number) {
     const audio = audioRef.current;
-    if (!audio) return;
-    audio.currentTime = Math.max(0, Math.min(seconds, audio.duration || seconds));
-    setCurrentTime(audio.currentTime);
+    if (!audio || !snapshot.currentTrack) return;
+
+    const boundedSeconds = Math.max(0, Math.min(seconds, audio.duration || seconds));
+    audio.currentTime = boundedSeconds;
+    memberAudioStore.setCurrentTime(boundedSeconds);
+    memberAudioStore.storeResumePosition(snapshot.currentTrack.id, boundedSeconds);
+    lastPersistedResumeRef.current = {
+      trackId: snapshot.currentTrack.id,
+      seconds: boundedSeconds,
+    };
   }
 
   function seekBy(delta: number) {
@@ -120,97 +164,174 @@ export function MemberAudioProvider({
     seekTo(audio.currentTime + delta);
   }
 
-  function handleLoadedMetadata() {
-    if (!audioRef.current) return;
-    setDuration(audioRef.current.duration || 0);
-  }
-
-  function handleTimeUpdate() {
-    const audio = audioRef.current;
-    if (!audio || !currentTrack) return;
-    const nextTime = audio.currentTime;
-    const nextDuration = audio.duration || duration;
-    setCurrentTime(nextTime);
-    if (nextDuration && nextDuration !== duration) {
-      setDuration(nextDuration);
-    }
-
+  function maybePersistResume(trackId: string, seconds: number, force = false) {
+    const last = lastPersistedResumeRef.current;
     if (
-      currentTrack.onCompleteAction?.kind === "daily_listened" &&
-      nextDuration > 0 &&
-      nextTime / nextDuration >= 0.8 &&
-      completedTrackRef.current !== currentTrack.id
+      !force &&
+      last.trackId === trackId &&
+      Math.abs(seconds - last.seconds) < 5
     ) {
-      completedTrackRef.current = currentTrack.id;
-      setCompletedTrackId(currentTrack.id);
-      void markListened(currentTrack.onCompleteAction.contentId);
+      return;
     }
+
+    memberAudioStore.storeResumePosition(trackId, seconds);
+    lastPersistedResumeRef.current = {
+      trackId,
+      seconds,
+    };
+  }
+
+  function maybeSyncIncompleteProgress(trackId: string, currentTime: number, force = false) {
+    if (currentTime < 5) return;
+
+    const now = Date.now();
+    const lastSync = lastProgressSyncRef.current;
+    if (!force && lastSync.trackId === trackId && now - lastSync.at < 30_000) {
+      return;
+    }
+
+    lastProgressSyncRef.current = {
+      trackId,
+      at: now,
+    };
+
+    void syncListeningProgress(trackId);
+  }
+
+  function maybeCompleteTrack(track: MemberAudioTrack, currentTime: number, duration: number) {
+    if (
+      duration <= 0 ||
+      currentTime / duration < 0.8 ||
+      completionTrackRef.current === track.id
+    ) {
+      return;
+    }
+
+    completionTrackRef.current = track.id;
+    memberAudioStore.markCompleted(track.id);
+
+    if (track.onCompleteAction?.kind === "daily_listened") {
+      void markListened(track.onCompleteAction.contentId);
+      return;
+    }
+
+    void markTrackCompleted(track.id);
   }
 
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio || !currentTrack) return;
+    if (!snapshot.currentTrack || !("mediaSession" in navigator)) return;
 
-    if (!shouldAutoplayRef.current) return;
-    shouldAutoplayRef.current = false;
+    const currentTrack = snapshot.currentTrack;
 
-    audio.play().catch((err) => {
-      console.warn("[MemberAudioProvider] autoplay blocked:", err);
-    });
-  }, [currentTrack]);
+    const mediaSeek = (delta: number) => {
+      const audio = audioRef.current;
+      if (!audio) return;
 
-  useEffect(() => {
-    if (!currentTrack || !("mediaSession" in navigator)) return;
+      const nextSeconds = Math.max(
+        0,
+        Math.min(audio.currentTime + delta, audio.duration || audio.currentTime + delta)
+      );
+      audio.currentTime = nextSeconds;
+      memberAudioStore.setCurrentTime(nextSeconds);
+      memberAudioStore.storeResumePosition(currentTrack.id, nextSeconds);
+      lastPersistedResumeRef.current = {
+        trackId: currentTrack.id,
+        seconds: nextSeconds,
+      };
+    };
 
     navigator.mediaSession.metadata = new MediaMetadata({
       title: currentTrack.title,
       artist: "Positives",
       album: currentTrack.subtitle ?? "Daily Practice",
     });
-    navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
+    navigator.mediaSession.playbackState = snapshot.isPlaying ? "playing" : "paused";
     navigator.mediaSession.setActionHandler("play", () => {
-      audioRef.current?.play().catch(() => undefined);
+      memberAudioStore.playTrack(currentTrack);
     });
     navigator.mediaSession.setActionHandler("pause", () => {
-      audioRef.current?.pause();
+      memberAudioStore.pause();
     });
-    navigator.mediaSession.setActionHandler("seekbackward", () => seekBy(-15));
-    navigator.mediaSession.setActionHandler("seekforward", () => seekBy(15));
-  }, [currentTrack, isPlaying]);
+    navigator.mediaSession.setActionHandler("seekbackward", () => {
+      mediaSeek(-15);
+    });
+    navigator.mediaSession.setActionHandler("seekforward", () => {
+      mediaSeek(15);
+    });
+  }, [snapshot.currentTrack, snapshot.isPlaying]);
 
-  const value = useMemo<MemberAudioContextValue>(
-    () => ({
-      currentTrack,
-      completedTrackId,
-      isPlaying,
-      currentTime,
-      duration,
-      progress: duration > 0 ? currentTime / duration : 0,
-      playTrack,
-      togglePlayback,
-      pause,
-      clearTrack,
-      seekTo,
-      seekBy,
-      isCurrentTrack: (trackId: string) => currentTrack?.id === trackId,
-      formatTime,
-    }),
-    [currentTrack, completedTrackId, isPlaying, currentTime, duration]
-  );
+  const value: MemberAudioContextValue = {
+    currentTrack: snapshot.currentTrack,
+    completedTrackId: snapshot.completedTrackId,
+    isPlaying: snapshot.isPlaying,
+    currentTime: snapshot.currentTime,
+    duration: snapshot.duration,
+    progress: snapshot.progress,
+    playTrack,
+    togglePlayback,
+    pause,
+    clearTrack,
+    seekTo,
+    seekBy,
+    isCurrentTrack: (trackId: string) => snapshot.currentTrack?.id === trackId,
+    formatTime,
+  };
 
   return (
     <MemberAudioContext.Provider value={value}>
       {children}
-      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <audio
         ref={audioRef}
-        src={currentTrack?.src}
         preload="metadata"
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
-        onEnded={() => setIsPlaying(false)}
-        onLoadedMetadata={handleLoadedMetadata}
-        onTimeUpdate={handleTimeUpdate}
+        onPlay={() => memberAudioStore.setPlaying(true)}
+        onPause={() => {
+          memberAudioStore.setPlaying(false);
+          if (snapshot.currentTrack) {
+            maybePersistResume(snapshot.currentTrack.id, audioRef.current?.currentTime ?? 0, true);
+            maybeSyncIncompleteProgress(
+              snapshot.currentTrack.id,
+              audioRef.current?.currentTime ?? 0,
+              true
+            );
+          }
+        }}
+        onEnded={() => {
+          memberAudioStore.setPlaying(false);
+          if (!snapshot.currentTrack) return;
+
+          const endedTime = audioRef.current?.duration ?? snapshot.duration;
+          memberAudioStore.setPlaybackState(endedTime, snapshot.duration || endedTime);
+          maybePersistResume(snapshot.currentTrack.id, 0, true);
+          maybeCompleteTrack(
+            snapshot.currentTrack,
+            endedTime,
+            snapshot.duration || endedTime
+          );
+        }}
+        onLoadedMetadata={() => {
+          const audio = audioRef.current;
+          if (!audio || !snapshot.currentTrack) return;
+
+          const resumeTime =
+            pendingResumeTimeRef.current || memberAudioStore.getResumePosition(snapshot.currentTrack.id);
+          if (resumeTime > 0) {
+            audio.currentTime = Math.min(resumeTime, audio.duration || resumeTime);
+            pendingResumeTimeRef.current = 0;
+          }
+
+          memberAudioStore.setPlaybackState(audio.currentTime, audio.duration || 0);
+        }}
+        onTimeUpdate={() => {
+          const audio = audioRef.current;
+          if (!audio || !snapshot.currentTrack) return;
+
+          const nextTime = audio.currentTime;
+          const nextDuration = audio.duration || snapshot.duration;
+          memberAudioStore.setPlaybackState(nextTime, nextDuration);
+          maybePersistResume(snapshot.currentTrack.id, nextTime);
+          maybeSyncIncompleteProgress(snapshot.currentTrack.id, nextTime);
+          maybeCompleteTrack(snapshot.currentTrack, nextTime, nextDuration);
+        }}
         aria-hidden="true"
       />
     </MemberAudioContext.Provider>

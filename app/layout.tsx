@@ -20,6 +20,11 @@ export const metadata: Metadata = {
   title: "Positives — A Daily Practice for Calm, Clarity & Resilience",
   description:
     "Positives is a practice-based membership platform for daily grounding, emotional resilience, and personal growth. Members return to it — they don't complete it.",
+  icons: {
+    icon: "/logos/png/positives-logos_positives-icon.png",
+    shortcut: "/logos/png/positives-logos_positives-icon.png",
+    apple: "/logos/png/positives-logos_positives-icon.png",
+  },
 };
 
 export default function RootLayout({

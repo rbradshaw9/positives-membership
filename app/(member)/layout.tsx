@@ -30,7 +30,11 @@ export default async function MemberLayout({
   const streak = streakRow?.practice_streak ?? 0;
 
   return (
-    <MemberShellClient streak={streak} tier={member.subscription_tier}>
+    <MemberShellClient
+      streak={streak}
+      tier={member.subscription_tier}
+      memberName={member.name}
+    >
       {showPasswordNudge && <PasswordNudgeBanner />}
       {children}
     </MemberShellClient>

@@ -85,6 +85,8 @@ export default async function AccountPage() {
   const summary = user ? await getMemberPracticeSummary(user.id) : null;
   const memberName = member?.name?.trim() || "Member";
   const initials = memberName.charAt(0).toUpperCase();
+  const hasPracticeHistory =
+    (summary?.listenCount ?? 0) > 0 || (summary?.journalCount ?? 0) > 0 || (summary?.practiceStreak ?? 0) > 0;
   const joinedLabel = user?.created_at
     ? new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(
         new Date(user.created_at)
@@ -128,6 +130,11 @@ export default async function AccountPage() {
             <StatCard label="Listens" value={summary?.listenCount ?? 0} />
             <StatCard label="Notes" value={summary?.journalCount ?? 0} />
           </div>
+          {!hasPracticeHistory && (
+            <p className="text-sm text-white/62 md:max-w-[20rem]">
+              Your dashboard will fill in as you complete practices and capture reflections.
+            </p>
+          )}
         </SurfaceCard>
 
         <section aria-labelledby="section-history">
@@ -143,7 +150,16 @@ export default async function AccountPage() {
                 </p>
               </div>
             </div>
-            <Heatmap values={summary?.heatmap ?? []} />
+            {hasPracticeHistory ? (
+              <Heatmap values={summary?.heatmap ?? []} />
+            ) : (
+              <div className="rounded-2xl border border-dashed border-border bg-background px-5 py-8 text-center">
+                <p className="font-medium text-foreground">No completed listens yet</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Your heatmap will light up from completed listening activity as you return to your practice.
+                </p>
+              </div>
+            )}
           </SurfaceCard>
         </section>
 

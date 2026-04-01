@@ -51,7 +51,7 @@ export function CoachingUpgradePrompt({ tier }: { tier: string | null }) {
             className="text-sm leading-relaxed"
             style={{ color: "var(--color-muted-foreground)" }}
           >
-            Live weekly coaching with Dr. Paul is available for Level 3 and above. You're
+            Live weekly coaching with Dr. Paul is available for Level 3 and above. You&apos;re
             currently on <strong style={{ color: "var(--color-foreground)" }}>{tierLabel}</strong>.
           </p>
         </div>

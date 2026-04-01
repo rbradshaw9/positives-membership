@@ -1,3 +1,5 @@
+import Form from "next/form";
+import Link from "next/link";
 import { requireActiveMember } from "@/lib/auth/require-active-member";
 import {
   getLibraryContent,
@@ -127,7 +129,7 @@ export default async function LibraryPage(props: { searchParams: SearchParams })
         hero
       />
       <div className="member-container py-8 md:py-10">
-      <form action="/library" method="GET" className="mb-6">
+      <Form action="/library" className="mb-6" scroll={false}>
         {activeTab !== "all" && (
           <input type="hidden" name="tab" value={activeTab} />
         )}
@@ -139,7 +141,7 @@ export default async function LibraryPage(props: { searchParams: SearchParams })
             ariaLabel="Search library content"
             trailing={
               isSearchMode ? (
-                <a
+                <Link
                   href={clearHref}
                   className="text-muted-foreground transition-colors hover:text-foreground"
                   aria-label="Clear search"
@@ -158,7 +160,7 @@ export default async function LibraryPage(props: { searchParams: SearchParams })
                     <line x1="18" y1="6" x2="6" y2="18" />
                     <line x1="6" y1="6" x2="18" y2="18" />
                   </svg>
-                </a>
+                </Link>
               ) : null
             }
           />
@@ -173,7 +175,7 @@ export default async function LibraryPage(props: { searchParams: SearchParams })
             for &ldquo;<span className="font-medium text-foreground">{searchQuery}</span>&rdquo;
           </p>
         )}
-      </form>
+      </Form>
 
       {!isSearchMode && (
         <nav aria-label="Content filter" className="mb-6 flex flex-wrap gap-2">
@@ -233,9 +235,9 @@ export default async function LibraryPage(props: { searchParams: SearchParams })
                 <p className="text-foreground text-sm font-medium">Nothing matched</p>
                 <p className="text-muted-foreground text-sm mt-1">
                   Try different keywords, or{" "}
-                  <a href={clearHref} className="text-primary hover:underline">
+                  <Link href={clearHref} className="text-primary hover:underline">
                     browse all content
-                  </a>
+                  </Link>
                   .
                 </p>
               </div>
@@ -256,23 +258,25 @@ export default async function LibraryPage(props: { searchParams: SearchParams })
           className="flex items-center justify-between mt-4 pt-4 border-t border-border"
         >
           {page > 1 ? (
-            <a
+            <Link
               href={`/library${activeTab !== "all" ? `?tab=${activeTab}&page=${page - 1}` : `?page=${page - 1}`}`}
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              scroll={false}
             >
               ← Newer
-            </a>
+            </Link>
           ) : (
             <span />
           )}
           <span className="text-xs text-muted-foreground">Page {page}</span>
           {hasMore ? (
-            <a
+            <Link
               href={`/library${activeTab !== "all" ? `?tab=${activeTab}&page=${page + 1}` : `?page=${page + 1}`}`}
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              scroll={false}
             >
               Older →
-            </a>
+            </Link>
           ) : (
             <span />
           )}

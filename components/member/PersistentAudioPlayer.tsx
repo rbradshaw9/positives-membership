@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useMemberAudio } from "@/components/member/audio/MemberAudioProvider";
 
 export function PersistentAudioPlayer() {
@@ -15,13 +16,43 @@ export function PersistentAudioPlayer() {
     clearTrack,
     formatTime,
   } = useMemberAudio();
+  const playerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const player = playerRef.current;
+
+    if (!currentTrack || !player) {
+      root.style.setProperty("--member-player-height", "0px");
+      return;
+    }
+
+    const syncPlayerHeight = () => {
+      root.style.setProperty(
+        "--member-player-height",
+        `${player.getBoundingClientRect().height}px`
+      );
+    };
+
+    syncPlayerHeight();
+
+    const observer = new ResizeObserver(syncPlayerHeight);
+    observer.observe(player);
+    window.addEventListener("resize", syncPlayerHeight);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", syncPlayerHeight);
+      root.style.setProperty("--member-player-height", "0px");
+    };
+  }, [currentTrack]);
 
   if (!currentTrack) return null;
 
   const maxSeconds = duration || 100;
 
   return (
-    <div className="persistent-player" data-mobile-offset="true">
+    <div ref={playerRef} className="persistent-player" data-mobile-offset="true">
       <div className="mx-auto max-w-5xl px-4 py-3 md:px-6">
         <div className="mb-3">
           <input

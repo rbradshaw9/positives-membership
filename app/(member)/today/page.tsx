@@ -4,12 +4,17 @@ import { getWeeklyContent } from "@/lib/queries/get-weekly-content";
 import { getMonthlyContent } from "@/lib/queries/get-monthly-content";
 import { resolveAudioUrl } from "@/lib/media/resolve-audio-url";
 import { getMemberNoteContentIds } from "@/lib/queries/get-library-content";
+import { getMemberListeningInsights } from "@/lib/queries/get-member-listening-insights";
 import { getEffectiveDate } from "@/lib/dates/effective-date";
 import { getGreeting } from "@/lib/greeting";
 import { requireActiveMember } from "@/lib/auth/require-active-member";
 import { DailyPracticeCard } from "@/components/today/DailyPracticeCard";
 import { WeeklyPrincipleCard } from "@/components/today/WeeklyPrincipleCard";
 import { MonthlyThemeCard } from "@/components/today/MonthlyThemeCard";
+import { ContinueListeningCard } from "@/components/today/ContinueListeningCard";
+import { TypeBadge } from "@/components/member/TypeBadge";
+import { Button } from "@/components/ui/Button";
+import Link from "next/link";
 
 /**
  * app/(member)/today/page.tsx
@@ -42,12 +47,24 @@ export default async function TodayPage() {
         .then((r) => r.data),
     ]);
 
-  const [dailyAudioUrl, weeklyAudioUrl] = await Promise.all([
+  const listeningInsights = await getMemberListeningInsights(
+    member.id,
+    member.subscription_tier,
+    todayContent?.id
+  );
+
+  const [dailyAudioUrl, weeklyAudioUrl, continueAudioUrl] = await Promise.all([
     todayContent
       ? resolveAudioUrl(todayContent.castos_episode_url, todayContent.s3_audio_key)
       : Promise.resolve(null),
     weeklyContent
       ? resolveAudioUrl(weeklyContent.castos_episode_url, weeklyContent.s3_audio_key)
+      : Promise.resolve(null),
+    listeningInsights.continueListening
+      ? resolveAudioUrl(
+          listeningInsights.continueListening.castos_episode_url,
+          listeningInsights.continueListening.s3_audio_key
+        )
       : Promise.resolve(null),
   ]);
 
@@ -81,6 +98,7 @@ export default async function TodayPage() {
   }).format(new Date(effectiveDateStr + "T12:00:00"));
 
   const greeting = getGreeting(member.name);
+  const suggestedNext = listenedToday ? listeningInsights.suggestedNext : null;
 
   return (
     <div>
@@ -121,6 +139,26 @@ export default async function TodayPage() {
 
       {/* ── Content stream ───────────────────────────────────────────── */}
       <div className="member-container py-8 flex flex-col gap-5">
+        {listeningInsights.continueListening && (
+          <ContinueListeningCard
+            contentId={listeningInsights.continueListening.id}
+            contentType={listeningInsights.continueListening.type}
+            title={listeningInsights.continueListening.title}
+            description={
+              listeningInsights.continueListening.excerpt ??
+              listeningInsights.continueListening.description
+            }
+            audioUrl={continueAudioUrl}
+            durationLabel={
+              listeningInsights.continueListening.duration_seconds
+                ? `${Math.floor(listeningInsights.continueListening.duration_seconds / 60)}:${String(
+                    listeningInsights.continueListening.duration_seconds % 60
+                  ).padStart(2, "0")}`
+                : "—"
+            }
+          />
+        )}
+
         {/* Daily card */}
         <DailyPracticeCard
           content={todayContent}
@@ -129,6 +167,96 @@ export default async function TodayPage() {
           hasListened={listenedToday}
           initialHasNote={todayContent ? noteContentIds.has(todayContent.id) : false}
         />
+
+        {(listeningInsights.recentlyCompleted.length > 0 || suggestedNext) && (
+          <section className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+            {listeningInsights.recentlyCompleted.length > 0 && (
+              <article className="surface-card p-5 md:p-6">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="ui-section-eyebrow mb-2">Recently Completed</p>
+                    <h2 className="heading-balance font-heading text-xl font-semibold tracking-[-0.02em] text-foreground">
+                      Practices you&apos;ve finished lately
+                    </h2>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  {listeningInsights.recentlyCompleted.map((item) => (
+                    <Link
+                      key={item.id}
+                      href={`/library/${item.id}`}
+                      className="group flex items-center justify-between gap-3 rounded-2xl border border-border bg-background px-4 py-3 transition-colors hover:border-primary/25 hover:bg-primary/5"
+                    >
+                      <div className="min-w-0">
+                        <div className="mb-2 flex items-center gap-2">
+                          <TypeBadge type={item.type} size="xs" />
+                          {item.listenedAt ? (
+                            <span className="text-xs text-muted-foreground">
+                              {new Intl.DateTimeFormat("en-US", {
+                                month: "short",
+                                day: "numeric",
+                              }).format(new Date(item.listenedAt))}
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="truncate text-sm font-semibold text-foreground">
+                          {item.title}
+                        </p>
+                        {(item.excerpt ?? item.description) && (
+                          <p className="mt-1 line-clamp-2 text-sm leading-body text-muted-foreground">
+                            {item.excerpt ?? item.description}
+                          </p>
+                        )}
+                      </div>
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                        className="flex-shrink-0 text-muted-foreground transition-colors group-hover:text-foreground"
+                      >
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                    </Link>
+                  ))}
+                </div>
+              </article>
+            )}
+
+            {suggestedNext && (
+              <article className="surface-card surface-card--tint p-5 md:p-6">
+                <p className="ui-section-eyebrow mb-2">Next Recommended Practice</p>
+                <h2 className="heading-balance font-heading text-xl font-semibold tracking-[-0.02em] text-foreground">
+                  {suggestedNext.title}
+                </h2>
+                {(suggestedNext.excerpt ?? suggestedNext.description) && (
+                  <p className="mt-2 text-sm leading-body text-muted-foreground">
+                    {suggestedNext.excerpt ?? suggestedNext.description}
+                  </p>
+                )}
+
+                <div className="mt-4 flex items-center gap-2">
+                  <TypeBadge type={suggestedNext.type} size="xs" />
+                  {suggestedNext.duration_seconds ? (
+                    <span className="text-xs text-muted-foreground">
+                      {Math.max(1, Math.round(suggestedNext.duration_seconds / 60))} min
+                    </span>
+                  ) : null}
+                </div>
+
+                <Button href={`/library/${suggestedNext.id}`} className="mt-5">
+                  Explore next practice
+                </Button>
+              </article>
+            )}
+          </section>
+        )}
 
         {/* Separator */}
         <div className="flex items-center gap-3 py-1">

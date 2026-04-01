@@ -32,13 +32,39 @@ export async function markListened(contentId: string): Promise<void> {
 
   const now = new Date();
 
-  // ── 1. Write progress record ────────────────────────────────────────────────
-  const { error: progressError } = await supabase.from("progress").insert({
-    member_id: user.id,
-    content_id: contentId,
-    completed: true,
-    // listened_at defaults to NOW() in DB
-  });
+  // ── 1. Promote newest incomplete progress row to completed if it exists ───
+  const { data: incompleteProgress } = await supabase
+    .from("progress")
+    .select("id")
+    .eq("member_id", user.id)
+    .eq("content_id", contentId)
+    .eq("completed", false)
+    .order("listened_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let progressError: { message: string } | null = null;
+
+  if (incompleteProgress?.id) {
+    const { error } = await supabase
+      .from("progress")
+      .update({
+        completed: true,
+        listened_at: now.toISOString(),
+      })
+      .eq("id", incompleteProgress.id);
+
+    progressError = error;
+  } else {
+    const { error } = await supabase.from("progress").insert({
+      member_id: user.id,
+      content_id: contentId,
+      completed: true,
+      listened_at: now.toISOString(),
+    });
+
+    progressError = error;
+  }
 
   if (progressError) {
     console.error("[markListened] progress insert error:", progressError.message);
@@ -89,5 +115,102 @@ export async function markListened(contentId: string): Promise<void> {
 
   if (streakError) {
     console.error("[markListened] streak update error:", streakError.message);
+  }
+}
+
+/**
+ * syncListeningProgress — creates or refreshes an incomplete progress record
+ * for the current member + content pair once meaningful playback has started.
+ */
+export async function syncListeningProgress(contentId: string): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return;
+
+  const now = new Date().toISOString();
+  const { data: existing } = await supabase
+    .from("progress")
+    .select("id")
+    .eq("member_id", user.id)
+    .eq("content_id", contentId)
+    .eq("completed", false)
+    .order("listened_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existing?.id) {
+    const { error } = await supabase
+      .from("progress")
+      .update({ listened_at: now })
+      .eq("id", existing.id);
+
+    if (error) {
+      console.error("[syncListeningProgress] progress update error:", error.message);
+    }
+    return;
+  }
+
+  const { error } = await supabase.from("progress").insert({
+    member_id: user.id,
+    content_id: contentId,
+    completed: false,
+    listened_at: now,
+  });
+
+  if (error) {
+    console.error("[syncListeningProgress] progress insert error:", error.message);
+  }
+}
+
+/**
+ * markTrackCompleted — promote the newest incomplete progress record for an
+ * audio track to completed, without firing daily-specific streak logic.
+ */
+export async function markTrackCompleted(contentId: string): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return;
+
+  const now = new Date().toISOString();
+  const { data: incompleteProgress } = await supabase
+    .from("progress")
+    .select("id")
+    .eq("member_id", user.id)
+    .eq("content_id", contentId)
+    .eq("completed", false)
+    .order("listened_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (incompleteProgress?.id) {
+    const { error } = await supabase
+      .from("progress")
+      .update({
+        completed: true,
+        listened_at: now,
+      })
+      .eq("id", incompleteProgress.id);
+
+    if (error) {
+      console.error("[markTrackCompleted] progress update error:", error.message);
+    }
+    return;
+  }
+
+  const { error } = await supabase.from("progress").insert({
+    member_id: user.id,
+    content_id: contentId,
+    completed: true,
+    listened_at: now,
+  });
+
+  if (error) {
+    console.error("[markTrackCompleted] progress insert error:", error.message);
   }
 }
