@@ -8,15 +8,14 @@ import { usePathname } from "next/navigation";
  * components/member/MemberTopNav.tsx
  * Sprint 9: premium sticky top navigation bar for all member pages.
  * Sprint 10: tier-aware — Coaching link shown only for Level 3+.
+ * Sprint 11: visual polish —
+ *   - Backdrop blur: 12px → 16px (desktop + mobile)
+ *   - Wordmark opacity: 0.65 → 0.8
+ *   - Desktop active link: bg-foreground/6 → bg-primary/8 text-primary font-semibold
+ *   - Mobile active link: added 2px dot indicator beneath active item
  *
  * Layout:
  *   [Positives wordmark]   [streak chip]   [Today · Library · Journal · Coaching? · Account]
- *
- * Design:
- *   - White/card background with subtle border-b
- *   - h-14 on mobile, h-16 on desktop
- *   - nav links are text links (no icons on desktop, icons-only on mobile via
- *     a responsive bottom bar that this component also renders)
  *
  * Accessibility: aria-current="page" on active link.
  */
@@ -54,17 +53,17 @@ export function MemberTopNav({ streak = 0, tier }: MemberTopNavProps) {
       {/* ── Desktop + tablet top bar ─────────────────────────────────── */}
       <header
         className="sticky top-0 z-50 w-full border-b border-border bg-card/90"
-        style={{ backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}
+        style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}
       >
         <div className="member-container flex items-center h-14 md:h-16 gap-6">
-          {/* Wordmark */}
+          {/* Wordmark — opacity 0.8 (up from 0.65 for stronger brand presence) */}
           <Link href="/today" aria-label="Positives — go to Today" className="flex-shrink-0 mr-auto md:mr-0">
             <Image
               src="/logos/positives-wordmark-dark.png"
               alt="Positives"
               width={100}
               height={22}
-              style={{ height: 18, width: "auto", opacity: 0.65 }}
+              style={{ height: 18, width: "auto", opacity: 0.8 }}
               priority
             />
           </Link>
@@ -98,10 +97,10 @@ export function MemberTopNav({ streak = 0, tier }: MemberTopNavProps) {
                   href={href}
                   aria-current={isActive ? "page" : undefined}
                   className={[
-                    "px-3.5 py-2 text-sm font-medium rounded-lg transition-colors",
+                    "px-3.5 py-2 text-sm rounded-lg transition-colors",
                     isActive
-                      ? "text-foreground bg-foreground/6"
-                      : "text-muted-foreground hover:text-foreground hover:bg-foreground/4",
+                      ? "text-primary bg-primary/8 font-semibold"
+                      : "font-medium text-muted-foreground hover:text-foreground hover:bg-foreground/4",
                   ].join(" ")}
                 >
                   {label}
@@ -113,11 +112,11 @@ export function MemberTopNav({ streak = 0, tier }: MemberTopNavProps) {
       </header>
 
       {/* ── Mobile bottom bar ─────────────────────────────────────────── */}
-      {/* Shown only on mobile (md:hidden) — icons + labels */}
+      {/* Shown only on mobile (md:hidden) — icons + labels + active dot */}
       <nav
         aria-label="Member navigation"
         className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-card/95 border-t border-border"
-        style={{ backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", paddingBottom: "env(safe-area-inset-bottom)" }}
+        style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <ul className="flex items-center justify-around px-2">
           {navItems.map(({ href, label }) => {
@@ -134,6 +133,12 @@ export function MemberTopNav({ streak = 0, tier }: MemberTopNavProps) {
                 >
                   <NavIcon href={href} />
                   <span>{label}</span>
+                  {/* Active dot indicator */}
+                  <span
+                    className="block w-1 h-1 rounded-full -mt-0.5"
+                    style={{ background: isActive ? "var(--color-primary)" : "transparent" }}
+                    aria-hidden="true"
+                  />
                 </Link>
               </li>
             );

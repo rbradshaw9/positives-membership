@@ -153,3 +153,65 @@ select.admin-input {
   }
 }
 
+/* ─── Member UI Utilities ─────────────────────────────────────────────────── */
+/* Sprint 11: shared classes for member-area visual cohesion.                  */
+/* These replace scattered inline styles and establish a systematic design      */
+/* language that matches the marketing/frontend site motifs.                   */
+
+/* Hero section background — matches Today page radial-gradient pattern.       */
+/* Used on all member page headers via PageHeader hero={true}.                  */
+.member-hero {
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid var(--color-border);
+  background: radial-gradient(
+    ellipse at 60% 0%,
+    rgba(47, 111, 237, 0.07) 0%,
+    transparent 65%
+  ), var(--color-card);
+}
+
+/* Primary action button — pill shape, gradient fill, glow shadow.             */
+/* Matches marketing site CTA button treatment at member-appropriate scale.    */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #ffffff;
+  background: linear-gradient(135deg, #2f6fed 0%, #245dd0 100%);
+  box-shadow: 0 4px 14px rgba(47, 111, 237, 0.22);
+  transition: opacity 150ms ease, transform 150ms ease;
+  cursor: pointer;
+  border: none;
+}
+.btn-primary:hover { opacity: 0.92; }
+.btn-primary:active { transform: scale(0.98); }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+
+/* Member-facing form inputs — premium treatment distinct from admin inputs.   */
+/* CSS-only focus states replace onFocus/onBlur JS handlers.                   */
+.member-input {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-card);
+  color: var(--color-foreground);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  letter-spacing: var(--letter-spacing-body);
+  outline: none;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.member-input::placeholder { color: var(--color-muted-fg); }
+.member-input:focus {
+  border-color: color-mix(in srgb, var(--color-primary) 50%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+select.member-input { cursor: pointer; }

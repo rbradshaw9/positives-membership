@@ -8,10 +8,12 @@ import { TypeBadge } from "@/components/member/TypeBadge";
 
 /**
  * components/journal/JournalList.tsx
- * Sprint 8:
- *   - Month grouping header between note groups
- *   - TypeBadge shared component replaces inline chip
- *   - Cleaner date label (short month format)
+ * Sprint 8: month grouping, TypeBadge, clean date labels.
+ * Sprint 11: visual upgrade —
+ *   - shadow-soft → shadow-medium on note cards
+ *   - content-type left accent border (primary/secondary/accent by type)
+ *   - month divider text-[10px] → text-xs, full opacity
+ *   - rounded-xl → rounded-2xl for consistency
  */
 
 interface JournalListProps {
@@ -37,6 +39,17 @@ function getMonthKey(iso: string): string {
 function truncate(text: string, chars = 160): string {
   if (text.length <= chars) return text;
   return text.slice(0, chars).trimEnd() + "…";
+}
+
+/**
+ * Returns the Tailwind class for the left accent border based on content type.
+ * Semantic mapping: blue = daily, green = weekly, amber = monthly, none = free-form.
+ */
+function leftBorderClass(contentType: string | null | undefined): string {
+  if (contentType === "daily_audio") return "border-l-[3px] border-l-primary";
+  if (contentType === "weekly_principle") return "border-l-[3px] border-l-secondary";
+  if (contentType === "monthly_theme") return "border-l-[3px] border-l-accent";
+  return "";
 }
 
 export function JournalList({ notes }: JournalListProps) {
@@ -79,9 +92,9 @@ export function JournalList({ notes }: JournalListProps) {
       >
         {groups.map(({ monthLabel, notes: groupNotes }) => (
           <section key={monthLabel}>
-            {/* Month divider */}
+            {/* Month divider — text-xs (up from 10px) at full muted opacity */}
             <div className="flex items-center gap-3 mb-3">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/60 whitespace-nowrap">
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground whitespace-nowrap">
                 {monthLabel}
               </span>
               <div className="flex-1 h-px bg-border" />
@@ -90,13 +103,21 @@ export function JournalList({ notes }: JournalListProps) {
             <ul className="flex flex-col gap-3" role="list">
               {groupNotes.map((note) => {
                 const displayText = localEdits[note.id] ?? note.entry_text;
+                const accentClass = leftBorderClass(note.content_type);
 
                 return (
                   <li key={note.id}>
                     <button
                       type="button"
                       onClick={() => handleOpen(note)}
-                      className="w-full text-left bg-card rounded-xl border border-border shadow-soft p-5 hover:border-primary/30 transition-colors group"
+                      className={[
+                        "w-full text-left bg-card rounded-2xl border border-border p-5",
+                        "hover:border-primary/30 transition-colors group",
+                        accentClass,
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      style={{ boxShadow: "var(--shadow-medium)" }}
                     >
                       {/* Content context (if tied to content) */}
                       {note.content_title && (

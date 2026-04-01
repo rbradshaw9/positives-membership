@@ -4,17 +4,15 @@ import { useActionState, useTransition } from "react";
 import { updateTimezone } from "./actions";
 
 /**
- * components for /account — TimezoneForm
- * Simple select + save for member timezone preference.
- * Shows current value and allows changing to any common timezone.
+ * app/(member)/account/timezone-form.tsx
+ * Sprint 7: timezone select + save.
+ * Sprint 11: .member-input on select, .btn-primary (small) on save button.
+ *   Replaced text link with a real button for visual weight parity.
  */
 
 type State = { error?: string; success?: true };
 const initial: State = {};
 
-// Common timezones — enough to cover US + international members without
-// overwhelming a simple settings form. Full Intl list available in Sprint 4
-// if a searchable timezone picker is ever needed.
 const TIMEZONES = [
   { value: "America/New_York", label: "Eastern Time (ET)" },
   { value: "America/Chicago", label: "Central Time (CT)" },
@@ -45,12 +43,13 @@ export function TimezoneForm({ currentTimezone }: TimezoneFormProps) {
   return (
     <form
       action={action}
-      className="bg-card rounded-xl border border-border shadow-soft p-5 flex flex-col gap-4"
+      className="bg-card rounded-2xl border border-border p-5 flex flex-col gap-4"
+      style={{ boxShadow: "var(--shadow-medium)" }}
     >
       <select
         name="timezone"
         defaultValue={currentTimezone}
-        className="w-full rounded-xl px-4 py-2.5 text-sm text-foreground bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors"
+        className="member-input"
         aria-label="Your timezone"
       >
         {TIMEZONES.map((tz) => (
@@ -78,7 +77,8 @@ export function TimezoneForm({ currentTimezone }: TimezoneFormProps) {
         type="submit"
         disabled={isPending}
         onClick={() => startTransition(() => {})}
-        className="self-start text-sm font-medium text-primary hover:text-primary-hover transition-colors disabled:opacity-50"
+        className="btn-primary self-start"
+        style={{ padding: "0.5rem 1.125rem", fontSize: "0.8125rem" }}
       >
         {isPending ? "Saving…" : "Save timezone"}
       </button>

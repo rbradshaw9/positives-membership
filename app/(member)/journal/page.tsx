@@ -8,6 +8,8 @@ import { EmptyState } from "@/components/member/EmptyState";
  * app/(member)/journal/page.tsx
  * Sprint 7: wider container, PageHeader, EmptyState, month grouping.
  * Sprint 10: "New entry" button added.
+ * Sprint 11: hero mode on PageHeader, button moved into PageHeader right slot,
+ *   EmptyState gets action CTA.
  */
 
 export const metadata = {
@@ -19,41 +21,42 @@ export default async function JournalPage() {
   const notes = await getMemberNotes();
 
   return (
-    <div className="member-container py-8 md:py-10">
-      <div className="flex items-start justify-between gap-4 mb-6">
-        <PageHeader
-          title="Your Notes"
-          subtitle="Reflections from your practice, in your own words."
-        />
-        <div className="flex-shrink-0 pt-1">
-          <NewJournalEntryButton />
-        </div>
-      </div>
+    <div>
+      {/* ── Hero ─────────────────────────────────────────────────────────── */}
+      <PageHeader
+        title="Your Notes"
+        subtitle="Reflections from your practice, in your own words."
+        hero
+        right={<NewJournalEntryButton />}
+      />
 
-      {notes.length === 0 ? (
-        <EmptyState
-          icon={
-            <svg
-              width="36"
-              height="36"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.25"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M12 20h9" />
-              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-            </svg>
-          }
-          title="No notes yet"
-          subtitle="Your reflections will appear here after you write your first note."
-        />
-      ) : (
-        <JournalList notes={notes} />
-      )}
+      <div className="member-container py-8 md:py-10">
+        {notes.length === 0 ? (
+          <EmptyState
+            icon={
+              <svg
+                width="28"
+                height="28"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.25"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+              </svg>
+            }
+            title="No notes yet"
+            subtitle="Your reflections will appear here after you write your first note."
+            action={<NewJournalEntryButton />}
+          />
+        ) : (
+          <JournalList notes={notes} />
+        )}
+      </div>
     </div>
   );
 }

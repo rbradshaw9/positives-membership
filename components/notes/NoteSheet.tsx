@@ -10,8 +10,13 @@ import { saveNote, logJournalOpened } from "@/app/(member)/notes/actions";
  * Desktop (md+): fixed right slide-over panel, 380px wide.
  * Mobile (<md):  bottom sheet rising from the bottom.
  *
- * Sprint 3 change: onSaved now receives (isNew: boolean, savedText: string)
- * so parent components can update their local preview without a page reload.
+ * Sprint 3: onSaved receives (isNew: boolean, savedText: string).
+ * Sprint 11: visual polish —
+ *   - Header: icon + text-sm font-medium (replaces uppercase xs)
+ *   - Textarea: bg-surface-tint + inset shadow, text-[15px]
+ *   - Save button: .btn-primary (gradient pill)
+ *   - Cancel button: ghost treatment (transparent bg, border)
+ *   - Mobile grab handle: wider, softer color
  */
 
 interface NoteSheetProps {
@@ -85,7 +90,6 @@ export function NoteSheet({
 
     if (result.ok) {
       setSaveState("saved");
-      // Pass the saved text back so parents can update their preview immediately
       onSaved?.(result.isNew, text.trim());
       setTimeout(() => {
         onClose();
@@ -109,7 +113,7 @@ export function NoteSheet({
     saveState === "saving"
       ? "Saving…"
       : saveState === "saved"
-        ? "Saved"
+        ? "Saved ✓"
         : initialText
           ? "Update note"
           : "Save note";
@@ -167,8 +171,12 @@ export function NoteSheet({
           isOpen ? "translate-y-0" : "translate-y-full",
         ].join(" ")}
       >
+        {/* Grab handle — wider and softer */}
         <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
-          <div className="w-10 h-1 rounded-full bg-border" />
+          <div
+            className="w-12 h-1 rounded-full"
+            style={{ background: "rgba(104,112,122,0.3)" }}
+          />
         </div>
         <NoteSheetContent
           headerTitle={headerTitle}
@@ -210,10 +218,26 @@ function NoteSheetContent({
 }: ContentProps) {
   return (
     <div className="flex flex-col flex-1 min-h-0 p-5 gap-4">
-      <div className="flex items-center justify-between flex-shrink-0">
-        <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground truncate pr-4">
-          {headerTitle}
-        </p>
+      {/* Header — icon + title (replaces all-caps xs text) */}
+      <div className="flex items-center justify-between flex-shrink-0 border-b border-border pb-4">
+        <div className="flex items-center gap-2 min-w-0">
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+            className="text-muted-foreground flex-shrink-0"
+          >
+            <path d="M12 20h9" />
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+          </svg>
+          <p className="text-sm font-medium text-foreground truncate">{headerTitle}</p>
+        </div>
         <button
           type="button"
           onClick={onCancel}
@@ -227,6 +251,7 @@ function NoteSheetContent({
         </button>
       </div>
 
+      {/* Textarea — warm writing surface */}
       <textarea
         ref={textareaRef}
         value={text}
@@ -234,11 +259,15 @@ function NoteSheetContent({
         placeholder="What's coming up for you…"
         className={[
           "flex-1 min-h-0 resize-none rounded-xl p-4",
-          "text-sm text-foreground leading-body placeholder:text-muted-foreground",
-          "bg-background border border-border",
+          "text-[15px] text-foreground leading-body placeholder:text-muted-foreground",
+          "border border-border",
           "focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60",
           "transition-colors",
         ].join(" ")}
+        style={{
+          background: "var(--color-surface-tint)",
+          boxShadow: "inset 0 2px 4px rgba(18,20,23,0.03)",
+        }}
       />
 
       {saveState === "error" && (
@@ -248,23 +277,25 @@ function NoteSheetContent({
       )}
 
       <div className="flex gap-3 flex-shrink-0">
+        {/* Cancel — ghost treatment */}
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 py-2.5 rounded-xl text-sm font-medium text-muted-foreground bg-muted hover:bg-border transition-colors"
+          className="flex-1 py-2.5 rounded-full text-sm font-medium border border-border bg-transparent text-muted-foreground hover:bg-muted transition-colors"
         >
           Cancel
         </button>
+
+        {/* Save — .btn-primary or success state */}
         <button
           type="button"
           onClick={onSave}
           disabled={!text.trim() || saveState === "saving" || saveState === "saved"}
-          className={[
-            "flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors",
+          className={
             saveState === "saved"
-              ? "bg-success text-white"
-              : "bg-primary text-white hover:bg-primary-hover disabled:opacity-40 disabled:cursor-not-allowed",
-          ].join(" ")}
+              ? "flex-1 py-2.5 rounded-full text-sm font-medium bg-success text-white"
+              : "btn-primary flex-1"
+          }
         >
           {saveLabel}
         </button>

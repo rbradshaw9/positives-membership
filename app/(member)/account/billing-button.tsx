@@ -1,38 +1,58 @@
 "use client";
 
-import { useTransition } from "react";
-import { redirectToBillingPortal } from "./actions";
+import { useState } from "react";
 
 /**
- * BillingButton — triggers the Stripe Customer Portal redirect.
- * Client component so we can show a pending state.
- * The action itself is a server action that calls redirect() on success.
+ * app/(member)/account/billing-button.tsx
+ * Sprint 7: billing portal redirect button.
+ * Sprint 11: improved visual affordance — shadow-medium, hover state,
+ *   arrow icon, clearly interactive card treatment.
  */
-export function BillingButton() {
-  const [isPending, startTransition] = useTransition();
 
-  function handleClick() {
-    startTransition(async () => {
-      await redirectToBillingPortal();
-    });
+export function BillingButton() {
+  const [loading, setLoading] = useState(false);
+
+  async function handleClick() {
+    setLoading(true);
+    const res = await fetch("/api/stripe/billing-portal", { method: "POST" });
+    const data = await res.json();
+    if (data?.url) {
+      window.location.href = data.url;
+    } else {
+      setLoading(false);
+    }
   }
 
   return (
-    <div className="bg-card rounded-xl border border-border shadow-soft p-5 flex items-center justify-between">
+    <button
+      onClick={handleClick}
+      disabled={loading}
+      className="w-full text-left bg-card rounded-2xl border border-border px-6 py-5 flex items-center justify-between gap-4 hover:bg-muted/30 transition-colors group disabled:opacity-50"
+      style={{ boxShadow: "var(--shadow-medium)" }}
+      aria-label="Open billing portal"
+    >
       <div>
-        <p className="text-sm font-medium text-foreground">Manage billing</p>
+        <p className="text-sm font-semibold text-foreground">
+          {loading ? "Loading…" : "Manage billing"}
+        </p>
         <p className="text-xs text-muted-foreground mt-0.5">
-          View invoices, update payment method, or cancel.
+          Invoices, payment method, and subscription
         </p>
       </div>
-      <button
-        type="button"
-        onClick={handleClick}
-        disabled={isPending}
-        className="flex-shrink-0 text-sm font-medium text-primary hover:text-primary-hover transition-colors disabled:opacity-50 ml-4"
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0"
+        aria-hidden="true"
       >
-        {isPending ? "Opening…" : "Billing →"}
-      </button>
-    </div>
+        <path d="M5 12h14M12 5l7 7-7 7" />
+      </svg>
+    </button>
   );
 }
