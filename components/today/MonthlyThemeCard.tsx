@@ -63,11 +63,19 @@ export function MonthlyThemeCard({
 
   return (
     <>
-      <article className="bg-surface-tint rounded-xl border border-border shadow-soft overflow-hidden border-l-4 border-l-accent">
+      <article className="bg-surface-tint rounded-2xl border border-border shadow-soft overflow-hidden border-l-4 border-l-accent">
         {/* ── Header ──────────────────────────────────────────────────── */}
-        <div className="p-5 pb-0">
-          <span className="text-xs font-semibold uppercase tracking-widest text-accent mb-3 block">
-            This Month
+        <div className="p-5 md:p-6 pb-0">
+          {/* MONTHLY chip */}
+          <span
+            className="inline-flex items-center text-[9px] font-bold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full mb-3"
+            style={{
+              color: "var(--color-accent)",
+              background: "color-mix(in srgb, var(--color-accent) 12%, transparent)",
+              border: "1px solid color-mix(in srgb, var(--color-accent) 22%, transparent)",
+            }}
+          >
+            Monthly
           </span>
 
           {content ? (
@@ -95,7 +103,12 @@ export function MonthlyThemeCard({
 
         {/* ── Inline video ────────────────────────────────────────────── */}
         {content && hasVideo && (
-          <div className="px-5 pt-4">
+          <div
+            className="px-5 md:px-6 pt-4 pb-4"
+            style={{
+              background: "linear-gradient(to bottom, color-mix(in srgb, var(--color-accent) 5%, transparent), transparent)",
+            }}
+          >
             <VideoEmbed
               vimeoId={content.vimeo_video_id}
               youtubeId={content.youtube_video_id}
@@ -106,7 +119,7 @@ export function MonthlyThemeCard({
 
         {/* ── Body text (ambient — capped, no expand) ─────────────────── */}
         {content && hasBody && (
-          <div className="px-5 pt-3">
+          <div className="px-5 md:px-6 pt-3">
             <p className="text-sm text-foreground/55 leading-relaxed line-clamp-4 whitespace-pre-line">
               {bodyText}
             </p>
@@ -115,7 +128,7 @@ export function MonthlyThemeCard({
 
         {/* ── Resources ───────────────────────────────────────────────── */}
         {content && (content.download_url || content.resource_links) && (
-          <div className="px-5 pt-3">
+          <div className="px-5 md:px-6 pt-3">
             <ResourceLinks
               downloadUrl={content.download_url}
               resourceLinks={content.resource_links}
@@ -126,7 +139,7 @@ export function MonthlyThemeCard({
 
         {/* ── Reflection + note ───────────────────────────────────────── */}
         {content && (
-          <div className="p-5 pt-4">
+          <div className="p-5 md:p-6 pt-4">
             {content.reflection_prompt && (
               <p className="text-xs text-foreground/50 italic leading-relaxed mb-3">
                 &ldquo;{content.reflection_prompt}&rdquo;

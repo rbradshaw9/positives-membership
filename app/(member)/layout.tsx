@@ -1,16 +1,16 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveMember } from "@/lib/auth/require-active-member";
-import { MemberNav } from "@/components/member/MemberNav";
-import { MemberHeader } from "@/components/member/MemberHeader";
+import { MemberTopNav } from "@/components/member/MemberTopNav";
 import { PasswordNudgeBanner } from "@/components/member/PasswordNudgeBanner";
-import { headers } from "next/headers";
 
 /**
  * app/(member)/layout.tsx
- * Sprint 7: adds scrolling MemberHeader (wordmark + streak chip) above content.
+ * Sprint 9: replaces MemberHeader + bottom MemberNav with the unified
+ * MemberTopNav (sticky top bar on desktop, bottom bar on mobile).
  *
- * Header scrolls with content (not sticky) to keep the member area calm.
- * MemberNav remains fixed at the bottom.
+ * main padding:
+ *   - pt-0 (nav is sticky, page hero provides its own top space)
+ *   - pb-24 on mobile (bottom bar), pb-8 on desktop (no bottom bar)
  */
 export default async function MemberLayout({
   children,
@@ -21,7 +21,6 @@ export default async function MemberLayout({
 
   const showPasswordNudge = member.password_set === false;
 
-  // Fetch streak for the header chip
   const supabase = await createClient();
   const { data: streakRow } = await supabase
     .from("member")
@@ -30,15 +29,11 @@ export default async function MemberLayout({
     .single();
   const streak = streakRow?.practice_streak ?? 0;
 
-  const headerStore = await headers();
-  const pathname = headerStore.get("x-pathname") ?? "/today";
-
   return (
     <div className="min-h-dvh bg-background flex flex-col">
+      <MemberTopNav streak={streak} />
       {showPasswordNudge && <PasswordNudgeBanner />}
-      <MemberHeader streak={streak} />
-      <main className="flex-1 pb-24">{children}</main>
-      <MemberNav activeHref={pathname} />
+      <main className="flex-1 pb-24 md:pb-12">{children}</main>
     </div>
   );
 }

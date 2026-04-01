@@ -79,20 +79,28 @@ export function DailyPracticeCard({
 
   return (
     <>
-      <article className="bg-surface-dark rounded-xl p-6 shadow-large text-white relative overflow-hidden">
+      <article className="bg-surface-dark rounded-2xl p-6 md:p-8 shadow-large text-white relative overflow-hidden">
         <div
           aria-hidden="true"
-          className="absolute inset-0 opacity-20"
+          className="absolute inset-0 opacity-25"
           style={{
             background:
-              "radial-gradient(ellipse at 30% 60%, #2F6FED 0%, transparent 70%)",
+              "radial-gradient(ellipse at 25% 70%, #2F6FED 0%, transparent 65%), radial-gradient(ellipse at 80% 20%, rgba(78,140,120,0.3) 0%, transparent 60%)",
           }}
         />
 
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-5">
-            <span className="text-xs font-medium uppercase tracking-widest text-white/60">
-              Today&apos;s Practice
+            {/* DAILY chip */}
+            <span
+              className="inline-flex items-center text-[9px] font-bold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full"
+              style={{
+                color: "rgba(255,255,255,0.9)",
+                background: "rgba(47,111,237,0.45)",
+                border: "1px solid rgba(47,111,237,0.6)",
+              }}
+            >
+              Daily
             </span>
             {listened ? (
               <span className="inline-flex items-center gap-1 text-xs text-white/70 font-medium">
@@ -119,7 +127,7 @@ export function DailyPracticeCard({
 
           {!hasContent ? (
             <>
-              <h2 className="font-heading font-bold text-2xl leading-heading tracking-[-0.03em] mb-2 text-white/50">
+              <h2 className="font-heading font-bold text-2xl md:text-3xl leading-heading tracking-[-0.03em] mb-2 text-white/50">
                 Your practice is coming
               </h2>
               <p className="text-white/40 text-sm leading-body">
@@ -128,7 +136,7 @@ export function DailyPracticeCard({
             </>
           ) : (
             <>
-              <h2 className="font-heading font-bold text-2xl leading-heading tracking-[-0.03em] mb-2">
+              <h2 className="font-heading font-bold text-2xl md:text-3xl leading-heading tracking-[-0.03em] mb-2">
                 {content.title}
               </h2>
               {(content.excerpt ?? content.description) && (

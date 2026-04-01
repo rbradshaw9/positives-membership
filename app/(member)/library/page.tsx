@@ -115,7 +115,7 @@ export default async function LibraryPage(props: { searchParams: SearchParams })
   const clearHref = activeTab !== "all" ? `/library?tab=${activeTab}` : "/library";
 
   return (
-    <div className="px-5 pt-10 pb-4 max-w-2xl mx-auto">
+    <div className="member-container py-8 md:py-10">
       <PageHeader
         title="Library"
         subtitle="Your archive of practices, principles, and themes."

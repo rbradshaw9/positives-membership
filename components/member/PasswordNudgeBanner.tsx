@@ -30,7 +30,7 @@ export function PasswordNudgeBanner() {
       }}
     >
       <div
-        className="max-w-2xl mx-auto px-5 flex items-center justify-between gap-4"
+        className="member-container flex items-center justify-between gap-4"
         style={{ paddingTop: "0.65rem", paddingBottom: "0.65rem" }}
       >
         <p

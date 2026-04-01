@@ -133,3 +133,23 @@ img, svg, video {
 select.admin-input {
   cursor: pointer;
 }
+
+/* ─── Member area layout utilities ────────────────────────────────────────── */
+/* Shared container for all member pages — wider than Sprint 7's max-w-2xl    */
+/* to match the marketing site's content width on desktop.                     */
+.member-container {
+  width: 100%;
+  max-width: 52rem;   /* 832px — generous reading width, avoids sprawl */
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+}
+
+@media (min-width: 768px) {
+  .member-container {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+

@@ -66,13 +66,21 @@ export function WeeklyPrincipleCard({
   return (
     <>
       <article
-        className="rounded-xl border border-border shadow-soft overflow-hidden"
+        className="rounded-2xl border border-border shadow-soft overflow-hidden"
         style={{ backgroundColor: "var(--color-surface-tint)" }}
       >
         {/* ── Header ──────────────────────────────────────────────────── */}
-        <div className="p-5 pb-0">
-          <span className="text-xs font-semibold uppercase tracking-widest text-secondary mb-3 block">
-            This Week
+        <div className="p-5 md:p-6 pb-0">
+          {/* WEEKLY chip */}
+          <span
+            className="inline-flex items-center text-[9px] font-bold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full mb-3"
+            style={{
+              color: "var(--color-secondary)",
+              background: "color-mix(in srgb, var(--color-secondary) 12%, transparent)",
+              border: "1px solid color-mix(in srgb, var(--color-secondary) 20%, transparent)",
+            }}
+          >
+            Weekly
           </span>
 
           {content ? (
@@ -100,7 +108,12 @@ export function WeeklyPrincipleCard({
 
         {/* ── Inline video (Vimeo / YouTube) ──────────────────────────── */}
         {content && hasVideo && (
-          <div className="px-5 pt-4">
+          <div
+            className="px-5 md:px-6 pt-4 pb-4"
+            style={{
+              background: "linear-gradient(to bottom, color-mix(in srgb, var(--color-secondary) 6%, transparent), transparent)",
+            }}
+          >
             <VideoEmbed
               vimeoId={content.vimeo_video_id}
               youtubeId={content.youtube_video_id}
@@ -111,8 +124,13 @@ export function WeeklyPrincipleCard({
 
         {/* ── Audio player for Weekly audio content ───────────────────── */}
         {content && hasAudio && (
-          <div className="px-5 pt-4">
-            <div className="bg-surface-dark rounded-lg px-4 py-4">
+          <div
+            className="px-5 md:px-6 pt-4 pb-2"
+            style={{
+              background: "linear-gradient(to bottom, color-mix(in srgb, var(--color-secondary) 6%, transparent), transparent)",
+            }}
+          >
+            <div className="bg-surface-dark/80 rounded-xl px-4 py-4">
               <AudioPlayer
                 src={audioUrl!}
                 title={content.title}
@@ -128,7 +146,7 @@ export function WeeklyPrincipleCard({
 
         {/* ── Body / supporting text ──────────────────────────────────── */}
         {content && hasBody && (
-          <div className="px-5 pt-4">
+          <div className="px-5 md:px-6 pt-4">
             <p
               className={`text-sm text-foreground/60 leading-relaxed whitespace-pre-line ${
                 !bodyExpanded && isLong ? "line-clamp-3" : ""
@@ -150,7 +168,7 @@ export function WeeklyPrincipleCard({
 
         {/* ── Resources (download + resource_links) ───────────────────── */}
         {content && (content.download_url || content.resource_links) && (
-          <div className="px-5 pt-3">
+          <div className="px-5 md:px-6 pt-3">
             <ResourceLinks
               downloadUrl={content.download_url}
               resourceLinks={content.resource_links}
@@ -161,7 +179,7 @@ export function WeeklyPrincipleCard({
 
         {/* ── Reflection prompt + note affordance ─────────────────────── */}
         {content && (
-          <div className="p-5 pt-4">
+          <div className="p-5 md:p-6 pt-4">
             {content.reflection_prompt && (
               <p className="text-xs text-foreground/50 italic leading-relaxed mb-3">
                 &ldquo;{content.reflection_prompt}&rdquo;

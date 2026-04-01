@@ -13,8 +13,9 @@ import { MonthlyThemeCard } from "@/components/today/MonthlyThemeCard";
 
 /**
  * app/(member)/today/page.tsx
- * Sprint 7: personalized time-aware greeting, wider container, subtle
- * background glow, visual separator between Daily and Weekly/Monthly.
+ * Sprint 9: full-width hero section with personalized greeting and
+ *   "Here's your practice for…" sub-line. Wider member-container layout.
+ *   Cards sit in a clean content stream beneath the hero.
  */
 
 export const metadata = {
@@ -28,7 +29,6 @@ export default async function TodayPage() {
 
   const effectiveDateStr = getEffectiveDate();
 
-  // All content queries run in parallel
   const [todayContent, weeklyContent, monthlyContent, memberRow] =
     await Promise.all([
       getTodayContent(),
@@ -42,7 +42,6 @@ export default async function TodayPage() {
         .then((r) => r.data),
     ]);
 
-  // Resolve audio URLs
   const [dailyAudioUrl, weeklyAudioUrl] = await Promise.all([
     todayContent
       ? resolveAudioUrl(todayContent.castos_episode_url, todayContent.s3_audio_key)
@@ -52,7 +51,6 @@ export default async function TodayPage() {
       : Promise.resolve(null),
   ]);
 
-  // Batch-fetch note existence + listened status
   const contentIds = [todayContent?.id, weeklyContent?.id, monthlyContent?.id].filter(
     Boolean
   ) as string[];
@@ -85,26 +83,53 @@ export default async function TodayPage() {
   const greeting = getGreeting(member.name);
 
   return (
-    <div className="relative">
-      {/* Subtle radial glow behind the daily card area */}
-      <div
-        aria-hidden="true"
-        className="absolute top-0 left-0 right-0 h-[400px] pointer-events-none"
+    <div>
+      {/* ── Hero ────────────────────────────────────────────────────── */}
+      <section
+        className="relative overflow-hidden border-b border-border"
         style={{
           background:
-            "radial-gradient(ellipse at 50% 0%, rgba(47,111,237,0.05) 0%, transparent 70%)",
+            "radial-gradient(ellipse at 60% 0%, rgba(47,111,237,0.07) 0%, transparent 65%), var(--color-card)",
         }}
-      />
-
-      <div className="relative px-5 pt-10 pb-4 max-w-2xl mx-auto flex flex-col gap-5">
-        {/* Personalized greeting */}
-        <header className="mb-1">
-          <h1 className="font-heading font-bold text-3xl text-foreground tracking-[-0.035em]">
+      >
+        <div className="member-container py-10 md:py-14">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground/70 mb-3">
+            {todayLabel}
+          </p>
+          <h1 className="font-heading font-bold text-3xl md:text-4xl text-foreground tracking-[-0.035em] leading-tight mb-2">
             {greeting}
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">{todayLabel}</p>
-        </header>
+          <p className="text-base text-muted-foreground leading-body">
+            {todayContent
+              ? "Here's your practice for today."
+              : "Your practice will be here soon — come back a little later."}
+          </p>
 
+          {/* Streak display — visible in hero on mobile (nav chip is desktop-only) */}
+          {streak > 0 && (
+            <div className="mt-5 inline-flex items-center gap-1.5 md:hidden">
+              <span
+                className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full"
+                style={{
+                  color: streak >= 7 ? "var(--color-secondary)" : "var(--color-muted-fg)",
+                  background: streak >= 7
+                    ? "color-mix(in srgb, var(--color-secondary) 10%, transparent)"
+                    : "var(--color-muted)",
+                }}
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2z" />
+                </svg>
+                Day {streak}
+              </span>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ── Content stream ───────────────────────────────────────────── */}
+      <div className="member-container py-8 flex flex-col gap-5">
+        {/* Daily card */}
         <DailyPracticeCard
           content={todayContent}
           audioUrl={dailyAudioUrl}
@@ -113,21 +138,23 @@ export default async function TodayPage() {
           initialHasNote={todayContent ? noteContentIds.has(todayContent.id) : false}
         />
 
-        {/* Visual separator */}
+        {/* Separator */}
         <div className="flex items-center gap-3 py-1">
           <div className="flex-1 h-px bg-border" />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/60">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/50">
             Continue your practice
           </span>
           <div className="flex-1 h-px bg-border" />
         </div>
 
+        {/* Weekly */}
         <WeeklyPrincipleCard
           content={weeklyContent}
           audioUrl={weeklyAudioUrl}
           initialHasNote={weeklyContent ? noteContentIds.has(weeklyContent.id) : false}
         />
 
+        {/* Monthly */}
         <MonthlyThemeCard
           content={monthlyContent}
           initialHasNote={monthlyContent ? noteContentIds.has(monthlyContent.id) : false}

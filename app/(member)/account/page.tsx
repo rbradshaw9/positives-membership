@@ -44,7 +44,7 @@ export default async function AccountPage() {
   const hasBillingPortal = !!member?.stripe_customer_id;
 
   return (
-    <div className="px-5 pt-10 pb-4 max-w-2xl mx-auto flex flex-col gap-8">
+    <div className="member-container py-8 md:py-10 flex flex-col gap-8">
       <PageHeader title="Account" />
 
       {/* ── 1. Membership ────────────────────────────────────────── */}

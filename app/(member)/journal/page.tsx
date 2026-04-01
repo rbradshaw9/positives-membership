@@ -17,7 +17,7 @@ export default async function JournalPage() {
   const notes = await getMemberNotes();
 
   return (
-    <div className="px-5 pt-10 pb-4 max-w-2xl mx-auto">
+    <div className="member-container py-8 md:py-10">
       <PageHeader
         title="Your Notes"
         subtitle="Reflections from your practice, in your own words."
