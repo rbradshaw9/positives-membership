@@ -6,18 +6,26 @@ import type { Tables } from "@/types/supabase";
  * lib/queries/get-weekly-content.ts
  * Returns the current active weekly_principle content.
  *
- * "Active" = the most recent weekly_principle whose week_start (Monday)
- * is on or before today's Eastern canonical date.
- *
- * Self-activating: no cron needed. On Monday, effective_date advances and
- * the query automatically returns the new week's record if one exists.
- *
- * Returns null if no weekly record has a week_start on or before today.
+ * Sprint 5 — includes new rich fields (body, reflection_prompt, download_url,
+ * youtube_video_id) so WeeklyPrincipleCard can render media-aware depth.
  */
 
 export type WeeklyContent = Pick<
   Tables<"content">,
-  "id" | "title" | "description" | "excerpt" | "vimeo_video_id" | "week_start"
+  | "id"
+  | "title"
+  | "description"
+  | "excerpt"
+  | "body"
+  | "reflection_prompt"
+  | "download_url"
+  | "resource_links"
+  | "vimeo_video_id"
+  | "youtube_video_id"
+  | "castos_episode_url"
+  | "s3_audio_key"
+  | "duration_seconds"
+  | "week_start"
 >;
 
 export async function getWeeklyContent(): Promise<WeeklyContent | null> {
@@ -26,11 +34,13 @@ export async function getWeeklyContent(): Promise<WeeklyContent | null> {
 
   const { data, error } = await supabase
     .from("content")
-    .select("id, title, description, excerpt, vimeo_video_id, week_start")
+    .select(
+      "id, title, description, excerpt, body, reflection_prompt, download_url, resource_links, vimeo_video_id, youtube_video_id, castos_episode_url, s3_audio_key, duration_seconds, week_start"
+    )
     .eq("type", "weekly_principle")
     .eq("status", "published")
-    .lte("week_start", effectiveDate) // week has started (or started today)
-    .order("week_start", { ascending: false }) // most recent active week wins
+    .lte("week_start", effectiveDate)
+    .order("week_start", { ascending: false })
     .limit(1)
     .maybeSingle();
 

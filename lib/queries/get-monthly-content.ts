@@ -6,16 +6,23 @@ import type { Tables } from "@/types/supabase";
  * lib/queries/get-monthly-content.ts
  * Returns the current active monthly_theme content.
  *
- * Matches on month_year string ('YYYY-MM') against the current Eastern month.
- * Self-activating: on the 1st of the month, the month_year changes and
- * the query returns the new month's record automatically.
- *
- * Returns null if no monthly record exists for the current month.
+ * Sprint 5 — includes new rich fields (body, reflection_prompt, download_url,
+ * youtube_video_id) so MonthlyThemeCard can render deeper content.
  */
 
 export type MonthlyContent = Pick<
   Tables<"content">,
-  "id" | "title" | "description" | "excerpt" | "vimeo_video_id" | "month_year"
+  | "id"
+  | "title"
+  | "description"
+  | "excerpt"
+  | "body"
+  | "reflection_prompt"
+  | "download_url"
+  | "resource_links"
+  | "vimeo_video_id"
+  | "youtube_video_id"
+  | "month_year"
 >;
 
 export async function getMonthlyContent(): Promise<MonthlyContent | null> {
@@ -24,7 +31,9 @@ export async function getMonthlyContent(): Promise<MonthlyContent | null> {
 
   const { data, error } = await supabase
     .from("content")
-    .select("id, title, description, excerpt, vimeo_video_id, month_year")
+    .select(
+      "id, title, description, excerpt, body, reflection_prompt, download_url, resource_links, vimeo_video_id, youtube_video_id, month_year"
+    )
     .eq("type", "monthly_theme")
     .eq("status", "published")
     .eq("month_year", effectiveMonthYear)

@@ -18,6 +18,8 @@ export type LibraryItem = Pick<
   | "title"
   | "excerpt"
   | "description"
+  | "download_url"
+  | "resource_links"
   | "publish_date"
   | "week_start"
   | "month_year"
@@ -40,7 +42,7 @@ export async function getLibraryContent(
   let query = supabase
     .from("content")
     .select(
-      "id, type, title, excerpt, description, publish_date, week_start, month_year, duration_seconds"
+      "id, type, title, excerpt, description, download_url, resource_links, publish_date, week_start, month_year, duration_seconds"
     )
     .eq("status", "published")
     .order("created_at", { ascending: false })

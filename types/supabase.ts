@@ -1,6 +1,7 @@
 // AUTO-GENERATED — do not edit manually.
 // Regenerate with: npx supabase gen types typescript --project-id qdnojizzldilqpyocora > types/supabase.ts
 // Last generated: 2026-04-01 from live project qdnojizzldilqpyocora
+// Sprint 5: manually added body, reflection_prompt, download_url, youtube_video_id, resource_links
 
 export type Json =
   | string
@@ -107,9 +108,11 @@ export type Database = {
           admin_notes: string | null
           ai_generated_description: string | null
           ai_generated_title: string | null
+          body: string | null
           castos_episode_url: string | null
           created_at: string
           description: string | null
+          download_url: string | null
           duration_seconds: number | null
           excerpt: string | null
           id: string
@@ -119,7 +122,10 @@ export type Database = {
           month_year: string | null
           publish_date: string | null
           published_at: string | null
+          reflection_prompt: string | null
+          resource_links: Json
           s3_audio_key: string | null
+          search_vector: string | null
           source: Database["public"]["Enums"]["content_source"]
           source_ref: string | null
           status: Database["public"]["Enums"]["content_status"]
@@ -130,14 +136,17 @@ export type Database = {
           updated_at: string
           vimeo_video_id: string | null
           week_start: string | null
+          youtube_video_id: string | null
         }
         Insert: {
           admin_notes?: string | null
           ai_generated_description?: string | null
           ai_generated_title?: string | null
+          body?: string | null
           castos_episode_url?: string | null
           created_at?: string
           description?: string | null
+          download_url?: string | null
           duration_seconds?: number | null
           excerpt?: string | null
           id?: string
@@ -147,6 +156,8 @@ export type Database = {
           month_year?: string | null
           publish_date?: string | null
           published_at?: string | null
+          reflection_prompt?: string | null
+          resource_links?: Json
           s3_audio_key?: string | null
           source?: Database["public"]["Enums"]["content_source"]
           source_ref?: string | null
@@ -158,14 +169,17 @@ export type Database = {
           updated_at?: string
           vimeo_video_id?: string | null
           week_start?: string | null
+          youtube_video_id?: string | null
         }
         Update: {
           admin_notes?: string | null
           ai_generated_description?: string | null
           ai_generated_title?: string | null
+          body?: string | null
           castos_episode_url?: string | null
           created_at?: string
           description?: string | null
+          download_url?: string | null
           duration_seconds?: number | null
           excerpt?: string | null
           id?: string
@@ -175,6 +189,8 @@ export type Database = {
           month_year?: string | null
           publish_date?: string | null
           published_at?: string | null
+          reflection_prompt?: string | null
+          resource_links?: Json
           s3_audio_key?: string | null
           source?: Database["public"]["Enums"]["content_source"]
           source_ref?: string | null
@@ -186,6 +202,7 @@ export type Database = {
           updated_at?: string
           vimeo_video_id?: string | null
           week_start?: string | null
+          youtube_video_id?: string | null
         }
         Relationships: []
       }

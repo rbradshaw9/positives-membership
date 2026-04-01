@@ -11,12 +11,11 @@ import { MonthlyThemeCard } from "@/components/today/MonthlyThemeCard";
 
 /**
  * app/(member)/today/page.tsx
- * Sprint 3 update:
+ * Sprint 5 update:
  *
- * 1. Fetches practice_streak alongside content — all in a single Promise.all.
- * 2. Batch-fetches note existence for all three content items so cards
- *    immediately show "View note" vs "Reflect" without a loading state.
- * 3. Passes streak count to header for the subtle "Day X" treatment.
+ * 1. Passes hasListened to DailyPracticeCard for the "Listened today" chip.
+ * 2. Resolves weekly audio URL and passes to WeeklyPrincipleCard.
+ * 3. All queries run in parallel — no waterfall.
  */
 
 export const metadata = {
@@ -30,7 +29,9 @@ export default async function TodayPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // All queries run in parallel — no waterfall
+  const effectiveDateStr = getEffectiveDate(); // e.g. "2026-04-01"
+
+  // All content queries run in parallel
   const [todayContent, weeklyContent, monthlyContent, memberRow] =
     await Promise.all([
       getTodayContent(),
@@ -46,33 +47,46 @@ export default async function TodayPage() {
         : Promise.resolve(null),
     ]);
 
-  // Resolve audio URL (may be null — DailyPracticeCard handles gracefully)
-  const audioUrl = todayContent
-    ? await resolveAudioUrl(
-        todayContent.castos_episode_url,
-        todayContent.s3_audio_key
-      )
-    : null;
+  // Resolve audio URLs for Daily and Weekly (may be null)
+  const [dailyAudioUrl, weeklyAudioUrl] = await Promise.all([
+    todayContent
+      ? resolveAudioUrl(todayContent.castos_episode_url, todayContent.s3_audio_key)
+      : Promise.resolve(null),
+    weeklyContent
+      ? resolveAudioUrl(weeklyContent.castos_episode_url, weeklyContent.s3_audio_key)
+      : Promise.resolve(null),
+  ]);
 
-  // Batch-fetch note IDs for all content that exists
+  // Batch-fetch note existence + listened status
   const contentIds = [todayContent?.id, weeklyContent?.id, monthlyContent?.id].filter(
     Boolean
   ) as string[];
 
-  const noteContentIds =
+  const [noteContentIds, listenedToday] = await Promise.all([
     user && contentIds.length > 0
-      ? await getMemberNoteContentIds(user.id)
-      : new Set<string>();
+      ? getMemberNoteContentIds(user.id)
+      : Promise.resolve(new Set<string>()),
+    // Check if member has a daily_listened event for today's content
+    user && todayContent
+      ? supabase
+          .from("activity_event")
+          .select("id")
+          .eq("member_id", user.id)
+          .eq("event_type", "daily_listened")
+          .eq("content_id", todayContent.id)
+          .limit(1)
+          .maybeSingle()
+          .then((r) => !!r.data)
+      : Promise.resolve(false),
+  ]);
 
   const streak = memberRow?.practice_streak ?? 0;
 
-  // Compute canonical Eastern date label server-side — prevents client TZ drift
-  const effectiveDateStr = getEffectiveDate(); // e.g. "2026-04-01"
   const todayLabel = new Intl.DateTimeFormat("en-US", {
     weekday: "long",
     month: "long",
     day: "numeric",
-  }).format(new Date(effectiveDateStr + "T12:00:00")); // noon to avoid TZ shift in Intl
+  }).format(new Date(effectiveDateStr + "T12:00:00"));
 
   return (
     <div className="px-5 py-8 max-w-lg mx-auto flex flex-col gap-5">
@@ -89,13 +103,15 @@ export default async function TodayPage() {
 
       <DailyPracticeCard
         content={todayContent}
-        audioUrl={audioUrl}
+        audioUrl={dailyAudioUrl}
         todayLabel={todayLabel}
+        hasListened={listenedToday}
         initialHasNote={todayContent ? noteContentIds.has(todayContent.id) : false}
       />
 
       <WeeklyPrincipleCard
         content={weeklyContent}
+        audioUrl={weeklyAudioUrl}
         initialHasNote={weeklyContent ? noteContentIds.has(weeklyContent.id) : false}
       />
 

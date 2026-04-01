@@ -9,20 +9,24 @@ import { getNoteForContent } from "@/app/(member)/notes/actions";
 
 /**
  * components/today/DailyPracticeCard.tsx
- * Primary card on the Today page.
+ * Primary card on the Today page — dominant visual weight.
  *
- * Sprint 3: accepts initialHasNote from server so the "Reflect" / "View note"
- * affordance is immediately correct without a loading state.
+ * Sprint 5 updates:
+ *   - "Listened today" completion chip when hasListened is true
+ *   - reflection prompt shown above the Reflect button
+ *   - improved empty state copy
+ *   - better audio player spacing
  */
 
 interface DailyPracticeCardProps {
   content: TodayContent | null;
   audioUrl: string | null;
   initialHasNote?: boolean;
+  /** Whether the member has already listened today (server-derived) */
+  hasListened?: boolean;
   /**
    * Human-readable date label computed server-side from getEffectiveDate()
    * (canonical Eastern time). Prevents browser-local vs Eastern TZ mismatch.
-   * Example: "Tuesday, April 1"
    */
   todayLabel: string;
 }
@@ -38,6 +42,7 @@ export function DailyPracticeCard({
   content,
   audioUrl,
   initialHasNote = false,
+  hasListened = false,
   todayLabel,
 }: DailyPracticeCardProps) {
   const [, startTransition] = useTransition();
@@ -45,12 +50,14 @@ export function DailyPracticeCard({
   const [existingNote, setExistingNote] = useState("");
   const [noteExists, setNoteExists] = useState(initialHasNote);
   const [loadingNote, setLoadingNote] = useState(false);
+  const [listened, setListened] = useState(hasListened);
 
   const hasContent = content !== null;
   const duration = hasContent ? formatDuration(content.duration_seconds) : "—";
 
   function handleComplete() {
     if (!content) return;
+    setListened(true);
     startTransition(async () => {
       await markListened(content.id);
     });
@@ -87,7 +94,27 @@ export function DailyPracticeCard({
             <span className="text-xs font-medium uppercase tracking-widest text-white/60">
               Today&apos;s Practice
             </span>
-            <span className="text-xs text-white/50">{todayLabel}</span>
+            {listened ? (
+              <span className="inline-flex items-center gap-1 text-xs text-white/70 font-medium">
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                  className="text-secondary"
+                >
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                Listened today
+              </span>
+            ) : (
+              <span className="text-xs text-white/50">{todayLabel}</span>
+            )}
           </div>
 
           {!hasContent ? (
@@ -96,7 +123,7 @@ export function DailyPracticeCard({
                 Your practice is coming
               </h2>
               <p className="text-white/40 text-sm leading-body">
-                Today&apos;s practice is being prepared. Check back shortly.
+                Dr. Paul&apos;s practice for today will be here when you return. ☁️
               </p>
             </>
           ) : (
@@ -111,12 +138,14 @@ export function DailyPracticeCard({
               )}
 
               {audioUrl ? (
-                <AudioPlayer
-                  src={audioUrl}
-                  title={content.title}
-                  duration={duration}
-                  onComplete={handleComplete}
-                />
+                <div className="mt-2 mb-1">
+                  <AudioPlayer
+                    src={audioUrl}
+                    title={content.title}
+                    duration={duration}
+                    onComplete={handleComplete}
+                  />
+                </div>
               ) : (
                 <div className="flex items-center gap-3 mt-2">
                   <div className="w-12 h-12 rounded-pill bg-white/10 flex items-center justify-center flex-shrink-0">
@@ -146,8 +175,13 @@ export function DailyPracticeCard({
                 </div>
               )}
 
-              {/* Note affordance */}
+              {/* Reflection prompt + note affordance */}
               <div className="mt-5 pt-4 border-t border-white/10">
+                {content.reflection_prompt && (
+                  <p className="text-xs text-white/40 italic leading-relaxed mb-3">
+                    &ldquo;{content.reflection_prompt}&rdquo;
+                  </p>
+                )}
                 <button
                   type="button"
                   onClick={handleOpenNote}

@@ -2,16 +2,16 @@
 
 import { useState } from "react";
 import { NoteSheet } from "@/components/notes/NoteSheet";
+import { ResourceLinks } from "@/components/media/ResourceLinks";
 import { getNoteForContent } from "@/app/(member)/notes/actions";
+import type { Json } from "@/types/supabase";
 
 /**
  * components/library/LibraryList.tsx
- * Renders the filtered list of library items.
+ * Sprint 6: adds ResourceLinks rendering per item (download_url + resource_links).
  *
  * Client component so it can open NoteSheet inline when member
  * taps "View note" or "Reflect" on a library item.
- *
- * Receives enriched items from the server (typeLabel, dateContext, hasNote).
  */
 
 type EnrichedLibraryItem = {
@@ -20,6 +20,8 @@ type EnrichedLibraryItem = {
   title: string;
   excerpt: string | null;
   description: string | null;
+  download_url: string | null;
+  resource_links: Json | null;
   duration_seconds: number | null;
   typeLabel: string;
   dateContext: string | null;
@@ -56,6 +58,13 @@ export function LibraryList({ items }: LibraryListProps) {
     setActiveNote(null);
   }
 
+  // Accent color per content type for ResourceLinks
+  function accentClassForType(type: string): string {
+    if (type === "weekly_principle") return "text-secondary hover:text-secondary-hover";
+    if (type === "monthly_theme") return "text-accent hover:text-accent-hover";
+    return "text-primary hover:text-primary-hover";
+  }
+
   return (
     <>
       <ul className="flex flex-col gap-3" role="list">
@@ -82,6 +91,24 @@ export function LibraryList({ items }: LibraryListProps) {
                 <p className="text-sm text-muted-foreground leading-body line-clamp-2 mb-3">
                   {item.excerpt ?? item.description}
                 </p>
+              )}
+
+              {/* Duration chip — only for audio */}
+              {item.type === "daily_audio" && item.duration_seconds && (
+                <p className="text-xs text-muted-foreground mb-3">
+                  {Math.floor(item.duration_seconds / 60)} min
+                </p>
+              )}
+
+              {/* Resource links */}
+              {(item.download_url || item.resource_links) && (
+                <div className="mb-3">
+                  <ResourceLinks
+                    downloadUrl={item.download_url}
+                    resourceLinks={item.resource_links}
+                    accentClass={accentClassForType(item.type)}
+                  />
+                </div>
               )}
 
               {/* Note action */}

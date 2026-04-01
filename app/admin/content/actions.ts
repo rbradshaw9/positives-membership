@@ -2,10 +2,17 @@
 
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
+import {
+  parseMediaUrl,
+  mediaColumnsFromParsed,
+} from "@/lib/media/parse-media-url";
 
 /**
  * app/admin/content/actions.ts
  * Server actions for admin content management.
+ *
+ * Sprint 5 update — handles richer content fields (body, reflection_prompt,
+ * download_url) and media URL auto-detection for Weekly/Monthly types.
  *
  * All mutations use the service-role client (bypasses RLS — admin only).
  * requireAdmin() is enforced at the layout level.
@@ -17,6 +24,9 @@ type ContentInput = {
   title: string;
   excerpt: string;
   description: string;
+  body: string;
+  reflection_prompt: string;
+  download_url: string;
   status: string;
   publish_date: string;
   week_start: string;
@@ -24,6 +34,7 @@ type ContentInput = {
   duration_seconds: string;
   castos_episode_url: string;
   s3_audio_key: string;
+  media_url: string; // single paste field — auto-detected
   admin_notes: string;
 };
 
@@ -42,6 +53,9 @@ function parseFormData(formData: FormData): ContentInput {
     title: formData.get("title")?.toString().trim() ?? "",
     excerpt: formData.get("excerpt")?.toString().trim() ?? "",
     description: formData.get("description")?.toString().trim() ?? "",
+    body: formData.get("body")?.toString().trim() ?? "",
+    reflection_prompt: formData.get("reflection_prompt")?.toString().trim() ?? "",
+    download_url: formData.get("download_url")?.toString().trim() ?? "",
     status: formData.get("status")?.toString() ?? "draft",
     publish_date: formData.get("publish_date")?.toString() ?? "",
     week_start: formData.get("week_start")?.toString() ?? "",
@@ -49,27 +63,52 @@ function parseFormData(formData: FormData): ContentInput {
     duration_seconds: formData.get("duration_seconds")?.toString() ?? "",
     castos_episode_url: formData.get("castos_episode_url")?.toString().trim() ?? "",
     s3_audio_key: formData.get("s3_audio_key")?.toString().trim() ?? "",
+    media_url: formData.get("media_url")?.toString().trim() ?? "",
     admin_notes: formData.get("admin_notes")?.toString().trim() ?? "",
   };
 }
 
 function buildRow(input: ContentInput) {
-  return {
+  const isDaily = input.type === "daily_audio";
+
+  // Base row with all standard + new rich fields
+  const row: Record<string, unknown> = {
     type: input.type,
     title: input.title,
     excerpt: input.excerpt || null,
     description: input.description || null,
+    body: input.body || null,
+    reflection_prompt: input.reflection_prompt || null,
+    download_url: input.download_url || null,
     status: input.status,
-    // Date fields — only set if relevant for the type
     publish_date: input.publish_date || null,
     week_start: input.week_start || null,
     month_year: input.month_year || null,
-    duration_seconds: input.duration_seconds ? parseInt(input.duration_seconds, 10) : null,
-    castos_episode_url: input.castos_episode_url || null,
-    s3_audio_key: input.s3_audio_key || null,
+    duration_seconds: input.duration_seconds
+      ? parseInt(input.duration_seconds, 10)
+      : null,
     admin_notes: input.admin_notes || null,
     source: "admin" as const,
   };
+
+  if (isDaily) {
+    // Daily audio uses explicit Castos/S3 fields
+    row.castos_episode_url = input.castos_episode_url || null;
+    row.s3_audio_key = input.s3_audio_key || null;
+  } else {
+    // Weekly/Monthly: auto-detect media from the pasted URL
+    if (input.media_url) {
+      const parsed = parseMediaUrl(input.media_url);
+      const mediaColumns = mediaColumnsFromParsed(parsed);
+      Object.assign(row, mediaColumns);
+    } else {
+      // No media URL — clear video ID columns
+      row.vimeo_video_id = null;
+      row.youtube_video_id = null;
+    }
+  }
+
+  return row;
 }
 
 /** Create a new content record */

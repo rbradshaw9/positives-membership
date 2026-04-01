@@ -6,12 +6,8 @@ import type { Tables } from "@/types/supabase";
  * lib/queries/get-today-content.ts
  * Server-side query for the current day's daily_audio content.
  *
- * Uses canonical Eastern date (America/New_York) to determine "today."
- * Returns the published daily_audio record whose publish_date matches
- * today's Eastern calendar date, or null if no content exists yet.
- *
- * Query model: status='published' + exact publish_date match.
- * Replaces the old is_active + published_at DESC approach.
+ * Sprint 5 — includes reflection_prompt so DailyPracticeCard can show
+ * a specific reflection question if one is set.
  */
 
 export type TodayContent = Pick<
@@ -20,6 +16,7 @@ export type TodayContent = Pick<
   | "title"
   | "description"
   | "excerpt"
+  | "reflection_prompt"
   | "duration_seconds"
   | "castos_episode_url"
   | "s3_audio_key"
@@ -33,12 +30,12 @@ export async function getTodayContent(): Promise<TodayContent | null> {
   const { data, error } = await supabase
     .from("content")
     .select(
-      "id, title, description, excerpt, duration_seconds, castos_episode_url, s3_audio_key, publish_date"
+      "id, title, description, excerpt, reflection_prompt, duration_seconds, castos_episode_url, s3_audio_key, publish_date"
     )
     .eq("type", "daily_audio")
     .eq("status", "published")
     .eq("publish_date", effectiveDate)
-    .order("created_at", { ascending: false }) // tiebreaker if duplicates exist
+    .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 

@@ -5,7 +5,7 @@ import { getEffectiveDate } from "@/lib/dates/effective-date";
 /**
  * app/admin/content/new/page.tsx
  * Create a new content record (Daily / Weekly / Monthly).
- * Sprint 4 rebuild — uses real schema fields, supports all three types.
+ * Sprint 5 — richer content fields + media URL auto-detect.
  */
 
 export const metadata = {
@@ -21,7 +21,7 @@ export default async function AdminContentNewPage({
 }) {
   const params = await searchParams;
   const defaultType = params.type ?? "daily_audio";
-  const todayEastern = getEffectiveDate(); // canonical Eastern date for default
+  const todayEastern = getEffectiveDate();
 
   return (
     <div className="max-w-2xl">
@@ -65,6 +65,9 @@ export interface ContentFormValues {
   title?: string;
   excerpt?: string;
   description?: string;
+  body?: string | null;
+  reflection_prompt?: string | null;
+  download_url?: string | null;
   status?: string;
   publish_date?: string | null;
   week_start?: string | null;
@@ -72,8 +75,25 @@ export interface ContentFormValues {
   duration_seconds?: number | null;
   castos_episode_url?: string | null;
   s3_audio_key?: string | null;
+  vimeo_video_id?: string | null;
+  youtube_video_id?: string | null;
   admin_notes?: string | null;
   id?: string;
+}
+
+/**
+ * Reconstruct the original media URL from stored DB columns.
+ * Used to pre-fill the media_url field when editing existing content.
+ */
+function reconstructMediaUrl(values?: ContentFormValues): string {
+  if (!values) return "";
+  if (values.vimeo_video_id) return `https://vimeo.com/${values.vimeo_video_id}`;
+  if (values.youtube_video_id) return `https://youtube.com/watch?v=${values.youtube_video_id}`;
+  // For non-daily types, castos_episode_url might hold a direct audio/castos URL
+  if (values.type !== "daily_audio" && values.castos_episode_url) {
+    return values.castos_episode_url;
+  }
+  return "";
 }
 
 export function ContentForm({
@@ -100,6 +120,8 @@ export function ContentForm({
       className="bg-card border border-border rounded-lg p-6 flex flex-col gap-5"
     >
       {values?.id && <input type="hidden" name="id" value={values.id} />}
+
+      {/* ─── Core ────────────────────────────────────────────────────────── */}
 
       {/* Type */}
       <div className="flex flex-col gap-1.5">
@@ -188,13 +210,12 @@ export function ContentForm({
         </select>
       </div>
 
-      {/* Date fields — conditional per type */}
+      {/* ─── Publishing date ─────────────────────────────────────────────── */}
       <div className="border-t border-border pt-4 flex flex-col gap-4">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
           Publishing date
         </p>
 
-        {/* Daily: publish_date */}
         {isDaily && (
           <div className="flex flex-col gap-1.5">
             <label htmlFor="publish_date" className="text-sm font-medium text-foreground">
@@ -213,7 +234,6 @@ export function ContentForm({
           </div>
         )}
 
-        {/* Weekly: week_start */}
         {isWeekly && (
           <div className="flex flex-col gap-1.5">
             <label htmlFor="week_start" className="text-sm font-medium text-foreground">
@@ -232,7 +252,6 @@ export function ContentForm({
           </div>
         )}
 
-        {/* Monthly: month_year */}
         {isMonthly && (
           <div className="flex flex-col gap-1.5">
             <label htmlFor="month_year" className="text-sm font-medium text-foreground">
@@ -252,11 +271,54 @@ export function ContentForm({
         )}
       </div>
 
-      {/* Audio fields — Daily only */}
+      {/* ─── Content body ────────────────────────────────────────────────── */}
+      <div className="border-t border-border pt-4 flex flex-col gap-4">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          Content body
+        </p>
+
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="body" className="text-sm font-medium text-foreground">
+            Body / supporting notes
+          </label>
+          <textarea
+            id="body"
+            name="body"
+            rows={6}
+            defaultValue={values?.body ?? ""}
+            placeholder="Markdown-supported. Supporting text shown to members on the Today card and in the Library."
+            className="admin-input resize-none font-mono text-sm"
+          />
+          <p className="text-xs text-muted-foreground">
+            Shown below the excerpt on Weekly/Monthly cards. Supports Markdown.
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="reflection_prompt" className="text-sm font-medium text-foreground">
+            Reflection prompt
+          </label>
+          <input
+            id="reflection_prompt"
+            name="reflection_prompt"
+            type="text"
+            defaultValue={values?.reflection_prompt ?? ""}
+            placeholder="What does this practice bring up for you today?"
+            className="admin-input"
+          />
+          <p className="text-xs text-muted-foreground">
+            Shown above the &ldquo;Reflect&rdquo; button to guide member journaling
+          </p>
+        </div>
+      </div>
+
+      {/* ─── Media ───────────────────────────────────────────────────────── */}
+
+      {/* Daily: explicit Castos + S3 fields */}
       {isDaily && (
         <div className="border-t border-border pt-4 flex flex-col gap-4">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Audio (optional — add once file is ready)
+            Audio (Daily)
           </p>
 
           <div className="grid grid-cols-2 gap-4">
@@ -276,13 +338,7 @@ export function ContentForm({
               />
               <p className="text-xs text-muted-foreground">e.g. 480 = 8 min</p>
             </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-foreground invisible">
-                spacer
-              </label>
-              {/* empty — keeps grid balanced */}
-            </div>
+            <div />
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -315,7 +371,74 @@ export function ContentForm({
         </div>
       )}
 
-      {/* Admin notes */}
+      {/* Weekly/Monthly: single media URL with auto-detect */}
+      {(isWeekly || isMonthly) && (
+        <div className="border-t border-border pt-4 flex flex-col gap-4">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Media (optional)
+          </p>
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="media_url" className="text-sm font-medium text-foreground">
+              Media URL
+            </label>
+            <input
+              id="media_url"
+              name="media_url"
+              type="url"
+              defaultValue={reconstructMediaUrl(values)}
+              placeholder="Paste a Vimeo, YouTube, or audio URL…"
+              className="admin-input"
+            />
+            <p className="text-xs text-muted-foreground">
+              Auto-detected: Vimeo, YouTube, Castos, or direct audio (.mp3, .m4a).
+              Leave empty for text-only content.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="duration_seconds" className="text-sm font-medium text-foreground">
+              Duration (seconds)
+            </label>
+            <input
+              id="duration_seconds"
+              name="duration_seconds"
+              type="number"
+              min="0"
+              step="1"
+              defaultValue={values?.duration_seconds ?? ""}
+              placeholder="Optional — for audio/video length"
+              className="admin-input"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ─── Downloads & links ───────────────────────────────────────────── */}
+      <div className="border-t border-border pt-4 flex flex-col gap-4">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          Downloads &amp; links
+        </p>
+
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="download_url" className="text-sm font-medium text-foreground">
+            Download URL
+          </label>
+          <input
+            id="download_url"
+            name="download_url"
+            type="url"
+            defaultValue={values?.download_url ?? ""}
+            placeholder="https://… (PDF, worksheet, or other resource)"
+            className="admin-input"
+          />
+          <p className="text-xs text-muted-foreground">
+            Optional — shown as a download link on the Today card
+          </p>
+        </div>
+      </div>
+
+      {/* ─── Internal ────────────────────────────────────────────────────── */}
       <div className="border-t border-border pt-4 flex flex-col gap-1.5">
         <label htmlFor="admin_notes" className="text-sm font-medium text-foreground">
           Admin notes

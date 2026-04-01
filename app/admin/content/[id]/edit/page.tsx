@@ -8,7 +8,8 @@ import { getEffectiveDate } from "@/lib/dates/effective-date";
 /**
  * app/admin/content/[id]/edit/page.tsx
  * Edit an existing content record.
- * Pulls the row, pre-fills the shared ContentForm, posts to updateContent action.
+ * Sprint 5 — passes richer fields (body, reflection_prompt, download_url,
+ * vimeo_video_id, youtube_video_id) to the ContentForm.
  */
 
 export const metadata = {
@@ -29,7 +30,7 @@ export default async function AdminContentEditPage({ params, searchParams }: Pro
   const { data: row, error } = await supabase
     .from("content")
     .select(
-      "id, type, title, excerpt, description, status, publish_date, week_start, month_year, duration_seconds, castos_episode_url, s3_audio_key, admin_notes"
+      "id, type, title, excerpt, description, body, reflection_prompt, download_url, status, publish_date, week_start, month_year, duration_seconds, castos_episode_url, s3_audio_key, vimeo_video_id, youtube_video_id, admin_notes"
     )
     .eq("id", id)
     .single();
@@ -52,7 +53,6 @@ export default async function AdminContentEditPage({ params, searchParams }: Pro
             </h1>
             <p className="text-muted-foreground text-sm line-clamp-1">{row.title}</p>
           </div>
-          {/* Preview link for member-facing view */}
           <Link
             href="/today"
             target="_blank"
@@ -83,6 +83,9 @@ export default async function AdminContentEditPage({ params, searchParams }: Pro
           title: row.title,
           excerpt: row.excerpt ?? "",
           description: row.description ?? "",
+          body: row.body,
+          reflection_prompt: row.reflection_prompt,
+          download_url: row.download_url,
           status: row.status,
           publish_date: row.publish_date,
           week_start: row.week_start,
@@ -90,6 +93,8 @@ export default async function AdminContentEditPage({ params, searchParams }: Pro
           duration_seconds: row.duration_seconds,
           castos_episode_url: row.castos_episode_url,
           s3_audio_key: row.s3_audio_key,
+          vimeo_video_id: row.vimeo_video_id,
+          youtube_video_id: row.youtube_video_id,
           admin_notes: row.admin_notes,
         }}
       />
