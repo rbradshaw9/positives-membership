@@ -84,6 +84,7 @@ export interface ContentFormValues {
   id?: string;
   tier_min?: string | null;   // Sprint 10
   starts_at?: string | null;  // Sprint 10
+  join_url?: string | null;   // Sprint 10 patch: coaching Zoom link
 }
 
 /**
@@ -439,14 +440,14 @@ export function ContentForm({
           </p>
 
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="castos_episode_url" className="text-sm font-medium text-foreground">
+            <label htmlFor="join_url" className="text-sm font-medium text-foreground">
               Zoom join URL
             </label>
             <input
-              id="castos_episode_url"
-              name="castos_episode_url"
+              id="join_url"
+              name="join_url"
               type="url"
-              defaultValue={values?.castos_episode_url ?? ""}
+              defaultValue={values?.join_url ?? ""}
               placeholder="https://us02web.zoom.us/j/…"
               className="admin-input"
             />

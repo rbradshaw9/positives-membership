@@ -33,3 +33,9 @@ ALTER TYPE activity_event_type ADD VALUE IF NOT EXISTS 'coaching_attended';
 CREATE INDEX IF NOT EXISTS idx_content_starts_at
   ON public.content (starts_at)
   WHERE status = 'published' AND type = 'coaching_call';
+
+-- 6. Dedicated join URL for coaching calls.
+--    Server-side only — never exposed in client JS.
+--    castos_episode_url remains reserved for podcast/audio delivery.
+ALTER TABLE public.content
+  ADD COLUMN IF NOT EXISTS join_url TEXT;

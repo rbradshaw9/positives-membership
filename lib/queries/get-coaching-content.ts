@@ -7,6 +7,8 @@ import type { Tables } from "@/types/supabase";
  *
  * Returns upcoming + recent replays.
  * Server-only. Does NOT apply tier check here — caller does that.
+ *
+ * Sprint 10 patch: uses join_url (not castos_episode_url) for Zoom links.
  */
 
 export type CoachingItem = Pick<
@@ -19,7 +21,7 @@ export type CoachingItem = Pick<
   | "duration_seconds"
   | "vimeo_video_id"
   | "youtube_video_id"
-  | "castos_episode_url"
+  | "join_url"
   | "status"
 >;
 
@@ -29,7 +31,7 @@ export async function getCoachingContent(limit = 20): Promise<CoachingItem[]> {
   const { data, error } = await supabase
     .from("content")
     .select(
-      "id, title, excerpt, description, starts_at, duration_seconds, vimeo_video_id, youtube_video_id, castos_episode_url, status"
+      "id, title, excerpt, description, starts_at, duration_seconds, vimeo_video_id, youtube_video_id, join_url, status"
     )
     .eq("type", "coaching_call")
     .eq("status", "published")

@@ -35,6 +35,7 @@ type ContentInput = {
   duration_seconds: string;
   castos_episode_url: string;
   s3_audio_key: string;
+  join_url: string;   // Sprint 10 patch: dedicated coaching Zoom URL
   media_url: string; // single paste field — auto-detected
   admin_notes: string;
   tier_min: string;   // Sprint 10
@@ -67,6 +68,7 @@ function parseFormData(formData: FormData): ContentInput {
     duration_seconds: formData.get("duration_seconds")?.toString() ?? "",
     castos_episode_url: formData.get("castos_episode_url")?.toString().trim() ?? "",
     s3_audio_key: formData.get("s3_audio_key")?.toString().trim() ?? "",
+    join_url: formData.get("join_url")?.toString().trim() ?? "",
     media_url: formData.get("media_url")?.toString().trim() ?? "",
     admin_notes: formData.get("admin_notes")?.toString().trim() ?? "",
     tier_min: formData.get("tier_min")?.toString() ?? "",
@@ -114,11 +116,12 @@ function buildRow(input: ContentInput) {
     row.castos_episode_url = input.castos_episode_url || null;
     row.s3_audio_key = input.s3_audio_key || null;
   } else if (isCoaching) {
-    // Coaching: castos_episode_url stores the Zoom/join URL (never audio)
-    row.castos_episode_url = input.castos_episode_url || null;
+    // Coaching: join_url holds the Zoom link (server-side only, never rendered in client JS)
+    // castos_episode_url is NOT used for coaching — it stays reserved for podcast delivery
+    row.join_url = input.join_url || null;
     row.vimeo_video_id = null;
     row.youtube_video_id = null;
-    // Handle replay media URL if admin pastes a Vimeo/YouTube URL
+    // Handle replay media URL if admin pastes a Vimeo/YouTube URL after the call
     if (input.media_url) {
       const parsed = parseMediaUrl(input.media_url);
       const mediaColumns = mediaColumnsFromParsed(parsed);

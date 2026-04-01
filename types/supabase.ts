@@ -119,6 +119,7 @@ export type Database = {
           id: string
           is_active: boolean
           is_today_override: boolean
+          join_url: string | null
           month_theme: string | null
           month_year: string | null
           publish_date: string | null
@@ -155,6 +156,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_today_override?: boolean
+          join_url?: string | null
           month_theme?: string | null
           month_year?: string | null
           publish_date?: string | null
@@ -190,6 +192,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_today_override?: boolean
+          join_url?: string | null
           month_theme?: string | null
           month_year?: string | null
           publish_date?: string | null

@@ -16,8 +16,7 @@ import { PageHeader } from "@/components/member/PageHeader";
  *   Level 3+ → full coaching page
  *
  * Zoom URL is server-side ONLY. Never embedded in client JS.
- * The coaching_call content row stores the Zoom URL in castos_episode_url
- * (repurposed as a generic "join_url" for upcoming calls — no audio usage).
+ * join_url column holds the Zoom link (castos_episode_url is reserved for audio).
  */
 
 export const metadata = {
@@ -62,9 +61,7 @@ export default async function CoachingPage() {
             title={nextCall.title}
             description={nextCall.description}
             startsAt={nextCall.starts_at}
-            // castos_episode_url repurposed as join_url for coaching calls
-            // Zoom URL is rendered server-side only — safe here
-            zoomUrl={nextCall.castos_episode_url}
+            zoomUrl={nextCall.join_url}
           />
         ) : (
           <div
