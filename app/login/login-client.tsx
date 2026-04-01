@@ -8,13 +8,8 @@ import { Logo } from "@/components/marketing/Logo";
 
 /**
  * app/login/login-client.tsx
- * Returning member sign-in — client component.
- *
- * Auth methods:
- *   "password" — email + password (primary)
- *   "magic"    — magic link via email (secondary)
- *
- * After successful sign-in, redirects to ?next param or /today.
+ * Sprint 7: gradient background, CTA gradient button, minimal footer,
+ * reassurance text, focus ring polish.
  */
 
 type Mode = "password" | "magic";
@@ -90,7 +85,7 @@ function LoginForm() {
       <div className="w-full max-w-sm mx-auto px-6 text-center">
         <div
           className="bg-card border border-border rounded-2xl p-8 mb-4"
-          style={{ boxShadow: "0 6px 24px rgba(18,20,23,0.05)" }}
+          style={{ boxShadow: "0 12px 36px rgba(18,20,23,0.08)" }}
         >
           <span className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 text-primary mb-4 mx-auto">
             <svg
@@ -125,6 +120,13 @@ function LoginForm() {
     );
   }
 
+  const inputClassName = [
+    "w-full px-4 py-3 rounded-xl border border-input bg-background",
+    "text-foreground placeholder:text-muted-foreground text-sm",
+    "focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60",
+    "transition-colors",
+  ].join(" ");
+
   return (
     <div className="w-full max-w-sm mx-auto px-6">
       {/* Header */}
@@ -138,7 +140,7 @@ function LoginForm() {
         >
           {reason === "subscription_inactive"
             ? "Your membership is inactive. Sign in to manage your account."
-            : "Welcome back. Sign in to continue your practice."}
+            : "Welcome back to your practice."}
         </p>
       </div>
 
@@ -177,7 +179,7 @@ function LoginForm() {
           <button
             type="button"
             onClick={() => { setMode("magic"); setError(null); }}
-            className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all`}
+            className="flex-1 py-2 text-xs font-semibold rounded-lg transition-all"
             style={{
               background: mode === "magic" ? "#FFFFFF" : "transparent",
               boxShadow: mode === "magic" ? "0 1px 4px rgba(18,20,23,0.08)" : "none",
@@ -211,7 +213,7 @@ function LoginForm() {
                 required
                 autoComplete="email"
                 placeholder="you@example.com"
-                className="w-full px-4 py-3 rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground text-sm focus:outline-none transition"
+                className={inputClassName}
               />
             </div>
             <div>
@@ -228,14 +230,18 @@ function LoginForm() {
                 required
                 autoComplete="current-password"
                 placeholder="Your password"
-                className="w-full px-4 py-3 rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground text-sm focus:outline-none transition"
+                className={inputClassName}
               />
             </div>
             <button
               type="submit"
               disabled={pending}
-              className="w-full px-6 py-3.5 rounded-full bg-primary text-white font-medium text-sm hover:bg-primary-hover transition-colors disabled:opacity-60"
-              style={{ boxShadow: "0 6px 24px rgba(18,20,23,0.05)" }}
+              className="w-full px-6 py-3.5 rounded-full text-white font-medium text-sm transition-all disabled:opacity-60"
+              style={{
+                background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
+                boxShadow: "0 6px 24px rgba(47,111,237,0.25)",
+                letterSpacing: "-0.01em",
+              }}
             >
               {pending ? "Signing in…" : "Sign in →"}
             </button>
@@ -256,14 +262,18 @@ function LoginForm() {
                 required
                 autoComplete="email"
                 placeholder="you@example.com"
-                className="w-full px-4 py-3 rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground text-sm focus:outline-none transition"
+                className={inputClassName}
               />
             </div>
             <button
               type="submit"
               disabled={pending}
-              className="w-full px-6 py-3.5 rounded-full bg-primary text-white font-medium text-sm hover:bg-primary-hover transition-colors disabled:opacity-60"
-              style={{ boxShadow: "0 6px 24px rgba(18,20,23,0.05)" }}
+              className="w-full px-6 py-3.5 rounded-full text-white font-medium text-sm transition-all disabled:opacity-60"
+              style={{
+                background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
+                boxShadow: "0 6px 24px rgba(47,111,237,0.25)",
+                letterSpacing: "-0.01em",
+              }}
             >
               {pending ? "Sending…" : "Send sign-in link →"}
             </button>
@@ -287,6 +297,16 @@ export function LoginClient() {
       className="min-h-dvh flex flex-col"
       style={{ background: "#F6F3EE" }}
     >
+      {/* Subtle radial glow */}
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(ellipse at 50% 30%, rgba(47,111,237,0.05) 0%, transparent 65%)",
+        }}
+      />
+
       {/* ── Nav ── */}
       <header
         className="sticky top-0 z-50 w-full"
@@ -315,11 +335,29 @@ export function LoginClient() {
       </header>
 
       {/* ── Form ── */}
-      <div className="flex-1 flex flex-col items-center justify-center py-12">
+      <div className="relative flex-1 flex flex-col items-center justify-center py-12">
         <Suspense>
           <LoginForm />
         </Suspense>
       </div>
+
+      {/* ── Minimal footer ── */}
+      <footer
+        className="w-full py-6 text-center"
+        style={{ borderTop: "1px solid rgba(221,215,207,0.5)" }}
+      >
+        <div className="flex items-center justify-center gap-4 text-xs" style={{ color: "#9AA0A8" }}>
+          <Link href="/privacy" className="hover:text-foreground transition-colors">
+            Privacy
+          </Link>
+          <span aria-hidden="true">·</span>
+          <Link href="/terms" className="hover:text-foreground transition-colors">
+            Terms
+          </Link>
+          <span aria-hidden="true">·</span>
+          <span>© {new Date().getFullYear()} Positives</span>
+        </div>
+      </footer>
     </div>
   );
 }

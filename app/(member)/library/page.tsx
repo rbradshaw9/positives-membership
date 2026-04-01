@@ -7,16 +7,12 @@ import {
 } from "@/lib/queries/get-library-content";
 import { searchLibraryContent } from "@/lib/queries/search-library-content";
 import { LibraryList } from "@/components/library/LibraryList";
+import { PageHeader } from "@/components/member/PageHeader";
+import { EmptyState } from "@/components/member/EmptyState";
 
 /**
  * app/(member)/library/page.tsx
- * Sprint 6: search UX polish + resource_links + download_url passed through.
- *
- * Search improvements:
- *   - Clearer result count with matched query in bold
- *   - Better no-results empty state with suggestions
- *   - Query preserved through tab navigation
- *   - Tab strip hidden during search (avoids confusion)
+ * Sprint 7: wider container, PageHeader, EmptyState components.
  */
 
 export const metadata = {
@@ -93,7 +89,7 @@ export default async function LibraryPage(props: { searchParams: SearchParams })
       title: r.title,
       excerpt: r.excerpt,
       description: r.description,
-      download_url: null, // search query doesn't fetch these — keep library list clean
+      download_url: null,
       resource_links: null,
       publish_date: r.publish_date,
       week_start: r.week_start,
@@ -119,15 +115,11 @@ export default async function LibraryPage(props: { searchParams: SearchParams })
   const clearHref = activeTab !== "all" ? `/library?tab=${activeTab}` : "/library";
 
   return (
-    <div className="px-5 py-8 max-w-lg mx-auto">
-      <header className="mb-6">
-        <h1 className="font-heading font-bold text-2xl text-foreground tracking-[-0.03em]">
-          Library
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Your archive of practices, principles, and themes.
-        </p>
-      </header>
+    <div className="px-5 pt-10 pb-4 max-w-2xl mx-auto">
+      <PageHeader
+        title="Library"
+        subtitle="Your archive of practices, principles, and themes."
+      />
 
       {/* Search bar */}
       <form action="/library" method="GET" className="mb-5">

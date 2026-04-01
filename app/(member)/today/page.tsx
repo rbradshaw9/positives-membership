@@ -5,17 +5,16 @@ import { getMonthlyContent } from "@/lib/queries/get-monthly-content";
 import { resolveAudioUrl } from "@/lib/media/resolve-audio-url";
 import { getMemberNoteContentIds } from "@/lib/queries/get-library-content";
 import { getEffectiveDate } from "@/lib/dates/effective-date";
+import { getGreeting } from "@/lib/greeting";
+import { requireActiveMember } from "@/lib/auth/require-active-member";
 import { DailyPracticeCard } from "@/components/today/DailyPracticeCard";
 import { WeeklyPrincipleCard } from "@/components/today/WeeklyPrincipleCard";
 import { MonthlyThemeCard } from "@/components/today/MonthlyThemeCard";
 
 /**
  * app/(member)/today/page.tsx
- * Sprint 5 update:
- *
- * 1. Passes hasListened to DailyPracticeCard for the "Listened today" chip.
- * 2. Resolves weekly audio URL and passes to WeeklyPrincipleCard.
- * 3. All queries run in parallel — no waterfall.
+ * Sprint 7: personalized time-aware greeting, wider container, subtle
+ * background glow, visual separator between Daily and Weekly/Monthly.
  */
 
 export const metadata = {
@@ -24,12 +23,10 @@ export const metadata = {
 };
 
 export default async function TodayPage() {
+  const member = await requireActiveMember();
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
-  const effectiveDateStr = getEffectiveDate(); // e.g. "2026-04-01"
+  const effectiveDateStr = getEffectiveDate();
 
   // All content queries run in parallel
   const [todayContent, weeklyContent, monthlyContent, memberRow] =
@@ -37,17 +34,15 @@ export default async function TodayPage() {
       getTodayContent(),
       getWeeklyContent(),
       getMonthlyContent(),
-      user
-        ? supabase
-            .from("member")
-            .select("practice_streak")
-            .eq("id", user.id)
-            .single()
-            .then((r) => r.data)
-        : Promise.resolve(null),
+      supabase
+        .from("member")
+        .select("practice_streak")
+        .eq("id", member.id)
+        .single()
+        .then((r) => r.data),
     ]);
 
-  // Resolve audio URLs for Daily and Weekly (may be null)
+  // Resolve audio URLs
   const [dailyAudioUrl, weeklyAudioUrl] = await Promise.all([
     todayContent
       ? resolveAudioUrl(todayContent.castos_episode_url, todayContent.s3_audio_key)
@@ -63,15 +58,14 @@ export default async function TodayPage() {
   ) as string[];
 
   const [noteContentIds, listenedToday] = await Promise.all([
-    user && contentIds.length > 0
-      ? getMemberNoteContentIds(user.id)
+    contentIds.length > 0
+      ? getMemberNoteContentIds(member.id)
       : Promise.resolve(new Set<string>()),
-    // Check if member has a daily_listened event for today's content
-    user && todayContent
+    todayContent
       ? supabase
           .from("activity_event")
           .select("id")
-          .eq("member_id", user.id)
+          .eq("member_id", member.id)
           .eq("event_type", "daily_listened")
           .eq("content_id", todayContent.id)
           .limit(1)
@@ -88,37 +82,57 @@ export default async function TodayPage() {
     day: "numeric",
   }).format(new Date(effectiveDateStr + "T12:00:00"));
 
+  const greeting = getGreeting(member.name);
+
   return (
-    <div className="px-5 py-8 max-w-lg mx-auto flex flex-col gap-5">
-      <header className="mb-2 flex items-center justify-between">
-        <h1 className="font-heading font-bold text-2xl text-foreground tracking-[-0.03em]">
-          Today
-        </h1>
-        {streak > 0 && (
-          <span className="text-xs font-medium text-muted-foreground">
-            Day {streak}
+    <div className="relative">
+      {/* Subtle radial glow behind the daily card area */}
+      <div
+        aria-hidden="true"
+        className="absolute top-0 left-0 right-0 h-[400px] pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(ellipse at 50% 0%, rgba(47,111,237,0.05) 0%, transparent 70%)",
+        }}
+      />
+
+      <div className="relative px-5 pt-10 pb-4 max-w-2xl mx-auto flex flex-col gap-5">
+        {/* Personalized greeting */}
+        <header className="mb-1">
+          <h1 className="font-heading font-bold text-3xl text-foreground tracking-[-0.035em]">
+            {greeting}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">{todayLabel}</p>
+        </header>
+
+        <DailyPracticeCard
+          content={todayContent}
+          audioUrl={dailyAudioUrl}
+          todayLabel={todayLabel}
+          hasListened={listenedToday}
+          initialHasNote={todayContent ? noteContentIds.has(todayContent.id) : false}
+        />
+
+        {/* Visual separator */}
+        <div className="flex items-center gap-3 py-1">
+          <div className="flex-1 h-px bg-border" />
+          <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/60">
+            Continue your practice
           </span>
-        )}
-      </header>
+          <div className="flex-1 h-px bg-border" />
+        </div>
 
-      <DailyPracticeCard
-        content={todayContent}
-        audioUrl={dailyAudioUrl}
-        todayLabel={todayLabel}
-        hasListened={listenedToday}
-        initialHasNote={todayContent ? noteContentIds.has(todayContent.id) : false}
-      />
+        <WeeklyPrincipleCard
+          content={weeklyContent}
+          audioUrl={weeklyAudioUrl}
+          initialHasNote={weeklyContent ? noteContentIds.has(weeklyContent.id) : false}
+        />
 
-      <WeeklyPrincipleCard
-        content={weeklyContent}
-        audioUrl={weeklyAudioUrl}
-        initialHasNote={weeklyContent ? noteContentIds.has(weeklyContent.id) : false}
-      />
-
-      <MonthlyThemeCard
-        content={monthlyContent}
-        initialHasNote={monthlyContent ? noteContentIds.has(monthlyContent.id) : false}
-      />
+        <MonthlyThemeCard
+          content={monthlyContent}
+          initialHasNote={monthlyContent ? noteContentIds.has(monthlyContent.id) : false}
+        />
+      </div>
     </div>
   );
 }

@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { AccountClient } from "./account-client";
 import { TimezoneForm } from "./timezone-form";
 import { BillingButton } from "./billing-button";
+import { PageHeader } from "@/components/member/PageHeader";
+import { SectionLabel } from "@/components/member/SectionLabel";
 
 export const metadata = {
   title: "Account — Positives",
@@ -10,13 +12,7 @@ export const metadata = {
 
 /**
  * app/(member)/account/page.tsx
- * Account settings — Sprint 3 overhaul.
- *
- * Sections:
- *   1. Membership — plan name, status
- *   2. Billing — Stripe Customer Portal entry point
- *   3. Timezone — display + edit
- *   4. Security — email (read-only), password
+ * Sprint 7: wider container, shared PageHeader + SectionLabel components.
  */
 
 const PLAN_NAMES: Record<string, string> = {
@@ -48,17 +44,13 @@ export default async function AccountPage() {
   const hasBillingPortal = !!member?.stripe_customer_id;
 
   return (
-    <div className="px-5 py-8 max-w-lg mx-auto flex flex-col gap-8">
-      <header>
-        <h1 className="font-heading font-bold text-2xl text-foreground tracking-[-0.03em]">
-          Account
-        </h1>
-      </header>
+    <div className="px-5 pt-10 pb-4 max-w-2xl mx-auto flex flex-col gap-8">
+      <PageHeader title="Account" />
 
       {/* ── 1. Membership ────────────────────────────────────────── */}
       <section aria-labelledby="section-membership">
         <SectionLabel id="section-membership">Membership</SectionLabel>
-        <div className="bg-card rounded-xl border border-border shadow-soft p-5 flex items-center justify-between">
+        <div className="bg-card rounded-xl border border-border shadow-soft p-6 flex items-center justify-between">
           <div>
             <p className="font-heading font-semibold text-base text-foreground tracking-[-0.02em]">
               {planName}
@@ -79,7 +71,7 @@ export default async function AccountPage() {
         {hasBillingPortal ? (
           <BillingButton />
         ) : (
-          <div className="bg-card rounded-xl border border-border shadow-soft p-5">
+          <div className="bg-card rounded-xl border border-border shadow-soft p-6">
             <p className="text-sm text-muted-foreground">
               Billing management will be available once your account is fully set up.
             </p>
@@ -123,7 +115,7 @@ export default async function AccountPage() {
               </span>
             </div>
           ) : (
-            <div className="bg-card rounded-xl border border-border shadow-soft p-5">
+            <div className="bg-card rounded-xl border border-border shadow-soft p-6">
               <p className="text-sm text-muted-foreground leading-body mb-5">
                 You signed up via a magic link. Add a password so you can sign in
                 anytime.
@@ -134,22 +126,5 @@ export default async function AccountPage() {
         </div>
       </section>
     </div>
-  );
-}
-
-function SectionLabel({
-  id,
-  children,
-}: {
-  id: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <h2
-      id={id}
-      className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3"
-    >
-      {children}
-    </h2>
   );
 }

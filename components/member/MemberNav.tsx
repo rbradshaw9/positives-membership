@@ -66,7 +66,7 @@ export function MemberNav({ activeHref }: MemberNavProps) {
       aria-label="Member navigation"
       className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border safe-area-pb"
     >
-      <ul className="flex items-center justify-around max-w-lg mx-auto px-2">
+      <ul className="flex items-center justify-around max-w-2xl mx-auto px-2">
         {navItems.map(({ href, label, icon: Icon }) => {
           const isActive = activeHref === href;
           return (
