@@ -159,7 +159,7 @@ export default async function AdminContentPage({
       {/* Type filter tabs */}
       <div className="flex gap-1 mb-5 bg-muted p-1 rounded-xl w-fit">
         {TYPE_FILTERS.map(({ label, value }) => (
-          <a
+          <Link
             key={value}
             href={value ? `/admin/content?type=${value}` : "/admin/content"}
             className={[
@@ -170,7 +170,7 @@ export default async function AdminContentPage({
             ].join(" ")}
           >
             {label}
-          </a>
+          </Link>
         ))}
       </div>
 

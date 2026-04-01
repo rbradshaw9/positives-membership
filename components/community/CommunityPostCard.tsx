@@ -18,7 +18,7 @@ export function CommunityPostCard({
   likes = 0,
 }: CommunityPostCardProps) {
   return (
-    <SurfaceCard as="article" elevated>
+    <SurfaceCard as="article" elevated className="surface-card--editorial">
       <div className="mb-4 flex gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-xs font-bold text-primary">
           {initials}
@@ -33,8 +33,8 @@ export function CommunityPostCard({
           </div>
         </div>
       </div>
-      <p className="text-sm leading-body text-muted-foreground">{body}</p>
-      <div className="mt-4 flex items-center gap-4 text-xs font-medium text-muted-foreground">
+      <p className="text-sm leading-[1.75] text-muted-foreground">{body}</p>
+      <div className="mt-5 flex items-center gap-4 border-t border-border pt-4 text-xs font-medium text-muted-foreground">
         <span>♥ {likes}</span>
         <span>Reply</span>
       </div>

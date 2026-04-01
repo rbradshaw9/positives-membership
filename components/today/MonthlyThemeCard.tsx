@@ -65,7 +65,7 @@ export function MonthlyThemeCard({
 
   return (
     <>
-      <article className="bg-surface-tint rounded-2xl border border-border shadow-soft overflow-hidden border-l-4 border-l-accent">
+      <article className="surface-card--editorial bg-surface-tint rounded-[1.6rem] border border-border shadow-medium overflow-hidden border-l-4 border-l-accent">
         {/* ── Header ──────────────────────────────────────────────────── */}
         <div className="p-5 md:p-6 pb-0">
           {/* MONTHLY chip */}
@@ -82,11 +82,11 @@ export function MonthlyThemeCard({
 
           {content ? (
             <>
-              <h2 className="heading-balance font-heading font-bold text-xl text-foreground leading-heading tracking-[-0.02em] mb-2">
+              <h2 className="heading-balance font-heading font-bold text-2xl text-foreground leading-heading tracking-[-0.03em] mb-2">
                 {content.title}
               </h2>
               {content.excerpt && (
-                <p className="text-sm text-foreground/70 leading-body">
+                <p className="max-w-3xl text-sm text-foreground/70 leading-[1.7]">
                   {content.excerpt}
                 </p>
               )}

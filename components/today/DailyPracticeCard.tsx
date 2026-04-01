@@ -69,7 +69,7 @@ export function DailyPracticeCard({
 
   return (
     <>
-      <article className="bg-surface-dark rounded-2xl p-6 md:p-8 shadow-large text-white relative overflow-hidden">
+      <article className="rounded-[1.75rem] p-6 md:p-8 shadow-large text-white relative overflow-hidden bg-[linear-gradient(180deg,#121418_0%,#0A0A0A_100%)]">
         <div
           aria-hidden="true"
           className="absolute inset-0 opacity-25"
@@ -81,17 +81,21 @@ export function DailyPracticeCard({
 
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-5">
-            {/* DAILY chip */}
-            <span
-              className="inline-flex items-center text-[9px] font-bold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full"
-              style={{
-                color: "rgba(255,255,255,0.9)",
-                background: "rgba(47,111,237,0.45)",
-                border: "1px solid rgba(47,111,237,0.6)",
-              }}
-            >
-              Daily
-            </span>
+            <div>
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/55">
+                Today&apos;s Practice
+              </p>
+              <span
+                className="inline-flex items-center text-[9px] font-bold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full"
+                style={{
+                  color: "rgba(255,255,255,0.9)",
+                  background: "rgba(47,111,237,0.45)",
+                  border: "1px solid rgba(47,111,237,0.6)",
+                }}
+              >
+                Daily
+              </span>
+            </div>
             {listened ? (
               <span className="inline-flex items-center gap-1 text-xs text-white/70 font-medium">
                 <svg
@@ -130,7 +134,7 @@ export function DailyPracticeCard({
                 {content.title}
               </h2>
               {(content.excerpt ?? content.description) && (
-                <p className="text-white/70 text-sm leading-body mb-6">
+                <p className="max-w-3xl text-white/70 text-sm leading-[1.7] mb-6">
                   {content.excerpt ?? content.description}
                 </p>
               )}
@@ -187,7 +191,7 @@ export function DailyPracticeCard({
                   type="button"
                   onClick={handleOpenNote}
                   disabled={loadingNote}
-                  className="flex items-center gap-2 text-xs text-white/50 hover:text-white/80 transition-colors disabled:opacity-40"
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs text-white/58 hover:bg-white/8 hover:text-white transition-colors disabled:opacity-40"
                 >
                   <svg
                     width="12"

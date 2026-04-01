@@ -97,7 +97,7 @@ export function LibraryList({ items }: LibraryListProps) {
       <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" role="list">
         {items.map((item) => (
           <li key={item.id}>
-            <article className="surface-card group flex h-full flex-col overflow-hidden transition-transform duration-200 hover:-translate-y-1 hover:shadow-medium focus-within:-translate-y-1 focus-within:shadow-medium">
+            <article className="surface-card surface-card--editorial group flex h-full flex-col overflow-hidden transition-transform duration-200 hover:-translate-y-1 hover:shadow-large focus-within:-translate-y-1 focus-within:shadow-large">
               <div className={`relative aspect-[16/10] ${thumbClasses(item.type)}`}>
                 {youtubeThumbnailUrl(item) ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -117,7 +117,9 @@ export function LibraryList({ items }: LibraryListProps) {
                 />
                 <div className="absolute inset-0 flex flex-col justify-between p-4">
                   <div className="flex items-start justify-between gap-3">
-                    <TypeBadge type={item.type} />
+                    <span className="rounded-full bg-black/38 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/82">
+                      {item.typeLabel}
+                    </span>
                     {item.dateContext && (
                       <span className="rounded-full bg-black/35 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white/80">
                         {item.dateContext}
@@ -138,7 +140,16 @@ export function LibraryList({ items }: LibraryListProps) {
               </div>
 
               <div className="flex h-full flex-col p-5">
-                <h2 className="mb-2 font-heading text-xl font-semibold leading-heading tracking-[-0.025em] text-foreground">
+                <div className="mb-3 flex items-center gap-2">
+                  <TypeBadge type={item.type} size="xs" />
+                  {item.duration_seconds ? (
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {Math.max(1, Math.round(item.duration_seconds / 60))} min
+                    </span>
+                  ) : null}
+                </div>
+
+                <h2 className="mb-2 font-heading text-2xl font-semibold leading-heading tracking-[-0.03em] text-foreground">
                   <Link
                     href={`/library/${item.id}`}
                     className="heading-balance rounded-sm transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
@@ -148,14 +159,8 @@ export function LibraryList({ items }: LibraryListProps) {
                 </h2>
 
                 {(item.excerpt ?? item.description) && (
-                  <p className="mb-4 line-clamp-3 text-sm leading-body text-muted-foreground">
+                  <p className="mb-4 line-clamp-3 text-sm leading-[1.7] text-muted-foreground">
                     {item.excerpt ?? item.description}
-                  </p>
-                )}
-
-                {item.duration_seconds && (
-                  <p className="mb-4 text-xs text-muted-foreground">
-                    {Math.floor(item.duration_seconds / 60)} min
                   </p>
                 )}
 
@@ -197,7 +202,7 @@ export function LibraryList({ items }: LibraryListProps) {
 
                   <Link
                     href={`/library/${item.id}`}
-                    className="inline-flex items-center gap-1 rounded-sm text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:border-primary/25 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                   >
                     <span>Open</span>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

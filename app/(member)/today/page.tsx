@@ -13,6 +13,7 @@ import { WeeklyPrincipleCard } from "@/components/today/WeeklyPrincipleCard";
 import { MonthlyThemeCard } from "@/components/today/MonthlyThemeCard";
 import { ContinueListeningCard } from "@/components/today/ContinueListeningCard";
 import { TypeBadge } from "@/components/member/TypeBadge";
+import { SectionLabel } from "@/components/member/SectionLabel";
 import { Button } from "@/components/ui/Button";
 import Link from "next/link";
 
@@ -159,19 +160,28 @@ export default async function TodayPage() {
           />
         )}
 
-        {/* Daily card */}
-        <DailyPracticeCard
-          content={todayContent}
-          audioUrl={dailyAudioUrl}
-          todayLabel={todayLabel}
-          hasListened={listenedToday}
-          initialHasNote={todayContent ? noteContentIds.has(todayContent.id) : false}
-        />
+        <section aria-labelledby="today-practice" className="flex flex-col gap-3">
+          <div>
+            <SectionLabel id="today-practice">Today&apos;s Practice</SectionLabel>
+            <p className="max-w-2xl text-sm leading-body text-muted-foreground">
+              Start here when you want the next clear step. The rest of the page expands the
+              rhythm around today&apos;s practice without overwhelming it.
+            </p>
+          </div>
+
+          <DailyPracticeCard
+            content={todayContent}
+            audioUrl={dailyAudioUrl}
+            todayLabel={todayLabel}
+            hasListened={listenedToday}
+            initialHasNote={todayContent ? noteContentIds.has(todayContent.id) : false}
+          />
+        </section>
 
         {(listeningInsights.recentlyCompleted.length > 0 || suggestedNext) && (
           <section className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
             {listeningInsights.recentlyCompleted.length > 0 && (
-              <article className="surface-card p-5 md:p-6">
+              <article className="surface-card surface-card--editorial p-5 md:p-6">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div>
                     <p className="ui-section-eyebrow mb-2">Recently Completed</p>
@@ -230,7 +240,7 @@ export default async function TodayPage() {
             )}
 
             {suggestedNext && (
-              <article className="surface-card surface-card--tint p-5 md:p-6">
+              <article className="surface-card surface-card--tint surface-card--editorial p-5 md:p-6">
                 <p className="ui-section-eyebrow mb-2">Next Recommended Practice</p>
                 <h2 className="heading-balance font-heading text-xl font-semibold tracking-[-0.02em] text-foreground">
                   {suggestedNext.title}

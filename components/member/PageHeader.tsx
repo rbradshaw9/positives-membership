@@ -29,22 +29,6 @@ export function PageHeader({ title, subtitle, right, hero = false }: PageHeaderP
     return <PageHero title={title} subtitle={subtitle} right={right} />;
   }
 
-  const inner = (
-    <div className="member-container py-10 md:py-14">
-      <div className="flex items-start justify-between gap-4">
-        <h1 className="heading-balance font-heading font-bold text-3xl md:text-4xl text-foreground tracking-[-0.035em] leading-tight">
-          {title}
-        </h1>
-        {right && <div className="flex-shrink-0 mt-1.5">{right}</div>}
-      </div>
-      {subtitle && (
-        <p className="text-base text-muted-foreground mt-2 leading-body max-w-lg">
-          {subtitle}
-        </p>
-      )}
-    </div>
-  );
-
   return (
     <header className="mb-8">
       <div className="flex items-start justify-between gap-4">

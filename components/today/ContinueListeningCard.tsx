@@ -56,15 +56,15 @@ export function ContinueListeningCard({
   }
 
   return (
-    <article className="surface-card surface-card--tint p-5 md:p-6">
+    <article className="surface-card surface-card--tint surface-card--editorial p-5 md:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="ui-section-eyebrow mb-2">Continue Listening</p>
-          <h2 className="heading-balance font-heading text-xl font-semibold tracking-[-0.02em] text-foreground">
+          <h2 className="heading-balance font-heading text-2xl font-semibold tracking-[-0.03em] text-foreground">
             {title}
           </h2>
           {description && (
-            <p className="mt-2 max-w-2xl text-sm leading-body text-muted-foreground">
+            <p className="mt-2 max-w-2xl text-sm leading-[1.7] text-muted-foreground">
               {description}
             </p>
           )}
@@ -72,7 +72,7 @@ export function ContinueListeningCard({
         <TypeBadge type={contentType} />
       </div>
 
-      <div className="mt-5 flex flex-wrap items-center gap-3">
+      <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-border pt-4">
         {audioUrl ? (
           <Button type="button" onClick={handlePlayback}>
             {isCurrent && isPlaying ? "Pause audio" : "Resume audio"}
@@ -97,7 +97,9 @@ export function ContinueListeningCard({
             <polyline points="9 18 15 12 9 6" />
           </svg>
         </Link>
-        <span className="text-xs text-muted-foreground">{durationLabel}</span>
+        <span className="rounded-full bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground ring-1 ring-border">
+          {durationLabel}
+        </span>
       </div>
     </article>
   );

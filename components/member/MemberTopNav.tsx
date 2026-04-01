@@ -6,17 +6,13 @@ import { usePathname } from "next/navigation";
 import { signOut } from "@/app/(member)/account/actions";
 import { Logo } from "@/components/marketing/Logo";
 
-const COACHING_TIERS = new Set(["level_3", "level_4"]);
-
 const BASE_NAV_ITEMS = [
-  { href: "/today", label: "Today" },
+  { href: "/today", label: "Home", mobileLabel: "Home" },
   { href: "/library", label: "Library" },
-  { href: "/journal", label: "Journal" },
+  { href: "/community", label: "Community", mobileLabel: "Community" },
+  { href: "/practice", label: "My Practice", mobileLabel: "Practice" },
 ] as const;
-
-const COACHING_NAV_ITEM = { href: "/coaching", label: "Coaching" } as const;
-
-type NavItem = { href: string; label: string };
+type NavItem = { href: string; label: string; mobileLabel?: string };
 
 interface MemberTopNavProps {
   streak?: number;
@@ -26,11 +22,9 @@ interface MemberTopNavProps {
 
 export function MemberTopNav({
   streak = 0,
-  tier,
   memberName,
 }: MemberTopNavProps) {
   const pathname = usePathname();
-  const showCoaching = COACHING_TIERS.has(tier ?? "");
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const mobileTabRef = useRef<HTMLElement>(null);
@@ -45,10 +39,7 @@ export function MemberTopNav({
     [displayName]
   );
 
-  const navItems: NavItem[] = [
-    ...BASE_NAV_ITEMS,
-    ...(showCoaching ? [COACHING_NAV_ITEM] : []),
-  ];
+  const navItems: NavItem[] = [...BASE_NAV_ITEMS];
 
   useEffect(() => {
     function handleOutsideClick(event: MouseEvent) {
@@ -133,7 +124,7 @@ export function MemberTopNav({
                   className={[
                     "rounded-full px-3.5 py-2 text-sm font-medium transition-colors",
                     isActive
-                      ? "bg-white/8 text-primary"
+                      ? "bg-white/9 text-primary shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]"
                       : "text-white/58 hover:bg-white/6 hover:text-white",
                   ].join(" ")}
                 >
@@ -216,7 +207,8 @@ export function MemberTopNav({
         style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}
       >
         <ul className="flex items-center justify-around px-2">
-          {[...navItems, { href: "/account", label: "Account" }].map(({ href, label }) => {
+          {[...navItems, { href: "/account", label: "Account", mobileLabel: "Account" }].map(
+            ({ href, label, mobileLabel }) => {
             const isActive = pathname === href || (href !== "/today" && pathname.startsWith(href));
             return (
               <li key={href} className="flex-1">
@@ -229,7 +221,7 @@ export function MemberTopNav({
                   ].join(" ")}
                 >
                   <NavIcon href={href} />
-                  <span>{label}</span>
+                  <span>{mobileLabel ?? label}</span>
                   <span
                     className="block h-1 w-1 rounded-full -mt-0.5"
                     style={{ background: isActive ? "var(--color-primary)" : "transparent" }}
@@ -277,6 +269,26 @@ function NavIcon({ href }: { href: string }) {
       <svg {...props}>
         <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
         <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+      </svg>
+    );
+  }
+
+  if (href === "/community") {
+    return (
+      <svg {...props}>
+        <path d="M7 10h10" />
+        <path d="M7 14h6" />
+        <path d="M5 19a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5z" />
+      </svg>
+    );
+  }
+
+  if (href === "/practice") {
+    return (
+      <svg {...props}>
+        <path d="M12 3v18" />
+        <path d="M5 9a7 7 0 0 1 14 0" />
+        <path d="M19 15a7 7 0 0 1-14 0" />
       </svg>
     );
   }

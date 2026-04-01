@@ -12,6 +12,8 @@ import { LibraryList } from "@/components/library/LibraryList";
 import { PageHeader } from "@/components/member/PageHeader";
 import { FilterChip } from "@/components/ui/FilterChip";
 import { SearchField } from "@/components/ui/SearchField";
+import { SurfaceCard } from "@/components/ui/SurfaceCard";
+import { Button } from "@/components/ui/Button";
 
 /**
  * app/(member)/library/page.tsx
@@ -125,7 +127,7 @@ export default async function LibraryPage(props: { searchParams: SearchParams })
     <div>
       <PageHeader
         title="Library"
-        subtitle="Browse daily grounding, weekly principles, monthly themes, and coaching content in one premium archive."
+        subtitle="A curated archive of daily grounding, weekly principles, monthly themes, and deeper library moments."
         hero
       />
       <div className="member-container py-8 md:py-10">
@@ -191,25 +193,41 @@ export default async function LibraryPage(props: { searchParams: SearchParams })
         </nav>
       )}
 
-      <div className="mb-6 grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
-        <div className="surface-card surface-card--tint p-5">
+      <div className="mb-6 grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+        <div className="surface-card surface-card--tint surface-card--editorial p-5">
           <p className="ui-section-eyebrow mb-2">Browse by Rhythm</p>
-          <h2 className="heading-balance font-heading text-xl font-semibold tracking-[-0.02em] text-foreground">
-            A premium archive built around Today, This Week, and This Month
+          <h2 className="heading-balance font-heading text-2xl font-semibold tracking-[-0.03em] text-foreground">
+            A premium archive built around your daily, weekly, and monthly rhythm
           </h2>
           <p className="mt-2 text-sm leading-body text-muted-foreground">
-            Search across your library or browse by content rhythm without turning Positives into a course platform.
+            Search across the full archive, or head to My Practice when you want a more guided discovery flow.
           </p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <FilterChip href="/practice?tab=daily" active={false}>
+              Daily
+            </FilterChip>
+            <FilterChip href="/practice?tab=weekly" active={false}>
+              Weekly
+            </FilterChip>
+            <FilterChip href="/practice?tab=monthly" active={false}>
+              Monthly
+            </FilterChip>
+          </div>
         </div>
-        <div className="surface-card p-5">
-          <p className="ui-section-eyebrow mb-2">Coverage</p>
-          <p className="font-heading text-3xl font-bold tracking-[-0.03em] text-foreground">
-            {enriched.length}
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {isSearchMode ? "matching results" : "items in this view"}
-          </p>
-        </div>
+        <SurfaceCard elevated className="surface-card--editorial flex h-full flex-col justify-between">
+          <div>
+            <p className="ui-section-eyebrow mb-2">This View</p>
+            <p className="font-heading text-4xl font-bold tracking-[-0.04em] text-foreground">
+              {enriched.length}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {isSearchMode ? "matching results" : "items in this slice of the archive"}
+            </p>
+          </div>
+          <Button href="/practice" variant="outline" size="sm" className="mt-5 self-start">
+            Open My Practice
+          </Button>
+        </SurfaceCard>
       </div>
 
       {enriched.length === 0 ? (

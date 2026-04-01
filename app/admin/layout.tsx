@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireAdmin } from "@/lib/auth/require-admin";
 
 /**
@@ -32,23 +33,50 @@ export default async function AdminLayout({
           aria-label="Admin navigation"
           className="w-52 bg-card border-r border-border p-4 hidden sm:block"
         >
-          <ul className="flex flex-col gap-1 text-sm">
-            {[
-              { href: "/admin", label: "Overview" },
-              { href: "/admin/content", label: "Content" },
-              { href: "/admin/content/calendar", label: "Calendar" },
-              { href: "/admin/members", label: "Members" },
-              { href: "/admin/ingestion", label: "Ingestion" },
-            ].map(({ href, label }) => (
-              <li key={href}>
-                <a
-                  href={href}
-                  className="block px-3 py-2 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          <ul className="flex flex-col gap-3 text-sm">
+            <li>
+              <Link
+                href="/admin"
+                className="block rounded-sm px-3 py-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                Overview
+              </Link>
+            </li>
+            <li>
+              <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Content
+              </p>
+              <div className="flex flex-col gap-1">
+                <Link
+                  href="/admin/content"
+                  className="block rounded-sm px-3 py-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 >
-                  {label}
-                </a>
-              </li>
-            ))}
+                  Library
+                </Link>
+                <Link
+                  href="/admin/content/calendar"
+                  className="block rounded-sm px-3 py-2 pl-6 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  Calendar
+                </Link>
+              </div>
+            </li>
+            <li>
+              <Link
+                href="/admin/members"
+                className="block rounded-sm px-3 py-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                Members
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/admin/ingestion"
+                className="block rounded-sm px-3 py-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                Ingestion
+              </Link>
+            </li>
           </ul>
         </nav>
 

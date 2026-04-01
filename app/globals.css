@@ -162,7 +162,7 @@ select.admin-input {
 /* to match the marketing site's content width on desktop.                     */
 .member-container {
   width: 100%;
-  max-width: 52rem;   /* 832px — generous reading width, avoids sprawl */
+  max-width: 72rem;
   margin-left: auto;
   margin-right: auto;
   padding-left: 1.25rem;
@@ -192,6 +192,14 @@ select.admin-input {
   background: var(--color-surface-tint);
 }
 
+.surface-card--editorial {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at top left, rgba(46, 196, 182, 0.08) 0%, transparent 52%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, #fff 100%);
+}
+
 .surface-card--dark {
   background:
     radial-gradient(ellipse at top left, rgba(46, 196, 182, 0.16) 0%, transparent 50%),
@@ -208,6 +216,70 @@ select.admin-input {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-primary);
+}
+
+.member-segmented-control {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  border-radius: calc(var(--radius-lg) + 0.25rem);
+  border: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-muted) 72%, white);
+  padding: 0.35rem;
+  box-shadow: var(--shadow-soft);
+}
+
+.member-segmented-control__item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 2.75rem;
+  padding: 0.7rem 1rem;
+  border-radius: calc(var(--radius) - 0.1rem);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--color-muted-fg);
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.member-segmented-control__item:hover {
+  color: var(--color-foreground);
+}
+
+.member-segmented-control__item[data-active="true"] {
+  background: var(--color-card);
+  color: var(--color-foreground);
+  box-shadow: var(--shadow-soft);
+}
+
+.member-detail-kicker {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-muted-fg) 94%, transparent);
+}
+
+.member-card-title {
+  font-family: var(--font-heading);
+  font-size: clamp(1.35rem, 1rem + 1.1vw, 2rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: var(--color-foreground);
+}
+
+.member-body-copy {
+  color: var(--color-muted-fg);
+  font-size: 0.975rem;
+  line-height: 1.68;
 }
 
 .ui-page-hero {
@@ -421,7 +493,8 @@ select.admin-input {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(10, 10, 10, 0.88);
+  background:
+    linear-gradient(180deg, rgba(10, 10, 10, 0.96) 0%, rgba(16, 17, 19, 0.9) 100%);
   backdrop-filter: blur(20px) saturate(1.8);
   -webkit-backdrop-filter: blur(20px) saturate(1.8);
   border-bottom: 1px solid var(--color-shell-border);
@@ -434,7 +507,7 @@ select.admin-input {
   right: 0;
   bottom: 0;
   z-index: 55;
-  background: rgba(10, 10, 10, 0.92);
+  background: rgba(10, 10, 10, 0.94);
   backdrop-filter: blur(20px) saturate(1.8);
   -webkit-backdrop-filter: blur(20px) saturate(1.8);
   border-top: 1px solid var(--color-shell-border);
@@ -447,7 +520,8 @@ select.admin-input {
   right: 0;
   bottom: 0;
   z-index: 60;
-  background: var(--color-player-bg);
+  background:
+    linear-gradient(180deg, rgba(15, 16, 18, 0.98) 0%, rgba(10, 10, 10, 0.98) 100%);
   color: #fff;
   border-top: 1px solid rgba(255,255,255,0.08);
   box-shadow: var(--shadow-player);

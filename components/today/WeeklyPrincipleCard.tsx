@@ -67,7 +67,7 @@ export function WeeklyPrincipleCard({
   return (
     <>
       <article
-        className="rounded-2xl border border-border shadow-soft overflow-hidden"
+        className="surface-card--editorial rounded-[1.6rem] border border-border shadow-medium overflow-hidden"
         style={{ backgroundColor: "var(--color-surface-tint)" }}
       >
         {/* ── Header ──────────────────────────────────────────────────── */}
@@ -86,11 +86,11 @@ export function WeeklyPrincipleCard({
 
           {content ? (
             <>
-              <h2 className="heading-balance font-heading font-bold text-xl text-foreground leading-heading tracking-[-0.02em] mb-2">
+              <h2 className="heading-balance font-heading font-bold text-2xl text-foreground leading-heading tracking-[-0.03em] mb-2">
                 {content.title}
               </h2>
               {content.excerpt && (
-                <p className="text-sm text-foreground/70 leading-body">
+                <p className="max-w-3xl text-sm text-foreground/70 leading-[1.7]">
                   {content.excerpt}
                 </p>
               )}
@@ -131,7 +131,7 @@ export function WeeklyPrincipleCard({
               background: "linear-gradient(to bottom, color-mix(in srgb, var(--color-secondary) 6%, transparent), transparent)",
             }}
           >
-            <div className="bg-surface-dark/80 rounded-xl px-4 py-4">
+            <div className="rounded-2xl border border-white/8 bg-surface-dark/80 px-4 py-4">
               <AudioPlayer
                 trackId={content.id}
                 src={audioUrl!}

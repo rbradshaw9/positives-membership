@@ -53,7 +53,7 @@ export function PersistentAudioPlayer() {
 
   return (
     <div ref={playerRef} className="persistent-player" data-mobile-offset="true">
-      <div className="mx-auto max-w-5xl px-4 py-3 md:px-6">
+      <div className="mx-auto max-w-6xl px-4 py-3 md:px-6 md:py-4">
         <div className="mb-3">
           <input
             type="range"
@@ -76,9 +76,11 @@ export function PersistentAudioPlayer() {
 
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-white">{currentTrack.title}</p>
-            <p className="truncate text-xs text-white/55">
+            <p className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-white/42">
               {currentTrack.subtitle ?? "Positives"}
+            </p>
+            <p className="mt-1 truncate text-sm font-semibold text-white md:text-base">
+              {currentTrack.title}
             </p>
           </div>
 
@@ -86,7 +88,7 @@ export function PersistentAudioPlayer() {
             <button
               type="button"
               onClick={() => seekBy(-15)}
-              className="flex h-10 w-10 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/8 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
               aria-label="Rewind 15 seconds"
             >
               <span className="text-sm font-semibold">-15</span>
@@ -111,7 +113,7 @@ export function PersistentAudioPlayer() {
             <button
               type="button"
               onClick={() => seekBy(15)}
-              className="flex h-10 w-10 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/8 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
               aria-label="Skip forward 15 seconds"
             >
               <span className="text-sm font-semibold">+15</span>
@@ -121,7 +123,7 @@ export function PersistentAudioPlayer() {
           <button
             type="button"
             onClick={clearTrack}
-            className="hidden h-10 w-10 items-center justify-center rounded-full text-white/45 transition-colors hover:bg-white/10 hover:text-white md:flex"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/8 text-white/45 transition-colors hover:bg-white/10 hover:text-white"
             aria-label="Close player"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
