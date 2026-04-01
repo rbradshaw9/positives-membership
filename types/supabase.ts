@@ -1,6 +1,6 @@
 // AUTO-GENERATED — do not edit manually.
 // Regenerate with: npx supabase gen types typescript --project-id qdnojizzldilqpyocora > types/supabase.ts
-// Last generated: 2026-03-31 from live project qdnojizzldilqpyocora
+// Last generated: 2026-04-01 from live project qdnojizzldilqpyocora
 
 export type Json =
   | string
@@ -18,6 +18,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_event: {
+        Row: {
+          content_id: string | null
+          event_type: Database["public"]["Enums"]["activity_event_type"]
+          id: string
+          member_id: string
+          metadata: Json | null
+          occurred_at: string
+        }
+        Insert: {
+          content_id?: string | null
+          event_type: Database["public"]["Enums"]["activity_event_type"]
+          id?: string
+          member_id: string
+          metadata?: Json | null
+          occurred_at?: string
+        }
+        Update: {
+          content_id?: string | null
+          event_type?: Database["public"]["Enums"]["activity_event_type"]
+          id?: string
+          member_id?: string
+          metadata?: Json | null
+          occurred_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_event_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_event_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "member"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       community_post: {
         Row: {
           body: string
@@ -62,61 +104,88 @@ export type Database = {
       }
       content: {
         Row: {
+          admin_notes: string | null
           ai_generated_description: string | null
           ai_generated_title: string | null
           castos_episode_url: string | null
           created_at: string
           description: string | null
           duration_seconds: number | null
+          excerpt: string | null
           id: string
           is_active: boolean
+          is_today_override: boolean
           month_theme: string | null
+          month_year: string | null
+          publish_date: string | null
           published_at: string | null
           s3_audio_key: string | null
+          source: Database["public"]["Enums"]["content_source"]
+          source_ref: string | null
+          status: Database["public"]["Enums"]["content_status"]
           tags: string[]
           title: string
           transcription: string | null
           type: Database["public"]["Enums"]["content_type"]
           updated_at: string
           vimeo_video_id: string | null
+          week_start: string | null
         }
         Insert: {
+          admin_notes?: string | null
           ai_generated_description?: string | null
           ai_generated_title?: string | null
           castos_episode_url?: string | null
           created_at?: string
           description?: string | null
           duration_seconds?: number | null
+          excerpt?: string | null
           id?: string
           is_active?: boolean
+          is_today_override?: boolean
           month_theme?: string | null
+          month_year?: string | null
+          publish_date?: string | null
           published_at?: string | null
           s3_audio_key?: string | null
+          source?: Database["public"]["Enums"]["content_source"]
+          source_ref?: string | null
+          status?: Database["public"]["Enums"]["content_status"]
           tags?: string[]
           title: string
           transcription?: string | null
           type: Database["public"]["Enums"]["content_type"]
           updated_at?: string
           vimeo_video_id?: string | null
+          week_start?: string | null
         }
         Update: {
+          admin_notes?: string | null
           ai_generated_description?: string | null
           ai_generated_title?: string | null
           castos_episode_url?: string | null
           created_at?: string
           description?: string | null
           duration_seconds?: number | null
+          excerpt?: string | null
           id?: string
           is_active?: boolean
+          is_today_override?: boolean
           month_theme?: string | null
+          month_year?: string | null
+          publish_date?: string | null
           published_at?: string | null
           s3_audio_key?: string | null
+          source?: Database["public"]["Enums"]["content_source"]
+          source_ref?: string | null
+          status?: Database["public"]["Enums"]["content_status"]
           tags?: string[]
           title?: string
           transcription?: string | null
           type?: Database["public"]["Enums"]["content_type"]
           updated_at?: string
           vimeo_video_id?: string | null
+          week_start?: string | null
         }
         Relationships: []
       }
@@ -127,6 +196,7 @@ export type Database = {
           entry_text: string
           id: string
           member_id: string
+          updated_at: string
         }
         Insert: {
           content_id?: string | null
@@ -134,6 +204,7 @@ export type Database = {
           entry_text: string
           id?: string
           member_id: string
+          updated_at?: string
         }
         Update: {
           content_id?: string | null
@@ -141,6 +212,7 @@ export type Database = {
           entry_text?: string
           id?: string
           member_id?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -176,6 +248,7 @@ export type Database = {
           subscription_tier:
             | Database["public"]["Enums"]["subscription_tier"]
             | null
+          timezone: string
         }
         Insert: {
           avatar_url?: string | null
@@ -193,6 +266,7 @@ export type Database = {
           subscription_tier?:
             | Database["public"]["Enums"]["subscription_tier"]
             | null
+          timezone?: string
         }
         Update: {
           avatar_url?: string | null
@@ -210,6 +284,7 @@ export type Database = {
           subscription_tier?:
             | Database["public"]["Enums"]["subscription_tier"]
             | null
+          timezone?: string
         }
         Relationships: []
       }
@@ -263,7 +338,24 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      activity_event_type:
+        | "session_start"
+        | "daily_listened"
+        | "daily_started"
+        | "weekly_viewed"
+        | "monthly_viewed"
+        | "note_created"
+        | "note_updated"
+        | "journal_opened"
+        | "event_attended"
+        | "qa_submitted"
+        | "qa_viewed"
+        | "milestone_reached"
+        | "upgrade_prompt_seen"
+        | "upgrade_clicked"
       community_post_type: "reflection" | "question" | "share"
+      content_source: "gdrive" | "vimeo" | "admin"
+      content_status: "draft" | "ready_for_review" | "published" | "archived"
       content_type:
         | "daily_audio"
         | "weekly_principle"
@@ -404,7 +496,25 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      activity_event_type: [
+        "session_start",
+        "daily_listened",
+        "daily_started",
+        "weekly_viewed",
+        "monthly_viewed",
+        "note_created",
+        "note_updated",
+        "journal_opened",
+        "event_attended",
+        "qa_submitted",
+        "qa_viewed",
+        "milestone_reached",
+        "upgrade_prompt_seen",
+        "upgrade_clicked",
+      ],
       community_post_type: ["reflection", "question", "share"],
+      content_source: ["gdrive", "vimeo", "admin"],
+      content_status: ["draft", "ready_for_review", "published", "archived"],
       content_type: [
         "daily_audio",
         "weekly_principle",

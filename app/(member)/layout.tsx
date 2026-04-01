@@ -1,7 +1,6 @@
 import { requireActiveMember } from "@/lib/auth/require-active-member";
 import { MemberNav } from "@/components/member/MemberNav";
 import { PasswordNudgeBanner } from "@/components/member/PasswordNudgeBanner";
-import { createClient } from "@/lib/supabase/server";
 import { headers } from "next/headers";
 
 /**
@@ -13,27 +12,19 @@ import { headers } from "next/headers";
  * - Authenticated users with inactive subscription → /join
  * - Authenticated active members → renders children
  *
- * Also renders a subtle password-setup nudge for guest-onboarded users
- * (password_set = false) — non-blocking, dismissable client-side.
+ * password_set is returned directly from requireActiveMember() — no second
+ * Supabase query needed. Renders a subtle password-setup nudge for
+ * guest-onboarded users (password_set = false) — non-blocking, dismissable.
  */
 export default async function MemberLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Server-side access guard — throws redirect if unauthorized
+  // Single server-side query: access guard + password_set in one round-trip.
   const member = await requireActiveMember();
 
-  // Fetch password_set for the nudge banner — separate lightweight query
-  // so requireActiveMember stays focused on access control.
-  const supabase = await createClient();
-  const { data: profile } = await supabase
-    .from("member")
-    .select("password_set")
-    .eq("id", member.id)
-    .single();
-
-  const showPasswordNudge = profile?.password_set === false;
+  const showPasswordNudge = member.password_set === false;
 
   const headerStore = await headers();
   const pathname = headerStore.get("x-pathname") ?? "/today";

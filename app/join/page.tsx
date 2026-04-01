@@ -199,6 +199,7 @@ export default async function JoinPage({
 
       {/* ━━ 2. PRICING TOGGLE + CARDS + AUTH GATE ━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section
+        id="start"
         className="w-full px-6"
         style={{
           paddingBottom: "clamp(4rem, 7vw, 6rem)",

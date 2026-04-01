@@ -103,3 +103,33 @@ img, svg, video {
   display: block;
   max-width: 100%;
 }
+
+/* ─── Admin form inputs ────────────────────────────────────────────────────── */
+/* Shared input style for admin content forms. Avoids repeating the same       */
+/* className string across every field.                                         */
+.admin-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  outline: none;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.admin-input::placeholder {
+  color: var(--color-muted-fg);
+}
+
+.admin-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent);
+}
+
+.admin-input[type="select"],
+select.admin-input {
+  cursor: pointer;
+}

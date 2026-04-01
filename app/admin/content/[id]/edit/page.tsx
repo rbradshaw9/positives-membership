@@ -1,0 +1,98 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { updateContent } from "../../actions";
+import { ContentForm } from "../../new/page";
+import { getEffectiveDate } from "@/lib/dates/effective-date";
+
+/**
+ * app/admin/content/[id]/edit/page.tsx
+ * Edit an existing content record.
+ * Pulls the row, pre-fills the shared ContentForm, posts to updateContent action.
+ */
+
+export const metadata = {
+  title: "Edit Content — Positives Admin",
+};
+
+type Props = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string }>;
+};
+
+export default async function AdminContentEditPage({ params, searchParams }: Props) {
+  const { id } = await params;
+  const { error: errorParam } = await searchParams;
+  const todayEastern = getEffectiveDate();
+
+  const supabase = await createClient();
+  const { data: row, error } = await supabase
+    .from("content")
+    .select(
+      "id, type, title, excerpt, description, status, publish_date, week_start, month_year, duration_seconds, castos_episode_url, s3_audio_key, admin_notes"
+    )
+    .eq("id", id)
+    .single();
+
+  if (error || !row) notFound();
+
+  return (
+    <div className="max-w-2xl">
+      <div className="mb-6">
+        <Link
+          href="/admin/content"
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors mb-4 inline-block"
+        >
+          ← Back to content
+        </Link>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="font-heading font-bold text-2xl text-foreground tracking-[-0.02em] mb-1">
+              Edit content
+            </h1>
+            <p className="text-muted-foreground text-sm line-clamp-1">{row.title}</p>
+          </div>
+          {/* Preview link for member-facing view */}
+          <Link
+            href="/today"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors flex-shrink-0 mt-1"
+          >
+            Preview Today ↗
+          </Link>
+        </div>
+      </div>
+
+      {errorParam && (
+        <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm rounded-lg p-4 mb-6">
+          {errorParam === "title_required"
+            ? "Title is required."
+            : "Failed to save. Check server logs."}
+        </div>
+      )}
+
+      <ContentForm
+        action={updateContent}
+        defaultType={row.type}
+        todayEastern={todayEastern}
+        submitLabel="Save changes"
+        values={{
+          id: row.id,
+          type: row.type,
+          title: row.title,
+          excerpt: row.excerpt ?? "",
+          description: row.description ?? "",
+          status: row.status,
+          publish_date: row.publish_date,
+          week_start: row.week_start,
+          month_year: row.month_year,
+          duration_seconds: row.duration_seconds,
+          castos_episode_url: row.castos_episode_url,
+          s3_audio_key: row.s3_audio_key,
+          admin_notes: row.admin_notes,
+        }}
+      />
+    </div>
+  );
+}

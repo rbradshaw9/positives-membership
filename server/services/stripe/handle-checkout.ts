@@ -1,5 +1,5 @@
 import type Stripe from "stripe";
-import { createClient } from "@supabase/supabase-js";
+import { getAdminClient } from "@/lib/supabase/admin";
 
 /**
  * server/services/stripe/handle-checkout.ts
@@ -10,12 +10,14 @@ import { createClient } from "@supabase/supabase-js";
  * PATH A — Auth-first (legacy, preserved):
  *   Visitor authenticated before checkout. session.client_reference_id is set
  *   to their Supabase userId. We look up the member row directly and activate.
+ *   Kept intentionally so Stripe webhook replays of any pre-existing auth-first
+ *   sessions continue to process correctly — do not remove.
  *
- * PATH B — Guest checkout (new, payment-first):
+ * PATH B — Guest checkout (current, payment-first):
  *   Visitor went through Stripe without prior auth. client_reference_id is
  *   absent (null). We:
  *     1. Read email from session.customer_details.email
- *     2. Create a Supabase auth user (or find existing)
+ *     2. Create a Supabase auth user (or find existing by direct DB query)
  *     3. Activate the member row
  *     4. Generate a magic-link token hash
  *     5. Store it on member.onboarding_token for the success page to consume
@@ -33,14 +35,6 @@ import { createClient } from "@supabase/supabase-js";
  *   session.customer_details.email — Email collected by Stripe (Path B primary).
  *   session.metadata.userId     — Redundant fallback for Path A only.
  */
-
-function getAdminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } }
-  );
-}
 
 export async function handleCheckoutSessionCompleted(
   session: Stripe.Checkout.Session
@@ -80,7 +74,7 @@ export async function handleCheckoutSessionCompleted(
   await handleGuestCheckout(session, customerId);
 }
 
-// ─── PATH A: Auth-first ───────────────────────────────────────────────────────
+// ─── PATH A: Auth-first (legacy — preserved for webhook replay safety) ────────
 
 async function handleAuthFirstCheckout(
   session: Stripe.Checkout.Session,
@@ -164,32 +158,40 @@ async function handleGuestCheckout(
     });
 
   if (createError) {
-    // User already exists — look them up by email via admin API
+    // User already exists — look them up by email in public.member.
+    //
+    // Why not admin.listUsers()?  It paginates and becomes O(N) — it will
+    // silently miss the user once the total user count exceeds perPage.
+    //
+    // Why not query auth.users directly?  The supabase-js client's .from()
+    // targets the public schema only; crossing to the auth schema requires
+    // either a Postgres function or raw management API access — both add
+    // operational complexity without meaningful benefit here.
+    //
+    // The member table has a denormalized `email` column written whenever a
+    // guest first activates. For a returning purchaser, this is always present.
+    // If somehow absent (extreme edge case), we throw and Stripe retries.
     console.log(
       `[Stripe] createUser returned error (likely duplicate) — ` +
-        `attempting to find existing user by email: ${email}. Error: ${createError.message}`
+        `looking up existing userId from member table for: ${email}. Error: ${createError.message}`
     );
 
-    const { data: listData, error: listError } =
-      await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    const { data: memberRow, error: memberLookupError } = await supabase
+      .from("member")
+      .select("id")
+      .eq("email", email)
+      .maybeSingle();
 
-    if (listError) {
+    if (memberLookupError || !memberRow) {
       throw new Error(
-        `[Stripe] Failed to list users when looking up existing account for ${email}: ${listError.message}`
+        `[Stripe] createUser failed AND no member row found for ${email}. ` +
+          `Cannot proceed. Manual reconciliation required — check auth.users and member tables.`
       );
     }
 
-    const existingUser = listData.users.find((u) => u.email === email);
-    if (!existingUser) {
-      throw new Error(
-        `[Stripe] createUser failed AND no existing user found for ${email}. ` +
-          `Cannot proceed. Manual intervention required.`
-      );
-    }
-
-    userId = existingUser.id;
+    userId = memberRow.id;
     console.log(
-      `[Stripe] Existing user found — userId: ${userId}, email: ${email}`
+      `[Stripe] Existing user resolved from member table — userId: ${userId}, email: ${email}`
     );
   } else {
     userId = newUserData.user.id;

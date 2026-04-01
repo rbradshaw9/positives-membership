@@ -1,80 +1,30 @@
-import { createClient } from "@/lib/supabase/server";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import { redirect } from "next/navigation";
 import Link from "next/link";
+import { createContent } from "../actions";
+import { getEffectiveDate } from "@/lib/dates/effective-date";
 
 /**
  * app/admin/content/new/page.tsx
- * Admin form to manually create a daily audio content record.
- * Milestone 04 — operational setup tool, not a polished CMS.
- *
- * Fixed to type=daily_audio for this flow.
- * All audio source fields are optional — a record can be created before
- * the audio file is ready, then edited directly in Supabase until the
- * ingestion pipeline is built.
+ * Create a new content record (Daily / Weekly / Monthly).
+ * Sprint 4 rebuild — uses real schema fields, supports all three types.
  */
+
 export const metadata = {
-  title: "Add Daily Audio — Positives Admin",
+  title: "New Content — Positives Admin",
 };
+
+type SearchParams = Promise<{ error?: string; type?: string }>;
 
 export default async function AdminContentNewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; success?: string }>;
+  searchParams: SearchParams;
 }) {
   const params = await searchParams;
-
-  // Server Action — creates the content row and redirects.
-  async function createContent(formData: FormData) {
-    "use server";
-
-    // Use the service role client (untyped) for the insert.
-    // The manually maintained Database scaffold doesn't satisfy the SDK's
-    // Insert overloads — this matches the pattern in handle-subscription.ts.
-    const supabase = createAdminClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false } }
-    );
-
-    const title = formData.get("title")?.toString().trim() ?? "";
-    const description = formData.get("description")?.toString().trim() || null;
-    const durationRaw = formData.get("duration_seconds")?.toString().trim();
-    const duration_seconds = durationRaw ? parseInt(durationRaw, 10) : null;
-    const published_at = formData.get("published_at")?.toString().trim() || null;
-    const is_active = formData.get("is_active") === "true";
-    const castos_episode_url =
-      formData.get("castos_episode_url")?.toString().trim() || null;
-    const s3_audio_key =
-      formData.get("s3_audio_key")?.toString().trim() || null;
-
-    if (!title) {
-      redirect("/admin/content/new?error=title_required");
-    }
-
-    const { error } = await supabase.from("content").insert({
-      title,
-      description,
-      type: "daily_audio",
-      duration_seconds,
-      published_at: published_at ? new Date(published_at).toISOString() : new Date().toISOString(),
-      is_active,
-      castos_episode_url,
-      s3_audio_key,
-    });
-
-    if (error) {
-      console.error("[admin/content/new] Insert error:", error.message);
-      redirect("/admin/content/new?error=insert_failed");
-    }
-
-    redirect("/admin/content?success=created");
-  }
-
-  const hasError = !!params.error;
+  const defaultType = params.type ?? "daily_audio";
+  const todayEastern = getEffectiveDate(); // canonical Eastern date for default
 
   return (
-    <div className="max-w-xl">
+    <div className="max-w-2xl">
       <div className="mb-6">
         <Link
           href="/admin/content"
@@ -83,104 +33,257 @@ export default async function AdminContentNewPage({
           ← Back to content
         </Link>
         <h1 className="font-heading font-bold text-2xl text-foreground tracking-[-0.02em] mb-1">
-          Add daily audio
+          New content
         </h1>
         <p className="text-muted-foreground text-sm">
-          Creates a new daily_audio record. Audio source fields are optional —
-          add them once the file is ready.
+          Create a Daily, Weekly, or Monthly content record.
         </p>
       </div>
 
-      {hasError && (
+      {params.error && (
         <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm rounded-lg p-4 mb-6">
           {params.error === "title_required"
             ? "Title is required."
-            : "Failed to save record. Check server logs."}
+            : "Failed to save. Check server logs."}
         </div>
       )}
 
-      <form action={createContent} className="bg-card border border-border rounded-lg p-6 flex flex-col gap-5">
-        {/* Title */}
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="title" className="text-sm font-medium text-foreground">
-            Title <span className="text-destructive">*</span>
-          </label>
-          <input
-            id="title"
-            name="title"
-            type="text"
-            required
-            placeholder="Morning Grounding"
-            className="px-3 py-2 rounded border border-border bg-background text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
-          />
-        </div>
+      <ContentForm
+        action={createContent}
+        defaultType={defaultType}
+        todayEastern={todayEastern}
+        submitLabel="Create content"
+      />
+    </div>
+  );
+}
 
-        {/* Description */}
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="description" className="text-sm font-medium text-foreground">
-            Description
-          </label>
-          <textarea
-            id="description"
-            name="description"
-            rows={3}
-            placeholder="A short audio practice to start your day…"
-            className="px-3 py-2 rounded border border-border bg-background text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary resize-none"
-          />
-        </div>
+/* ── Shared form component ─────────────────────────────────────────────────── */
 
-        {/* Duration + Published row */}
-        <div className="grid grid-cols-2 gap-4">
+export interface ContentFormValues {
+  type?: string;
+  title?: string;
+  excerpt?: string;
+  description?: string;
+  status?: string;
+  publish_date?: string | null;
+  week_start?: string | null;
+  month_year?: string | null;
+  duration_seconds?: number | null;
+  castos_episode_url?: string | null;
+  s3_audio_key?: string | null;
+  admin_notes?: string | null;
+  id?: string;
+}
+
+export function ContentForm({
+  action,
+  defaultType,
+  todayEastern,
+  submitLabel,
+  values,
+}: {
+  action: (formData: FormData) => Promise<void>;
+  defaultType: string;
+  todayEastern: string;
+  submitLabel: string;
+  values?: ContentFormValues;
+}) {
+  const type = values?.type ?? defaultType;
+  const isDaily = type === "daily_audio";
+  const isWeekly = type === "weekly_principle";
+  const isMonthly = type === "monthly_theme";
+
+  return (
+    <form
+      action={action}
+      className="bg-card border border-border rounded-lg p-6 flex flex-col gap-5"
+    >
+      {values?.id && <input type="hidden" name="id" value={values.id} />}
+
+      {/* Type */}
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="type" className="text-sm font-medium text-foreground">
+          Content type <span className="text-destructive">*</span>
+        </label>
+        <select
+          id="type"
+          name="type"
+          defaultValue={type}
+          className="admin-input"
+        >
+          <option value="daily_audio">Daily — audio practice</option>
+          <option value="weekly_principle">Weekly — principle</option>
+          <option value="monthly_theme">Monthly — theme</option>
+        </select>
+        <p className="text-xs text-muted-foreground">
+          Determines which Today card this appears in
+        </p>
+      </div>
+
+      {/* Title */}
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="title" className="text-sm font-medium text-foreground">
+          Title <span className="text-destructive">*</span>
+        </label>
+        <input
+          id="title"
+          name="title"
+          type="text"
+          required
+          defaultValue={values?.title ?? ""}
+          placeholder="Morning Grounding"
+          className="admin-input"
+        />
+      </div>
+
+      {/* Excerpt */}
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="excerpt" className="text-sm font-medium text-foreground">
+          Excerpt
+        </label>
+        <input
+          id="excerpt"
+          name="excerpt"
+          type="text"
+          defaultValue={values?.excerpt ?? ""}
+          placeholder="Short pull-quote shown on the Today card"
+          className="admin-input"
+        />
+        <p className="text-xs text-muted-foreground">
+          Optional — shown beneath the title on Today cards
+        </p>
+      </div>
+
+      {/* Description */}
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="description" className="text-sm font-medium text-foreground">
+          Description
+        </label>
+        <textarea
+          id="description"
+          name="description"
+          rows={3}
+          defaultValue={values?.description ?? ""}
+          placeholder="Longer context or framing…"
+          className="admin-input resize-none"
+        />
+      </div>
+
+      {/* Status */}
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="status" className="text-sm font-medium text-foreground">
+          Status <span className="text-destructive">*</span>
+        </label>
+        <select
+          id="status"
+          name="status"
+          defaultValue={values?.status ?? "draft"}
+          className="admin-input"
+        >
+          <option value="draft">Draft — not visible to members</option>
+          <option value="ready_for_review">Ready for review</option>
+          <option value="published">Published — live on Today</option>
+          <option value="archived">Archived</option>
+        </select>
+      </div>
+
+      {/* Date fields — conditional per type */}
+      <div className="border-t border-border pt-4 flex flex-col gap-4">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          Publishing date
+        </p>
+
+        {/* Daily: publish_date */}
+        {isDaily && (
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="duration_seconds" className="text-sm font-medium text-foreground">
-              Duration (seconds)
+            <label htmlFor="publish_date" className="text-sm font-medium text-foreground">
+              Publish date (Eastern)
             </label>
             <input
-              id="duration_seconds"
-              name="duration_seconds"
-              type="number"
-              min="0"
-              step="1"
-              placeholder="480"
-              className="px-3 py-2 rounded border border-border bg-background text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
-            />
-            <p className="text-xs text-muted-foreground">e.g. 480 = 8 min</p>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="published_at" className="text-sm font-medium text-foreground">
-              Publish date
-            </label>
-            <input
-              id="published_at"
-              name="published_at"
+              id="publish_date"
+              name="publish_date"
               type="date"
-              className="px-3 py-2 rounded border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
+              defaultValue={values?.publish_date ?? todayEastern}
+              className="admin-input"
             />
-            <p className="text-xs text-muted-foreground">Defaults to today</p>
+            <p className="text-xs text-muted-foreground">
+              Members see this practice on this date (Eastern timezone)
+            </p>
           </div>
-        </div>
+        )}
 
-        {/* Active toggle */}
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="is_active" className="text-sm font-medium text-foreground">
-            Status
-          </label>
-          <select
-            id="is_active"
-            name="is_active"
-            className="px-3 py-2 rounded border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
-          >
-            <option value="true">Active — visible on /today</option>
-            <option value="false">Draft — hidden from members</option>
-          </select>
-        </div>
+        {/* Weekly: week_start */}
+        {isWeekly && (
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="week_start" className="text-sm font-medium text-foreground">
+              Week start date (Monday)
+            </label>
+            <input
+              id="week_start"
+              name="week_start"
+              type="date"
+              defaultValue={values?.week_start ?? ""}
+              className="admin-input"
+            />
+            <p className="text-xs text-muted-foreground">
+              Active for the full 7-day week starting on this Monday
+            </p>
+          </div>
+        )}
 
-        {/* Audio sources */}
+        {/* Monthly: month_year */}
+        {isMonthly && (
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="month_year" className="text-sm font-medium text-foreground">
+              Month (YYYY-MM)
+            </label>
+            <input
+              id="month_year"
+              name="month_year"
+              type="month"
+              defaultValue={values?.month_year ?? ""}
+              className="admin-input"
+            />
+            <p className="text-xs text-muted-foreground">
+              Active during the entire calendar month
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Audio fields — Daily only */}
+      {isDaily && (
         <div className="border-t border-border pt-4 flex flex-col gap-4">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Audio source (optional — add once file is ready)
+            Audio (optional — add once file is ready)
           </p>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="duration_seconds" className="text-sm font-medium text-foreground">
+                Duration (seconds)
+              </label>
+              <input
+                id="duration_seconds"
+                name="duration_seconds"
+                type="number"
+                min="0"
+                step="1"
+                defaultValue={values?.duration_seconds ?? ""}
+                placeholder="480"
+                className="admin-input"
+              />
+              <p className="text-xs text-muted-foreground">e.g. 480 = 8 min</p>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-foreground invisible">
+                spacer
+              </label>
+              {/* empty — keeps grid balanced */}
+            </div>
+          </div>
 
           <div className="flex flex-col gap-1.5">
             <label htmlFor="castos_episode_url" className="text-sm font-medium text-foreground">
@@ -190,10 +293,10 @@ export default async function AdminContentNewPage({
               id="castos_episode_url"
               name="castos_episode_url"
               type="url"
+              defaultValue={values?.castos_episode_url ?? ""}
               placeholder="https://feeds.castos.com/…/episode.mp3"
-              className="px-3 py-2 rounded border border-border bg-background text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
+              className="admin-input"
             />
-            <p className="text-xs text-muted-foreground">Preferred playback source</p>
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -204,28 +307,44 @@ export default async function AdminContentNewPage({
               id="s3_audio_key"
               name="s3_audio_key"
               type="text"
-              placeholder="audio/daily/2026-03-31-morning-grounding.mp3"
-              className="px-3 py-2 rounded border border-border bg-background text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
+              defaultValue={values?.s3_audio_key ?? ""}
+              placeholder="audio/daily/2026-04-01-morning-grounding.mp3"
+              className="admin-input"
             />
-            <p className="text-xs text-muted-foreground">Fallback if no Castos URL</p>
           </div>
         </div>
+      )}
 
-        <div className="flex items-center gap-3 pt-2">
-          <button
-            type="submit"
-            className="flex-1 px-4 py-2.5 rounded bg-primary text-primary-foreground font-medium text-sm hover:bg-primary-hover transition-colors shadow-soft"
-          >
-            Save content
-          </button>
-          <Link
-            href="/admin/content"
-            className="px-4 py-2.5 rounded border border-border text-muted-foreground font-medium text-sm hover:text-foreground hover:bg-muted transition-colors"
-          >
-            Cancel
-          </Link>
-        </div>
-      </form>
-    </div>
+      {/* Admin notes */}
+      <div className="border-t border-border pt-4 flex flex-col gap-1.5">
+        <label htmlFor="admin_notes" className="text-sm font-medium text-foreground">
+          Admin notes
+        </label>
+        <textarea
+          id="admin_notes"
+          name="admin_notes"
+          rows={2}
+          defaultValue={values?.admin_notes ?? ""}
+          placeholder="Internal notes — never shown to members"
+          className="admin-input resize-none"
+        />
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-3 pt-2">
+        <button
+          type="submit"
+          className="flex-1 px-4 py-2.5 rounded bg-primary text-primary-foreground font-medium text-sm hover:bg-primary-hover transition-colors shadow-soft"
+        >
+          {submitLabel}
+        </button>
+        <Link
+          href="/admin/content"
+          className="px-4 py-2.5 rounded border border-border text-muted-foreground font-medium text-sm hover:text-foreground hover:bg-muted transition-colors"
+        >
+          Cancel
+        </Link>
+      </div>
+    </form>
   );
 }

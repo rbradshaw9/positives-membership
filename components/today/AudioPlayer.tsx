@@ -4,24 +4,30 @@ import { useState, useRef } from "react";
 
 /**
  * components/today/AudioPlayer.tsx
- * Minimal custom audio player — client component.
- * Milestone 04: structurally real, visually calm.
+ * Custom audio player — client component.
  *
- * Wraps the native <audio> element with a play/pause button and
- * a progress bar. Does not attempt waveform rendering, background
- * playback, or advanced buffering — those are Milestone 05+ scope.
+ * Props:
+ *   src      — playable audio URL
+ *   title    — used for aria-label
+ *   duration — pre-formatted fallback "m:ss" (shown before metadata loads)
+ *   onComplete — optional callback fired once when the member reaches the
+ *                80% completion threshold. Fired at most once per mount via a
+ *                guard ref. DailyPracticeCard uses this to call markListened.
  *
- * Falls back to the browser's native controls if JS is unavailable.
+ * Completion threshold: 80% of audio duration.
+ * No-op if onComplete is not provided (Weekly/Monthly cards don't need it).
  */
 
 interface AudioPlayerProps {
   src: string;
   title: string;
-  duration: string; // pre-formatted "m:ss"
+  duration: string;
+  onComplete?: () => void;
 }
 
-export function AudioPlayer({ src, title, duration }: AudioPlayerProps) {
+export function AudioPlayer({ src, title, duration, onComplete }: AudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const firedRef = useRef(false); // guard: fire onComplete at most once per mount
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [totalSeconds, setTotalSeconds] = useState(0);
@@ -33,7 +39,6 @@ export function AudioPlayer({ src, title, duration }: AudioPlayerProps) {
       audio.pause();
     } else {
       audio.play().catch((err) => {
-        // Autoplay policy can block play() — surface in console only
         console.warn("[AudioPlayer] play() blocked:", err);
       });
     }
@@ -42,7 +47,19 @@ export function AudioPlayer({ src, title, duration }: AudioPlayerProps) {
   function handleTimeUpdate() {
     const audio = audioRef.current;
     if (!audio) return;
-    setCurrentTime(audio.currentTime);
+    const ct = audio.currentTime;
+    setCurrentTime(ct);
+
+    // Fire onComplete once at 80% threshold
+    if (
+      onComplete &&
+      !firedRef.current &&
+      totalSeconds > 0 &&
+      ct / totalSeconds >= 0.8
+    ) {
+      firedRef.current = true;
+      onComplete();
+    }
   }
 
   function handleLoadedMetadata() {
@@ -66,8 +83,7 @@ export function AudioPlayer({ src, title, duration }: AudioPlayerProps) {
   }
 
   const progress = totalSeconds > 0 ? (currentTime / totalSeconds) * 100 : 0;
-  const displayDuration =
-    totalSeconds > 0 ? formatTime(totalSeconds) : duration;
+  const displayDuration = totalSeconds > 0 ? formatTime(totalSeconds) : duration;
 
   return (
     <div className="flex flex-col gap-3">
@@ -94,13 +110,11 @@ export function AudioPlayer({ src, title, duration }: AudioPlayerProps) {
           className="w-12 h-12 rounded-pill bg-primary flex items-center justify-center hover:bg-primary-hover transition-colors shadow-focus flex-shrink-0"
         >
           {isPlaying ? (
-            /* Pause icon */
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
               <rect x="6" y="4" width="4" height="16" rx="1" />
               <rect x="14" y="4" width="4" height="16" rx="1" />
             </svg>
           ) : (
-            /* Play icon */
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
               <polygon points="5,3 19,12 5,21" />
             </svg>

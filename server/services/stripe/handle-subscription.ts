@@ -1,5 +1,5 @@
 import type Stripe from "stripe";
-import { createClient } from "@supabase/supabase-js";
+import { getAdminClient } from "@/lib/supabase/admin";
 import type { Enums } from "@/types/supabase";
 import { config } from "@/lib/config";
 
@@ -23,15 +23,7 @@ type SubscriptionTier = Enums<"subscription_tier">;
  * - Trigger Castos feed access update on status change
  */
 
-function getAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  // Service role client — bypasses RLS. No generic: proper types come from
-  // `supabase gen types typescript` once the project is connected.
-  return createClient(url, key, {
-    auth: { persistSession: false },
-  });
-}
+// getAdminClient() — see lib/supabase/admin.ts
 
 /**
  * Map Stripe subscription status → Positives subscription status
