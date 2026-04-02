@@ -145,6 +145,20 @@ function buildRow(input: ContentInput) {
   return row;
 }
 
+/** Resolve monthly_practice_id from month_year (null if not found) */
+async function resolveMonthlyPracticeId(
+  supabase: ReturnType<typeof adminClient>,
+  monthYear: string
+): Promise<string | null> {
+  if (!monthYear) return null;
+  const { data } = await supabase
+    .from("monthly_practice")
+    .select("id")
+    .eq("month_year", monthYear)
+    .maybeSingle();
+  return data?.id ?? null;
+}
+
 /** Create a new content record */
 export async function createContent(formData: FormData) {
   const input = parseFormData(formData);
@@ -154,7 +168,14 @@ export async function createContent(formData: FormData) {
   }
 
   const supabase = adminClient();
-  const { error } = await supabase.from("content").insert(buildRow(input));
+  const row = buildRow(input);
+
+  // Auto-link to parent monthly_practice if month_year is set
+  if (input.month_year) {
+    row.monthly_practice_id = await resolveMonthlyPracticeId(supabase, input.month_year);
+  }
+
+  const { error } = await supabase.from("content").insert(row);
 
   if (error) {
     console.error("[admin/createContent] Insert error:", error.message);
@@ -172,9 +193,16 @@ export async function updateContent(formData: FormData) {
   if (!input.title) redirect(`/admin/content/${input.id}/edit?error=title_required`);
 
   const supabase = adminClient();
+  const row = buildRow(input);
+
+  // Auto-link to parent monthly_practice if month_year is set
+  if (input.month_year) {
+    row.monthly_practice_id = await resolveMonthlyPracticeId(supabase, input.month_year);
+  }
+
   const { error } = await supabase
     .from("content")
-    .update(buildRow(input))
+    .update(row)
     .eq("id", input.id);
 
   if (error) {
