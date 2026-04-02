@@ -1,17 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { useMemberAudio } from "@/components/member/audio/MemberAudioProvider";
 import type { MonthGroup } from "@/lib/queries/get-monthly-daily-audios";
 
 /**
  * components/today/MonthlyAudioArchive.tsx
  *
- * Collapsible archive of past daily audio practices, grouped by month.
- * - Current month's past days appear first (e.g. "April 2026 — 1 practice")
- * - Prior complete months appear below (e.g. "March 2026 — 31 practices")
- * - Each month group collapses independently
- * - Each row links to the library detail page for that content
+ * Inline playlist of daily audio practices, grouped by month.
+ * Rows play directly in the persistent bottom player — no navigation
+ * to /library/[id]. The currently-playing row is highlighted.
+ *
+ * - Current month's past days appear first
+ * - Prior complete months appear below, collapsed by default
+ * - Each row fires playTrack() from the global audio context
  */
 
 interface MonthlyAudioArchiveProps {
@@ -34,9 +36,140 @@ function formatDuration(seconds: number | null): string {
   return `${m}:${s}`;
 }
 
-const PREVIEW_COUNT = 3;
+const PREVIEW_COUNT = 5;
 
-function MonthSection({ group, defaultOpen }: { group: MonthGroup; defaultOpen: boolean }) {
+function AudioRow({
+  audio,
+}: {
+  audio: MonthGroup["audios"][number];
+}) {
+  const { playTrack, isCurrentTrack, isPlaying, togglePlayback } = useMemberAudio();
+
+  const isThis = isCurrentTrack(audio.id);
+  const playing = isThis && isPlaying;
+  const src = audio.castos_episode_url ?? "";
+
+  function handleClick() {
+    if (!src) return;
+    if (isThis) {
+      togglePlayback();
+    } else {
+      playTrack({
+        id: audio.id,
+        title: audio.title,
+        subtitle: audio.publish_date ? `Daily Practice · ${formatDate(audio.publish_date)}` : "Daily Practice",
+        src,
+        durationLabel: formatDuration(audio.duration_seconds),
+        onCompleteAction: { kind: "daily_listened", contentId: audio.id },
+      });
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={!src}
+      className="group w-full flex items-center gap-4 px-5 py-3.5 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:opacity-40"
+      style={{
+        borderTop: "1px solid var(--color-border)",
+        background: isThis
+          ? "color-mix(in srgb, var(--color-accent) 5%, transparent)"
+          : "transparent",
+        borderLeft: isThis ? "3px solid var(--color-accent)" : "3px solid transparent",
+      }}
+      aria-label={`${playing ? "Pause" : "Play"} ${audio.title}`}
+    >
+      {/* Play / Pause / Equalizer icon */}
+      <span
+        className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full transition-all group-hover:scale-105"
+        style={{
+          background: isThis
+            ? "color-mix(in srgb, var(--color-accent) 18%, transparent)"
+            : "color-mix(in srgb, var(--color-accent) 10%, transparent)",
+          border: `1px solid color-mix(in srgb, var(--color-accent) ${isThis ? "30" : "20"}%, transparent)`,
+        }}
+        aria-hidden="true"
+      >
+        {playing ? (
+          /* Animated equalizer bars */
+          <span className="flex items-end gap-[2px] h-3">
+            <span
+              className="w-[3px] rounded-full"
+              style={{
+                background: "var(--color-accent)",
+                animation: "equalizerBar1 0.8s ease-in-out infinite alternate",
+              }}
+            />
+            <span
+              className="w-[3px] rounded-full"
+              style={{
+                background: "var(--color-accent)",
+                animation: "equalizerBar2 0.8s ease-in-out infinite alternate",
+              }}
+            />
+            <span
+              className="w-[3px] rounded-full"
+              style={{
+                background: "var(--color-accent)",
+                animation: "equalizerBar3 0.8s ease-in-out infinite alternate",
+              }}
+            />
+          </span>
+        ) : (
+          <svg
+            width="10"
+            height="10"
+            viewBox="0 0 24 24"
+            fill="var(--color-accent)"
+            stroke="none"
+            aria-hidden="true"
+          >
+            <polygon points="5,3 19,12 5,21" />
+          </svg>
+        )}
+      </span>
+
+      {/* Title + date */}
+      <div className="flex-1 min-w-0">
+        <p
+          className="text-sm font-medium truncate transition-colors"
+          style={{ color: isThis ? "var(--color-accent)" : "var(--color-foreground)" }}
+        >
+          {audio.title}
+        </p>
+        {audio.publish_date && (
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {formatDate(audio.publish_date)}
+          </p>
+        )}
+      </div>
+
+      {/* Duration */}
+      {audio.duration_seconds ? (
+        <span
+          className="shrink-0 text-[11px] font-mono tabular-nums px-2 py-0.5 rounded-full"
+          style={{
+            color: isThis ? "var(--color-accent)" : "var(--color-muted-fg)",
+            background: isThis
+              ? "color-mix(in srgb, var(--color-accent) 10%, transparent)"
+              : "var(--color-muted)",
+          }}
+        >
+          {formatDuration(audio.duration_seconds)}
+        </span>
+      ) : null}
+    </button>
+  );
+}
+
+function MonthSection({
+  group,
+  defaultOpen,
+}: {
+  group: MonthGroup;
+  defaultOpen: boolean;
+}) {
   const [expanded, setExpanded] = useState(defaultOpen);
   const [showAll, setShowAll] = useState(false);
 
@@ -48,14 +181,14 @@ function MonthSection({ group, defaultOpen }: { group: MonthGroup; defaultOpen: 
       className="rounded-[1.4rem] border border-border overflow-hidden"
       style={{ backgroundColor: "var(--color-card)" }}
     >
-      {/* ── Month header / toggle ─────────────────────────────────── */}
+      {/* ── Month header / toggle ───────────────────────── */}
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
         className="w-full flex items-center justify-between px-5 py-4 text-left transition-colors hover:bg-accent/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+        aria-expanded={expanded}
       >
         <div className="flex items-center gap-3">
-          {/* Month badge */}
           <span
             className="inline-flex items-center text-[9px] font-bold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full shrink-0"
             style={{
@@ -76,7 +209,6 @@ function MonthSection({ group, defaultOpen }: { group: MonthGroup; defaultOpen: 
           </div>
         </div>
 
-        {/* Chevron */}
         <svg
           width="14"
           height="14"
@@ -96,80 +228,19 @@ function MonthSection({ group, defaultOpen }: { group: MonthGroup; defaultOpen: 
         </svg>
       </button>
 
-      {/* ── Expanded list ─────────────────────────────────────────── */}
+      {/* ── Playlist rows ───────────────────────────────── */}
       {expanded && (
         <>
-          {visible.map((audio, i) => (
-            <Link
-              key={audio.id}
-              href={`/library/${audio.id}`}
-              className="group flex items-center gap-4 px-5 py-4 transition-colors hover:bg-accent/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-              style={{
-                borderTop: "1px solid var(--color-border)",
-              }}
-            >
-              {/* Play icon */}
-              <span
-                className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full transition-all group-hover:scale-105"
-                style={{
-                  background: "color-mix(in srgb, var(--color-accent) 12%, transparent)",
-                  border: "1px solid color-mix(in srgb, var(--color-accent) 22%, transparent)",
-                }}
-                aria-hidden="true"
-              >
-                <svg
-                  width="10"
-                  height="10"
-                  viewBox="0 0 24 24"
-                  fill="var(--color-accent)"
-                  stroke="none"
-                >
-                  <polygon points="5,3 19,12 5,21" />
-                </svg>
-              </span>
+          <style>{`
+            @keyframes equalizerBar1 { from { height: 4px; } to { height: 12px; } }
+            @keyframes equalizerBar2 { from { height: 9px; } to { height: 3px; } }
+            @keyframes equalizerBar3 { from { height: 5px; } to { height: 11px; } }
+          `}</style>
 
-              {/* Text */}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate group-hover:text-accent transition-colors">
-                  {audio.title}
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {audio.publish_date ? formatDate(audio.publish_date) : ""}
-                </p>
-              </div>
-
-              {/* Duration + chevron */}
-              <div className="shrink-0 flex items-center gap-3">
-                {audio.duration_seconds ? (
-                  <span
-                    className="text-[11px] font-mono tabular-nums px-2 py-0.5 rounded-full"
-                    style={{
-                      color: "var(--color-muted-fg)",
-                      background: "var(--color-muted)",
-                    }}
-                  >
-                    {formatDuration(audio.duration_seconds)}
-                  </span>
-                ) : null}
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="var(--color-muted-fg)"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="transition-transform group-hover:translate-x-0.5"
-                  aria-hidden="true"
-                >
-                  <path d="M9 18l6-6-6-6" />
-                </svg>
-              </div>
-            </Link>
+          {visible.map((audio) => (
+            <AudioRow key={audio.id} audio={audio} />
           ))}
 
-          {/* Show all / show less */}
           {hasMore && (
             <button
               type="button"
@@ -209,10 +280,10 @@ export function MonthlyAudioArchive({ monthGroups }: MonthlyAudioArchiveProps) {
           id="month-archive-heading"
           className="font-heading font-semibold text-base text-foreground tracking-[-0.02em]"
         >
-          Your Practice Archive
+          Daily Practice Playlist
         </h2>
         <p className="text-xs text-muted-foreground mt-0.5">
-          All past practices — come back to any of them whenever you need.
+          Tap any practice to play it inline — no page navigation needed.
         </p>
       </div>
 
@@ -221,7 +292,7 @@ export function MonthlyAudioArchive({ monthGroups }: MonthlyAudioArchiveProps) {
           <MonthSection
             key={group.monthYear}
             group={group}
-            defaultOpen={i === 0} // current (most recent) month open by default
+            defaultOpen={i === 0}
           />
         ))}
       </div>

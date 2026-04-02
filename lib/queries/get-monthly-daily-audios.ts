@@ -85,3 +85,41 @@ export async function getMonthlyDailyAudios(
       audios,
     }));
 }
+
+/**
+ * getArchiveDailyAudios — fetches ALL published daily_audio content for a
+ * specific month_year (e.g. "2026-03"). Returns a single MonthGroup.
+ * Used by the /practice/[monthYear] archive route.
+ *
+ * Unlike getMonthlyDailyAudios, this does not exclude today and uses the
+ * month_year field directly for a precise month boundary.
+ */
+export async function getArchiveDailyAudios(
+  monthYear: string
+): Promise<MonthGroup | null> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("content")
+    .select(
+      "id, title, excerpt, publish_date, duration_seconds, castos_episode_url, s3_audio_key"
+    )
+    .eq("type", "daily_audio")
+    .eq("status", "published")
+    .eq("month_year", monthYear)
+    .order("publish_date", { ascending: false });
+
+  if (error) {
+    console.error("[getArchiveDailyAudios] Supabase query error:", error.message);
+    return null;
+  }
+
+  if (!data || data.length === 0) return null;
+
+  return {
+    monthYear,
+    monthName: monthYearToLabel(monthYear),
+    audios: data,
+  };
+}
+

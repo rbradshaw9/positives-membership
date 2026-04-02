@@ -25,9 +25,11 @@ export type MonthlyContent = Pick<
   | "month_year"
 >;
 
-export async function getMonthlyContent(): Promise<MonthlyContent | null> {
+export async function getMonthlyContent(
+  monthYear?: string
+): Promise<MonthlyContent | null> {
   const supabase = await createClient();
-  const effectiveMonthYear = getEffectiveMonthYear();
+  const targetMonthYear = monthYear ?? getEffectiveMonthYear();
 
   const { data, error } = await supabase
     .from("content")
@@ -36,7 +38,7 @@ export async function getMonthlyContent(): Promise<MonthlyContent | null> {
     )
     .eq("type", "monthly_theme")
     .eq("status", "published")
-    .eq("month_year", effectiveMonthYear)
+    .eq("month_year", targetMonthYear)
     .limit(1)
     .maybeSingle();
 
@@ -47,3 +49,4 @@ export async function getMonthlyContent(): Promise<MonthlyContent | null> {
 
   return data;
 }
+

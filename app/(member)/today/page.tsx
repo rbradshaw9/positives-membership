@@ -3,25 +3,28 @@ import { getTodayContent } from "@/lib/queries/get-today-content";
 import { getWeeklyContent } from "@/lib/queries/get-weekly-content";
 import { getMonthlyContent } from "@/lib/queries/get-monthly-content";
 import { getMonthlyDailyAudios } from "@/lib/queries/get-monthly-daily-audios";
+import { getMonthWeeklyContent } from "@/lib/queries/get-month-weekly-content";
 import { resolveAudioUrl } from "@/lib/media/resolve-audio-url";
 import { getMemberNoteContentIds } from "@/lib/queries/get-library-content";
-import { getEffectiveDate } from "@/lib/dates/effective-date";
+import { getEffectiveDate, getEffectiveMonthYear } from "@/lib/dates/effective-date";
 import { getGreeting } from "@/lib/greeting";
 import { requireActiveMember } from "@/lib/auth/require-active-member";
 import { DailyPracticeCard } from "@/components/today/DailyPracticeCard";
 import { WeeklyPrincipleCard } from "@/components/today/WeeklyPrincipleCard";
 import { MonthlyThemeCard } from "@/components/today/MonthlyThemeCard";
 import { MonthlyAudioArchive } from "@/components/today/MonthlyAudioArchive";
+import { WeeklyArchive } from "@/components/today/WeeklyArchive";
 import { SectionLabel } from "@/components/member/SectionLabel";
 
 /**
  * app/(member)/today/page.tsx
  *
  * Layout:
- *   1. Slim contextual bar  — date, greeting, streak (no audio here)
- *   2. Today's daily audio  — DailyPracticeCard, dominant, no section wrapper
+ *   1. Slim contextual bar  — date, greeting, streak
+ *   2. Today's daily audio  — DailyPracticeCard, dominant
  *   3. Monthly theme + Weekly reflection — side-by-side grid
- *   4. Practice archive     — collapsible by month (current + prior)
+ *   4. Weekly reflections archive — past weeks this month (accordion)
+ *   5. Daily practice playlist — inline playback, no /library navigation
  */
 
 export const metadata = {
@@ -34,13 +37,15 @@ export default async function TodayPage() {
   const supabase = await createClient();
 
   const effectiveDateStr = getEffectiveDate();
+  const effectiveMonthYear = getEffectiveMonthYear();
 
-  const [todayContent, weeklyContent, monthlyContent, monthGroups, memberRow] =
+  const [todayContent, weeklyContent, monthlyContent, monthGroups, monthWeekly, memberRow] =
     await Promise.all([
       getTodayContent(),
       getWeeklyContent(),
       getMonthlyContent(),
       getMonthlyDailyAudios(effectiveDateStr),
+      getMonthWeeklyContent(effectiveMonthYear),
       supabase
         .from("member")
         .select("practice_streak")
@@ -100,7 +105,6 @@ export default async function TodayPage() {
   return (
     <div>
       {/* ── Slim contextual bar ──────────────────────────────────────── */}
-      {/* Pure context: who, when, where you are in the month. No audio here. */}
       <section
         className="border-b border-border"
         style={{
@@ -130,7 +134,7 @@ export default async function TodayPage() {
               )}
             </div>
 
-            {/* Streak — pushed to the right on desktop */}
+            {/* Streak badge */}
             <span
               className="shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold mt-1"
               style={{
@@ -154,7 +158,7 @@ export default async function TodayPage() {
       {/* ── Content ───────────────────────────────────────────────────── */}
       <div className="member-container py-8 flex flex-col gap-10">
 
-        {/* ── Zone 1: Today's audio — no wrapper label, card speaks for itself */}
+        {/* ── Zone 1: Today's audio ─────────────────────────────────── */}
         <DailyPracticeCard
           content={todayContent}
           audioUrl={dailyAudioUrl}
@@ -163,7 +167,7 @@ export default async function TodayPage() {
           initialHasNote={todayContent ? noteContentIds.has(todayContent.id) : false}
         />
 
-        {/* ── Zone 2: Monthly theme + Weekly reflection ─────────────────── */}
+        {/* ── Zone 2: Monthly theme + Weekly reflection ─────────────── */}
         <section
           aria-labelledby="context-heading"
           className="flex flex-col gap-3"
@@ -211,7 +215,13 @@ export default async function TodayPage() {
           </div>
         </section>
 
-        {/* ── Zone 3: Practice archive — current month + prior months ────── */}
+        {/* ── Zone 3: Weekly reflections archive ────────────────────── */}
+        <WeeklyArchive
+          weeks={monthWeekly}
+          currentWeekStart={weeklyContent?.week_start ?? null}
+        />
+
+        {/* ── Zone 4: Daily practice playlist (inline) ──────────────── */}
         {monthGroups.length > 0 && (
           <MonthlyAudioArchive monthGroups={monthGroups} />
         )}
