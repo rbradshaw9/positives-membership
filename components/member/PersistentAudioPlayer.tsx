@@ -61,18 +61,20 @@ export function PersistentAudioPlayer() {
     });
   }
 
-  // Sync CSS custom property so layout bottom-padding stays correct
+  // Sync CSS custom property so layout bottom-padding stays correct.
+  // IMPORTANT: .member-shell declares --member-player-height: 0px which
+  // shadows any value set on <html>. We must set it on .member-shell itself.
   useEffect(() => {
-    const root = document.documentElement;
+    const shell = document.querySelector<HTMLElement>(".member-shell");
     const player = playerRef.current;
 
-    if (!currentTrack || !player) {
-      root.style.setProperty("--member-player-height", "0px");
+    if (!currentTrack || !player || !shell) {
+      shell?.style.setProperty("--member-player-height", "0px");
       return;
     }
 
     const syncPlayerHeight = () => {
-      root.style.setProperty(
+      shell.style.setProperty(
         "--member-player-height",
         `${player.getBoundingClientRect().height}px`
       );
@@ -87,7 +89,7 @@ export function PersistentAudioPlayer() {
     return () => {
       observer.disconnect();
       window.removeEventListener("resize", syncPlayerHeight);
-      root.style.setProperty("--member-player-height", "0px");
+      shell.style.setProperty("--member-player-height", "0px");
     };
   }, [currentTrack, mini]);
 
