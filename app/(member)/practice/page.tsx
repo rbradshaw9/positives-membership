@@ -3,12 +3,17 @@ import { createClient } from "@/lib/supabase/server";
 import { requireActiveMember } from "@/lib/auth/require-active-member";
 import { checkTierAccess } from "@/lib/auth/check-tier-access";
 import { getMemberPracticeSummary } from "@/lib/queries/get-member-practice-summary";
+import { getMemberListeningInsights } from "@/lib/queries/get-member-listening-insights";
+import { resolveAudioUrl } from "@/lib/media/resolve-audio-url";
+import { getTodayContent } from "@/lib/queries/get-today-content";
 import {
   getLibraryContent,
   getMemberNoteContentIds,
   type LibraryItem,
 } from "@/lib/queries/get-library-content";
 import { PageHeader } from "@/components/member/PageHeader";
+import { ContinueListeningCard } from "@/components/today/ContinueListeningCard";
+import { TypeBadge } from "@/components/member/TypeBadge";
 import { Button } from "@/components/ui/Button";
 import { StatCard } from "@/components/ui/StatCard";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
@@ -98,6 +103,8 @@ export default async function PracticePage({
   const member = await requireActiveMember();
   const supabase = await createClient();
 
+  const todayContent = await getTodayContent();
+
   const [
     summary,
     noteContentIds,
@@ -105,6 +112,7 @@ export default async function PracticePage({
     weeklyItems,
     monthlyItems,
     userResult,
+    listeningInsights,
   ] = await Promise.all([
     getMemberPracticeSummary(member.id),
     getMemberNoteContentIds(member.id),
@@ -112,7 +120,19 @@ export default async function PracticePage({
     getLibraryContent("weekly_principle", 6, 0, member.subscription_tier),
     getLibraryContent("monthly_theme", 6, 0, member.subscription_tier),
     supabase.auth.getUser(),
+    getMemberListeningInsights(member.id, member.subscription_tier, todayContent?.id),
   ]);
+
+  // Resolve audio URL for Continue Listening card
+  const continueAudioUrl = listeningInsights.continueListening
+    ? await resolveAudioUrl(
+        listeningInsights.continueListening.castos_episode_url,
+        listeningInsights.continueListening.s3_audio_key
+      )
+    : null;
+
+  // Determine the "suggested next" practice
+  const suggestedNext = listeningInsights.suggestedNext;
 
   const memberName = member.name?.trim() || "Member";
   const initials = memberName.charAt(0).toUpperCase();
@@ -240,6 +260,118 @@ export default async function PracticePage({
           </div>
         </SurfaceCard>
 
+        {/* ── Continue Listening / Recently Completed / Suggested Next ── */}
+        {listeningInsights.continueListening && (
+          <ContinueListeningCard
+            contentId={listeningInsights.continueListening.id}
+            contentType={listeningInsights.continueListening.type}
+            title={listeningInsights.continueListening.title}
+            description={
+              listeningInsights.continueListening.excerpt ??
+              listeningInsights.continueListening.description
+            }
+            audioUrl={continueAudioUrl}
+            durationLabel={
+              listeningInsights.continueListening.duration_seconds
+                ? `${Math.floor(listeningInsights.continueListening.duration_seconds / 60)}:${String(
+                    listeningInsights.continueListening.duration_seconds % 60
+                  ).padStart(2, "0")}`
+                : "—"
+            }
+          />
+        )}
+
+        {(listeningInsights.recentlyCompleted.length > 0 || suggestedNext) && (
+          <section className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+            {listeningInsights.recentlyCompleted.length > 0 && (
+              <article className="surface-card surface-card--editorial p-5 md:p-6">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="ui-section-eyebrow mb-2">Recently Completed</p>
+                    <h2 className="heading-balance font-heading text-xl font-semibold tracking-[-0.02em] text-foreground">
+                      Practices you&apos;ve finished lately
+                    </h2>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  {listeningInsights.recentlyCompleted.map((item) => (
+                    <Link
+                      key={item.id}
+                      href={`/library/${item.id}`}
+                      className="group flex items-center justify-between gap-3 rounded-2xl border border-border bg-background px-4 py-3 transition-colors hover:border-primary/25 hover:bg-primary/5"
+                    >
+                      <div className="min-w-0">
+                        <div className="mb-2 flex items-center gap-2">
+                          <TypeBadge type={item.type} size="xs" />
+                          {item.listenedAt ? (
+                            <span className="text-xs text-muted-foreground">
+                              {new Intl.DateTimeFormat("en-US", {
+                                month: "short",
+                                day: "numeric",
+                              }).format(new Date(item.listenedAt))}
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="truncate text-sm font-semibold text-foreground">
+                          {item.title}
+                        </p>
+                        {(item.excerpt ?? item.description) && (
+                          <p className="mt-1 line-clamp-2 text-sm leading-body text-muted-foreground">
+                            {item.excerpt ?? item.description}
+                          </p>
+                        )}
+                      </div>
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                        className="flex-shrink-0 text-muted-foreground transition-colors group-hover:text-foreground"
+                      >
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                    </Link>
+                  ))}
+                </div>
+              </article>
+            )}
+
+            {suggestedNext && (
+              <article className="surface-card surface-card--tint surface-card--editorial p-5 md:p-6">
+                <p className="ui-section-eyebrow mb-2">Next Recommended Practice</p>
+                <h2 className="heading-balance font-heading text-xl font-semibold tracking-[-0.02em] text-foreground">
+                  {suggestedNext.title}
+                </h2>
+                {(suggestedNext.excerpt ?? suggestedNext.description) && (
+                  <p className="mt-2 text-sm leading-body text-muted-foreground">
+                    {suggestedNext.excerpt ?? suggestedNext.description}
+                  </p>
+                )}
+
+                <div className="mt-4 flex items-center gap-2">
+                  <TypeBadge type={suggestedNext.type} size="xs" />
+                  {suggestedNext.duration_seconds ? (
+                    <span className="text-xs text-muted-foreground">
+                      {Math.max(1, Math.round(suggestedNext.duration_seconds / 60))} min
+                    </span>
+                  ) : null}
+                </div>
+
+                <Button href={`/library/${suggestedNext.id}`} className="mt-5">
+                  Explore next practice
+                </Button>
+              </article>
+            )}
+          </section>
+        )}
+
+        {/* ── Practice Collection Tabs ────────────────────────────────── */}
         <nav aria-label="Practice sections" className="member-segmented-control">
           <TabLink tab="daily" activeTab={activeTab}>
             Daily

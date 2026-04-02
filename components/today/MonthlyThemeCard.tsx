@@ -124,7 +124,7 @@ export function MonthlyThemeCard({
           <div className="px-5 md:px-6 pt-3">
             {useScroll ? (
               <div
-                className="overflow-y-auto rounded-xl"
+                className="overflow-y-auto"
                 style={{
                   maxHeight: "10rem",
                   maskImage: "linear-gradient(to bottom, black 80%, transparent 100%)",

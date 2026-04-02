@@ -2,9 +2,16 @@ import { Button } from "@/components/ui/Button";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { SectionEyebrow } from "@/components/ui/SectionEyebrow";
 
+/**
+ * components/community/CommunityThreadHero.tsx
+ * Weekly principle thread hero card — dark card with weekly prompt.
+ * Now accepts postCount for social proof.
+ */
+
 type CommunityThreadHeroProps = {
   title: string;
   prompt: string;
+  postCount?: number;
   ctaLabel?: string;
   ctaHref?: string;
 };
@@ -12,8 +19,9 @@ type CommunityThreadHeroProps = {
 export function CommunityThreadHero({
   title,
   prompt,
+  postCount,
   ctaLabel = "Share a reflection",
-  ctaHref = "/",
+  ctaHref = "#community-composer",
 }: CommunityThreadHeroProps) {
   return (
     <SurfaceCard tone="dark" padding="lg" className="surface-card--editorial">
@@ -22,9 +30,16 @@ export function CommunityThreadHero({
         {title}
       </h2>
       <p className="mt-3 max-w-2xl text-sm leading-[1.75] text-white/72">{prompt}</p>
-      <Button href={ctaHref} variant="secondary" size="sm" className="mt-5">
-        {ctaLabel}
-      </Button>
+      <div className="mt-5 flex flex-wrap items-center gap-4">
+        <Button href={ctaHref} variant="secondary" size="sm">
+          {ctaLabel}
+        </Button>
+        {postCount !== undefined && postCount > 0 && (
+          <span className="text-xs font-medium text-white/50">
+            {postCount} {postCount === 1 ? "post" : "posts"} this week
+          </span>
+        )}
+      </div>
     </SurfaceCard>
   );
 }

@@ -1,107 +1,173 @@
+import { requireActiveMember } from "@/lib/auth/require-active-member";
+import { checkTierAccess } from "@/lib/auth/check-tier-access";
+import { getWeeklyContent } from "@/lib/queries/get-weekly-content";
+import {
+  getCommunityPosts,
+  getPostReplies,
+  getMemberLikedPostIds,
+} from "@/lib/queries/get-community-posts";
+import { config } from "@/lib/config";
+import { CommunityThreadHero } from "@/components/community/CommunityThreadHero";
 import { CommunityComposerCard } from "@/components/community/CommunityComposerCard";
 import { CommunityPostCard } from "@/components/community/CommunityPostCard";
-import { CommunityThreadHero } from "@/components/community/CommunityThreadHero";
 import { PageHeader } from "@/components/member/PageHeader";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
-import { config } from "@/lib/config";
+import { Button } from "@/components/ui/Button";
+
+/**
+ * app/(member)/community/page.tsx
+ * Community Q&A page — weekly principle discussion threads.
+ *
+ * Level 2+ tier gating: Level 1 members see a friendly upgrade prompt.
+ * Admins get pin/answer/delete controls on all posts.
+ */
 
 export const metadata = {
-  title: "Community — Positives",
-  description: "A calm place for member reflection and discussion.",
+  title: "Q&A — Positives",
+  description:
+    "A calm place for member reflection and discussion around this week's principle.",
 };
 
-export default function CommunityPage() {
-  const communityPreviewEnabled = config.app.communityPreviewEnabled;
+export default async function CommunityPage() {
+  const member = await requireActiveMember();
+
+  // ── Tier gate: Level 2+ only ──────────────────────────────────────────────
+  const hasAccess = checkTierAccess(member.subscription_tier, "level_2");
+
+  if (!hasAccess) {
+    return (
+      <div>
+        <PageHeader
+          title="Q&A"
+          subtitle="Weekly discussions around each principle."
+          hero
+        />
+        <div className="member-container py-10">
+          <SurfaceCard tone="tint" padding="lg" className="surface-card--editorial text-center max-w-xl mx-auto">
+            <p className="ui-section-eyebrow mb-3">Level 2 Feature</p>
+            <h2 className="heading-balance font-heading text-2xl font-semibold tracking-[-0.03em] text-foreground">
+              Join the conversation
+            </h2>
+            <p className="mt-3 text-sm leading-[1.75] text-muted-foreground">
+              The Q&A section is available to Level 2 members and above.
+              Upgrade your plan to share reflections, ask questions, and
+              connect with other members around each week&apos;s principle.
+            </p>
+            <Button href="/account" className="mt-6">
+              View upgrade options
+            </Button>
+          </SurfaceCard>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Fetch data ────────────────────────────────────────────────────────────
+  const weeklyContent = await getWeeklyContent();
+  const isAdmin = config.app.adminEmails.includes(member.email ?? "");
+
+  // If no weekly content is published yet, show a gentle empty state
+  if (!weeklyContent) {
+    return (
+      <div>
+        <PageHeader
+          title="Q&A"
+          subtitle="Weekly discussions around each principle."
+          hero
+        />
+        <div className="member-container py-10">
+          <SurfaceCard padding="lg" className="surface-card--editorial text-center max-w-xl mx-auto">
+            <h2 className="heading-balance font-heading text-xl font-semibold tracking-[-0.02em] text-foreground">
+              No active thread yet
+            </h2>
+            <p className="mt-3 text-sm leading-[1.75] text-muted-foreground">
+              A new discussion thread opens each week when the weekly principle
+              is published. Check back soon.
+            </p>
+          </SurfaceCard>
+        </div>
+      </div>
+    );
+  }
+
+  const posts = await getCommunityPosts(weeklyContent.id);
+
+  // Collect all post IDs (top-level + we'll need to batch replies)
+  const topLevelIds = posts.map((p) => p.id);
+
+  // Get replies for all top-level posts in parallel
+  const repliesByPostId = new Map<string, Awaited<ReturnType<typeof getPostReplies>>>();
+  if (topLevelIds.length > 0) {
+    const repliesArray = await Promise.all(
+      topLevelIds
+        .filter((id) => {
+          const post = posts.find((p) => p.id === id);
+          return post && post.reply_count > 0;
+        })
+        .map(async (id) => {
+          const replies = await getPostReplies(id);
+          return { postId: id, replies };
+        })
+    );
+    for (const { postId, replies } of repliesArray) {
+      repliesByPostId.set(postId, replies);
+    }
+  }
+
+  // Collect all post+reply IDs for like lookup
+  const allPostIds = [
+    ...topLevelIds,
+    ...Array.from(repliesByPostId.values()).flatMap((r) => r.map((rr) => rr.id)),
+  ];
+
+  const memberLikedIds = await getMemberLikedPostIds(member.id, allPostIds);
+
+  const promptText = weeklyContent.excerpt
+    ?? weeklyContent.description
+    ?? "How did this principle show up for you this week?";
 
   return (
     <div>
       <PageHeader
-        title="Community"
-        subtitle="A readable, thoughtful preview of how member conversation will feel when the community launches."
+        title="Q&A"
+        subtitle="A calm place for reflection and discussion around this week's principle."
         hero
       />
 
       <div className="member-container flex flex-col gap-5 py-8 md:py-10">
-        {!communityPreviewEnabled && (
-          <SurfaceCard tone="tint" className="surface-card--editorial border-dashed">
-            <p className="ui-section-eyebrow mb-2">Preview Mode</p>
-            <h2 className="heading-balance font-heading text-xl font-semibold tracking-[-0.02em] text-foreground">
-              Community is not live yet
-            </h2>
-            <p className="mt-2 text-sm leading-body text-muted-foreground">
-              The route and reusable surfaces are ready. Member posting will stay behind a feature flag until the full system is launched.
-            </p>
-          </SurfaceCard>
-        )}
-
+        {/* Thread hero */}
         <CommunityThreadHero
-          title="What helped this week’s principle land for you?"
-          prompt="Use this space to share a reflection, a question, or a small shift you noticed while practicing. The live community flow is still being prepared, so the content below is placeholder-only for now."
-          ctaLabel="Open composer preview"
-          ctaHref="#community-composer"
+          title={weeklyContent.title}
+          prompt={promptText}
+          postCount={posts.length}
         />
 
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-          <SurfaceCard elevated className="surface-card--editorial p-0">
-            <div className="border-b border-border px-5 py-4">
-              <p className="ui-section-eyebrow mb-2">Feed Preview</p>
-              <p className="text-lg font-semibold tracking-[-0.02em] text-foreground">
-                Weekly discussion thread
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                The thread list is intentionally empty until community launches.
-              </p>
-            </div>
-            <div className="px-5 py-10 text-center">
-              <p className="font-medium text-foreground">No live posts yet</p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Placeholder thread data is wired below so the production UI is ready when the flag turns on.
-              </p>
-            </div>
-          </SurfaceCard>
+        {/* Composer */}
+        <CommunityComposerCard contentId={weeklyContent.id} />
 
-          <SurfaceCard tone="tint" className="surface-card--editorial">
-            <p className="ui-section-eyebrow mb-2">Preview Structure</p>
-            <h2 className="heading-balance font-heading text-2xl font-semibold tracking-[-0.03em] text-foreground">
-              Calm by design
-            </h2>
-            <p className="mt-2 text-sm leading-[1.75] text-muted-foreground">
-              This preview keeps the layout intentional: a hero for the weekly prompt, a clear
-              composer area, and readable post cards ready for launch.
+        {/* Feed */}
+        {posts.length === 0 ? (
+          <SurfaceCard padding="lg" className="surface-card--editorial text-center">
+            <p className="font-medium text-foreground">No posts yet this week</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Be the first to share a reflection or ask a question.
             </p>
-            <div className="mt-5 flex flex-wrap gap-2">
-              <span className="rounded-full bg-background px-3 py-1 text-xs font-semibold text-muted-foreground ring-1 ring-border">
-                Weekly prompt
-              </span>
-              <span className="rounded-full bg-background px-3 py-1 text-xs font-semibold text-muted-foreground ring-1 ring-border">
-                Composer
-              </span>
-              <span className="rounded-full bg-background px-3 py-1 text-xs font-semibold text-muted-foreground ring-1 ring-border">
-                Feed cards
-              </span>
-            </div>
           </SurfaceCard>
-        </div>
-
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-          <div id="community-composer">
-            <CommunityComposerCard
-              title="Share a calm, honest reflection"
-              subtitle="The composer is staged and ready. Posting is still disabled until the feature flag is enabled for launch."
-              ctaLabel="Composer preview"
-              ctaHref="/community"
-            />
+        ) : (
+          <div className="flex flex-col gap-4">
+            {posts.map((post) => (
+              <CommunityPostCard
+                key={post.id}
+                post={post}
+                currentMemberId={member.id}
+                isLiked={memberLikedIds.has(post.id)}
+                isAdmin={isAdmin}
+                replies={repliesByPostId.get(post.id) ?? []}
+                repliedPostIds={memberLikedIds}
+              />
+            ))}
           </div>
-
-          <CommunityPostCard
-            author="Positives Preview"
-            initials="PP"
-            timeLabel="Placeholder"
-            typeLabel="Reflection"
-            body="This sample card shows the thread surface and spacing that will ship with the community launch. It is intentionally static for now."
-            likes={0}
-          />
-        </div>
+        )}
       </div>
     </div>
   );

@@ -3,6 +3,7 @@
 // Last generated: 2026-04-01 from live project qdnojizzldilqpyocora
 // Sprint 5: manually added body, reflection_prompt, download_url, youtube_video_id, resource_links
 // Sprint 10: manually added tier_min, starts_at to content; coaching_call to content_type; coaching_attended to activity_event_type
+// Community Q&A: manually added parent_id, is_pinned, is_admin_answer to community_post; added community_post_like table
 
 export type Json =
   | string
@@ -68,7 +69,10 @@ export type Database = {
           content_id: string | null
           created_at: string
           id: string
+          is_admin_answer: boolean
+          is_pinned: boolean
           member_id: string
+          parent_id: string | null
           post_type: Database["public"]["Enums"]["community_post_type"]
         }
         Insert: {
@@ -76,7 +80,10 @@ export type Database = {
           content_id?: string | null
           created_at?: string
           id?: string
+          is_admin_answer?: boolean
+          is_pinned?: boolean
           member_id: string
+          parent_id?: string | null
           post_type?: Database["public"]["Enums"]["community_post_type"]
         }
         Update: {
@@ -84,7 +91,10 @@ export type Database = {
           content_id?: string | null
           created_at?: string
           id?: string
+          is_admin_answer?: boolean
+          is_pinned?: boolean
           member_id?: string
+          parent_id?: string | null
           post_type?: Database["public"]["Enums"]["community_post_type"]
         }
         Relationships: [
@@ -97,6 +107,49 @@ export type Database = {
           },
           {
             foreignKeyName: "community_post_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "member"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_post_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "community_post"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_post_like: {
+        Row: {
+          id: string
+          post_id: string
+          member_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          post_id: string
+          member_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          post_id?: string
+          member_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_post_like_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_post"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_post_like_member_id_fkey"
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "member"

@@ -153,7 +153,7 @@ export function WeeklyPrincipleCard({
           <div className="px-5 md:px-6 pt-4">
             {useScroll ? (
               <div
-                className="overflow-y-auto rounded-xl"
+                className="overflow-y-auto"
                 style={{
                   maxHeight: "11rem",
                   maskImage: "linear-gradient(to bottom, black 80%, transparent 100%)",
