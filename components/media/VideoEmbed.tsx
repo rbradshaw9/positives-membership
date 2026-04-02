@@ -6,74 +6,84 @@ import { useMemberAudio } from "@/components/member/audio/MemberAudioProvider";
 
 /**
  * components/media/VideoEmbed.tsx
- * Sprint 6: inline video embed for Vimeo and YouTube.
  *
- * Strategy:
- *   - Vimeo:   privacy-enhanced player.vimeo.com embed (no tracking)
- *   - YouTube: privacy-enhanced nocookie embed + lazy loading
+ * Bidirectional "latest wins" audio/video coordination:
+ *   - Video starts  → pause the member audio player
+ *   - Audio starts  → pause this Vimeo player (via the videoPauserRef registry)
  *
- * Audio coordination (Vimeo only):
- *   When the Vimeo video fires a "play" event, we pause the global audio player
- *   so both audio streams never play simultaneously. The audio does NOT auto-resume
- *   when the video pauses — the member can resume it manually from the persistent bar.
+ * This works across ALL routes (today, library, archive) since VideoEmbed is
+ * the single embed component and MemberAudioProvider wraps the entire shell.
  *
- * UX pattern: shows a thumbnail/poster with a play button. On click, swaps
- * to the real <iframe>. This avoids loading the iframe SDK on page load
- * (saves ~300ms + respects slow connections) and keeps layout calm.
+ * UX pattern: poster + play button → click → real iframe loads (avoids SDK
+ * init cost on page load, saves ~300ms on slow connections).
  *
- * Intentionally unstyled for dimensions — caller wraps with the right sizing.
- * Default aspect ratio 16/9.
+ * Intentionally unstyled for dimensions — caller controls sizing.
+ * Default aspect ratio: 16/9.
  */
 
 interface VideoEmbedProps {
   vimeoId?: string | null;
   youtubeId?: string | null;
   title: string;
-  /** Set true if the video is in a dark surface context */
   dark?: boolean;
 }
 
 export function VideoEmbed({ vimeoId, youtubeId, title, dark = false }: VideoEmbedProps) {
   const [expanded, setExpanded] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const { pause } = useMemberAudio();
+  const playerRef = useRef<Player | null>(null);
+  const { pause, registerVideoPauser, unregisterVideoPauser } = useMemberAudio();
 
   const isVimeo = !!vimeoId;
 
-  // Attach Vimeo Player SDK once the iframe is in the DOM and coordinate with
-  // the global audio context — video play → audio pauses.
   useEffect(() => {
     if (!expanded || !isVimeo || !iframeRef.current) return;
 
     let player: Player | null = null;
 
-    // Small timeout to let the iframe fully initialise before handing it to the SDK
+    // Small delay so the iframe src has initialised before the SDK attaches.
     const timeout = setTimeout(() => {
       if (!iframeRef.current) return;
-      player = new Player(iframeRef.current);
 
+      player = new Player(iframeRef.current);
+      playerRef.current = player;
+
+      // ── Direction 1: Video plays → pause audio ──────────────────────────
       player.on("play", () => {
-        // Pause the member audio player when the video starts
-        pause();
+        pause(); // pause the member audio player
+      });
+
+      // ── Direction 2: Audio plays → pause this video ──────────────────────
+      // Register a pauser so MemberAudioProvider can call it when audio starts.
+      registerVideoPauser(() => {
+        player?.pause().catch(() => {
+          // Ignore errors (e.g. player not yet ready or already paused)
+        });
       });
     }, 300);
 
     return () => {
       clearTimeout(timeout);
-      player?.destroy().catch(() => {
-        // Ignore destroy errors (e.g. iframe already unmounted)
-      });
+      unregisterVideoPauser(); // deregister before destroying
+      player?.destroy().catch(() => {});
+      playerRef.current = null;
     };
-  }, [expanded, isVimeo, pause]);
+  }, [expanded, isVimeo, pause, registerVideoPauser, unregisterVideoPauser]);
+
+  // When the user collapses the video (e.g. navigates away and component
+  // unmounts), also deregister so we don't hold a stale reference.
+  useEffect(() => {
+    return () => {
+      unregisterVideoPauser();
+    };
+  }, [unregisterVideoPauser]);
 
   if (!vimeoId && !youtubeId) return null;
 
-  // YouTube thumbnail — hqdefault is free, no API key needed
   const thumbnailUrl = !isVimeo
     ? `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`
     : null;
 
-  // iframe src — built only once the user clicks play
   const iframeSrc = isVimeo
     ? `https://player.vimeo.com/video/${vimeoId}?autoplay=1&title=0&byline=0&portrait=0&dnt=1`
     : `https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1&rel=0&modestbranding=1`;
@@ -86,7 +96,6 @@ export function VideoEmbed({ vimeoId, youtubeId, title, dark = false }: VideoEmb
       style={{ aspectRatio: "16/9" }}
     >
       {expanded ? (
-        // Real embed — only loaded after user interaction
         <iframe
           ref={iframeRef}
           src={iframeSrc}
@@ -97,14 +106,12 @@ export function VideoEmbed({ vimeoId, youtubeId, title, dark = false }: VideoEmb
           loading="lazy"
         />
       ) : (
-        // Poster + play button
         <button
           type="button"
           onClick={() => setExpanded(true)}
           className="group absolute inset-0 w-full h-full flex flex-col items-center justify-center focus:outline-none"
           aria-label={`Play: ${title} on ${providerLabel}`}
         >
-          {/* Thumbnail */}
           {thumbnailUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -114,7 +121,6 @@ export function VideoEmbed({ vimeoId, youtubeId, title, dark = false }: VideoEmb
             />
           )}
 
-          {/* Vimeo: gradient glow */}
           {isVimeo && (
             <div
               aria-hidden="true"
@@ -126,10 +132,8 @@ export function VideoEmbed({ vimeoId, youtubeId, title, dark = false }: VideoEmb
             />
           )}
 
-          {/* Dark scrim for legibility */}
           <div aria-hidden="true" className="absolute inset-0 bg-black/30" />
 
-          {/* Play button */}
           <div className="relative z-10 flex flex-col items-center gap-2.5">
             <div className="w-14 h-14 rounded-full bg-white/20 backdrop-blur-sm border border-white/20 flex items-center justify-center group-hover:bg-white/30 group-hover:scale-105 transition-all duration-200">
               <svg

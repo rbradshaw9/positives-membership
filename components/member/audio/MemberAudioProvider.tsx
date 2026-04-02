@@ -32,6 +32,10 @@ type MemberAudioContextValue = {
   seekBy: (delta: number) => void;
   isCurrentTrack: (trackId: string) => boolean;
   formatTime: (seconds: number) => string;
+  /** Register a function that pauses an external video player (e.g. Vimeo). */
+  registerVideoPauser: (fn: () => void) => void;
+  /** Unregister the video pauser (call in cleanup). */
+  unregisterVideoPauser: () => void;
 };
 
 const MemberAudioContext = createContext<MemberAudioContextValue | null>(null);
@@ -50,6 +54,9 @@ export function MemberAudioProvider({
   const audioRef = useRef<HTMLAudioElement>(null);
   const pendingResumeTimeRef = useRef(0);
   const completionTrackRef = useRef<string | null>(null);
+  // Holds a function that pauses whatever video is currently expanded.
+  // VideoEmbed registers/unregisters this as the Vimeo player mounts/unmounts.
+  const videoPauserRef = useRef<(() => void) | null>(null);
   const lastPersistedResumeRef = useRef<{ trackId: string | null; seconds: number }>({
     trackId: null,
     seconds: 0,
@@ -99,6 +106,8 @@ export function MemberAudioProvider({
     if (!audio || !snapshot.currentTrack) return;
 
     if (snapshot.isPlaying) {
+      // Pause any open video player before starting audio — "latest wins".
+      videoPauserRef.current?.();
       audio.play().catch((err) => {
         console.warn("[MemberAudioProvider] play() blocked:", err);
         memberAudioStore.pause();
@@ -138,6 +147,14 @@ export function MemberAudioProvider({
 
   function pause() {
     memberAudioStore.pause();
+  }
+
+  function registerVideoPauser(fn: () => void) {
+    videoPauserRef.current = fn;
+  }
+
+  function unregisterVideoPauser() {
+    videoPauserRef.current = null;
   }
 
   function clearTrack() {
@@ -275,6 +292,8 @@ export function MemberAudioProvider({
     seekBy,
     isCurrentTrack: (trackId: string) => snapshot.currentTrack?.id === trackId,
     formatTime,
+    registerVideoPauser,
+    unregisterVideoPauser,
   };
 
   return (
