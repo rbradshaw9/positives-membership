@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 
 /**
@@ -176,4 +177,48 @@ export async function unassignDailyAudio(formData: FormData) {
   }
 
   redirect(`/admin/months/${monthId ?? ""}`);
+}
+
+// ─── Swap / move daily audio between date slots ──────────────────────────────
+
+/**
+ * Moves a daily audio to a different date slot.
+ * If the target slot already has content, the two audios swap dates.
+ * Calls refresh() so the grid re-renders in place without full navigation.
+ */
+export async function swapDailyAudios(formData: FormData): Promise<void> {
+  const sourceContentId = formData.get("source_content_id")?.toString();
+  const targetContentId = formData.get("target_content_id")?.toString() || null;
+  const sourceDate = formData.get("source_date")?.toString();
+  const targetDate = formData.get("target_date")?.toString();
+  const monthId = formData.get("month_id")?.toString();
+
+  if (!sourceContentId || !sourceDate || !targetDate || !monthId) return;
+
+  const supabase = adminClient();
+
+  // Move source content to target date
+  const { error: e1 } = await supabase
+    .from("content")
+    .update({ publish_date: targetDate })
+    .eq("id", sourceContentId);
+
+  if (e1) {
+    console.error("[swapDailyAudios] Error updating source:", e1.message);
+    return;
+  }
+
+  // If target slot had content, move it back to the source date
+  if (targetContentId) {
+    const { error: e2 } = await supabase
+      .from("content")
+      .update({ publish_date: sourceDate })
+      .eq("id", targetContentId);
+
+    if (e2) {
+      console.error("[swapDailyAudios] Error updating target:", e2.message);
+    }
+  }
+
+  refresh();
 }

@@ -4,12 +4,8 @@ import {
   getAdminMonthDetail,
   getUnassignedDailyAudios,
 } from "@/lib/queries/get-admin-month-detail";
-import {
-  updateMonthlyPractice,
-  publishEntireMonth,
-  assignDailyAudio,
-  unassignDailyAudio,
-} from "../actions";
+import { updateMonthlyPractice, publishEntireMonth } from "../actions";
+import { DailyAudioGrid } from "./DailyAudioGrid";
 
 /**
  * app/admin/months/[id]/page.tsx
@@ -18,9 +14,9 @@ import {
  * Sections:
  *   1. Header with label, status, bulk actions
  *   2. Stats ribbon
- *   3. Theme + description editor
- *   4. Weekly reflections list
- *   5. Daily slot calendar grid
+ *   3. Description + admin notes editor
+ *   4. Monthly theme + weekly reflections
+ *   5. Daily slot calendar grid (DailyAudioGrid client component)
  */
 
 export const metadata = {
@@ -33,8 +29,7 @@ const STATUS_STYLE: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
   ready_for_review:
     "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  archived:
-    "bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400",
+  archived: "bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400",
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -237,9 +232,7 @@ export default async function MonthWorkspacePage({
                 >
                   {STATUS_LABEL[month.theme.status] ?? month.theme.status}
                 </span>
-                <span className="tabular-nums">
-                  👁 {month.theme.views}
-                </span>
+                <span className="tabular-nums">👁 {month.theme.views}</span>
               </div>
             </div>
           ) : (
@@ -292,161 +285,12 @@ export default async function MonthWorkspacePage({
       </div>
 
       {/* ─── Section 5: Daily Audio Calendar Grid ─── */}
-      <div className="bg-card border border-border rounded-lg p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold text-sm text-foreground">
-            Daily Audio Grid
-          </h2>
-          <span className="text-xs text-muted-foreground tabular-nums">
-            {filledSlots}/{totalSlots} filled ({fillPct}%)
-          </span>
-        </div>
-
-        {/* Fill progress bar */}
-        <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden mb-5">
-          <div
-            className="h-full bg-primary rounded-full transition-all"
-            style={{ width: `${fillPct}%` }}
-          />
-        </div>
-
-        {/* Grid */}
-        <div className="grid grid-cols-7 gap-1.5">
-          {/* Weekday headers */}
-          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-            <div
-              key={d}
-              className="text-center text-[10px] text-muted-foreground font-medium py-1"
-            >
-              {d}
-            </div>
-          ))}
-
-          {/* Leading empty cells for offset */}
-          {(() => {
-            const firstSlot = month.dailySlots[0];
-            if (!firstSlot) return null;
-            const dayIndex = [
-              "Sun",
-              "Mon",
-              "Tue",
-              "Wed",
-              "Thu",
-              "Fri",
-              "Sat",
-            ].indexOf(firstSlot.weekday);
-            return Array.from({ length: dayIndex }, (_, i) => (
-              <div key={`empty-${i}`} />
-            ));
-          })()}
-
-          {/* Day cells */}
-          {month.dailySlots.map((slot) => {
-            const filled = slot.content !== null;
-            return (
-              <div
-                key={slot.date}
-                className={`relative rounded-md border text-center p-1.5 min-h-[60px] flex flex-col items-center justify-between transition-colors ${
-                  filled
-                    ? "border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/10"
-                    : "border-border bg-muted/30 hover:bg-muted/60"
-                }`}
-              >
-                <span className="text-[11px] text-muted-foreground tabular-nums font-medium">
-                  {slot.dayOfMonth}
-                </span>
-
-                {filled ? (
-                  <div className="w-full mt-1">
-                    <Link
-                      href={`/admin/content/${slot.content!.id}/edit`}
-                      className="text-[9px] text-foreground hover:text-primary transition-colors leading-tight line-clamp-2 block"
-                      title={slot.content!.title}
-                    >
-                      {slot.content!.title}
-                    </Link>
-                    <div className="flex items-center justify-center gap-1 mt-0.5 text-[9px] text-muted-foreground">
-                      <span>🎧{slot.content!.listens}</span>
-                      <span>📝{slot.content!.notes}</span>
-                    </div>
-                    <form action={unassignDailyAudio} className="mt-0.5">
-                      <input
-                        type="hidden"
-                        name="content_id"
-                        value={slot.content!.id}
-                      />
-                      <input
-                        type="hidden"
-                        name="month_id"
-                        value={month.id}
-                      />
-                      <button
-                        type="submit"
-                        className="text-[9px] text-destructive/60 hover:text-destructive transition-colors"
-                        title="Remove from this date"
-                      >
-                        ✕
-                      </button>
-                    </form>
-                  </div>
-                ) : (
-                  <div className="w-full mt-1">
-                    {unassigned.length > 0 ? (
-                      <form
-                        action={assignDailyAudio}
-                        className="flex flex-col items-center gap-0.5"
-                      >
-                        <input
-                          type="hidden"
-                          name="month_id"
-                          value={month.id}
-                        />
-                        <input
-                          type="hidden"
-                          name="publish_date"
-                          value={slot.date}
-                        />
-                        <input
-                          type="hidden"
-                          name="month_year"
-                          value={month.month_year}
-                        />
-                        <select
-                          name="content_id"
-                          required
-                          className="w-full text-[9px] bg-transparent border-none text-muted-foreground cursor-pointer text-center"
-                          defaultValue=""
-                        >
-                          <option value="" disabled>
-                            pick…
-                          </option>
-                          {unassigned.map((a) => (
-                            <option key={a.id} value={a.id}>
-                              {a.title.length > 28
-                                ? a.title.slice(0, 28) + "…"
-                                : a.title}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          type="submit"
-                          className="text-[9px] text-primary hover:text-primary-hover transition-colors font-medium"
-                        >
-                          + Assign
-                        </button>
-                      </form>
-                    ) : (
-                      <span className="text-[9px] text-muted-foreground">
-                        —
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      <DailyAudioGrid
+        monthId={month.id}
+        monthYear={month.month_year}
+        dailySlots={month.dailySlots}
+        unassigned={unassigned}
+      />
     </div>
   );
 }
