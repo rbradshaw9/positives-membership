@@ -17,11 +17,11 @@ import { SectionLabel } from "@/components/member/SectionLabel";
 /**
  * app/(member)/today/page.tsx
  *
- * Three-zone layout:
- *   1. Hero — greeting + date + streak
- *   2. Today's daily audio (dominant, always first)
- *   3. Monthly theme video (left) + Weekly reflection (right)
- *   4. "Earlier This Month" — collapsible archive of past daily audios
+ * Layout:
+ *   1. Slim contextual bar  — date, greeting, streak (no audio here)
+ *   2. Today's daily audio  — DailyPracticeCard, dominant, no section wrapper
+ *   3. Monthly theme + Weekly reflection — side-by-side grid
+ *   4. Practice archive     — collapsible by month (current + prior)
  */
 
 export const metadata = {
@@ -35,7 +35,7 @@ export default async function TodayPage() {
 
   const effectiveDateStr = getEffectiveDate();
 
-  const [todayContent, weeklyContent, monthlyContent, pastAudios, memberRow] =
+  const [todayContent, weeklyContent, monthlyContent, monthGroups, memberRow] =
     await Promise.all([
       getTodayContent(),
       getWeeklyContent(),
@@ -99,47 +99,40 @@ export default async function TodayPage() {
 
   return (
     <div>
-      {/* ── Hero ────────────────────────────────────────────────────── */}
+      {/* ── Slim contextual bar ──────────────────────────────────────── */}
+      {/* Pure context: who, when, where you are in the month. No audio here. */}
       <section
-        className="relative overflow-hidden border-b border-border"
+        className="border-b border-border"
         style={{
           background:
-            "radial-gradient(ellipse at 12% 0%, rgba(46,196,182,0.14) 0%, transparent 48%), radial-gradient(ellipse at 88% 18%, rgba(68,168,216,0.10) 0%, transparent 40%), var(--color-card)",
+            "radial-gradient(ellipse at 10% 0%, rgba(46,196,182,0.12) 0%, transparent 55%), var(--color-card)",
         }}
       >
-        <div className="member-container py-10 md:py-14">
-          <p
-            className="text-[11px] font-bold uppercase tracking-[0.16em] mb-3"
-            style={{ color: "var(--color-accent)" }}
-          >
-            {todayLabel}
-          </p>
-          <h1 className="heading-balance font-heading font-bold text-3xl md:text-4xl text-foreground tracking-[-0.035em] leading-tight mb-2">
-            {greeting}
-          </h1>
+        <div className="member-container py-7 md:py-9">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p
+                className="text-[11px] font-bold uppercase tracking-[0.16em] mb-1.5"
+                style={{ color: "var(--color-accent)" }}
+              >
+                {todayLabel}
+              </p>
+              <h1 className="font-heading font-bold text-2xl md:text-3xl text-foreground tracking-[-0.03em] leading-tight">
+                {greeting}
+              </h1>
+              {monthlyContent && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  {currentMonthName}&apos;s theme:{" "}
+                  <span className="text-foreground/70 font-medium">
+                    {monthlyContent.title}
+                  </span>
+                </p>
+              )}
+            </div>
 
-          {/* Monthly context */}
-          {monthlyContent ? (
-            <p className="max-w-2xl text-base text-muted-foreground leading-body">
-              <span className="font-semibold text-foreground/80">
-                {currentMonthName}: {monthlyContent.title}
-              </span>
-              {todayContent
-                ? " — your daily practice is ready below."
-                : " — today's audio will be published soon."}
-            </p>
-          ) : (
-            <p className="max-w-2xl text-base text-muted-foreground leading-body">
-              {todayContent
-                ? "Your daily practice is ready. Start here."
-                : "Today's practice will be published soon — check back shortly."}
-            </p>
-          )}
-
-          {/* Streak badge */}
-          <div className="mt-4 flex items-center gap-2">
+            {/* Streak — pushed to the right on desktop */}
             <span
-              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold"
+              className="shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold mt-1"
               style={{
                 background:
                   streak > 0
@@ -152,39 +145,25 @@ export default async function TodayPage() {
                     : "1px solid var(--color-border)",
               }}
             >
-              🔥 {streak}-day streak
-              {streak > 0 && (
-                <span className="text-[10px] font-normal opacity-70">
-                  and counting
-                </span>
-              )}
+              🔥 {streak > 0 ? `${streak}-day streak` : "Start your streak"}
             </span>
           </div>
         </div>
       </section>
 
-      {/* ── Content zones ─────────────────────────────────────────────── */}
+      {/* ── Content ───────────────────────────────────────────────────── */}
       <div className="member-container py-8 flex flex-col gap-10">
 
-        {/* ── Zone 1: Today's Practice ─────────────────────────────────── */}
-        <section aria-labelledby="today-practice" className="flex flex-col gap-3">
-          <div>
-            <SectionLabel id="today-practice">Today&apos;s Practice</SectionLabel>
-            <p className="text-sm leading-body text-muted-foreground mt-0.5">
-              Your daily grounding — start here.
-            </p>
-          </div>
+        {/* ── Zone 1: Today's audio — no wrapper label, card speaks for itself */}
+        <DailyPracticeCard
+          content={todayContent}
+          audioUrl={dailyAudioUrl}
+          todayLabel={todayLabel}
+          hasListened={listenedToday}
+          initialHasNote={todayContent ? noteContentIds.has(todayContent.id) : false}
+        />
 
-          <DailyPracticeCard
-            content={todayContent}
-            audioUrl={dailyAudioUrl}
-            todayLabel={todayLabel}
-            hasListened={listenedToday}
-            initialHasNote={todayContent ? noteContentIds.has(todayContent.id) : false}
-          />
-        </section>
-
-        {/* ── Zone 2: Monthly Theme (left) + Weekly Reflection (right) ──── */}
+        {/* ── Zone 2: Monthly theme + Weekly reflection ─────────────────── */}
         <section
           aria-labelledby="context-heading"
           className="flex flex-col gap-3"
@@ -207,7 +186,9 @@ export default async function TodayPage() {
               </span>
               <MonthlyThemeCard
                 content={monthlyContent}
-                initialHasNote={monthlyContent ? noteContentIds.has(monthlyContent.id) : false}
+                initialHasNote={
+                  monthlyContent ? noteContentIds.has(monthlyContent.id) : false
+                }
               />
             </div>
 
@@ -222,18 +203,17 @@ export default async function TodayPage() {
               <WeeklyPrincipleCard
                 content={weeklyContent}
                 audioUrl={weeklyAudioUrl}
-                initialHasNote={weeklyContent ? noteContentIds.has(weeklyContent.id) : false}
+                initialHasNote={
+                  weeklyContent ? noteContentIds.has(weeklyContent.id) : false
+                }
               />
             </div>
           </div>
         </section>
 
-        {/* ── Zone 3: Earlier This Month (archive) ─────────────────────── */}
-        {pastAudios.length > 0 && (
-          <MonthlyAudioArchive
-            audios={pastAudios}
-            monthName={currentMonthName}
-          />
+        {/* ── Zone 3: Practice archive — current month + prior months ────── */}
+        {monthGroups.length > 0 && (
+          <MonthlyAudioArchive monthGroups={monthGroups} />
         )}
       </div>
     </div>

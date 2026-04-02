@@ -4,14 +4,12 @@ import type { Tables } from "@/types/supabase";
 /**
  * lib/queries/get-monthly-daily-audios.ts
  *
- * Returns all published daily_audio entries for the current calendar month,
- * excluding today's date (since today's audio is shown separately at the top).
+ * Returns all published daily_audio entries up to (but not including) today,
+ * grouped by month_year. Covers the current month's past days AND any prior
+ * complete months — so the archive shows March in full plus April days so far.
  *
- * Query strategy: date range on publish_date — avoids relying on month_year
- * being set on every row (some older rows may have null).
- *
- * Results are sorted newest-first so the archive reads chronologically
- * when reversed (most recent past → oldest).
+ * Results are sorted newest-first within each month. The "exclude date" is
+ * today's date so today's audio (shown separately at the top) isn't repeated.
  */
 
 export type MonthlyDailyAudio = Pick<
@@ -25,15 +23,31 @@ export type MonthlyDailyAudio = Pick<
   | "s3_audio_key"
 >;
 
+export interface MonthGroup {
+  monthYear: string;   // "2026-04"
+  monthName: string;   // "April 2026"
+  audios: MonthlyDailyAudio[];
+}
+
+/** Format "2026-04" → "April 2026" */
+function monthYearToLabel(monthYear: string): string {
+  const [year, month] = monthYear.split("-").map(Number);
+  return new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(
+    new Date(year, month - 1, 1)
+  );
+}
+
 export async function getMonthlyDailyAudios(
   excludeDate: string
-): Promise<MonthlyDailyAudio[]> {
+): Promise<MonthGroup[]> {
   const supabase = await createClient();
 
-  // First day of the current month
+  // Pull all past published daily audios (up to but not including today)
+  // Go back up to 60 days to cover the prior complete month
   const now = new Date(excludeDate + "T12:00:00");
-  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const firstOfMonthStr = firstOfMonth.toISOString().slice(0, 10);
+  const sixtyDaysAgo = new Date(now);
+  sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+  const fromDate = sixtyDaysAgo.toISOString().slice(0, 10);
 
   const { data, error } = await supabase
     .from("content")
@@ -42,7 +56,7 @@ export async function getMonthlyDailyAudios(
     )
     .eq("type", "daily_audio")
     .eq("status", "published")
-    .gte("publish_date", firstOfMonthStr)
+    .gte("publish_date", fromDate)
     .lt("publish_date", excludeDate)
     .order("publish_date", { ascending: false });
 
@@ -51,5 +65,23 @@ export async function getMonthlyDailyAudios(
     return [];
   }
 
-  return data ?? [];
+  if (!data || data.length === 0) return [];
+
+  // Group by calendar month derived from publish_date
+  const groups = new Map<string, MonthlyDailyAudio[]>();
+  for (const row of data) {
+    if (!row.publish_date) continue;
+    const monthYear = row.publish_date.slice(0, 7); // "2026-04"
+    if (!groups.has(monthYear)) groups.set(monthYear, []);
+    groups.get(monthYear)!.push(row);
+  }
+
+  // Return months newest-first
+  return Array.from(groups.entries())
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([monthYear, audios]) => ({
+      monthYear,
+      monthName: monthYearToLabel(monthYear),
+      audios,
+    }));
 }

@@ -80,72 +80,69 @@ export function DailyPracticeCard({
         />
 
         <div className="relative z-10">
+          {/* ── Header row: chip + listened state ──────────────────── */}
           <div className="flex items-center justify-between mb-5">
-            <div>
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/55">
-                Today&apos;s Practice
-              </p>
-              <span
-                className="inline-flex items-center text-[9px] font-bold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full"
-                style={{
-                  color: "rgba(255,255,255,0.9)",
-                  background: "rgba(47,111,237,0.45)",
-                  border: "1px solid rgba(47,111,237,0.6)",
-                }}
-              >
-                Daily
-              </span>
-            </div>
+            <span
+              className="inline-flex items-center text-[9px] font-bold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full"
+              style={{
+                color: "rgba(255,255,255,0.9)",
+                background: "rgba(47,111,237,0.45)",
+                border: "1px solid rgba(47,111,237,0.6)",
+              }}
+            >
+              Daily Practice
+            </span>
+
             {listened ? (
-              <span className="inline-flex items-center gap-1 text-xs text-white/70 font-medium">
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                  className="text-secondary"
-                >
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium"
+                style={{ color: "rgba(255,255,255,0.65)" }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" strokeWidth="2.5"
+                  strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
                 Listened today
               </span>
             ) : (
-              <span className="text-xs text-white/50">{todayLabel}</span>
+              <span className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
+                {todayLabel}
+              </span>
             )}
           </div>
 
           {!hasContent ? (
             <>
-              <h2 className="font-heading font-bold text-2xl md:text-3xl leading-heading tracking-[-0.03em] mb-2 text-white/50">
+              <h2 className="font-heading font-bold text-2xl md:text-3xl leading-heading tracking-[-0.03em] mb-2"
+                style={{ color: "rgba(255,255,255,0.5)" }}>
                 Your practice is coming
               </h2>
-              <p className="text-white/40 text-sm leading-body">
+              <p className="text-sm leading-body" style={{ color: "rgba(255,255,255,0.38)" }}>
                 Dr. Paul&apos;s practice for today will be here when you return. ☁️
               </p>
             </>
           ) : (
             <>
-              <h2 className="heading-balance font-heading font-bold text-2xl md:text-3xl leading-heading tracking-[-0.03em] mb-2">
+              {/* Title — full white, dominant */}
+              <h2 className="heading-balance font-heading font-bold text-2xl md:text-3xl leading-heading tracking-[-0.03em] mb-2 text-white">
                 {content.title}
               </h2>
+
+              {/* Excerpt — readable but secondary */}
               {(content.excerpt ?? content.description) && (
-                <p className="max-w-3xl text-white/70 text-sm leading-[1.7] mb-6">
+                <p className="max-w-3xl text-sm leading-[1.75] mb-6"
+                  style={{ color: "rgba(255,255,255,0.62)" }}>
                   {content.excerpt ?? content.description}
                 </p>
               )}
 
+              {/* Audio player */}
               {audioUrl ? (
                 <div className="mt-2 mb-1">
                   <AudioPlayer
                     trackId={content.id}
                     src={audioUrl}
                     title={content.title}
-                    subtitle="Today’s Practice"
+                    subtitle="Today's Practice"
                     duration={duration}
                     onCompleteContentId={content.id}
                     onMarkedComplete={() => setListened(true)}
@@ -153,37 +150,25 @@ export function DailyPracticeCard({
                 </div>
               ) : (
                 <div className="flex items-center gap-3 mt-2">
-                  <div className="w-12 h-12 rounded-pill bg-white/10 flex items-center justify-center flex-shrink-0">
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      aria-hidden="true"
-                      className="text-white/40"
-                    >
+                  <div className="w-11 h-11 rounded-full bg-white/8 flex items-center justify-center shrink-0">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" strokeWidth="1.5" aria-hidden="true"
+                      style={{ color: "rgba(255,255,255,0.35)" }}>
                       <path d="M9 18V5l12-2v13" />
-                      <circle cx="6" cy="18" r="3" />
-                      <circle cx="18" cy="16" r="3" />
+                      <circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
                     </svg>
                   </div>
-                  <div>
-                    <p className="text-white/50 text-sm">Audio arriving soon</p>
-                    {content.duration_seconds && (
-                      <p className="text-white/30 text-xs mt-0.5">
-                        {duration} · check back shortly
-                      </p>
-                    )}
-                  </div>
+                  <p className="text-sm" style={{ color: "rgba(255,255,255,0.45)" }}>
+                    Audio arriving soon
+                  </p>
                 </div>
               )}
 
-              {/* Reflection prompt + note affordance */}
+              {/* Reflection prompt + Reflect button */}
               <div className="mt-5 pt-4 border-t border-white/10">
                 {content.reflection_prompt && (
-                  <p className="text-xs text-white/40 italic leading-relaxed mb-3">
+                  <p className="text-sm italic leading-relaxed mb-3"
+                    style={{ color: "rgba(255,255,255,0.52)" }}>
                     &ldquo;{content.reflection_prompt}&rdquo;
                   </p>
                 )}
@@ -191,30 +176,24 @@ export function DailyPracticeCard({
                   type="button"
                   onClick={handleOpenNote}
                   disabled={loadingNote}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs text-white/58 hover:bg-white/8 hover:text-white transition-colors disabled:opacity-40"
+                  className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold transition-all disabled:opacity-40 hover:bg-white/12"
+                  style={{
+                    color: noteExists ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.7)",
+                    background: noteExists ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.07)",
+                    border: "1px solid rgba(255,255,255,0.14)",
+                  }}
                 >
-                  <svg
-                    width="12"
-                    height="12"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" strokeWidth="2"
+                    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <path d="M12 20h9" />
                     <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
                   </svg>
-                  <span>
-                    {loadingNote ? "Loading…" : noteExists ? "View note" : "Reflect"}
-                  </span>
+                  {loadingNote ? "Loading…" : noteExists ? "View reflection" : "Reflect"}
                   {noteExists && (
-                    <span
-                      className="w-1.5 h-1.5 rounded-full bg-white/40 inline-block"
-                      aria-label="Note exists"
-                    />
+                    <span className="w-1.5 h-1.5 rounded-full inline-block"
+                      style={{ background: "rgba(255,255,255,0.5)" }}
+                      aria-label="Note exists" />
                   )}
                 </button>
               </div>
