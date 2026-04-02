@@ -77,6 +77,20 @@
   --shadow-player: 0 -2px 20px rgba(0,0,0,0.35);
 }
 
+/* ─── Mux Player — Brand Theming ──────────────────────────────────────────── */
+/* Override Mux's default pink (#fa50b5) with Positives accent & primary.      */
+/* Hard-coded hex values ensure reliable resolution across the Shadow DOM.      */
+mux-player {
+  --media-primary-color:              #FFFFFF;
+  --media-accent-color:               #F59E0B; /* --color-accent */
+  --media-range-thumb-background:     #F59E0B;
+  --media-range-bar-color:            #F59E0B;
+  --media-time-range-buffered-color:  rgba(255, 255, 255, 0.2);
+  --media-control-background:         transparent;
+  --media-control-hover-background:   rgba(255, 255, 255, 0.08);
+  --media-range-track-background:     rgba(255, 255, 255, 0.15);
+}
+
 /* ─── Base Reset & Type ───────────────────────────────────────────────────── */
 
 *,

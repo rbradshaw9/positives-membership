@@ -223,10 +223,9 @@ export function VideoEmbed({
       resumeAt > RESUME_THRESHOLD &&
       chosenStart === undefined;
 
-    // The actual start time passed to MuxPlayer
-    const effectiveStartTime = chosenStart !== undefined
-      ? (chosenStart > 0 ? chosenStart : undefined)
-      : (resumeAt && resumeAt > RESUME_THRESHOLD ? resumeAt : undefined);
+    // Initial start time — only applied on first render (before user interacts)
+    const initialStartTime =
+      resumeAt && resumeAt > RESUME_THRESHOLD ? resumeAt : undefined;
 
     return (
       <div
@@ -256,21 +255,9 @@ export function VideoEmbed({
             ref={muxRef}
             playbackId={muxPlaybackId}
             streamType="on-demand"
-            startTime={effectiveStartTime}
+            startTime={initialStartTime}
             className="absolute inset-0 w-full h-full"
-            style={{
-              /* ── Positives brand theming ─────────────────────────── */
-              "--media-primary-color": "var(--color-foreground, #fff)",
-              "--media-secondary-color": "var(--color-muted-fg, #999)",
-              "--media-accent-color": "var(--color-accent, #d4a843)",
-              "--media-control-background": "transparent",
-              "--media-range-track-background": "rgba(255,255,255,0.15)",
-              "--media-range-thumb-background": "var(--color-accent, #d4a843)",
-              "--media-range-bar-color": "var(--color-accent, #d4a843)",
-              "--media-control-hover-background": "rgba(255,255,255,0.08)",
-              "--media-time-range-buffered-color": "rgba(255,255,255,0.2)",
-              borderRadius: "0.5rem",
-            }}
+            style={{ borderRadius: "0.5rem" }}
             // Mux Data — per-viewer analytics in the Mux dashboard
             metadata={{
               video_id: muxAssetId ?? muxPlaybackId,
@@ -344,10 +331,17 @@ export function VideoEmbed({
               {/* Resume button — primary */}
               <button
                 type="button"
-                onClick={() => setChosenStart(resumeAt)}
+                onClick={() => {
+                  setChosenStart(resumeAt);
+                  const el = muxRef.current;
+                  if (el) {
+                    el.currentTime = resumeAt;
+                    el.play().catch(() => {});
+                  }
+                }}
                 className="group flex items-center gap-2.5 rounded-full px-5 py-2.5 text-sm font-semibold transition-all duration-200 hover:scale-[1.03] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
                 style={{
-                  background: "var(--color-accent, #d4a843)",
+                  background: "var(--color-accent, #F59E0B)",
                   color: "#1a1a1a",
                 }}
               >
@@ -363,7 +357,14 @@ export function VideoEmbed({
               {/* Start Over — secondary */}
               <button
                 type="button"
-                onClick={() => setChosenStart(0)}
+                onClick={() => {
+                  setChosenStart(0);
+                  const el = muxRef.current;
+                  if (el) {
+                    el.currentTime = 0;
+                    el.play().catch(() => {});
+                  }
+                }}
                 className="rounded-full px-4 py-2.5 text-sm font-medium text-white/70 transition-all duration-200 hover:text-white hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
                 style={{
                   border: "1px solid rgba(255,255,255,0.2)",
