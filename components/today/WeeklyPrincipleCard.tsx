@@ -59,7 +59,19 @@ export function WeeklyPrincipleCard({
   // Weekly card is reflection-first: no video. Monthly owns the video.
   const hasAudio = !!audioUrl;
   const hasBody = !!(content?.body || content?.description);
-  const bodyText = content?.body || content?.description || "";
+  const rawBodyText = content?.body || content?.description || "";
+  // Strip the title if it appears as the very first line of the body (CMS duplication)
+  const bodyText = content?.title
+    ? rawBodyText
+        .replace(
+          new RegExp(
+            `^${content.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\n?`,
+            "i"
+          ),
+          ""
+        )
+        .trim()
+    : rawBodyText;
   // Scroll long prose; short content renders naturally
   const useScroll = bodyText.replace(/\\n/g, "\n").length > 420;
 
