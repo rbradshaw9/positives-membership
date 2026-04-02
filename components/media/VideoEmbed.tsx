@@ -341,8 +341,8 @@ export function VideoEmbed({
                 }}
                 className="group flex items-center gap-2.5 rounded-full px-5 py-2.5 text-sm font-semibold transition-all duration-200 hover:scale-[1.03] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
                 style={{
-                  background: "var(--color-accent, #F59E0B)",
-                  color: "#1a1a1a",
+                  background: "var(--color-primary, #2EC4B6)",
+                  color: "#ffffff",
                 }}
               >
                 <svg

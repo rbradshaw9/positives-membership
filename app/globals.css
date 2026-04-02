@@ -82,9 +82,9 @@
 /* Hard-coded hex values ensure reliable resolution across the Shadow DOM.      */
 mux-player {
   --media-primary-color:              #FFFFFF;
-  --media-accent-color:               #F59E0B; /* --color-accent */
-  --media-range-thumb-background:     #F59E0B;
-  --media-range-bar-color:            #F59E0B;
+  --media-accent-color:               #2EC4B6; /* --color-primary (teal) */
+  --media-range-thumb-background:     #2EC4B6;
+  --media-range-bar-color:            #2EC4B6;
   --media-time-range-buffered-color:  rgba(255, 255, 255, 0.2);
   --media-control-background:         transparent;
   --media-control-hover-background:   rgba(255, 255, 255, 0.08);
