@@ -3,7 +3,6 @@
 import { useState, useRef } from "react";
 import type { WeeklyContent } from "@/lib/queries/get-weekly-content";
 import { NoteSheet } from "@/components/notes/NoteSheet";
-import { VideoEmbed } from "@/components/media/VideoEmbed";
 import { AudioPlayer } from "@/components/today/AudioPlayer";
 import { ResourceLinks } from "@/components/media/ResourceLinks";
 import { MarkdownBody } from "@/components/content/MarkdownBody";
@@ -57,12 +56,12 @@ export function WeeklyPrincipleCard({
     setExistingNote(savedText);
   }
 
-  const hasVideo = !!(content?.vimeo_video_id || content?.youtube_video_id);
-  const hasAudio = !hasVideo && !!audioUrl;
+  // Weekly card is reflection-first: no video. Monthly owns the video.
+  const hasAudio = !!audioUrl;
   const hasBody = !!(content?.body || content?.description);
   const bodyText = content?.body || content?.description || "";
-  // Use contained scroll for longer prose; short content renders naturally
-  const useScroll = bodyText.replace(/\\n/g, "\n").length > 320;
+  // Scroll long prose; short content renders naturally
+  const useScroll = bodyText.replace(/\\n/g, "\n").length > 420;
 
   return (
     <>
@@ -107,21 +106,7 @@ export function WeeklyPrincipleCard({
           )}
         </div>
 
-        {/* ── Inline video (Vimeo / YouTube) ──────────────────────────── */}
-        {content && hasVideo && (
-          <div
-            className="px-5 md:px-6 pt-4 pb-4"
-            style={{
-              background: "linear-gradient(to bottom, color-mix(in srgb, var(--color-secondary) 6%, transparent), transparent)",
-            }}
-          >
-            <VideoEmbed
-              vimeoId={content.vimeo_video_id}
-              youtubeId={content.youtube_video_id}
-              title={content.title}
-            />
-          </div>
-        )}
+
 
         {/* ── Audio player for Weekly audio content ───────────────────── */}
         {content && hasAudio && (

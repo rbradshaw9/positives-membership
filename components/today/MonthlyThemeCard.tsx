@@ -61,7 +61,8 @@ export function MonthlyThemeCard({
   const hasVideo = !!(content?.vimeo_video_id || content?.youtube_video_id);
   const hasBody = !!(content?.body || content?.description);
   const bodyText = content?.body || content?.description || "";
-  const useScroll = bodyText.replace(/\\n/g, "\n").length > 320;
+  const isLongBody = bodyText.replace(/\\n/g, "\n").length > 320;
+  const [bodyExpanded, setBodyExpanded] = useState(false);
 
   return (
     <>
@@ -121,21 +122,30 @@ export function MonthlyThemeCard({
 
         {/* ── Body text ─────────────────────────────────────────────── */}
         {content && hasBody && (
-          <div className="px-5 md:px-6 pt-3">
-            {useScroll ? (
-              <div
-                className="overflow-y-auto"
-                style={{
-                  maxHeight: "10rem",
-                  maskImage: "linear-gradient(to bottom, black 80%, transparent 100%)",
-                  WebkitMaskImage: "linear-gradient(to bottom, black 80%, transparent 100%)",
-                  paddingBottom: "1rem",
-                }}
-              >
-                <MarkdownBody content={bodyText} />
-              </div>
-            ) : (
+          <div className="px-5 md:px-6 pt-3 pb-1">
+            <div
+              className="overflow-hidden transition-all"
+              style={{
+                maxHeight: bodyExpanded ? "none" : "9rem",
+                maskImage: bodyExpanded
+                  ? "none"
+                  : "linear-gradient(to bottom, black 60%, transparent 100%)",
+                WebkitMaskImage: bodyExpanded
+                  ? "none"
+                  : "linear-gradient(to bottom, black 60%, transparent 100%)",
+              }}
+            >
               <MarkdownBody content={bodyText} />
+            </div>
+            {isLongBody && (
+              <button
+                type="button"
+                onClick={() => setBodyExpanded((v) => !v)}
+                className="mt-2 text-xs font-semibold transition-colors"
+                style={{ color: "var(--color-accent)" }}
+              >
+                {bodyExpanded ? "Show less" : "Read more"}
+              </button>
             )}
           </div>
         )}

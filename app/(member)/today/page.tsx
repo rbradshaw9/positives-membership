@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getTodayContent } from "@/lib/queries/get-today-content";
 import { getWeeklyContent } from "@/lib/queries/get-weekly-content";
 import { getMonthlyContent } from "@/lib/queries/get-monthly-content";
+import { getMonthlyDailyAudios } from "@/lib/queries/get-monthly-daily-audios";
 import { resolveAudioUrl } from "@/lib/media/resolve-audio-url";
 import { getMemberNoteContentIds } from "@/lib/queries/get-library-content";
 import { getEffectiveDate } from "@/lib/dates/effective-date";
@@ -10,20 +11,17 @@ import { requireActiveMember } from "@/lib/auth/require-active-member";
 import { DailyPracticeCard } from "@/components/today/DailyPracticeCard";
 import { WeeklyPrincipleCard } from "@/components/today/WeeklyPrincipleCard";
 import { MonthlyThemeCard } from "@/components/today/MonthlyThemeCard";
+import { MonthlyAudioArchive } from "@/components/today/MonthlyAudioArchive";
 import { SectionLabel } from "@/components/member/SectionLabel";
 
 /**
  * app/(member)/today/page.tsx
- * Homepage redesign: super-simple, focused layout.
  *
- *   1. Hero — greeting + date + monthly theme context + inline streak
- *   2. Today's Practice — dominant card (daily audio)
- *   3. This Week + This Month — side-by-side compact cards
- *
- * Removed from homepage (moved to My Practice):
- *   - Continue Listening
- *   - Recently Completed
- *   - Suggested Next
+ * Three-zone layout:
+ *   1. Hero — greeting + date + streak
+ *   2. Today's daily audio (dominant, always first)
+ *   3. Monthly theme video (left) + Weekly reflection (right)
+ *   4. "Earlier This Month" — collapsible archive of past daily audios
  */
 
 export const metadata = {
@@ -37,11 +35,12 @@ export default async function TodayPage() {
 
   const effectiveDateStr = getEffectiveDate();
 
-  const [todayContent, weeklyContent, monthlyContent, memberRow] =
+  const [todayContent, weeklyContent, monthlyContent, pastAudios, memberRow] =
     await Promise.all([
       getTodayContent(),
       getWeeklyContent(),
       getMonthlyContent(),
+      getMonthlyDailyAudios(effectiveDateStr),
       supabase
         .from("member")
         .select("practice_streak")
@@ -82,21 +81,21 @@ export default async function TodayPage() {
 
   const streak = memberRow?.practice_streak ?? 0;
 
+  const effectiveDate = new Date(effectiveDateStr + "T12:00:00");
   const todayLabel = new Intl.DateTimeFormat("en-US", {
     weekday: "long",
     month: "long",
     day: "numeric",
-  }).format(new Date(effectiveDateStr + "T12:00:00"));
+  }).format(effectiveDate);
 
-  const greeting = getGreeting(member.name);
+  const currentMonthName = new Intl.DateTimeFormat("en-US", {
+    month: "long",
+  }).format(effectiveDate);
 
-  // Determine which week of the month this is (for the "Week X of Month" label)
-  const effectiveDate = new Date(effectiveDateStr + "T12:00:00");
-  const currentMonthName = new Intl.DateTimeFormat("en-US", { month: "long" }).format(
-    effectiveDate
-  );
   const dayOfMonth = effectiveDate.getDate();
   const weekOfMonth = Math.ceil(dayOfMonth / 7);
+
+  const greeting = getGreeting(member.name);
 
   return (
     <div>
@@ -109,31 +108,35 @@ export default async function TodayPage() {
         }}
       >
         <div className="member-container py-10 md:py-14">
-          <p className="ui-section-eyebrow mb-3">{todayLabel}</p>
+          <p
+            className="text-[11px] font-bold uppercase tracking-[0.16em] mb-3"
+            style={{ color: "var(--color-accent)" }}
+          >
+            {todayLabel}
+          </p>
           <h1 className="heading-balance font-heading font-bold text-3xl md:text-4xl text-foreground tracking-[-0.035em] leading-tight mb-2">
             {greeting}
           </h1>
 
-          {/* Monthly context — anchors the hero */}
+          {/* Monthly context */}
           {monthlyContent ? (
             <p className="max-w-2xl text-base text-muted-foreground leading-body">
-              <span className="font-semibold text-accent">
+              <span className="font-semibold text-foreground/80">
                 {currentMonthName}: {monthlyContent.title}
               </span>
-              {" — "}
               {todayContent
-                ? "your daily practice is ready."
-                : "your practice will be here soon."}
+                ? " — your daily practice is ready below."
+                : " — today's audio will be published soon."}
             </p>
           ) : (
             <p className="max-w-2xl text-base text-muted-foreground leading-body">
               {todayContent
-                ? "Your daily practice is ready. Start here, then carry the rhythm into the rest of your week."
-                : "Your practice will be here soon — come back a little later."}
+                ? "Your daily practice is ready. Start here."
+                : "Today's practice will be published soon — check back shortly."}
             </p>
           )}
 
-          {/* Inline streak */}
+          {/* Streak badge */}
           <div className="mt-4 flex items-center gap-2">
             <span
               className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold"
@@ -160,14 +163,15 @@ export default async function TodayPage() {
         </div>
       </section>
 
-      {/* ── Content stream ───────────────────────────────────────────── */}
-      <div className="member-container py-8 flex flex-col gap-6">
-        {/* Today's Practice — dominant card, always first */}
+      {/* ── Content zones ─────────────────────────────────────────────── */}
+      <div className="member-container py-8 flex flex-col gap-10">
+
+        {/* ── Zone 1: Today's Practice ─────────────────────────────────── */}
         <section aria-labelledby="today-practice" className="flex flex-col gap-3">
           <div>
             <SectionLabel id="today-practice">Today&apos;s Practice</SectionLabel>
-            <p className="max-w-2xl text-sm leading-body text-muted-foreground">
-              Start here — your daily grounding for today.
+            <p className="text-sm leading-body text-muted-foreground mt-0.5">
+              Your daily grounding — start here.
             </p>
           </div>
 
@@ -180,35 +184,57 @@ export default async function TodayPage() {
           />
         </section>
 
-        {/* Weekly + Monthly — side-by-side on desktop, stacked on mobile */}
-        <section className="grid gap-5 lg:grid-cols-2">
-          <div className="flex flex-col gap-3">
-            <div>
-              <SectionLabel>This Week</SectionLabel>
-              <p className="text-xs text-muted-foreground">
-                Week {weekOfMonth} of {currentMonthName}
-              </p>
-            </div>
-            <WeeklyPrincipleCard
-              content={weeklyContent}
-              audioUrl={weeklyAudioUrl}
-              initialHasNote={weeklyContent ? noteContentIds.has(weeklyContent.id) : false}
-            />
+        {/* ── Zone 2: Monthly Theme (left) + Weekly Reflection (right) ──── */}
+        <section
+          aria-labelledby="context-heading"
+          className="flex flex-col gap-3"
+        >
+          <div>
+            <SectionLabel id="context-heading">This Month &amp; This Week</SectionLabel>
+            <p className="text-sm leading-body text-muted-foreground mt-0.5">
+              {currentMonthName}&apos;s theme and Week {weekOfMonth}&apos;s reflection.
+            </p>
           </div>
 
-          <div className="flex flex-col gap-3">
-            <div>
-              <SectionLabel>This Month</SectionLabel>
-              <p className="text-xs text-muted-foreground">
-                {currentMonthName}&apos;s guiding theme
-              </p>
+          <div className="grid gap-5 lg:grid-cols-2">
+            {/* Monthly video — left on desktop */}
+            <div className="flex flex-col gap-2">
+              <span
+                className="text-[10px] font-bold uppercase tracking-[0.14em]"
+                style={{ color: "var(--color-accent)" }}
+              >
+                {currentMonthName}&apos;s Theme
+              </span>
+              <MonthlyThemeCard
+                content={monthlyContent}
+                initialHasNote={monthlyContent ? noteContentIds.has(monthlyContent.id) : false}
+              />
             </div>
-            <MonthlyThemeCard
-              content={monthlyContent}
-              initialHasNote={monthlyContent ? noteContentIds.has(monthlyContent.id) : false}
-            />
+
+            {/* Weekly reflection — right on desktop */}
+            <div className="flex flex-col gap-2">
+              <span
+                className="text-[10px] font-bold uppercase tracking-[0.14em]"
+                style={{ color: "var(--color-secondary)" }}
+              >
+                Week {weekOfMonth} Reflection
+              </span>
+              <WeeklyPrincipleCard
+                content={weeklyContent}
+                audioUrl={weeklyAudioUrl}
+                initialHasNote={weeklyContent ? noteContentIds.has(weeklyContent.id) : false}
+              />
+            </div>
           </div>
         </section>
+
+        {/* ── Zone 3: Earlier This Month (archive) ─────────────────────── */}
+        {pastAudios.length > 0 && (
+          <MonthlyAudioArchive
+            audios={pastAudios}
+            monthName={currentMonthName}
+          />
+        )}
       </div>
     </div>
   );
