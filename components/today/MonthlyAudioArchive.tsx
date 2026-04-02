@@ -45,7 +45,18 @@ function AudioRow({
 }: {
   audio: MonthGroup["audios"][number];
 }) {
-  const { playTrack, isCurrentTrack, isPlaying, togglePlayback } = useMemberAudio();
+  const {
+    playTrack,
+    isCurrentTrack,
+    isPlaying,
+    togglePlayback,
+    currentTime,
+    duration,
+    progress,
+    seekTo,
+    seekBy,
+    formatTime,
+  } = useMemberAudio();
 
   const isThis = isCurrentTrack(audio.id);
   const playing = isThis && isPlaying;
@@ -67,103 +78,172 @@ function AudioRow({
     }
   }
 
+  // Scrub bar interaction — click anywhere on the bar to seek
+  function handleScrubClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (!duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const fraction = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    seekTo(fraction * duration);
+  }
+
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      disabled={!src}
-      className="group w-full flex items-center gap-4 px-5 py-3.5 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:opacity-40"
+    <div
+      className="w-full transition-all"
       style={{
         borderTop: "1px solid var(--color-border)",
+        borderLeft: isThis ? "3px solid var(--color-accent)" : "3px solid transparent",
         background: isThis
           ? "color-mix(in srgb, var(--color-accent) 5%, transparent)"
           : "transparent",
-        borderLeft: isThis ? "3px solid var(--color-accent)" : "3px solid transparent",
       }}
-      aria-label={`${playing ? "Pause" : "Play"} ${audio.title}`}
     >
-      {/* Play / Pause / Equalizer icon */}
-      <span
-        className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full transition-all group-hover:scale-105"
-        style={{
-          background: isThis
-            ? "color-mix(in srgb, var(--color-accent) 18%, transparent)"
-            : "color-mix(in srgb, var(--color-accent) 10%, transparent)",
-          border: `1px solid color-mix(in srgb, var(--color-accent) ${isThis ? "30" : "20"}%, transparent)`,
-        }}
-        aria-hidden="true"
+      {/* Main row: play/pause button + title + date + duration */}
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={!src}
+        className="group w-full flex items-center gap-4 px-5 py-3.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:opacity-40"
+        aria-label={`${playing ? "Pause" : "Play"} ${audio.title}`}
       >
-        {playing ? (
-          /* Animated equalizer bars */
-          <span className="flex items-end gap-[2px] h-3">
-            <span
-              className="w-[3px] rounded-full"
-              style={{
-                background: "var(--color-accent)",
-                animation: "equalizerBar1 0.8s ease-in-out infinite alternate",
-              }}
-            />
-            <span
-              className="w-[3px] rounded-full"
-              style={{
-                background: "var(--color-accent)",
-                animation: "equalizerBar2 0.8s ease-in-out infinite alternate",
-              }}
-            />
-            <span
-              className="w-[3px] rounded-full"
-              style={{
-                background: "var(--color-accent)",
-                animation: "equalizerBar3 0.8s ease-in-out infinite alternate",
-              }}
-            />
-          </span>
-        ) : (
-          <svg
-            width="10"
-            height="10"
-            viewBox="0 0 24 24"
-            fill="var(--color-accent)"
-            stroke="none"
-            aria-hidden="true"
-          >
-            <polygon points="5,3 19,12 5,21" />
-          </svg>
-        )}
-      </span>
-
-      {/* Title + date */}
-      <div className="flex-1 min-w-0">
-        <p
-          className="text-sm font-medium truncate transition-colors"
-          style={{ color: isThis ? "var(--color-accent)" : "var(--color-foreground)" }}
-        >
-          {audio.title}
-        </p>
-        {audio.publish_date && (
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {formatDate(audio.publish_date)}
-          </p>
-        )}
-      </div>
-
-      {/* Duration */}
-      {audio.duration_seconds ? (
+        {/* Play / Pause / Equalizer icon */}
         <span
-          className="shrink-0 text-[11px] font-mono tabular-nums px-2 py-0.5 rounded-full"
+          className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full transition-all group-hover:scale-105"
           style={{
-            color: isThis ? "var(--color-accent)" : "var(--color-muted-fg)",
             background: isThis
-              ? "color-mix(in srgb, var(--color-accent) 10%, transparent)"
-              : "var(--color-muted)",
+              ? "color-mix(in srgb, var(--color-accent) 18%, transparent)"
+              : "color-mix(in srgb, var(--color-accent) 10%, transparent)",
+            border: `1px solid color-mix(in srgb, var(--color-accent) ${isThis ? "30" : "20"}%, transparent)`,
           }}
+          aria-hidden="true"
         >
-          {formatDuration(audio.duration_seconds)}
+          {playing ? (
+            <span className="flex items-end gap-[2px] h-3">
+              <span className="w-[3px] rounded-full" style={{ background: "var(--color-accent)", animation: "equalizerBar1 0.8s ease-in-out infinite alternate" }} />
+              <span className="w-[3px] rounded-full" style={{ background: "var(--color-accent)", animation: "equalizerBar2 0.8s ease-in-out infinite alternate" }} />
+              <span className="w-[3px] rounded-full" style={{ background: "var(--color-accent)", animation: "equalizerBar3 0.8s ease-in-out infinite alternate" }} />
+            </span>
+          ) : (
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="var(--color-accent)" stroke="none" aria-hidden="true">
+              <polygon points="5,3 19,12 5,21" />
+            </svg>
+          )}
         </span>
-      ) : null}
-    </button>
+
+        {/* Title + date */}
+        <div className="flex-1 min-w-0">
+          <p
+            className="text-sm font-medium truncate transition-colors"
+            style={{ color: isThis ? "var(--color-accent)" : "var(--color-foreground)" }}
+          >
+            {audio.title}
+          </p>
+          {audio.publish_date && (
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {formatDate(audio.publish_date)}
+            </p>
+          )}
+        </div>
+
+        {/* Duration / time remaining */}
+        {audio.duration_seconds ? (
+          <span
+            className="shrink-0 text-[11px] font-mono tabular-nums px-2 py-0.5 rounded-full"
+            style={{
+              color: isThis ? "var(--color-accent)" : "var(--color-muted-fg)",
+              background: isThis
+                ? "color-mix(in srgb, var(--color-accent) 10%, transparent)"
+                : "var(--color-muted)",
+            }}
+          >
+            {isThis && currentTime > 0
+              ? `-${formatTime(Math.max(0, duration - currentTime))}`
+              : formatDuration(audio.duration_seconds)}
+          </span>
+        ) : null}
+      </button>
+
+      {/* Expanded controls — only shown for the active track */}
+      {isThis && (
+        <div className="px-5 pb-3.5 flex items-center gap-3" aria-label="Audio controls">
+          {/* -15s */}
+          <button
+            type="button"
+            onClick={() => seekBy(-15)}
+            className="shrink-0 flex flex-col items-center gap-0.5 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none"
+            aria-label="Skip back 15 seconds"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M2.5 2v6h6M2.66 15.57a10 10 0 1 0 .57-8.38" />
+            </svg>
+            <span className="text-[9px] font-bold">15</span>
+          </button>
+
+          {/* Scrub bar */}
+          <div
+            className="flex-1 relative group/scrub"
+            role="slider"
+            aria-label="Seek audio"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(progress)}
+            aria-valuetext={`${formatTime(currentTime)} of ${formatTime(duration)}`}
+            tabIndex={0}
+            onClick={handleScrubClick}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowRight") seekBy(5);
+              if (e.key === "ArrowLeft") seekBy(-5);
+            }}
+            style={{ cursor: "pointer", paddingBlock: "6px" }}
+          >
+            {/* Track */}
+            <div
+              className="w-full rounded-full overflow-hidden"
+              style={{ height: "4px", background: "var(--color-muted)" }}
+            >
+              {/* Fill */}
+              <div
+                className="h-full rounded-full transition-all duration-100"
+                style={{
+                  width: `${progress}%`,
+                  background: "var(--color-accent)",
+                }}
+              />
+            </div>
+            {/* Thumb — appears on hover/focus */}
+            <div
+              className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full opacity-0 group-hover/scrub:opacity-100 transition-opacity"
+              style={{
+                left: `calc(${progress}% - 6px)`,
+                background: "var(--color-accent)",
+                boxShadow: "0 0 0 3px color-mix(in srgb, var(--color-accent) 25%, transparent)",
+              }}
+              aria-hidden="true"
+            />
+          </div>
+
+          {/* Current time */}
+          <span className="shrink-0 text-[11px] font-mono tabular-nums text-muted-foreground w-10 text-right">
+            {formatTime(currentTime)}
+          </span>
+
+          {/* +15s */}
+          <button
+            type="button"
+            onClick={() => seekBy(15)}
+            className="shrink-0 flex flex-col items-center gap-0.5 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none"
+            aria-label="Skip forward 15 seconds"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38" />
+            </svg>
+            <span className="text-[9px] font-bold">15</span>
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
+
 
 function MonthSection({
   group,
