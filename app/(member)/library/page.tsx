@@ -1,4 +1,3 @@
-import Form from "next/form";
 import Link from "next/link";
 import { requireActiveMember } from "@/lib/auth/require-active-member";
 import {
@@ -9,9 +8,9 @@ import {
 } from "@/lib/queries/get-library-content";
 import { searchLibraryContent } from "@/lib/queries/search-library-content";
 import { LibraryList } from "@/components/library/LibraryList";
+import { LibrarySearchClient } from "@/components/library/LibrarySearchClient";
 import { PageHeader } from "@/components/member/PageHeader";
 import { FilterChip } from "@/components/ui/FilterChip";
-import { SearchField } from "@/components/ui/SearchField";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { Button } from "@/components/ui/Button";
 
@@ -131,53 +130,22 @@ export default async function LibraryPage(props: { searchParams: SearchParams })
         hero
       />
       <div className="member-container py-8 md:py-10">
-      <Form action="/library" className="mb-6" scroll={false}>
-        {activeTab !== "all" && (
-          <input type="hidden" name="tab" value={activeTab} />
-        )}
-        <SearchField
-            id="library-search"
-            name="q"
-            defaultValue={searchQuery}
-            placeholder="Search practices, principles, themes…"
-            ariaLabel="Search library content"
-            trailing={
-              isSearchMode ? (
-                <Link
-                  href={clearHref}
-                  className="text-muted-foreground transition-colors hover:text-foreground"
-                  aria-label="Clear search"
-                >
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </Link>
-              ) : null
-            }
-          />
+      <LibrarySearchClient
+        initialQuery={searchQuery}
+        activeTab={activeTab}
+        clearHref={clearHref}
+      />
 
-        {isSearchMode && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            {enriched.length === 0
-              ? "No results"
-              : enriched.length === 1
-                ? "1 result"
-              : `${enriched.length} results`}{" "}
-            for &ldquo;<span className="font-medium text-foreground">{searchQuery}</span>&rdquo;
-          </p>
-        )}
-      </Form>
+      {isSearchMode && (
+        <p className="-mt-3 mb-6 text-xs text-muted-foreground">
+          {enriched.length === 0
+            ? "No results"
+            : enriched.length === 1
+              ? "1 result"
+            : `${enriched.length} results`}{" "}
+          for &ldquo;<span className="font-medium text-foreground">{searchQuery}</span>&rdquo;
+        </p>
+      )}
 
       {!isSearchMode && (
         <nav aria-label="Content filter" className="mb-6 flex flex-wrap gap-2">
