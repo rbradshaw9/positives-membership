@@ -1,11 +1,3 @@
-// AUTO-GENERATED — do not edit manually.
-// Regenerate with: npx supabase gen types typescript --project-id qdnojizzldilqpyocora > types/supabase.ts
-// Last generated: 2026-04-01 from live project qdnojizzldilqpyocora
-// Sprint 5: manually added body, reflection_prompt, download_url, youtube_video_id, resource_links
-// Sprint 10: manually added tier_min, starts_at to content; coaching_call to content_type; coaching_attended to activity_event_type
-// Community Q&A: manually added parent_id, is_pinned, is_admin_answer to community_post; added community_post_like table
-// Mux video: added mux_asset_id, mux_playback_id to content
-
 export type Json =
   | string
   | number
@@ -124,36 +116,36 @@ export type Database = {
       }
       community_post_like: {
         Row: {
-          id: string
-          post_id: string
-          member_id: string
           created_at: string
+          id: string
+          member_id: string
+          post_id: string
         }
         Insert: {
-          id?: string
-          post_id: string
-          member_id: string
           created_at?: string
+          id?: string
+          member_id: string
+          post_id: string
         }
         Update: {
-          id?: string
-          post_id?: string
-          member_id?: string
           created_at?: string
+          id?: string
+          member_id?: string
+          post_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "community_post_like_post_id_fkey"
-            columns: ["post_id"]
-            isOneToOne: false
-            referencedRelation: "community_post"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "community_post_like_member_id_fkey"
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "member"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_post_like_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_post"
             referencedColumns: ["id"]
           },
         ]
@@ -183,7 +175,7 @@ export type Database = {
           reflection_prompt: string | null
           resource_links: Json
           s3_audio_key: string | null
-          search_vector: string | null
+          search_vector: unknown
           source: Database["public"]["Enums"]["content_source"]
           source_ref: string | null
           starts_at: string | null
@@ -222,6 +214,7 @@ export type Database = {
           reflection_prompt?: string | null
           resource_links?: Json
           s3_audio_key?: string | null
+          search_vector?: unknown
           source?: Database["public"]["Enums"]["content_source"]
           source_ref?: string | null
           starts_at?: string | null
@@ -260,6 +253,7 @@ export type Database = {
           reflection_prompt?: string | null
           resource_links?: Json
           s3_audio_key?: string | null
+          search_vector?: unknown
           source?: Database["public"]["Enums"]["content_source"]
           source_ref?: string | null
           starts_at?: string | null
@@ -275,6 +269,73 @@ export type Database = {
           youtube_video_id?: string | null
         }
         Relationships: []
+      }
+      content_chunk: {
+        Row: {
+          chunk_index: number
+          chunk_text: string
+          content_id: string
+          created_at: string
+          embedding: string | null
+          id: string
+          token_count: number | null
+        }
+        Insert: {
+          chunk_index: number
+          chunk_text: string
+          content_id: string
+          created_at?: string
+          embedding?: string | null
+          id?: string
+          token_count?: number | null
+        }
+        Update: {
+          chunk_index?: number
+          chunk_text?: string
+          content_id?: string
+          created_at?: string
+          embedding?: string | null
+          id?: string
+          token_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_chunk_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_embedding: {
+        Row: {
+          content_id: string
+          embedded_at: string
+          embedding: string | null
+          model: string
+        }
+        Insert: {
+          content_id: string
+          embedded_at?: string
+          embedding?: string | null
+          model?: string
+        }
+        Update: {
+          content_id?: string
+          embedded_at?: string
+          embedding?: string | null
+          model?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_embedding_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: true
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       journal: {
         Row: {
@@ -417,6 +478,56 @@ export type Database = {
           },
         ]
       }
+      video_views: {
+        Row: {
+          completed: boolean
+          content_id: string | null
+          id: string
+          last_seen_at: string
+          mux_asset_id: string | null
+          mux_playback_id: string | null
+          resume_at_seconds: number
+          session_count: number
+          started_at: string
+          user_id: string
+          watch_percent: number
+        }
+        Insert: {
+          completed?: boolean
+          content_id?: string | null
+          id?: string
+          last_seen_at?: string
+          mux_asset_id?: string | null
+          mux_playback_id?: string | null
+          resume_at_seconds?: number
+          session_count?: number
+          started_at?: string
+          user_id: string
+          watch_percent?: number
+        }
+        Update: {
+          completed?: boolean
+          content_id?: string | null
+          id?: string
+          last_seen_at?: string
+          mux_asset_id?: string | null
+          mux_playback_id?: string | null
+          resume_at_seconds?: number
+          session_count?: number
+          started_at?: string
+          user_id?: string
+          watch_percent?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_views_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -440,6 +551,7 @@ export type Database = {
         | "milestone_reached"
         | "upgrade_prompt_seen"
         | "upgrade_clicked"
+        | "coaching_attended"
       community_post_type: "reflection" | "question" | "share"
       content_source: "gdrive" | "vimeo" | "admin"
       content_status: "draft" | "ready_for_review" | "published" | "archived"
@@ -599,6 +711,7 @@ export const Constants = {
         "milestone_reached",
         "upgrade_prompt_seen",
         "upgrade_clicked",
+        "coaching_attended",
       ],
       community_post_type: ["reflection", "question", "share"],
       content_source: ["gdrive", "vimeo", "admin"],

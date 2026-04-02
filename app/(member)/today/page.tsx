@@ -183,6 +183,7 @@ export default async function TodayPage() {
                 initialHasNote={
                   monthlyContent ? noteContentIds.has(monthlyContent.id) : false
                 }
+                viewerUserId={member.id}
               />
             </div>
 

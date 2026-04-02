@@ -22,6 +22,7 @@ import { stripCmsPreamble } from "@/lib/content/strip-cms-preamble";
 interface MonthlyThemeCardProps {
   content: MonthlyContent | null;
   initialHasNote?: boolean;
+  viewerUserId?: string | null;
 }
 
 function currentMonthName(): string {
@@ -31,6 +32,7 @@ function currentMonthName(): string {
 export function MonthlyThemeCard({
   content,
   initialHasNote = false,
+  viewerUserId,
 }: MonthlyThemeCardProps) {
   const [noteOpen, setNoteOpen] = useState(false);
   const [existingNote, setExistingNote] = useState("");
@@ -119,6 +121,9 @@ export function MonthlyThemeCard({
               vimeoId={content.vimeo_video_id}
               youtubeId={content.youtube_video_id}
               muxPlaybackId={content.mux_playback_id}
+              muxAssetId={content.mux_asset_id ?? null}
+              contentId={content.id}
+              viewerUserId={viewerUserId}
               title={content.title}
             />
           </div>

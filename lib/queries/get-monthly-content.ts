@@ -23,6 +23,7 @@ export type MonthlyContent = Pick<
   | "vimeo_video_id"
   | "youtube_video_id"
   | "mux_playback_id"
+  | "mux_asset_id"
   | "month_year"
 >;
 
@@ -35,7 +36,7 @@ export async function getMonthlyContent(
   const { data, error } = await supabase
     .from("content")
     .select(
-      "id, title, description, excerpt, body, reflection_prompt, download_url, resource_links, vimeo_video_id, youtube_video_id, mux_playback_id, month_year"
+      "id, title, description, excerpt, body, reflection_prompt, download_url, resource_links, vimeo_video_id, youtube_video_id, mux_playback_id, mux_asset_id, month_year"
     )
     .eq("type", "monthly_theme")
     .eq("status", "published")

@@ -1,127 +1,268 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import MuxPlayer from "@mux/mux-player-react";
+import type MuxPlayerElement from "@mux/mux-player";
 import Player from "@vimeo/player";
 import { useMemberAudio } from "@/components/member/audio/MemberAudioProvider";
+import {
+  recordVideoProgress,
+  getVideoResumePosition,
+} from "@/app/(member)/today/video-actions";
 
 /**
  * components/media/VideoEmbed.tsx
  *
- * Bidirectional "latest wins" audio/video coordination:
+ * Renders video from Mux (preferred), Vimeo, or YouTube with:
  *
- * Direction 1 — Video → pause audio:
- *   Called synchronously on the play button click, BEFORE the iframe loads.
- *   This is 100% reliable because it's triggered by the user gesture, not
- *   an async SDK event that can race with autoplay.
- *   We also attach a Vimeo SDK listener as a fallback for when the user
- *   presses play *inside* the native Vimeo UI after pausing the video.
+ * ── Audio/video coordination ("one thing playing at a time") ──────────────
+ *   Uses MemberAudioProvider's multi-video registry (Map<id, pauseFn>).
+ *   When any video plays  → pause audio + pause all OTHER videos.
+ *   When audio plays      → all registered video pausers are called.
  *
- * Direction 2 — Audio → pause video:
- *   VideoEmbed registers its Vimeo player's pause() function with the audio
- *   context registry. When audio starts playing, MemberAudioProvider calls it.
+ * ── Mux Data analytics ────────────────────────────────────────────────────
+ *   metadata.viewer_user_id, video_id, video_title sent to Mux Data.
  *
- * UX pattern: poster + play button → click → real iframe loads (defers SDK
- * cost until user interaction).
+ * ── View tracking + resume position ──────────────────────────────────────
+ *   Fetches resume_at_seconds on mount (from video_views table).
+ *   Saves watch progress at 25/50/75/95% milestones and on pause.
+ *   Mux player uses startTime prop; Vimeo uses setCurrentTime() after ready.
  */
+
+/** Milestone thresholds (%) at which we write a progress record. */
+const MILESTONES = [25, 50, 75, 95];
 
 interface VideoEmbedProps {
   vimeoId?: string | null;
   youtubeId?: string | null;
   muxPlaybackId?: string | null;
+  /** Used for Mux Data analytics + view-tracking upsert key. */
+  muxAssetId?: string | null;
+  /** Content row ID — primary upsert key for video_views. */
+  contentId?: string | null;
+  /** Pass from server component for Mux Data viewer tracking. */
+  viewerUserId?: string | null;
   title: string;
   dark?: boolean;
 }
 
-export function VideoEmbed({ vimeoId, youtubeId, muxPlaybackId, title, dark = false }: VideoEmbedProps) {
+export function VideoEmbed({
+  vimeoId,
+  youtubeId,
+  muxPlaybackId,
+  muxAssetId,
+  contentId,
+  viewerUserId,
+  title,
+  dark = false,
+}: VideoEmbedProps) {
+  const registryId = useId(); // stable key for the video pauser registry
   const [expanded, setExpanded] = useState(false);
+  const [resumeAt, setResumeAt] = useState(0);
+
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const { pause, registerVideoPauser, unregisterVideoPauser } = useMemberAudio();
+  const muxRef = useRef<MuxPlayerElement>(null);
+  const reportedMilestonesRef = useRef<Set<number>>(new Set());
+
+  const { pause, registerVideoPauser, unregisterVideoPauser, pauseAllVideos } =
+    useMemberAudio();
 
   const isVimeo = !!vimeoId;
   const isMux = !!muxPlaybackId;
 
-  // Inject mux-player script once
+  // ── Fetch resume position on mount ───────────────────────────────────────
+  useEffect(() => {
+    if (!contentId && !muxAssetId) return;
+    getVideoResumePosition({ contentId, muxAssetId }).then((seconds) => {
+      setResumeAt(seconds);
+    });
+  }, [contentId, muxAssetId]);
+
+  // ── Mux: register pauser in the global registry ──────────────────────────
   useEffect(() => {
     if (!isMux) return;
-    if (document.querySelector('script[data-mux-player]')) return;
-    const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/@mux/mux-player';
-    s.dataset.muxPlayer = '1';
-    document.head.appendChild(s);
-  }, [isMux]);
+    registerVideoPauser(registryId, () => {
+      muxRef.current?.pause();
+    });
+    return () => {
+      unregisterVideoPauser(registryId);
+    };
+  }, [isMux, registryId, registerVideoPauser, unregisterVideoPauser]);
 
-  // When the video is expanded, set up the Vimeo Player SDK for:
-  //   (a) Fallback Direction 1: re-pause audio if user re-plays via native Vimeo UI
-  //   (b) Direction 2: register our video pauser so audio can pause us
+  // ── Vimeo: SDK-based coordination + resume after player is ready ─────────
   useEffect(() => {
     if (!expanded || !isVimeo || !iframeRef.current) return;
 
     let player: Player | null = null;
     let cancelled = false;
 
-    // Wait for the iframe to signal it's ready — poll for readyState rather than
-    // using a fixed timeout, but cap at 3s to avoid hanging.
     const tryInit = (attempts = 0) => {
-      if (cancelled) return;
-      if (!iframeRef.current) return;
-
+      if (cancelled || !iframeRef.current) return;
       player = new Player(iframeRef.current);
 
-      player.ready().then(() => {
+      player.ready().then(async () => {
         if (cancelled) { player?.destroy(); return; }
 
-        // (a) Fallback Direction 1: user hit play inside Vimeo's native UI
-        player!.on("play", () => { pause(); });
+        // Seek to resume position
+        if (resumeAt > 0) {
+          player!.setCurrentTime(resumeAt).catch(() => {});
+        }
 
-        // (b) Direction 2: register our pauser so audio → pause video works
-        registerVideoPauser(() => {
+        // Register pauser
+        registerVideoPauser(registryId, () => {
           player?.pause().catch(() => {});
         });
+
+        // Direction 1 fallback: user hits play inside native Vimeo UI
+        player!.on("play", () => {
+          pauseAllVideos(registryId);
+          pause();
+        });
+
+        // Save progress on pause/end
+        player!.on("pause", async () => {
+          const [currentTime, duration] = await Promise.all([
+            player!.getCurrentTime(),
+            player!.getDuration(),
+          ]);
+          const pct = duration > 0 ? (currentTime / duration) * 100 : 0;
+          void recordVideoProgress({
+            contentId,
+            muxAssetId,
+            muxPlaybackId,
+            watchPercent: pct,
+            resumeAtSeconds: currentTime,
+          });
+        });
+
+        // Track milestones
+        player!.on("timeupdate", async ({ seconds, duration }) => {
+          if (!duration) return;
+          const pct = (seconds / duration) * 100;
+          for (const milestone of MILESTONES) {
+            if (
+              pct >= milestone &&
+              !reportedMilestonesRef.current.has(milestone)
+            ) {
+              reportedMilestonesRef.current.add(milestone);
+              void recordVideoProgress({
+                contentId,
+                muxAssetId,
+                muxPlaybackId,
+                watchPercent: milestone,
+                resumeAtSeconds: seconds,
+              });
+            }
+          }
+        });
       }).catch(() => {
-        // Ready handshake failed — retry up to 5×
         if (attempts < 5 && !cancelled) {
           setTimeout(() => tryInit(attempts + 1), 400);
         }
       });
     };
 
-    // Small initial delay so the iframe src has been set before we attach
     const timeout = setTimeout(() => tryInit(), 200);
 
     return () => {
       cancelled = true;
       clearTimeout(timeout);
-      unregisterVideoPauser();
+      unregisterVideoPauser(registryId);
       player?.destroy().catch(() => {});
     };
-  }, [expanded, isVimeo, pause, registerVideoPauser, unregisterVideoPauser]);
+  }, [
+    expanded,
+    isVimeo,
+    resumeAt,
+    registryId,
+    pause,
+    pauseAllVideos,
+    registerVideoPauser,
+    unregisterVideoPauser,
+    contentId,
+    muxAssetId,
+    muxPlaybackId,
+  ]);
 
-  // Cleanup pauser when component unmounts entirely
+  // Cleanup registry on unmount
   useEffect(() => {
-    return () => { unregisterVideoPauser(); };
-  }, [unregisterVideoPauser]);
+    return () => { unregisterVideoPauser(registryId); };
+  }, [registryId, unregisterVideoPauser]);
 
   if (!vimeoId && !youtubeId && !muxPlaybackId) return null;
 
-  // ── Mux player — rendered as web component, no poster/click needed ────────
+  // ── Mux ──────────────────────────────────────────────────────────────────
   if (isMux) {
     return (
       <div
         className="relative w-full overflow-hidden rounded-lg bg-surface-dark"
         style={{ aspectRatio: "16/9" }}
       >
-        {/* @ts-expect-error — mux-player is a custom element, not in JSX types */}
-        <mux-player
-          playback-id={muxPlaybackId}
-          metadata-video-title={title}
-          stream-type="on-demand"
-          class="absolute inset-0 w-full h-full"
-          style={{ '--controls': 'auto' } as React.CSSProperties}
+        <MuxPlayer
+          ref={muxRef}
+          playbackId={muxPlaybackId}
+          streamType="on-demand"
+          startTime={resumeAt > 0 ? resumeAt : undefined}
+          className="absolute inset-0 w-full h-full"
+          // Mux Data — per-viewer analytics in the Mux dashboard
+          metadata={{
+            video_id: muxAssetId ?? muxPlaybackId,
+            video_title: title,
+            viewer_user_id: viewerUserId ?? undefined,
+          }}
+          onPlay={() => {
+            // Pause audio + pause all other video players
+            pauseAllVideos(registryId);
+            pause();
+            // Record session start
+            void recordVideoProgress({
+              contentId,
+              muxAssetId,
+              muxPlaybackId,
+              watchPercent: 0,
+              resumeAtSeconds: muxRef.current?.currentTime ?? 0,
+            });
+          }}
+          onTimeUpdate={() => {
+            const el = muxRef.current;
+            if (!el || !el.duration) return;
+            const pct = (el.currentTime / el.duration) * 100;
+            for (const milestone of MILESTONES) {
+              if (
+                pct >= milestone &&
+                !reportedMilestonesRef.current.has(milestone)
+              ) {
+                reportedMilestonesRef.current.add(milestone);
+                void recordVideoProgress({
+                  contentId,
+                  muxAssetId,
+                  muxPlaybackId,
+                  watchPercent: milestone,
+                  resumeAtSeconds: el.currentTime,
+                });
+              }
+            }
+          }}
+          onPause={() => {
+            const el = muxRef.current;
+            if (!el) return;
+            const pct = el.duration
+              ? (el.currentTime / el.duration) * 100
+              : 0;
+            void recordVideoProgress({
+              contentId,
+              muxAssetId,
+              muxPlaybackId,
+              watchPercent: pct,
+              resumeAtSeconds: el.currentTime,
+            });
+          }}
         />
       </div>
     );
   }
 
+  // ── Vimeo / YouTube ───────────────────────────────────────────────────────
   const thumbnailUrl = !isVimeo
     ? `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`
     : null;
@@ -133,9 +274,8 @@ export function VideoEmbed({ vimeoId, youtubeId, muxPlaybackId, title, dark = fa
   const providerLabel = isVimeo ? "Vimeo" : "YouTube";
 
   function handlePlayClick() {
-    // Direction 1 (primary): pause audio synchronously before loading the iframe.
-    // This is the reliable path — no SDK race condition, fires on user gesture.
-    pause();
+    pauseAllVideos(registryId);
+    pause(); // pause audio synchronously on user gesture
     setExpanded(true);
   }
 
@@ -174,7 +314,10 @@ export function VideoEmbed({ vimeoId, youtubeId, muxPlaybackId, title, dark = fa
             <div
               aria-hidden="true"
               className="absolute inset-0 opacity-25"
-              style={{ background: "radial-gradient(ellipse at 40% 50%, #1AB7EA 0%, transparent 65%)" }}
+              style={{
+                background:
+                  "radial-gradient(ellipse at 40% 50%, #1AB7EA 0%, transparent 65%)",
+              }}
             />
           )}
 
@@ -182,11 +325,22 @@ export function VideoEmbed({ vimeoId, youtubeId, muxPlaybackId, title, dark = fa
 
           <div className="relative z-10 flex flex-col items-center gap-2.5">
             <div className="w-14 h-14 rounded-full bg-white/20 backdrop-blur-sm border border-white/20 flex items-center justify-center group-hover:bg-white/30 group-hover:scale-105 transition-all duration-200">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-white ml-1" aria-hidden="true">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                className="text-white ml-1"
+                aria-hidden="true"
+              >
                 <polygon points="5,3 19,12 5,21" />
               </svg>
             </div>
-            <span className={`text-xs font-medium ${dark ? "text-white/60" : "text-white/70"}`}>
+            <span
+              className={`text-xs font-medium ${
+                dark ? "text-white/60" : "text-white/70"
+              }`}
+            >
               {providerLabel}
             </span>
           </div>

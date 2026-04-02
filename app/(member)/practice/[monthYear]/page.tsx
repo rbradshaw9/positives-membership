@@ -48,7 +48,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function PracticeArchivePage({ params }: Props) {
-  await requireActiveMember();
+  const member = await requireActiveMember();
 
   const { monthYear } = await params;
 
@@ -164,6 +164,7 @@ export default async function PracticeArchivePage({ params }: Props) {
             <MonthlyThemeCard
               content={monthlyContent}
               initialHasNote={false}
+              viewerUserId={member.id}
             />
           </section>
         )}

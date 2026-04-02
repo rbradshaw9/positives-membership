@@ -32,10 +32,12 @@ type MemberAudioContextValue = {
   seekBy: (delta: number) => void;
   isCurrentTrack: (trackId: string) => boolean;
   formatTime: (seconds: number) => string;
-  /** Register a function that pauses an external video player (e.g. Vimeo). */
-  registerVideoPauser: (fn: () => void) => void;
-  /** Unregister the video pauser (call in cleanup). */
-  unregisterVideoPauser: () => void;
+  /** Register a function that pauses an external video player. Call with a stable id. */
+  registerVideoPauser: (id: string, fn: () => void) => void;
+  /** Unregister the video pauser for the given id (call in cleanup). */
+  unregisterVideoPauser: (id: string) => void;
+  /** Pause all registered video players, optionally skipping one by id. */
+  pauseAllVideos: (exceptId?: string) => void;
 };
 
 const MemberAudioContext = createContext<MemberAudioContextValue | null>(null);
@@ -54,9 +56,9 @@ export function MemberAudioProvider({
   const audioRef = useRef<HTMLAudioElement>(null);
   const pendingResumeTimeRef = useRef(0);
   const completionTrackRef = useRef<string | null>(null);
-  // Holds a function that pauses whatever video is currently expanded.
-  // VideoEmbed registers/unregisters this as the Vimeo player mounts/unmounts.
-  const videoPauserRef = useRef<(() => void) | null>(null);
+  // Registry of video pauser functions keyed by a stable id.
+  // Supports multiple VideoEmbeds on the same page.
+  const videoPausersRef = useRef<Map<string, () => void>>(new Map());
   const lastPersistedResumeRef = useRef<{ trackId: string | null; seconds: number }>({
     trackId: null,
     seconds: 0,
@@ -106,8 +108,8 @@ export function MemberAudioProvider({
     if (!audio || !snapshot.currentTrack) return;
 
     if (snapshot.isPlaying) {
-      // Pause any open video player before starting audio — "latest wins".
-      videoPauserRef.current?.();
+      // Pause all registered video players before starting audio — "latest wins".
+      videoPausersRef.current.forEach((fn) => fn());
       audio.play().catch((err) => {
         console.warn("[MemberAudioProvider] play() blocked:", err);
         memberAudioStore.pause();
@@ -149,12 +151,18 @@ export function MemberAudioProvider({
     memberAudioStore.pause();
   }
 
-  function registerVideoPauser(fn: () => void) {
-    videoPauserRef.current = fn;
+  function registerVideoPauser(id: string, fn: () => void) {
+    videoPausersRef.current.set(id, fn);
   }
 
-  function unregisterVideoPauser() {
-    videoPauserRef.current = null;
+  function unregisterVideoPauser(id: string) {
+    videoPausersRef.current.delete(id);
+  }
+
+  function pauseAllVideos(exceptId?: string) {
+    videoPausersRef.current.forEach((fn, id) => {
+      if (id !== exceptId) fn();
+    });
   }
 
   function clearTrack() {
@@ -294,6 +302,7 @@ export function MemberAudioProvider({
     formatTime,
     registerVideoPauser,
     unregisterVideoPauser,
+    pauseAllVideos,
   };
 
   return (

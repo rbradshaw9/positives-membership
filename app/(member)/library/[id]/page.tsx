@@ -157,6 +157,9 @@ export default async function LibraryItemPage({ params }: Props) {
               vimeoId={item.vimeo_video_id}
               youtubeId={item.youtube_video_id}
               muxPlaybackId={item.mux_playback_id}
+              muxAssetId={item.mux_asset_id ?? null}
+              contentId={item.id}
+              viewerUserId={member.id}
               title={item.title}
             />
           </div>
