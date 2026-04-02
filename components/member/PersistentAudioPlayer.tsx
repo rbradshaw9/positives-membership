@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useMemberAudio } from "@/components/member/audio/MemberAudioProvider";
 
 /**
@@ -45,6 +46,7 @@ export function PersistentAudioPlayer() {
     formatTime,
   } = useMemberAudio();
 
+  const pathname = usePathname();
   const playerRef = useRef<HTMLDivElement>(null);
   const [mini, setMini] = useState(false);
 
@@ -68,7 +70,8 @@ export function PersistentAudioPlayer() {
     const shell = document.querySelector<HTMLElement>(".member-shell");
     const player = playerRef.current;
 
-    if (!currentTrack || !player || !shell) {
+    // Also clear the height when on /today (player is hidden there)
+    if (!currentTrack || !player || !shell || pathname === "/today") {
       shell?.style.setProperty("--member-player-height", "0px");
       return;
     }
@@ -91,7 +94,12 @@ export function PersistentAudioPlayer() {
       window.removeEventListener("resize", syncPlayerHeight);
       shell.style.setProperty("--member-player-height", "0px");
     };
-  }, [currentTrack, mini]);
+  }, [currentTrack, mini, pathname]);
+
+  // The /today page has its own full-featured in-card audio player for today's
+  // daily practice. Showing the persistent bar there would create a duplicate UI.
+  // Once the member navigates away, the bar reappears and playback continues.
+  if (pathname === "/today") return null;
 
   if (!currentTrack) return null;
 

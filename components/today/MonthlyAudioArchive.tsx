@@ -18,6 +18,8 @@ import type { MonthGroup } from "@/lib/queries/get-monthly-daily-audios";
 
 interface MonthlyAudioArchiveProps {
   monthGroups: MonthGroup[];
+  /** e.g. "April" — used to render the section heading */
+  currentMonthName: string;
 }
 
 function formatDate(dateStr: string): string {
@@ -270,7 +272,7 @@ function MonthSection({
   );
 }
 
-export function MonthlyAudioArchive({ monthGroups }: MonthlyAudioArchiveProps) {
+export function MonthlyAudioArchive({ monthGroups, currentMonthName }: MonthlyAudioArchiveProps) {
   if (monthGroups.length === 0) return null;
 
   return (
@@ -280,10 +282,10 @@ export function MonthlyAudioArchive({ monthGroups }: MonthlyAudioArchiveProps) {
           id="month-archive-heading"
           className="font-heading font-semibold text-base text-foreground tracking-[-0.02em]"
         >
-          Daily Practice Playlist
+          {currentMonthName}&apos;s Daily Practices
         </h2>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Tap any practice to play it inline — no page navigation needed.
+          Tap any day to play it inline.
         </p>
       </div>
 

@@ -175,10 +175,10 @@ export default async function PracticeArchivePage({ params }: Props) {
 
         {/* ── Daily practice playlist ────────────────────────────────────── */}
         {audioGroups.length > 0 && (
-          <MonthlyAudioArchive monthGroups={audioGroups} />
+          <MonthlyAudioArchive monthGroups={audioGroups} currentMonthName={monthName.split(" ")[0]} />
         )}
 
-        {/* ── Empty state ────────────────────────────────────────────────── */}
+        {/* -- Empty state -------------------------------------------------- */}
         {!monthlyContent && weeklyContent.length === 0 && audioGroups.length === 0 && (
           <div className="text-center py-16">
             <p className="text-muted-foreground text-sm">

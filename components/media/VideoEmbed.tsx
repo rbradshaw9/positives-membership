@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Player from "@vimeo/player";
+import { useMemberAudio } from "@/components/member/audio/MemberAudioProvider";
 
 /**
  * components/media/VideoEmbed.tsx
@@ -9,6 +11,11 @@ import { useState } from "react";
  * Strategy:
  *   - Vimeo:   privacy-enhanced player.vimeo.com embed (no tracking)
  *   - YouTube: privacy-enhanced nocookie embed + lazy loading
+ *
+ * Audio coordination (Vimeo only):
+ *   When the Vimeo video fires a "play" event, we pause the global audio player
+ *   so both audio streams never play simultaneously. The audio does NOT auto-resume
+ *   when the video pauses — the member can resume it manually from the persistent bar.
  *
  * UX pattern: shows a thumbnail/poster with a play button. On click, swaps
  * to the real <iframe>. This avoids loading the iframe SDK on page load
@@ -28,10 +35,38 @@ interface VideoEmbedProps {
 
 export function VideoEmbed({ vimeoId, youtubeId, title, dark = false }: VideoEmbedProps) {
   const [expanded, setExpanded] = useState(false);
-
-  if (!vimeoId && !youtubeId) return null;
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const { pause } = useMemberAudio();
 
   const isVimeo = !!vimeoId;
+
+  // Attach Vimeo Player SDK once the iframe is in the DOM and coordinate with
+  // the global audio context — video play → audio pauses.
+  useEffect(() => {
+    if (!expanded || !isVimeo || !iframeRef.current) return;
+
+    let player: Player | null = null;
+
+    // Small timeout to let the iframe fully initialise before handing it to the SDK
+    const timeout = setTimeout(() => {
+      if (!iframeRef.current) return;
+      player = new Player(iframeRef.current);
+
+      player.on("play", () => {
+        // Pause the member audio player when the video starts
+        pause();
+      });
+    }, 300);
+
+    return () => {
+      clearTimeout(timeout);
+      player?.destroy().catch(() => {
+        // Ignore destroy errors (e.g. iframe already unmounted)
+      });
+    };
+  }, [expanded, isVimeo, pause]);
+
+  if (!vimeoId && !youtubeId) return null;
 
   // YouTube thumbnail — hqdefault is free, no API key needed
   const thumbnailUrl = !isVimeo
@@ -53,6 +88,7 @@ export function VideoEmbed({ vimeoId, youtubeId, title, dark = false }: VideoEmb
       {expanded ? (
         // Real embed — only loaded after user interaction
         <iframe
+          ref={iframeRef}
           src={iframeSrc}
           title={title}
           allow="autoplay; fullscreen; picture-in-picture"

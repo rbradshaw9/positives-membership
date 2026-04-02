@@ -31,14 +31,17 @@ export function MemberTopNav({
   const menuRef = useRef<HTMLDivElement>(null);
   const mobileTabRef = useRef<HTMLElement>(null);
   const displayName = memberName?.trim() || "Member";
+  // Strip parenthetical suffixes (e.g. "Ryan (L1 Test)" → "Ryan") before
+  // computing initials so we never get "R(" in the avatar circle.
+  const cleanName = displayName.replace(/\s*\(.*?\)\s*/g, "").trim() || displayName;
   const initials = useMemo(
     () =>
-      displayName
+      cleanName
         .split(/\s+/)
         .slice(0, 2)
         .map((part) => part.charAt(0).toUpperCase())
         .join(""),
-    [displayName]
+    [cleanName]
   );
 
   const navItems: NavItem[] = communityPreviewEnabled
@@ -103,19 +106,8 @@ export function MemberTopNav({
             className="mr-auto flex-shrink-0"
           />
 
-          {streak > 0 && (
-            <span
-              className="hidden rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-medium text-white/70 md:inline-flex md:items-center md:gap-1.5"
-              style={{
-                color: streak >= 7 ? "var(--color-primary)" : "rgba(255,255,255,0.65)",
-              }}
-            >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2z" />
-              </svg>
-              Day {streak}
-            </span>
-          )}
+
+
 
           <nav aria-label="Member navigation" className="hidden items-center gap-1 md:flex">
             {navItems.map(({ href, label }) => {

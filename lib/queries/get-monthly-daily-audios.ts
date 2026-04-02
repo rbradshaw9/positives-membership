@@ -42,12 +42,10 @@ export async function getMonthlyDailyAudios(
 ): Promise<MonthGroup[]> {
   const supabase = await createClient();
 
-  // Pull all past published daily audios (up to but not including today)
-  // Go back up to 60 days to cover the prior complete month
-  const now = new Date(excludeDate + "T12:00:00");
-  const sixtyDaysAgo = new Date(now);
-  sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
-  const fromDate = sixtyDaysAgo.toISOString().slice(0, 10);
+  // Scope to current month only — the /today page is a "living document"
+  // for the current month. Past months are accessed via /practice/[monthYear].
+  const currentMonthYear = excludeDate.slice(0, 7); // "2026-04"
+  const monthStart = `${currentMonthYear}-01`;
 
   const { data, error } = await supabase
     .from("content")
@@ -56,7 +54,7 @@ export async function getMonthlyDailyAudios(
     )
     .eq("type", "daily_audio")
     .eq("status", "published")
-    .gte("publish_date", fromDate)
+    .gte("publish_date", monthStart)
     .lt("publish_date", excludeDate)
     .order("publish_date", { ascending: false });
 

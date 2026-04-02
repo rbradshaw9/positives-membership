@@ -14,7 +14,7 @@ import { WeeklyPrincipleCard } from "@/components/today/WeeklyPrincipleCard";
 import { MonthlyThemeCard } from "@/components/today/MonthlyThemeCard";
 import { MonthlyAudioArchive } from "@/components/today/MonthlyAudioArchive";
 import { WeeklyArchive } from "@/components/today/WeeklyArchive";
-import { SectionLabel } from "@/components/member/SectionLabel";
+
 
 /**
  * app/(member)/today/page.tsx
@@ -112,7 +112,7 @@ export default async function TodayPage() {
             "radial-gradient(ellipse at 10% 0%, rgba(46,196,182,0.12) 0%, transparent 55%), var(--color-card)",
         }}
       >
-        <div className="member-container py-7 md:py-9">
+        <div className="member-container py-5 md:py-6">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p
@@ -156,7 +156,7 @@ export default async function TodayPage() {
       </section>
 
       {/* ── Content ───────────────────────────────────────────────────── */}
-      <div className="member-container py-8 flex flex-col gap-10">
+      <div className="member-container py-6 flex flex-col gap-8">
 
         {/* ── Zone 1: Today's audio ─────────────────────────────────── */}
         <DailyPracticeCard
@@ -168,17 +168,7 @@ export default async function TodayPage() {
         />
 
         {/* ── Zone 2: Monthly theme + Weekly reflection ─────────────── */}
-        <section
-          aria-labelledby="context-heading"
-          className="flex flex-col gap-3"
-        >
-          <div>
-            <SectionLabel id="context-heading">This Month &amp; This Week</SectionLabel>
-            <p className="text-sm leading-body text-muted-foreground mt-0.5">
-              {currentMonthName}&apos;s theme and Week {weekOfMonth}&apos;s reflection.
-            </p>
-          </div>
-
+        <section aria-label="This month and this week" className="flex flex-col gap-3">
           <div className="grid gap-5 lg:grid-cols-2">
             {/* Monthly video — left on desktop */}
             <div className="flex flex-col gap-2">
@@ -223,7 +213,7 @@ export default async function TodayPage() {
 
         {/* ── Zone 4: Daily practice playlist (inline) ──────────────── */}
         {monthGroups.length > 0 && (
-          <MonthlyAudioArchive monthGroups={monthGroups} />
+          <MonthlyAudioArchive monthGroups={monthGroups} currentMonthName={currentMonthName} />
         )}
       </div>
     </div>
