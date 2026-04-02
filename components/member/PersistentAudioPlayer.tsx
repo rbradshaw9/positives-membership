@@ -1,7 +1,35 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMemberAudio } from "@/components/member/audio/MemberAudioProvider";
+
+/**
+ * components/member/PersistentAudioPlayer.tsx
+ *
+ * Sticky bottom audio bar with two modes:
+ *   - Expanded (default): progress bar, skip controls, title, close
+ *   - Mini: single pill showing title + play/pause only. Tap chevron to expand.
+ *
+ * Mini mode persists in sessionStorage so it survives navigation within a session.
+ */
+
+const MINI_KEY = "positives:player:mini";
+
+function readMini(): boolean {
+  try {
+    return sessionStorage.getItem(MINI_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeMini(v: boolean) {
+  try {
+    sessionStorage.setItem(MINI_KEY, v ? "1" : "0");
+  } catch {
+    // ignore
+  }
+}
 
 export function PersistentAudioPlayer() {
   const {
@@ -16,8 +44,24 @@ export function PersistentAudioPlayer() {
     clearTrack,
     formatTime,
   } = useMemberAudio();
-  const playerRef = useRef<HTMLDivElement>(null);
 
+  const playerRef = useRef<HTMLDivElement>(null);
+  const [mini, setMini] = useState(false);
+
+  // Read persisted mini state on mount
+  useEffect(() => {
+    setMini(readMini());
+  }, []);
+
+  function toggleMini() {
+    setMini((v) => {
+      const next = !v;
+      writeMini(next);
+      return next;
+    });
+  }
+
+  // Sync CSS custom property so layout bottom-padding stays correct
   useEffect(() => {
     const root = document.documentElement;
     const player = playerRef.current;
@@ -45,15 +89,103 @@ export function PersistentAudioPlayer() {
       window.removeEventListener("resize", syncPlayerHeight);
       root.style.setProperty("--member-player-height", "0px");
     };
-  }, [currentTrack]);
+  }, [currentTrack, mini]);
 
   if (!currentTrack) return null;
 
   const maxSeconds = duration || 100;
 
+  // ── Mini pill ─────────────────────────────────────────────────────────────
+  if (mini) {
+    return (
+      <div
+        ref={playerRef}
+        className="persistent-player"
+        data-mobile-offset="true"
+        data-mini="true"
+      >
+        <div className="mx-auto max-w-6xl px-4 py-2.5 md:px-6">
+          <div className="flex items-center gap-3">
+            {/* Progress line — subtle, full width, behind content */}
+            <div
+              className="absolute bottom-0 left-0 h-[2px] transition-all"
+              style={{
+                width: `${progress * 100}%`,
+                background: "var(--color-player-bar)",
+                opacity: 0.6,
+              }}
+              aria-hidden="true"
+            />
+
+            {/* Play/Pause */}
+            <button
+              type="button"
+              onClick={togglePlayback}
+              className="shrink-0 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-white shadow-glow transition-transform hover:-translate-y-0.5"
+              aria-label={isPlaying ? "Pause audio" : "Play audio"}
+            >
+              {isPlaying ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <rect x="6" y="4" width="4" height="16" rx="1" />
+                  <rect x="14" y="4" width="4" height="16" rx="1" />
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M5 3L19 12L5 21V3Z" />
+                </svg>
+              )}
+            </button>
+
+            {/* Title + subtitle */}
+            <div className="flex-1 min-w-0">
+              <p className="truncate text-sm font-semibold text-white leading-tight">
+                {currentTrack.title}
+              </p>
+              <p className="truncate text-[11px] text-white/40 mt-0.5 tabular-nums">
+                {formatTime(currentTime)}
+                {duration > 0 ? ` / ${formatTime(duration)}` : ""}
+              </p>
+            </div>
+
+            {/* Expand chevron */}
+            <button
+              type="button"
+              onClick={toggleMini}
+              className="shrink-0 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-white/50 transition-colors hover:bg-white/10 hover:text-white"
+              aria-label="Expand player"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2.5"
+                strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M18 15l-6-6-6 6" />
+              </svg>
+            </button>
+
+            {/* Close */}
+            <button
+              type="button"
+              onClick={clearTrack}
+              className="shrink-0 flex h-9 w-9 items-center justify-center rounded-full border border-white/8 text-white/35 transition-colors hover:bg-white/10 hover:text-white"
+              aria-label="Close player"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2"
+                strokeLinecap="round" aria-hidden="true">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Expanded bar ─────────────────────────────────────────────────────────
   return (
     <div ref={playerRef} className="persistent-player" data-mobile-offset="true">
       <div className="mx-auto max-w-6xl px-4 py-3 md:px-6 md:py-4">
+        {/* Progress scrubber */}
         <div className="mb-3">
           <input
             type="range"
@@ -75,6 +207,7 @@ export function PersistentAudioPlayer() {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Track info */}
           <div className="min-w-0 flex-1">
             <p className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-white/42">
               {currentTrack.subtitle ?? "Positives"}
@@ -84,6 +217,7 @@ export function PersistentAudioPlayer() {
             </p>
           </div>
 
+          {/* Controls */}
           <div className="flex items-center gap-1">
             <button
               type="button"
@@ -120,13 +254,30 @@ export function PersistentAudioPlayer() {
             </button>
           </div>
 
+          {/* Minimise chevron */}
+          <button
+            type="button"
+            onClick={toggleMini}
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/8 text-white/45 transition-colors hover:bg-white/10 hover:text-white"
+            aria-label="Minimize player"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2.5"
+              strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+
+          {/* Close */}
           <button
             type="button"
             onClick={clearTrack}
             className="flex h-10 w-10 items-center justify-center rounded-full border border-white/8 text-white/45 transition-colors hover:bg-white/10 hover:text-white"
             aria-label="Close player"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2"
+              strokeLinecap="round" aria-hidden="true">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>

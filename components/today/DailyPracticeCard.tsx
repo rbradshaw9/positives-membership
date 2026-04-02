@@ -69,7 +69,10 @@ export function DailyPracticeCard({
 
   return (
     <>
-      <article className="rounded-[1.75rem] p-6 md:p-8 shadow-large text-white relative overflow-hidden bg-[linear-gradient(180deg,#121418_0%,#0A0A0A_100%)]">
+      <article
+        className="rounded-[1.75rem] p-6 md:p-8 shadow-large relative overflow-hidden bg-[linear-gradient(180deg,#121418_0%,#0A0A0A_100%)]"
+        style={{ color: "white" }}
+      >
         <div
           aria-hidden="true"
           className="absolute inset-0 opacity-25"
