@@ -8,6 +8,7 @@ import { ResourceLinks } from "@/components/media/ResourceLinks";
 import { MarkdownBody } from "@/components/content/MarkdownBody";
 import { getNoteForContent } from "@/app/(member)/notes/actions";
 import { trackMonthlyViewed } from "@/app/(member)/today/engagement-actions";
+import { stripCmsPreamble } from "@/lib/content/strip-cms-preamble";
 
 /**
  * components/today/MonthlyThemeCard.tsx
@@ -60,7 +61,9 @@ export function MonthlyThemeCard({
 
   const hasVideo = !!(content?.vimeo_video_id || content?.youtube_video_id);
   const hasBody = !!(content?.body || content?.description);
-  const bodyText = content?.body || content?.description || "";
+  const rawBodyText = content?.body || content?.description || "";
+  // Strip title + excerpt if the CMS baked them into the top of the body field
+  const bodyText = stripCmsPreamble(rawBodyText, content?.title, content?.description);
   const isLongBody = bodyText.replace(/\\n/g, "\n").length > 320;
   const [bodyExpanded, setBodyExpanded] = useState(false);
 

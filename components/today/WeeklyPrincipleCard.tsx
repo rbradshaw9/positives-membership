@@ -8,6 +8,7 @@ import { ResourceLinks } from "@/components/media/ResourceLinks";
 import { MarkdownBody } from "@/components/content/MarkdownBody";
 import { getNoteForContent } from "@/app/(member)/notes/actions";
 import { trackWeeklyViewed } from "@/app/(member)/today/engagement-actions";
+import { stripCmsPreamble } from "@/lib/content/strip-cms-preamble";
 
 /**
  * components/today/WeeklyPrincipleCard.tsx
@@ -60,18 +61,8 @@ export function WeeklyPrincipleCard({
   const hasAudio = !!audioUrl;
   const hasBody = !!(content?.body || content?.description);
   const rawBodyText = content?.body || content?.description || "";
-  // Strip the title if it appears as the very first line of the body (CMS duplication)
-  const bodyText = content?.title
-    ? rawBodyText
-        .replace(
-          new RegExp(
-            `^${content.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\n?`,
-            "i"
-          ),
-          ""
-        )
-        .trim()
-    : rawBodyText;
+  // Strip title + excerpt if the CMS baked them into the top of the body field
+  const bodyText = stripCmsPreamble(rawBodyText, content?.title, content?.excerpt);
   // Scroll long prose; short content renders naturally
   const useScroll = bodyText.replace(/\\n/g, "\n").length > 420;
 
