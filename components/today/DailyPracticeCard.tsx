@@ -71,7 +71,13 @@ export function DailyPracticeCard({
     <>
       <article
         className="rounded-[1.75rem] p-6 md:p-8 shadow-large relative overflow-hidden bg-[linear-gradient(180deg,#121418_0%,#0A0A0A_100%)]"
-        style={{ color: "white" }}
+        style={{
+          color: "white",
+          // Override the global --color-foreground (#09090B) so all heading/p
+          // rules in globals.css render white inside this dark card.
+          ["--color-foreground" as string]: "#ffffff",
+          ["--color-muted-foreground" as string]: "rgba(255,255,255,0.55)",
+        }}
       >
         <div
           aria-hidden="true"
@@ -126,7 +132,10 @@ export function DailyPracticeCard({
           ) : (
             <>
               {/* Title — full white, dominant */}
-              <h2 className="heading-balance font-heading font-bold text-2xl md:text-3xl leading-heading tracking-[-0.03em] mb-2 text-white">
+              <h2
+                className="heading-balance font-heading font-bold text-2xl md:text-3xl leading-heading tracking-[-0.03em] mb-2"
+                style={{ color: "#ffffff" }}
+              >
                 {content.title}
               </h2>
 
