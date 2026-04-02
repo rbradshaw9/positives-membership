@@ -53,10 +53,22 @@ function AudioRow({
     currentTime,
     duration,
     progress,
+    playbackRate,
+    setPlaybackRate,
     seekTo,
     seekBy,
     formatTime,
   } = useMemberAudio();
+
+  const SPEEDS = [1, 1.25, 1.5, 1.75, 2, 0.75];
+  function cycleSpeed() {
+    const idx = SPEEDS.indexOf(playbackRate);
+    const next = SPEEDS[(idx + 1) % SPEEDS.length] ?? 1;
+    setPlaybackRate(next);
+  }
+  function formatSpeed(rate: number) {
+    return `${rate}×`;
+  }
 
   const isThis = isCurrentTrack(audio.id);
   const playing = isThis && isPlaying;
@@ -216,6 +228,22 @@ function AudioRow({
                 <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38" />
               </svg>
               <span className="text-[9px] font-bold leading-none">15</span>
+            </button>
+
+            {/* Speed */}
+            <button
+              type="button"
+              onClick={cycleSpeed}
+              className="shrink-0 px-2 py-0.5 rounded-full tabular-nums text-[11px] font-bold transition-colors focus-visible:outline-none"
+              style={{
+                color: "var(--color-accent)",
+                background: "color-mix(in srgb, var(--color-accent) 10%, transparent)",
+                border: "1px solid color-mix(in srgb, var(--color-accent) 20%, transparent)",
+              }}
+              aria-label={`Playback speed: ${formatSpeed(playbackRate)}. Click to change.`}
+              title="Change playback speed"
+            >
+              {formatSpeed(playbackRate)}
             </button>
           </>
         )}

@@ -39,12 +39,24 @@ export function PersistentAudioPlayer() {
     currentTime,
     duration,
     progress,
+    playbackRate,
+    setPlaybackRate,
     togglePlayback,
     seekBy,
     seekTo,
     clearTrack,
     formatTime,
   } = useMemberAudio();
+
+  const SPEEDS = [1, 1.25, 1.5, 1.75, 2, 0.75];
+  function cycleSpeed() {
+    const idx = SPEEDS.indexOf(playbackRate);
+    const next = SPEEDS[(idx + 1) % SPEEDS.length] ?? 1;
+    setPlaybackRate(next);
+  }
+  function formatSpeed(rate: number) {
+    return `${rate}×`;
+  }
 
   const pathname = usePathname();
   const playerRef = useRef<HTMLDivElement>(null);
@@ -157,6 +169,17 @@ export function PersistentAudioPlayer() {
               </p>
             </div>
 
+            {/* Speed */}
+            <button
+              type="button"
+              onClick={cycleSpeed}
+              className="shrink-0 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-white/70 tabular-nums transition-colors hover:bg-white/10 hover:text-white"
+              aria-label={`Playback speed: ${formatSpeed(playbackRate)}. Click to change.`}
+              title="Change playback speed"
+            >
+              <span className="text-[11px] font-bold">{formatSpeed(playbackRate)}</span>
+            </button>
+
             {/* Expand chevron */}
             <button
               type="button"
@@ -261,6 +284,17 @@ export function PersistentAudioPlayer() {
               aria-label="Skip forward 15 seconds"
             >
               <span className="text-sm font-semibold">+15</span>
+            </button>
+
+            {/* Speed */}
+            <button
+              type="button"
+              onClick={cycleSpeed}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/8 tabular-nums text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+              aria-label={`Playback speed: ${formatSpeed(playbackRate)}. Click to change.`}
+              title="Change playback speed"
+            >
+              <span className="text-[12px] font-bold">{formatSpeed(playbackRate)}</span>
             </button>
           </div>
 

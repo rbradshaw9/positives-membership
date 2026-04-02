@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useRef,
+  useState,
   useSyncExternalStore,
 } from "react";
 import {
@@ -24,6 +25,10 @@ type MemberAudioContextValue = {
   currentTime: number;
   duration: number;
   progress: number;
+  /** Current playback speed (e.g. 1, 1.25, 1.5). Default 1. */
+  playbackRate: number;
+  /** Cycle or set a specific playback speed. Persisted across sessions. */
+  setPlaybackRate: (rate: number) => void;
   playTrack: (track: MemberAudioTrack) => void;
   togglePlayback: () => void;
   pause: () => void;
@@ -67,6 +72,39 @@ export function MemberAudioProvider({
     trackId: null,
     at: 0,
   });
+
+  // ── Playback speed ────────────────────────────────────────────────────────
+  const SPEED_KEY = "positives:player:speed";
+  const [playbackRate, setPlaybackRateState] = useState<number>(1);
+
+  // Load persisted speed on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(SPEED_KEY);
+      if (saved) {
+        const rate = parseFloat(saved);
+        if (Number.isFinite(rate) && rate > 0 && rate <= 3) {
+          setPlaybackRateState(rate);
+        }
+      }
+    } catch { /* ignore storage errors */ }
+  }, []);
+
+  // Apply rate to the <audio> element whenever it changes or a new track loads
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.playbackRate = playbackRate;
+  }, [playbackRate, snapshot.currentTrack]);
+
+  function setPlaybackRate(rate: number) {
+    setPlaybackRateState(rate);
+    // Apply immediately (the useEffect above may lag one render)
+    if (audioRef.current) audioRef.current.playbackRate = rate;
+    try {
+      localStorage.setItem(SPEED_KEY, String(rate));
+    } catch { /* ignore */ }
+  }
 
   useEffect(() => {
     memberAudioStore.hydrate();
@@ -292,6 +330,8 @@ export function MemberAudioProvider({
     currentTime: snapshot.currentTime,
     duration: snapshot.duration,
     progress: snapshot.progress,
+    playbackRate,
+    setPlaybackRate,
     playTrack,
     togglePlayback,
     pause,
@@ -339,6 +379,9 @@ export function MemberAudioProvider({
         onLoadedMetadata={() => {
           const audio = audioRef.current;
           if (!audio || !snapshot.currentTrack) return;
+
+          // Re-apply speed — audio.load() can reset playbackRate to 1
+          audio.playbackRate = playbackRate;
 
           const resumeTime =
             pendingResumeTimeRef.current || memberAudioStore.getResumePosition(snapshot.currentTrack.id);
