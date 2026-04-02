@@ -48,6 +48,12 @@ export default async function AdminLayout({
               </p>
               <div className="flex flex-col gap-1">
                 <Link
+                  href="/admin/months"
+                  className="block rounded-sm px-3 py-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  Months
+                </Link>
+                <Link
                   href="/admin/content"
                   className="block rounded-sm px-3 py-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 >

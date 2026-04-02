@@ -38,6 +38,13 @@ export default function AdminPage() {
               "Review AI-generated titles and descriptions for incoming audio.",
             status: "Planned",
           },
+          {
+            href: "/admin/months",
+            title: "Months",
+            description:
+              "Monthly workspace — assign daily audio, track fill rate, and publish.",
+            status: "Live",
+          },
         ].map(({ href, title, description, status }) => (
           <a
             key={href}
