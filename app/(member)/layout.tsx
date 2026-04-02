@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireActiveMember } from "@/lib/auth/require-active-member";
 import { PasswordNudgeBanner } from "@/components/member/PasswordNudgeBanner";
 import { MemberShellClient } from "@/components/member/MemberShellClient";
+import { config } from "@/lib/config";
 
 /**
  * app/(member)/layout.tsx
@@ -34,6 +35,7 @@ export default async function MemberLayout({
       streak={streak}
       tier={member.subscription_tier}
       memberName={member.name}
+      communityPreviewEnabled={config.app.communityPreviewEnabled}
     >
       {showPasswordNudge && <PasswordNudgeBanner />}
       {children}

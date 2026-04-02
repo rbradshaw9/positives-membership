@@ -45,6 +45,7 @@ export type AdminCalendarDay = {
   monthly: CalendarItem | null;
   monthlyExtras: number;
   hasDailyGap: boolean;
+  hasDailyPublishRisk: boolean;
   hasWeeklyGap: boolean;
   hasMonthlyGap: boolean;
   createDailyHref: string;
@@ -59,6 +60,7 @@ export type AdminCalendarData = {
   nextStart: string;
   visibleMonthSummary: string;
   dailyGapCount: number;
+  dailyPublishRiskCount: number;
   weeklyGapCount: number;
   monthlyGapCount: number;
   days: AdminCalendarDay[];
@@ -177,6 +179,7 @@ export async function getAdminContentCalendar(
     const daily = pickBest(dailyRows);
     const weekly = pickBest(weeklyRows);
     const monthly = pickBest(monthlyRows);
+    const hasPublishedDaily = dailyRows.some((row) => row.status === "published");
     const isWeekStart = date === weekStart;
     const isMonthStart = date === getMonthStart(date);
 
@@ -196,6 +199,7 @@ export async function getAdminContentCalendar(
       monthly: monthly.item,
       monthlyExtras: monthly.extras,
       hasDailyGap: dailyRows.length === 0,
+      hasDailyPublishRisk: dailyRows.length > 0 && !hasPublishedDaily,
       hasWeeklyGap: isWeekStart && !publishedWeeklyStarts.has(weekStart),
       hasMonthlyGap: isMonthStart && !publishedMonths.has(monthYear),
       createDailyHref: `/admin/content/new?type=daily_audio&publish_date=${date}`,
@@ -215,6 +219,7 @@ export async function getAdminContentCalendar(
     nextStart,
     visibleMonthSummary: getVisibleMonthSummary(start, end),
     dailyGapCount: days.filter((day) => day.hasDailyGap).length,
+    dailyPublishRiskCount: days.filter((day) => day.hasDailyPublishRisk).length,
     weeklyGapCount: days.filter((day) => day.hasWeeklyGap).length,
     monthlyGapCount: days.filter((day) => day.hasMonthlyGap).length,
     days,

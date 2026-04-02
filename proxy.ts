@@ -23,6 +23,9 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/today") ||
     pathname.startsWith("/library") ||
+    pathname.startsWith("/practice") ||
+    pathname.startsWith("/community") ||
+    pathname.startsWith("/coaching") ||
     pathname.startsWith("/journal") ||
     pathname.startsWith("/account");
 

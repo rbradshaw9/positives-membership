@@ -93,13 +93,17 @@ function ItemCard({
 }
 
 function DayCell({ day }: { day: AdminCalendarDay }) {
+  const dailyStateClass = day.hasDailyGap
+    ? "border-amber-300 bg-amber-50/80 dark:border-amber-800 dark:bg-amber-950/20"
+    : day.hasDailyPublishRisk
+      ? "border-rose-300 bg-rose-50/80 dark:border-rose-800 dark:bg-rose-950/20"
+      : "border-border bg-card";
+
   return (
     <div
       className={[
         "flex min-h-72 flex-col rounded-2xl border p-3 shadow-soft",
-        day.hasDailyGap
-          ? "border-amber-300 bg-amber-50/80 dark:border-amber-800 dark:bg-amber-950/20"
-          : "border-border bg-card",
+        dailyStateClass,
         day.isToday ? "ring-2 ring-primary/30" : "",
         !day.isCurrentMonth ? "opacity-80" : "",
       ].join(" ")}
@@ -122,7 +126,7 @@ function DayCell({ day }: { day: AdminCalendarDay }) {
           </div>
         </div>
 
-        {day.hasDailyGap && (
+        {(day.hasDailyGap || day.hasDailyPublishRisk) && (
           <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
             <svg
               width="12"
@@ -139,7 +143,7 @@ function DayCell({ day }: { day: AdminCalendarDay }) {
               <path d="M12 17h.01" />
               <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
             </svg>
-            Missing daily
+            {day.hasDailyGap ? "Missing daily" : "Daily not published"}
           </span>
         )}
       </div>
@@ -167,6 +171,12 @@ function DayCell({ day }: { day: AdminCalendarDay }) {
         {!day.daily && (
           <p className="rounded-xl border border-dashed border-amber-300 bg-amber-100/50 px-3 py-2 text-xs font-medium text-amber-900 dark:border-amber-800 dark:text-amber-200">
             No daily audio scheduled for this date.
+          </p>
+        )}
+
+        {day.daily && day.hasDailyPublishRisk && (
+          <p className="rounded-xl border border-dashed border-rose-300 bg-rose-100/60 px-3 py-2 text-xs font-medium text-rose-900 dark:border-rose-800 dark:text-rose-200">
+            Daily audio exists here, but none of the scheduled items are published yet.
           </p>
         )}
 
@@ -276,6 +286,12 @@ export default async function AdminContentCalendarPage({
           <span className="rounded-full bg-amber-100 px-3 py-1 font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
             {calendar.dailyGapCount} daily gap{calendar.dailyGapCount === 1 ? "" : "s"}
           </span>
+          {calendar.dailyPublishRiskCount > 0 && (
+            <span className="rounded-full bg-rose-100 px-3 py-1 font-medium text-rose-800 dark:bg-rose-900/30 dark:text-rose-300">
+              {calendar.dailyPublishRiskCount} day
+              {calendar.dailyPublishRiskCount === 1 ? "" : "s"} not yet published
+            </span>
+          )}
           {calendar.weeklyGapCount > 0 && (
             <span className="rounded-full bg-muted px-3 py-1 font-medium text-muted-foreground">
               {calendar.weeklyGapCount} week
@@ -313,6 +329,10 @@ export default async function AdminContentCalendarPage({
             <span className="inline-flex items-center gap-2">
               <span className="h-3 w-3 rounded-full bg-amber-200" />
               Missing daily coverage
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <span className="h-3 w-3 rounded-full bg-rose-200" />
+              Daily scheduled but unpublished
             </span>
             <span className="inline-flex items-center gap-2">
               <span className="h-3 w-3 rounded-full bg-green-200" />

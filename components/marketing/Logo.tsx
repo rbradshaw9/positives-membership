@@ -44,16 +44,17 @@ export function Logo({
   className = "",
 }: LogoProps) {
   const { src, ratio } = LOGO_CONFIG[kind];
+  const width = Math.round(height * ratio);
   const img = (
     <Image
       src={src}
       alt="Positives"
-      width={Math.round(height * ratio)}
+      width={width}
       height={height}
       priority
       style={{
         height,
-        width: "auto",
+        width,
         display: "block",
         filter: variant === "light" ? "brightness(0) invert(1)" : "none",
       }}

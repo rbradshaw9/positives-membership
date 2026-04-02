@@ -9,20 +9,22 @@ import { Logo } from "@/components/marketing/Logo";
 const BASE_NAV_ITEMS = [
   { href: "/today", label: "Home", mobileLabel: "Home" },
   { href: "/library", label: "Library" },
-  { href: "/community", label: "Community", mobileLabel: "Community" },
   { href: "/practice", label: "My Practice", mobileLabel: "Practice" },
 ] as const;
+const COMMUNITY_NAV_ITEM = { href: "/community", label: "Community", mobileLabel: "Community" } as const;
 type NavItem = { href: string; label: string; mobileLabel?: string };
 
 interface MemberTopNavProps {
   streak?: number;
   tier?: string | null;
   memberName?: string | null;
+  communityPreviewEnabled?: boolean;
 }
 
 export function MemberTopNav({
   streak = 0,
   memberName,
+  communityPreviewEnabled = false,
 }: MemberTopNavProps) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -39,7 +41,9 @@ export function MemberTopNav({
     [displayName]
   );
 
-  const navItems: NavItem[] = [...BASE_NAV_ITEMS];
+  const navItems: NavItem[] = communityPreviewEnabled
+    ? [BASE_NAV_ITEMS[0], BASE_NAV_ITEMS[1], COMMUNITY_NAV_ITEM, BASE_NAV_ITEMS[2]]
+    : [...BASE_NAV_ITEMS];
 
   useEffect(() => {
     function handleOutsideClick(event: MouseEvent) {
@@ -168,6 +172,16 @@ export function MemberTopNav({
                 >
                   <NavIcon href="/account" />
                   <span>Account</span>
+                </Link>
+
+                <Link
+                  href="/journal"
+                  role="menuitem"
+                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-white/82 transition-colors hover:bg-white/6 hover:text-white"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <NavIcon href="/journal" />
+                  <span>Journal</span>
                 </Link>
 
                 <form action={signOut}>
