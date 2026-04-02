@@ -59,7 +59,7 @@ export function MonthlyThemeCard({
     setExistingNote(savedText);
   }
 
-  const hasVideo = !!(content?.vimeo_video_id || content?.youtube_video_id);
+  const hasVideo = !!(content?.vimeo_video_id || content?.youtube_video_id || content?.mux_playback_id);
   const hasBody = !!(content?.body || content?.description);
   const rawBodyText = content?.body || content?.description || "";
   // Strip title + excerpt if the CMS baked them into the top of the body field
@@ -118,6 +118,7 @@ export function MonthlyThemeCard({
             <VideoEmbed
               vimeoId={content.vimeo_video_id}
               youtubeId={content.youtube_video_id}
+              muxPlaybackId={content.mux_playback_id}
               title={content.title}
             />
           </div>

@@ -4,6 +4,7 @@
 // Sprint 5: manually added body, reflection_prompt, download_url, youtube_video_id, resource_links
 // Sprint 10: manually added tier_min, starts_at to content; coaching_call to content_type; coaching_attended to activity_event_type
 // Community Q&A: manually added parent_id, is_pinned, is_admin_answer to community_post; added community_post_like table
+// Mux video: added mux_asset_id, mux_playback_id to content
 
 export type Json =
   | string
@@ -175,6 +176,8 @@ export type Database = {
           join_url: string | null
           month_theme: string | null
           month_year: string | null
+          mux_asset_id: string | null
+          mux_playback_id: string | null
           publish_date: string | null
           published_at: string | null
           reflection_prompt: string | null
@@ -212,6 +215,8 @@ export type Database = {
           join_url?: string | null
           month_theme?: string | null
           month_year?: string | null
+          mux_asset_id?: string | null
+          mux_playback_id?: string | null
           publish_date?: string | null
           published_at?: string | null
           reflection_prompt?: string | null
@@ -248,6 +253,8 @@ export type Database = {
           join_url?: string | null
           month_theme?: string | null
           month_year?: string | null
+          mux_asset_id?: string | null
+          mux_playback_id?: string | null
           publish_date?: string | null
           published_at?: string | null
           reflection_prompt?: string | null

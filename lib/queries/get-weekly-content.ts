@@ -22,6 +22,7 @@ export type WeeklyContent = Pick<
   | "resource_links"
   | "vimeo_video_id"
   | "youtube_video_id"
+  | "mux_playback_id"
   | "castos_episode_url"
   | "s3_audio_key"
   | "duration_seconds"
@@ -35,7 +36,7 @@ export async function getWeeklyContent(): Promise<WeeklyContent | null> {
   const { data, error } = await supabase
     .from("content")
     .select(
-      "id, title, description, excerpt, body, reflection_prompt, download_url, resource_links, vimeo_video_id, youtube_video_id, castos_episode_url, s3_audio_key, duration_seconds, week_start"
+      "id, title, description, excerpt, body, reflection_prompt, download_url, resource_links, vimeo_video_id, youtube_video_id, mux_playback_id, castos_episode_url, s3_audio_key, duration_seconds, week_start"
     )
     .eq("type", "weekly_principle")
     .eq("status", "published")

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { updateContent } from "../../actions";
 import { ContentForm } from "../../new/page";
 import { getEffectiveDate } from "@/lib/dates/effective-date";
+import { VideoUploadPanel } from "@/components/admin/VideoUploadPanel";
 
 /**
  * app/admin/content/[id]/edit/page.tsx
@@ -30,7 +31,7 @@ export default async function AdminContentEditPage({ params, searchParams }: Pro
   const { data: row, error } = await supabase
     .from("content")
     .select(
-      "id, type, title, excerpt, description, body, reflection_prompt, download_url, resource_links, status, publish_date, week_start, month_year, duration_seconds, castos_episode_url, s3_audio_key, vimeo_video_id, youtube_video_id, admin_notes, tier_min, starts_at, join_url"
+      "id, type, title, excerpt, description, body, reflection_prompt, download_url, resource_links, status, publish_date, week_start, month_year, duration_seconds, castos_episode_url, s3_audio_key, vimeo_video_id, youtube_video_id, admin_notes, tier_min, starts_at, join_url, mux_asset_id, mux_playback_id"
     )
     .eq("id", id)
     .single();
@@ -102,6 +103,19 @@ export default async function AdminContentEditPage({ params, searchParams }: Pro
           join_url: row.join_url,
         }}
       />
+
+      {/* Video upload panel — visible for all video-capable types */}
+      {row.type !== "daily_audio" && (
+        <div className="max-w-2xl mt-4 bg-card border border-border rounded-lg p-6">
+          <VideoUploadPanel
+            contentId={row.id}
+            currentMuxPlaybackId={row.mux_playback_id ?? null}
+            currentVimeoId={row.vimeo_video_id ?? null}
+            contentTitle={row.title}
+            contentType={row.type}
+          />
+        </div>
+      )}
     </div>
   );
 }

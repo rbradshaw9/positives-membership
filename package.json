@@ -12,6 +12,9 @@
     "test:e2e": "npm run seed:users && playwright test"
   },
   "dependencies": {
+    "@mux/mux-node": "^12.8.1",
+    "@mux/mux-player-react": "^3.11.7",
+    "@mux/upchunk": "^3.5.0",
     "@supabase/ssr": "^0.10.0",
     "@supabase/supabase-js": "^2.101.0",
     "@tiptap/core": "^3.22.0",

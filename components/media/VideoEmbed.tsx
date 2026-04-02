@@ -27,16 +27,28 @@ import { useMemberAudio } from "@/components/member/audio/MemberAudioProvider";
 interface VideoEmbedProps {
   vimeoId?: string | null;
   youtubeId?: string | null;
+  muxPlaybackId?: string | null;
   title: string;
   dark?: boolean;
 }
 
-export function VideoEmbed({ vimeoId, youtubeId, title, dark = false }: VideoEmbedProps) {
+export function VideoEmbed({ vimeoId, youtubeId, muxPlaybackId, title, dark = false }: VideoEmbedProps) {
   const [expanded, setExpanded] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { pause, registerVideoPauser, unregisterVideoPauser } = useMemberAudio();
 
   const isVimeo = !!vimeoId;
+  const isMux = !!muxPlaybackId;
+
+  // Inject mux-player script once
+  useEffect(() => {
+    if (!isMux) return;
+    if (document.querySelector('script[data-mux-player]')) return;
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/@mux/mux-player';
+    s.dataset.muxPlayer = '1';
+    document.head.appendChild(s);
+  }, [isMux]);
 
   // When the video is expanded, set up the Vimeo Player SDK for:
   //   (a) Fallback Direction 1: re-pause audio if user re-plays via native Vimeo UI
@@ -89,7 +101,26 @@ export function VideoEmbed({ vimeoId, youtubeId, title, dark = false }: VideoEmb
     return () => { unregisterVideoPauser(); };
   }, [unregisterVideoPauser]);
 
-  if (!vimeoId && !youtubeId) return null;
+  if (!vimeoId && !youtubeId && !muxPlaybackId) return null;
+
+  // ── Mux player — rendered as web component, no poster/click needed ────────
+  if (isMux) {
+    return (
+      <div
+        className="relative w-full overflow-hidden rounded-lg bg-surface-dark"
+        style={{ aspectRatio: "16/9" }}
+      >
+        {/* @ts-expect-error — mux-player is a custom element, not in JSX types */}
+        <mux-player
+          playback-id={muxPlaybackId}
+          metadata-video-title={title}
+          stream-type="on-demand"
+          class="absolute inset-0 w-full h-full"
+          style={{ '--controls': 'auto' } as React.CSSProperties}
+        />
+      </div>
+    );
+  }
 
   const thumbnailUrl = !isVimeo
     ? `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`
