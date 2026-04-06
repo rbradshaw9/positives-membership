@@ -86,8 +86,21 @@ export function VideoEmbed({
   const vimeoPlayerRef = useRef<Player | null>(null);
   const reportedMilestonesRef = useRef<Set<number>>(new Set());
 
-  const { pause, registerVideoPauser, unregisterVideoPauser, pauseAllVideos } =
-    useMemberAudio();
+  const audioCtx = useMemberAudio();
+
+  // ── Stable refs for context functions ──────────────────────────────────
+  // The audio context re-renders on every timeupdate. Store functions in
+  // refs so the Vimeo player effect doesn't re-run and destroy the player.
+  const pauseRef = useRef(audioCtx.pause);
+  const pauseAllVideosRef = useRef(audioCtx.pauseAllVideos);
+  const registerVideoPauserRef = useRef(audioCtx.registerVideoPauser);
+  const unregisterVideoPauserRef = useRef(audioCtx.unregisterVideoPauser);
+  useEffect(() => {
+    pauseRef.current = audioCtx.pause;
+    pauseAllVideosRef.current = audioCtx.pauseAllVideos;
+    registerVideoPauserRef.current = audioCtx.registerVideoPauser;
+    unregisterVideoPauserRef.current = audioCtx.unregisterVideoPauser;
+  });
 
   const resolvedVimeoId = vimeoId ? extractVimeoId(vimeoId) : null;
   const isVimeo = !!resolvedVimeoId;
@@ -110,9 +123,9 @@ export function VideoEmbed({
   // ── Cleanup registry on unmount ────────────────────────────────────────
   useEffect(() => {
     return () => {
-      unregisterVideoPauser(registryId);
+      unregisterVideoPauserRef.current(registryId);
     };
-  }, [registryId, unregisterVideoPauser]);
+  }, [registryId]);
 
   // ── Vimeo: SDK-based coordination, resume, milestone tracking ──────────
   useEffect(() => {
@@ -162,14 +175,14 @@ export function VideoEmbed({
         }
 
         // Register pauser in the global registry
-        registerVideoPauser(registryId, () => {
+        registerVideoPauserRef.current(registryId, () => {
           player?.pause().catch(() => {});
         });
 
         // On play: pause audio + all other videos
         player!.on("play", () => {
-          pauseAllVideos(registryId);
-          pause();
+          pauseAllVideosRef.current(registryId);
+          pauseRef.current();
         });
 
         // On seeked: save position immediately when user scrubs/skips
@@ -247,7 +260,7 @@ export function VideoEmbed({
       document.removeEventListener("visibilitychange", handleVisChange);
       // Save final position on cleanup
       savePosition(true);
-      unregisterVideoPauser(registryId);
+      unregisterVideoPauserRef.current(registryId);
       vimeoPlayerRef.current?.destroy().catch(() => {});
       vimeoPlayerRef.current = null;
     };
@@ -257,10 +270,6 @@ export function VideoEmbed({
     resumeAt,
     chosenStart,
     registryId,
-    pause,
-    pauseAllVideos,
-    registerVideoPauser,
-    unregisterVideoPauser,
     contentId,
     courseLessonId,
   ]);
@@ -306,8 +315,8 @@ export function VideoEmbed({
           <button
             type="button"
             onClick={() => {
-              pauseAllVideos(registryId);
-              pause();
+              pauseAllVideosRef.current(registryId);
+              pauseRef.current();
               setExpanded(true);
             }}
             className="group absolute inset-0 w-full h-full flex flex-col items-center justify-center focus:outline-none"
@@ -375,8 +384,8 @@ export function VideoEmbed({
                 type="button"
                 onClick={() => {
                   setChosenStart(resumeAt);
-                  pauseAllVideos(registryId);
-                  pause();
+                  pauseAllVideosRef.current(registryId);
+                  pauseRef.current();
                   setExpanded(true);
                 }}
                 className="group flex items-center gap-2.5 rounded-full px-5 py-2.5 text-sm font-semibold transition-all duration-200 hover:scale-[1.03] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
@@ -399,8 +408,8 @@ export function VideoEmbed({
                 type="button"
                 onClick={() => {
                   setChosenStart(0);
-                  pauseAllVideos(registryId);
-                  pause();
+                  pauseAllVideosRef.current(registryId);
+                  pauseRef.current();
                   setExpanded(true);
                 }}
                 className="rounded-full px-4 py-2.5 text-sm font-medium text-white/70 transition-all duration-200 hover:text-white hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
@@ -420,8 +429,8 @@ export function VideoEmbed({
   const youtubeThumbnail = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
 
   function handleYouTubePlay() {
-    pauseAllVideos(registryId);
-    pause();
+    pauseAllVideosRef.current(registryId);
+    pauseRef.current();
     setExpanded(true);
   }
 
