@@ -8,15 +8,7 @@ import {
 
 /**
  * app/admin/members/page.tsx
- * Admin member list — Sprint 12.
- *
- * Read-only operational view. Supports search by email/name and
- * filters by subscription status and tier. Paginated (30/page).
- * Every row links to /admin/members/[id].
- *
- * Guard: requireAdmin() enforced at layout level (app/admin/layout.tsx).
- * This page calls it explicitly too for belt-and-suspenders safety since
- * the /members sub-route is new.
+ * Admin member list — redesigned with admin-* CSS system.
  */
 
 export const metadata = {
@@ -27,14 +19,12 @@ export const metadata = {
 // Helpers
 // ─────────────────────────────────────────────────
 
-const STATUS_STYLE: Record<string, string> = {
-  active:
-    "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-  past_due:
-    "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  canceled: "bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400",
-  trialing: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  inactive: "bg-muted text-muted-foreground",
+const STATUS_BADGE: Record<string, string> = {
+  active: "admin-badge admin-badge--active",
+  past_due: "admin-badge admin-badge--past-due",
+  canceled: "admin-badge admin-badge--canceled",
+  trialing: "admin-badge admin-badge--trialing",
+  inactive: "admin-badge admin-badge--inactive",
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -45,20 +35,18 @@ const STATUS_LABEL: Record<string, string> = {
   inactive: "Inactive",
 };
 
+const TIER_BADGE: Record<string, string> = {
+  level_1: "admin-badge admin-badge--l1",
+  level_2: "admin-badge admin-badge--l2",
+  level_3: "admin-badge admin-badge--l3",
+  level_4: "admin-badge admin-badge--l4",
+};
+
 const TIER_LABEL: Record<string, string> = {
   level_1: "L1",
   level_2: "L2",
   level_3: "L3 · Coaching",
   level_4: "L4 · Executive",
-};
-
-const TIER_STYLE: Record<string, string> = {
-  level_1: "bg-muted text-muted-foreground",
-  level_2: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  level_3:
-    "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
-  level_4:
-    "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
 };
 
 function formatDate(iso: string | null): string {
@@ -136,7 +124,6 @@ export default async function AdminMembersPage({
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
-  // Build URL for pagination/filters preserving current filters
   function buildUrl(overrides: Record<string, string>) {
     const q = new URLSearchParams();
     if (search) q.set("search", search);
@@ -151,17 +138,16 @@ export default async function AdminMembersPage({
   }
 
   return (
-    <div className="max-w-5xl">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+    <div style={{ maxWidth: "72rem" }}>
+      {/* Page header */}
+      <div
+        className="admin-page-header"
+        style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}
+      >
         <div>
-          <h1
-            className="font-heading font-bold text-2xl text-foreground tracking-[-0.02em] mb-1"
-            style={{ textWrap: "balance" } as React.CSSProperties}
-          >
-            Members
-          </h1>
-          <p className="text-muted-foreground text-sm">
+          <p className="admin-page-header__eyebrow">Management</p>
+          <h1 className="admin-page-header__title">Members</h1>
+          <p className="admin-page-header__subtitle">
             {total} member{total !== 1 ? "s" : ""}
             {search ? ` matching "${search}"` : ""}
             {status ? ` · ${STATUS_LABEL[status] ?? status}` : ""}
@@ -170,32 +156,22 @@ export default async function AdminMembersPage({
         </div>
       </div>
 
-      {/* Search + Filters */}
-      <form method="GET" action="/admin/members" className="mb-5 flex flex-wrap gap-3 items-end">
-        {/* Search input */}
-        <div className="flex-1 min-w-[200px]">
-          <label className="block text-xs text-muted-foreground mb-1 font-medium">
-            Search by email or name
-          </label>
+      {/* Search + filters bar */}
+      <form method="GET" action="/admin/members" className="admin-search-bar">
+        <div className="admin-search-bar__field" style={{ flex: "1", minWidth: "200px" }}>
+          <label className="admin-search-bar__label">Search by email or name</label>
           <input
             type="text"
             name="search"
             defaultValue={search}
             placeholder="email or name…"
-            className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            style={{ width: "100%" }}
           />
         </div>
 
-        {/* Status filter */}
-        <div>
-          <label className="block text-xs text-muted-foreground mb-1 font-medium">
-            Status
-          </label>
-          <select
-            name="status"
-            defaultValue={status}
-            className="px-3 py-2 rounded-lg border border-border bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          >
+        <div className="admin-search-bar__field">
+          <label className="admin-search-bar__label">Status</label>
+          <select name="status" defaultValue={status}>
             {STATUS_FILTERS.map((f) => (
               <option key={f.value} value={f.value}>
                 {f.label}
@@ -204,16 +180,9 @@ export default async function AdminMembersPage({
           </select>
         </div>
 
-        {/* Tier filter */}
-        <div>
-          <label className="block text-xs text-muted-foreground mb-1 font-medium">
-            Tier
-          </label>
-          <select
-            name="tier"
-            defaultValue={tier}
-            className="px-3 py-2 rounded-lg border border-border bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          >
+        <div className="admin-search-bar__field">
+          <label className="admin-search-bar__label">Tier</label>
+          <select name="tier" defaultValue={tier}>
             {TIER_FILTERS.map((f) => (
               <option key={f.value} value={f.value}>
                 {f.label}
@@ -222,88 +191,84 @@ export default async function AdminMembersPage({
           </select>
         </div>
 
-        <button
-          type="submit"
-          className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:bg-primary-hover transition-colors shadow-soft"
-        >
+        <button type="submit" className="admin-btn admin-btn--primary">
           Filter
         </button>
 
         {(search || status || tier) && (
-          <Link
-            href="/admin/members"
-            className="px-4 py-2 rounded-lg border border-border text-muted-foreground text-sm hover:text-foreground transition-colors"
-          >
+          <Link href="/admin/members" className="admin-btn admin-btn--outline">
             Clear
           </Link>
         )}
       </form>
 
-      {/* Member table */}
+      {/* Table */}
       {members.length === 0 ? (
-        <div className="bg-card border border-border rounded-lg p-12 text-center">
-          <p className="text-muted-foreground text-sm mb-1">No members found</p>
+        <div
+          className="admin-table-wrap"
+          style={{ padding: "3rem", textAlign: "center" }}
+        >
+          <p style={{ fontSize: "0.875rem", color: "var(--color-muted-fg)", marginBottom: "0.375rem" }}>
+            No members found
+          </p>
           {(search || status || tier) && (
-            <p className="text-xs text-muted-foreground">
+            <p style={{ fontSize: "0.75rem", color: "var(--color-muted-fg)" }}>
               Try adjusting the filters.
             </p>
           )}
         </div>
       ) : (
-        <div className="bg-card border border-border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="admin-table-wrap">
+          <table className="admin-table">
             <thead>
-              <tr className="border-b border-border bg-muted/40">
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground text-xs uppercase tracking-wide">
-                  Member
-                </th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground text-xs uppercase tracking-wide hidden sm:table-cell">
-                  Status
-                </th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground text-xs uppercase tracking-wide hidden md:table-cell">
-                  Tier
-                </th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground text-xs uppercase tracking-wide hidden lg:table-cell">
-                  Streak
-                </th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground text-xs uppercase tracking-wide hidden md:table-cell">
-                  Last Active
-                </th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground text-xs uppercase tracking-wide hidden lg:table-cell">
-                  Joined
-                </th>
+              <tr>
+                <th>Member</th>
+                <th className="hidden sm:table-cell">Status</th>
+                <th className="hidden md:table-cell">Tier</th>
+                <th className="hidden lg:table-cell">Streak</th>
+                <th className="hidden md:table-cell">Last Active</th>
+                <th className="hidden lg:table-cell">Joined</th>
               </tr>
             </thead>
             <tbody>
-              {members.map((member, i) => (
-                <tr
-                  key={member.id}
-                  className={`border-b border-border last:border-0 hover:bg-muted/20 transition-colors ${
-                    i % 2 === 0 ? "" : "bg-muted/10"
-                  }`}
-                >
+              {members.map((member) => (
+                <tr key={member.id}>
                   {/* Email + name */}
-                  <td className="px-4 py-3">
+                  <td>
                     <Link
                       href={`/admin/members/${member.id}`}
-                      className="font-medium text-foreground hover:text-primary transition-colors block"
+                      style={{
+                        fontWeight: 600,
+                        color: "var(--color-foreground)",
+                        textDecoration: "none",
+                        display: "block",
+                        transition: "color 120ms ease",
+                      }}
+                      className="hover:text-primary"
                     >
                       {member.email}
                     </Link>
                     {member.name && (
-                      <span className="text-xs text-muted-foreground">
+                      <span
+                        style={{
+                          fontSize: "0.75rem",
+                          color: "var(--color-muted-fg)",
+                          display: "block",
+                          marginTop: "0.1rem",
+                        }}
+                      >
                         {member.name}
                       </span>
                     )}
                   </td>
 
-                  {/* Subscription status */}
-                  <td className="px-4 py-3 hidden sm:table-cell">
+                  {/* Status */}
+                  <td className="hidden sm:table-cell">
                     <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium ${
-                        STATUS_STYLE[member.subscription_status] ??
-                        STATUS_STYLE.inactive
-                      }`}
+                      className={
+                        STATUS_BADGE[member.subscription_status] ??
+                        STATUS_BADGE.inactive
+                      }
                     >
                       {STATUS_LABEL[member.subscription_status] ??
                         member.subscription_status}
@@ -311,39 +276,65 @@ export default async function AdminMembersPage({
                   </td>
 
                   {/* Tier */}
-                  <td className="px-4 py-3 hidden md:table-cell">
+                  <td className="hidden md:table-cell">
                     {member.subscription_tier ? (
                       <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium ${
-                          TIER_STYLE[member.subscription_tier] ??
-                          "bg-muted text-muted-foreground"
-                        }`}
+                        className={
+                          TIER_BADGE[member.subscription_tier] ??
+                          "admin-badge admin-badge--l1"
+                        }
                       >
                         {TIER_LABEL[member.subscription_tier] ??
                           member.subscription_tier}
                       </span>
                     ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
+                      <span style={{ fontSize: "0.75rem", color: "var(--color-muted-fg)" }}>—</span>
                     )}
                   </td>
 
-                  {/* Practice streak */}
-                  <td className="px-4 py-3 hidden lg:table-cell">
-                    <span className="text-sm font-medium tabular-nums">
+                  {/* Streak */}
+                  <td className="hidden lg:table-cell">
+                    <span
+                      style={{
+                        fontWeight: 600,
+                        fontVariantNumeric: "tabular-nums",
+                        fontSize: "0.875rem",
+                      }}
+                    >
                       {member.practice_streak}
                     </span>
-                    <span className="text-xs text-muted-foreground ml-1">
+                    <span
+                      style={{
+                        fontSize: "0.75rem",
+                        color: "var(--color-muted-fg)",
+                        marginLeft: "0.25rem",
+                      }}
+                    >
                       {member.practice_streak === 1 ? "day" : "days"}
                     </span>
                   </td>
 
-                  {/* Last practiced */}
-                  <td className="px-4 py-3 hidden md:table-cell text-xs text-muted-foreground tabular-nums">
+                  {/* Last active */}
+                  <td
+                    className="hidden md:table-cell"
+                    style={{
+                      fontSize: "0.75rem",
+                      color: "var(--color-muted-fg)",
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
                     {formatRelativeDate(member.last_practiced_at)}
                   </td>
 
                   {/* Joined */}
-                  <td className="px-4 py-3 hidden lg:table-cell text-xs text-muted-foreground tabular-nums">
+                  <td
+                    className="hidden lg:table-cell"
+                    style={{
+                      fontSize: "0.75rem",
+                      color: "var(--color-muted-fg)",
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
                     {formatDate(member.created_at)}
                   </td>
                 </tr>
@@ -355,15 +346,22 @@ export default async function AdminMembersPage({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between text-sm">
-          <span className="text-muted-foreground text-xs">
+        <div
+          style={{
+            marginTop: "1rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <span style={{ fontSize: "0.75rem", color: "var(--color-muted-fg)" }}>
             Page {page} of {totalPages} · {total} total
           </span>
-          <div className="flex gap-2">
+          <div style={{ display: "flex", gap: "0.5rem" }}>
             {page > 1 && (
               <Link
                 href={buildUrl({ page: String(page - 1) })}
-                className="px-3 py-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground text-xs transition-colors"
+                className="admin-btn admin-btn--outline"
               >
                 ← Prev
               </Link>
@@ -371,7 +369,7 @@ export default async function AdminMembersPage({
             {page < totalPages && (
               <Link
                 href={buildUrl({ page: String(page + 1) })}
-                className="px-3 py-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground text-xs transition-colors"
+                className="admin-btn admin-btn--outline"
               >
                 Next →
               </Link>

@@ -1,8 +1,10 @@
 "use client";
 
+import { Suspense } from "react";
 import { MemberTopNav } from "@/components/member/MemberTopNav";
 import { MemberAudioProvider } from "@/components/member/audio/MemberAudioProvider";
 import { PersistentAudioPlayer } from "@/components/member/PersistentAudioPlayer";
+import { WelcomeModal } from "@/components/member/WelcomeModal";
 
 interface MemberShellClientProps {
   streak: number;
@@ -30,6 +32,10 @@ export function MemberShellClient({
         />
         <main className="member-shell__content flex-1">{children}</main>
         <PersistentAudioPlayer />
+        {/* WelcomeModal self-activates from ?welcome=1 — no-ops otherwise */}
+        <Suspense fallback={null}>
+          <WelcomeModal />
+        </Suspense>
       </div>
     </MemberAudioProvider>
   );

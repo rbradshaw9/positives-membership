@@ -1,7 +1,8 @@
 # Build Brief — Sprint 10: Tier-Gated Access + Coaching + Journal Entry
 
-> Execution brief for IDE coding agent. Based on actual code inspection, not docs.
+> ✅ **Sprint 10 is complete.** This document was the execution brief for Sprint 10. Retained for historical reference.
 > Generated 2026-04-01.
+
 
 ---
 

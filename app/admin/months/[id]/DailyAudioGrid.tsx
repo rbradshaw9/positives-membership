@@ -112,178 +112,259 @@ export function DailyAudioGrid({
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="bg-card border border-border rounded-lg p-5">
+    <div className="admin-section">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="admin-section__header">
         <div>
-          <h2 className="font-semibold text-sm text-foreground">
-            Daily Audio Grid
-          </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <span className="admin-section__title">Daily Audio Grid</span>
+          <p className="admin-hint" style={{ marginTop: "0.125rem" }}>
             Drag filled slots to reorder
           </p>
         </div>
-        <span className="text-xs text-muted-foreground tabular-nums">
+        <span className="admin-hint" style={{ flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>
           {filledSlots}/{totalSlots} filled ({fillPct}%)
         </span>
       </div>
 
-      {/* Fill progress bar */}
-      <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden mb-5">
-        <div
-          className="h-full bg-primary rounded-full transition-all duration-500"
-          style={{ width: `${fillPct}%` }}
-        />
-      </div>
-
-      {/* Saving indicator */}
-      {isPending && (
-        <p className="text-xs text-muted-foreground text-center py-1.5 bg-muted/50 rounded mb-3">
-          Saving…
-        </p>
-      )}
-
-      {/* Calendar grid */}
-      <div
-        className={`grid grid-cols-7 gap-1.5 ${isPending ? "opacity-60 pointer-events-none" : ""}`}
-      >
-        {/* Weekday headers */}
-        {WEEKDAYS.map((d) => (
+      <div className="admin-section__body">
+        {/* Fill progress bar */}
+        <div className="admin-cal-progress">
           <div
-            key={d}
-            className="text-center text-[10px] text-muted-foreground font-medium py-1"
-          >
-            {d}
-          </div>
-        ))}
+            className="admin-cal-progress__bar"
+            style={{ width: `${fillPct}%` }}
+          />
+        </div>
 
-        {/* Leading empty cells for the first day's weekday offset */}
-        {Array.from({ length: dayOffset }, (_, i) => (
-          <div key={`empty-${i}`} />
-        ))}
+        {/* Saving indicator */}
+        {isPending && (
+          <p className="admin-cal-saving">Saving…</p>
+        )}
 
-        {/* Day cells */}
-        {dailySlots.map((slot) => {
-          const filled = slot.content !== null;
-          const isBeingDragged = draggingDate === slot.date;
-          const isDragTarget =
-            dragOverDate === slot.date &&
-            draggingDate !== null &&
-            draggingDate !== slot.date;
+        {/* Calendar grid */}
+        <div
+          className="admin-cal-grid"
+          style={{
+            opacity: isPending ? 0.6 : 1,
+            pointerEvents: isPending ? "none" : undefined,
+          }}
+        >
+          {/* Weekday headers */}
+          {WEEKDAYS.map((d) => (
+            <div key={d} className="admin-cal-weekday">
+              {d}
+            </div>
+          ))}
 
-          return (
-            <div
-              key={slot.date}
-              onDragOver={(e) => handleDragOver(e, slot.date)}
-              onDragLeave={handleDragLeave}
-              onDrop={(e) =>
-                handleDrop(e, slot.date, slot.content?.id ?? null)
-              }
-              className={[
-                "relative rounded-md border text-center p-1.5 min-h-[60px] flex flex-col items-center justify-between transition-all duration-150",
-                isDragTarget
-                  ? "border-primary ring-1 ring-primary bg-primary/5 scale-[1.04]"
-                  : filled
-                    ? "border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/10"
-                    : "border-border bg-muted/30 hover:bg-muted/60",
-                isBeingDragged ? "opacity-40" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-            >
-              <span className="text-[11px] text-muted-foreground tabular-nums font-medium">
-                {slot.dayOfMonth}
-              </span>
+          {/* Leading empty cells for the first day's weekday offset */}
+          {Array.from({ length: dayOffset }, (_, i) => (
+            <div key={`empty-${i}`} />
+          ))}
 
-              {filled ? (
-                /* Draggable content block */
-                <div
-                  className="w-full mt-1 cursor-grab active:cursor-grabbing select-none"
-                  draggable
-                  onDragStart={(e) =>
-                    handleDragStart(e, slot.date, slot.content!.id)
-                  }
-                  onDragEnd={handleDragEnd}
+          {/* Day cells */}
+          {dailySlots.map((slot) => {
+            const filled = slot.content !== null;
+            const isBeingDragged = draggingDate === slot.date;
+            const isDragTarget =
+              dragOverDate === slot.date &&
+              draggingDate !== null &&
+              draggingDate !== slot.date;
+
+            let cellBg: string;
+            let cellBorder: string;
+            let cellTransform = "none";
+            let cellBoxShadow = "none";
+
+            if (isDragTarget) {
+              cellBg = "rgba(46,196,182,0.06)";
+              cellBorder = "var(--color-primary)";
+              cellTransform = "scale(1.04)";
+              cellBoxShadow = "0 0 0 2px rgba(46,196,182,0.25)";
+            } else if (filled) {
+              cellBg = "rgba(34,197,94,0.05)";
+              cellBorder = "rgba(34,197,94,0.28)";
+            } else {
+              cellBg = "color-mix(in srgb, var(--color-muted) 50%, white)";
+              cellBorder = "var(--color-border)";
+            }
+
+            return (
+              <div
+                key={slot.date}
+                onDragOver={(e) => handleDragOver(e, slot.date)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) =>
+                  handleDrop(e, slot.date, slot.content?.id ?? null)
+                }
+                style={{
+                  position: "relative",
+                  borderRadius: "0.5rem",
+                  border: `1px solid ${cellBorder}`,
+                  textAlign: "center",
+                  padding: "0.375rem",
+                  minHeight: "3.75rem",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "flex-start",
+                  background: cellBg,
+                  transform: cellTransform,
+                  boxShadow: cellBoxShadow,
+                  opacity: isBeingDragged ? 0.35 : 1,
+                  transition: "transform 150ms ease, box-shadow 150ms ease, opacity 150ms ease, background 150ms ease",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: "0.6875rem",
+                    color: "var(--color-muted-fg)",
+                    fontVariantNumeric: "tabular-nums",
+                    fontWeight: 600,
+                    lineHeight: 1,
+                  }}
                 >
-                  <Link
-                    href={`/admin/content/${slot.content!.id}/edit`}
-                    className="text-[9px] text-foreground hover:text-primary transition-colors leading-tight line-clamp-2 block"
-                    title={slot.content!.title}
-                    draggable={false}
+                  {slot.dayOfMonth}
+                </span>
+
+                {filled ? (
+                  /* Draggable content block */
+                  <div
+                    style={{
+                      width: "100%",
+                      marginTop: "0.25rem",
+                      cursor: "grab",
+                      userSelect: "none",
+                    }}
+                    draggable
+                    onDragStart={(e) =>
+                      handleDragStart(e, slot.date, slot.content!.id)
+                    }
+                    onDragEnd={handleDragEnd}
                   >
-                    {slot.content!.title}
-                  </Link>
-                  <div className="flex items-center justify-center gap-1 mt-0.5 text-[9px] text-muted-foreground">
-                    <span>🎧{slot.content!.listens}</span>
-                    <span>📝{slot.content!.notes}</span>
-                  </div>
-                  <form action={unassignDailyAudio} className="mt-0.5">
-                    <input
-                      type="hidden"
-                      name="content_id"
-                      value={slot.content!.id}
-                    />
-                    <input type="hidden" name="month_id" value={monthId} />
-                    <button
-                      type="submit"
-                      className="text-[9px] text-destructive/60 hover:text-destructive transition-colors"
-                      title="Remove from this date"
+                    <Link
+                      href={`/admin/content/${slot.content!.id}/edit`}
+                      style={{
+                        fontSize: "0.5625rem",
+                        color: "var(--color-foreground)",
+                        textDecoration: "none",
+                        lineHeight: 1.3,
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                        transition: "color 120ms ease",
+                      }}
+                      title={slot.content!.title}
+                      draggable={false}
                     >
-                      ✕
-                    </button>
-                  </form>
-                </div>
-              ) : (
-                /* Empty slot — show assign picker */
-                <div className="w-full mt-1">
-                  {unassigned.length > 0 ? (
-                    <form
-                      action={assignDailyAudio}
-                      className="flex flex-col items-center gap-0.5"
+                      {slot.content!.title}
+                    </Link>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "0.25rem",
+                        marginTop: "0.125rem",
+                        fontSize: "0.5625rem",
+                        color: "var(--color-muted-fg)",
+                      }}
                     >
-                      <input type="hidden" name="month_id" value={monthId} />
+                      <span>🎧{slot.content!.listens}</span>
+                      <span>📝{slot.content!.notes}</span>
+                    </div>
+                    <form action={unassignDailyAudio} style={{ marginTop: "0.125rem" }}>
                       <input
                         type="hidden"
-                        name="publish_date"
-                        value={slot.date}
-                      />
-                      <input
-                        type="hidden"
-                        name="month_year"
-                        value={monthYear}
-                      />
-                      <select
                         name="content_id"
-                        required
-                        className="w-full text-[9px] bg-transparent border-none text-muted-foreground cursor-pointer text-center"
-                        defaultValue=""
-                      >
-                        <option value="" disabled>
-                          pick…
-                        </option>
-                        {unassigned.map((a) => (
-                          <option key={a.id} value={a.id}>
-                            {a.title.length > 28
-                              ? a.title.slice(0, 28) + "…"
-                              : a.title}
-                          </option>
-                        ))}
-                      </select>
+                        value={slot.content!.id}
+                      />
+                      <input type="hidden" name="month_id" value={monthId} />
                       <button
                         type="submit"
-                        className="text-[9px] text-primary hover:text-primary-hover transition-colors font-medium"
+                        style={{
+                          fontSize: "0.5625rem",
+                          color: "rgba(239,68,68,0.5)",
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          padding: 0,
+                          transition: "color 120ms ease",
+                        }}
+                        title="Remove from this date"
                       >
-                        + Assign
+                        ✕
                       </button>
                     </form>
-                  ) : (
-                    <span className="text-[9px] text-muted-foreground">—</span>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
+                  </div>
+                ) : (
+                  /* Empty slot — show assign picker */
+                  <div style={{ width: "100%", marginTop: "0.25rem" }}>
+                    {unassigned.length > 0 ? (
+                      <form
+                        action={assignDailyAudio}
+                        style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.125rem" }}
+                      >
+                        <input type="hidden" name="month_id" value={monthId} />
+                        <input
+                          type="hidden"
+                          name="publish_date"
+                          value={slot.date}
+                        />
+                        <input
+                          type="hidden"
+                          name="month_year"
+                          value={monthYear}
+                        />
+                        <select
+                          name="content_id"
+                          required
+                          defaultValue=""
+                          style={{
+                            width: "100%",
+                            fontSize: "0.5625rem",
+                            background: "transparent",
+                            border: "none",
+                            color: "var(--color-muted-fg)",
+                            cursor: "pointer",
+                            textAlign: "center",
+                          }}
+                        >
+                          <option value="" disabled>
+                            pick…
+                          </option>
+                          {unassigned.map((a) => (
+                            <option key={a.id} value={a.id}>
+                              {a.title.length > 28
+                                ? a.title.slice(0, 28) + "…"
+                                : a.title}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="submit"
+                          style={{
+                            fontSize: "0.5625rem",
+                            color: "var(--color-primary)",
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            padding: 0,
+                            fontWeight: 600,
+                            transition: "color 120ms ease",
+                          }}
+                        >
+                          + Assign
+                        </button>
+                      </form>
+                    ) : (
+                      <span style={{ fontSize: "0.5625rem", color: "var(--color-muted-fg)" }}>—</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

@@ -3,31 +3,31 @@
 /**
  * components/marketing/PricingCard.tsx
  *
- * Payment-first: Level 1 CTA submits directly to startGuestCheckout
- * via a <form> with a hidden priceId input. No auth required before
- * Stripe Checkout.
+ * Supports all 4 Positives membership tiers.
  *
- * Level 2, 3 — coming soon, disabled CTA (unchanged).
+ * Activation logic (no `comingSoon` prop needed):
+ *   - priceId is a non-empty string → real checkout form (card is live)
+ *   - priceId is empty/null/undefined → "Notify me" disabled button
  *
- * Props change from Pass 1:
- *   Added: priceId (string | null) — only meaningful for Level 1
+ * Pricing for L2/L3/L4:
+ *   - When no priceId is set, shows a tasteful TBD block
+ *   - When priceId is set, pricing data is read from PRICING constant
  */
 
 import { useFormStatus } from "react-dom";
 import { startGuestCheckoutFormAction } from "@/app/join/actions";
 
 type Billing = "monthly" | "annual";
-type Level = 1 | 2 | 3;
+type Level = 1 | 2 | 3 | 4;
 
 interface PricingCardProps {
   level: Level;
   billing: Billing;
-  comingSoon?: boolean;
-  /** Stripe price ID for this card — required for Level 1 */
-  priceId?: string;
+  /** Stripe price ID — if empty/null the card renders "Notify me" */
+  priceId?: string | null;
 }
 
-// ── Card data ───────────────────────────────────────────────────────────────
+// ── Card content ─────────────────────────────────────────────────────────────
 
 const CARDS = {
   1: {
@@ -47,25 +47,49 @@ const CARDS = {
     badge: "Coming Soon",
     benefits: [
       "Everything in Membership",
-      "Live weekly group sessions",
-      "Member discussions & community Q&A",
-      "All event replays",
+      "Live virtual events & workshops",
+      "Member Q&A with Dr. Paul's team",
+      "All event replays in your library",
     ],
   },
   3: {
     title: "Coaching Circle",
-    tagline: "Small group coaching with Dr. Paul's team.",
+    tagline: "Small group coaching with Dr. Paul.",
     badge: "Coming Soon",
     benefits: [
       "Everything in Events",
-      "Small group coaching sessions",
+      "Weekly group coaching sessions",
       "Priority Q&A with coaches",
-      "Deep-dive workshops",
+      "Deep-dive implementation support",
+    ],
+  },
+  4: {
+    title: "Executive Coaching",
+    tagline: "Private 1:1 coaching with Dr. Paul.",
+    badge: "Coming Soon",
+    benefits: [
+      "Everything in Coaching Circle",
+      "Bi-weekly private 1:1 sessions",
+      "Personalized coaching plan",
+      "Direct access to Dr. Paul",
     ],
   },
 } as const;
 
-// ── Check icon ──────────────────────────────────────────────────────────────
+// ── Pricing data (filled in when Stripe prices are ready) ────────────────────
+
+const PRICING = {
+  1: {
+    monthly: { regular: 97, offer: 49 },
+    annual: { total: 490, perMonth: 41 },
+  },
+  // Fill in when prices are confirmed:
+  2: null,
+  3: null,
+  4: null,
+} as const;
+
+// ── Subcomponents ────────────────────────────────────────────────────────────
 
 function CheckIcon({ muted = false }: { muted?: boolean }) {
   return (
@@ -90,8 +114,6 @@ function CheckIcon({ muted = false }: { muted?: boolean }) {
   );
 }
 
-// ── Level 1 price block ─────────────────────────────────────────────────────
-
 function Level1Price({ billing }: { billing: Billing }) {
   if (billing === "annual") {
     return (
@@ -106,12 +128,11 @@ function Level1Price({ billing }: { billing: Billing }) {
           <span style={{ fontSize: "0.9rem", color: "#9AA0A8" }}>/year</span>
         </div>
         <p className="text-xs font-semibold" style={{ color: "#4E8C78" }}>
-          Get 2 months free
+          2 months free · $41/mo
         </p>
       </div>
     );
   }
-
   return (
     <div>
       <div className="flex items-baseline gap-1 mb-1">
@@ -129,7 +150,19 @@ function Level1Price({ billing }: { billing: Billing }) {
   );
 }
 
-// ── Submit button — shows pending state via useFormStatus ───────────────────
+function PricingTbd() {
+  return (
+    <div>
+      <p
+        className="font-heading font-bold"
+        style={{ fontSize: "1.5rem", letterSpacing: "-0.04em", color: "#CBD2D9", lineHeight: 1, marginBottom: "0.25rem" }}
+      >
+        Pricing soon
+      </p>
+      <p className="text-xs" style={{ color: "#9AA0A8" }}>Join waitlist to be notified first</p>
+    </div>
+  );
+}
 
 function CheckoutButton() {
   const { pending } = useFormStatus();
@@ -137,7 +170,6 @@ function CheckoutButton() {
     <button
       type="submit"
       disabled={pending}
-      id="pricing-card-level1-cta"
       className="w-full inline-flex items-center justify-center font-semibold rounded-full transition-opacity"
       style={{
         background: pending
@@ -176,30 +208,28 @@ function CheckoutButton() {
   );
 }
 
-// ── Main card ───────────────────────────────────────────────────────────────
+// ── Main card ────────────────────────────────────────────────────────────────
 
-export function PricingCard({
-  level,
-  billing,
-  comingSoon = false,
-  priceId,
-}: PricingCardProps) {
+export function PricingCard({ level, billing, priceId }: PricingCardProps) {
   const card = CARDS[level];
-  const isActive = level === 1 && !comingSoon;
+  const isLive = !!priceId; // card is live when a real Stripe price ID is configured
+  const isHighlighted = level === 1; // Level 1 gets the elevated visual treatment
+
+  const pricingData = PRICING[level as keyof typeof PRICING];
 
   return (
     <div
       className="relative flex flex-col rounded-3xl"
       style={{
-        background: isActive ? "#FFFFFF" : "#F9F7F4",
-        border: isActive
+        background: isHighlighted ? "#FFFFFF" : "#F9F7F4",
+        border: isHighlighted
           ? "1.5px solid rgba(47,111,237,0.22)"
           : "1.5px solid rgba(221,215,207,0.7)",
-        boxShadow: isActive
+        boxShadow: isHighlighted
           ? "0 16px 48px rgba(18,20,23,0.10), 0 2px 8px rgba(47,111,237,0.06)"
           : "0 2px 8px rgba(18,20,23,0.04)",
         padding: "1.75rem",
-        opacity: comingSoon ? 0.72 : 1,
+        opacity: (!isLive && level !== 1) ? 0.72 : 1,
       }}
     >
       {/* ── Header ─────────────────────────────────────────── */}
@@ -214,8 +244,8 @@ export function PricingCard({
           <span
             className="flex-shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full"
             style={{
-              background: isActive ? "rgba(78,140,120,0.12)" : "rgba(18,20,23,0.06)",
-              color: isActive ? "#4E8C78" : "#9AA0A8",
+              background: isHighlighted ? "rgba(78,140,120,0.12)" : "rgba(18,20,23,0.06)",
+              color: isHighlighted ? "#4E8C78" : "#9AA0A8",
               letterSpacing: "0.02em",
               whiteSpace: "nowrap",
             }}
@@ -228,12 +258,13 @@ export function PricingCard({
 
       {/* ── Pricing ─────────────────────────────────────────── */}
       <div className="mb-6">
-        {isActive ? (
+        {level === 1 ? (
           <Level1Price billing={billing} />
+        ) : pricingData ? (
+          // Future: render real pricing when pricingData is populated
+          <PricingTbd />
         ) : (
-          <p className="text-sm font-medium" style={{ color: "#B0A89E", fontStyle: "italic" }}>
-            Pricing coming soon
-          </p>
+          <PricingTbd />
         )}
       </div>
 
@@ -241,8 +272,14 @@ export function PricingCard({
       <ul className="space-y-2.5 flex-1 mb-7">
         {card.benefits.map((item) => (
           <li key={item} className="flex items-start gap-3">
-            <CheckIcon muted={comingSoon} />
-            <span style={{ fontSize: "0.875rem", color: comingSoon ? "#9AA0A8" : "#4A5360", lineHeight: 1.65 }}>
+            <CheckIcon muted={!isLive && level !== 1} />
+            <span
+              style={{
+                fontSize: "0.875rem",
+                color: (!isLive && level !== 1) ? "#9AA0A8" : "#4A5360",
+                lineHeight: 1.65,
+              }}
+            >
               {item}
             </span>
           </li>
@@ -250,10 +287,9 @@ export function PricingCard({
       </ul>
 
       {/* ── CTA ─────────────────────────────────────────────── */}
-      {isActive ? (
-        // Guest checkout: submit priceId directly to Stripe — no prior auth needed
+      {isLive ? (
         <form action={startGuestCheckoutFormAction}>
-          <input type="hidden" name="priceId" value={priceId ?? ""} />
+          <input type="hidden" name="priceId" value={priceId} />
           <CheckoutButton />
         </form>
       ) : (

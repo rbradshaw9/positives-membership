@@ -10,13 +10,12 @@ import {
 
 /**
  * app/admin/members/[id]/page.tsx
- * Admin member detail — Sprint 12 + polish pass.
+ * Admin member detail — redesigned with admin-* CSS system.
  *
- * Read-only operational view. Shows:
+ * Read-only operational view:
  *   - Full member profile (email, name, tier, status, Stripe ID, streak, etc.)
- *   - Four at-a-glance stats (streak, listens, notes, last active)
- *   - Profile fields ordered by support relevance
- *   - Recent activity_event timeline with content titles resolved in one batch query
+ *   - Four at-a-glance stat cards (streak, listens, notes, last active)
+ *   - Recent activity_event timeline with content titles resolved in one batch
  *
  * No mutation controls. Billing remains exclusively in Stripe Dashboard.
  */
@@ -29,14 +28,12 @@ export const metadata = {
 // Display helpers
 // ─────────────────────────────────────────────────
 
-const STATUS_STYLE: Record<string, string> = {
-  active:
-    "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-  past_due:
-    "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  canceled: "bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400",
-  trialing: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  inactive: "bg-muted text-muted-foreground",
+const STATUS_BADGE: Record<string, string> = {
+  active: "admin-badge admin-badge--active",
+  past_due: "admin-badge admin-badge--past-due",
+  canceled: "admin-badge admin-badge--canceled",
+  trialing: "admin-badge admin-badge--trialing",
+  inactive: "admin-badge admin-badge--inactive",
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -47,20 +44,18 @@ const STATUS_LABEL: Record<string, string> = {
   inactive: "Inactive",
 };
 
+const TIER_BADGE: Record<string, string> = {
+  level_1: "admin-badge admin-badge--l1",
+  level_2: "admin-badge admin-badge--l2",
+  level_3: "admin-badge admin-badge--l3",
+  level_4: "admin-badge admin-badge--l4",
+};
+
 const TIER_LABEL: Record<string, string> = {
   level_1: "Level 1 — Membership",
   level_2: "Level 2 — Plus",
   level_3: "Level 3 — Coaching Circle",
   level_4: "Level 4 — Executive Coaching",
-};
-
-const TIER_STYLE: Record<string, string> = {
-  level_1: "bg-muted text-muted-foreground",
-  level_2: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  level_3:
-    "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
-  level_4:
-    "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
 };
 
 // Events that meaningfully relate to a piece of content
@@ -93,19 +88,19 @@ const EVENT_LABEL: Record<string, string> = {
   upgrade_clicked: "Upgrade clicked",
 };
 
-const EVENT_DOT_STYLE: Record<string, string> = {
-  daily_listened: "bg-green-500",
-  daily_started: "bg-green-300",
-  weekly_viewed: "bg-blue-400",
-  monthly_viewed: "bg-amber-400",
-  note_created: "bg-violet-400",
-  note_updated: "bg-violet-300",
-  milestone_reached: "bg-yellow-400",
-  default: "bg-muted-foreground",
+// Dot color tokens (kept as inline styles to avoid Tailwind dep)
+const EVENT_DOT_COLOR: Record<string, string> = {
+  daily_listened: "#22c55e",
+  daily_started: "#86efac",
+  weekly_viewed: "#60a5fa",
+  monthly_viewed: "#fbbf24",
+  note_created: "#a78bfa",
+  note_updated: "#c4b5fd",
+  milestone_reached: "#facc15",
 };
 
-function getEventDotStyle(type: string): string {
-  return EVENT_DOT_STYLE[type] ?? EVENT_DOT_STYLE.default;
+function getEventDotColor(type: string): string {
+  return EVENT_DOT_COLOR[type] ?? "var(--color-muted-fg)";
 }
 
 function formatDateTime(iso: string | null): string {
@@ -135,7 +130,6 @@ function formatRelativeDate(iso: string | null): string {
   const then = new Date(iso).getTime();
   const diffMs = now - then;
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
   if (diffDays === 0) return "Today";
   if (diffDays === 1) return "Yesterday";
   if (diffDays < 7) return `${diffDays}d ago`;
@@ -156,41 +150,21 @@ function ProfileField({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-0.5">
-      <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+      <dt
+        style={{
+          fontSize: "0.6875rem",
+          fontWeight: 700,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: "var(--color-muted-fg)",
+        }}
+      >
         {label}
       </dt>
-      <dd className="text-sm text-foreground">{children}</dd>
-    </div>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  sub,
-  muted,
-}: {
-  label: string;
-  value: string | number;
-  sub?: string;
-  muted?: boolean;
-}) {
-  return (
-    <div className="bg-card border border-border rounded-lg p-4 text-center">
-      <div
-        className={`font-heading font-bold text-xl tabular-nums ${
-          muted ? "text-muted-foreground" : "text-foreground"
-        }`}
-      >
-        {value}
-      </div>
-      {sub && (
-        <div className="text-xs text-muted-foreground mt-0.5">{sub}</div>
-      )}
-      <div className="text-xs text-muted-foreground mt-1 font-medium uppercase tracking-wide">
-        {label}
-      </div>
+      <dd style={{ fontSize: "0.875rem", color: "var(--color-foreground)" }}>
+        {children}
+      </dd>
     </div>
   );
 }
@@ -225,142 +199,211 @@ export default async function AdminMemberDetailPage({
     activity.map((e) => e.content_id)
   );
 
-  // Stripe dashboard deep-link (read-only external reference)
   const stripeUrl = member.stripe_customer_id
     ? `https://dashboard.stripe.com/customers/${member.stripe_customer_id}`
     : null;
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div style={{ maxWidth: "48rem", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
       {/* Back nav */}
-      <Link
-        href="/admin/members"
-        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-      >
+      <Link href="/admin/members" className="admin-back-link">
         ← All members
       </Link>
 
-      {/* ── Header ─────────────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between gap-4">
+      {/* ── Header ────────────────────────────────────────────────────────── */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: "1rem",
+          flexWrap: "wrap",
+        }}
+      >
         <div>
           <h1
-            className="font-heading font-bold text-2xl text-foreground tracking-[-0.02em]"
-            style={{ textWrap: "balance" } as React.CSSProperties}
+            className="admin-page-header__title"
+            style={{ marginBottom: "0.25rem" }}
           >
             {member.name ?? member.email}
           </h1>
           {member.name && (
-            <p className="text-muted-foreground text-sm mt-0.5">
+            <p style={{ fontSize: "0.875rem", color: "var(--color-muted-fg)" }}>
               {member.email}
             </p>
           )}
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
           <span
-            className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium ${
-              STATUS_STYLE[member.subscription_status] ?? STATUS_STYLE.inactive
-            }`}
+            className={
+              STATUS_BADGE[member.subscription_status] ?? STATUS_BADGE.inactive
+            }
           >
-            {STATUS_LABEL[member.subscription_status] ??
-              member.subscription_status}
+            {STATUS_LABEL[member.subscription_status] ?? member.subscription_status}
           </span>
-
           {member.subscription_tier && (
             <span
-              className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium ${
-                TIER_STYLE[member.subscription_tier] ??
-                "bg-muted text-muted-foreground"
-              }`}
+              className={
+                TIER_BADGE[member.subscription_tier] ?? "admin-badge admin-badge--l1"
+              }
             >
-              {TIER_LABEL[member.subscription_tier] ??
-                member.subscription_tier}
+              {TIER_LABEL[member.subscription_tier] ?? member.subscription_tier}
             </span>
           )}
         </div>
       </div>
 
-      {/* ── At-a-glance stats ─────────────────────────────────────────── */}
-      {/* Four cards: the most support-relevant numbers, immediately visible */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard
-          label="Practice Streak"
-          value={member.practice_streak}
-          sub={member.practice_streak === 1 ? "day" : "days"}
-          muted={member.practice_streak === 0}
-        />
-        <StatCard label="Completed Listens" value={stats.listenCount} />
-        <StatCard label="Journal Entries" value={stats.journalCount} />
-        <StatCard
-          label="Last Active"
-          value={formatRelativeDate(member.last_practiced_at)}
-          muted={!member.last_practiced_at}
-        />
+      {/* ── At-a-glance stats ──────────────────────────────────────────────── */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(9rem, 1fr))",
+          gap: "0.875rem",
+        }}
+      >
+        {/* Streak */}
+        <div className="admin-stat-card" style={{ textAlign: "center", padding: "1rem" }}>
+          <div className="admin-stat-card__value">
+            {member.practice_streak}
+          </div>
+          <div style={{ fontSize: "0.6875rem", color: "var(--color-muted-fg)", marginTop: "0.125rem" }}>
+            {member.practice_streak === 1 ? "day" : "days"}
+          </div>
+          <div className="admin-stat-card__label" style={{ marginTop: "0.375rem" }}>
+            Streak
+          </div>
+        </div>
+
+        {/* Listens */}
+        <div className="admin-stat-card" style={{ textAlign: "center", padding: "1rem" }}>
+          <div className="admin-stat-card__value">{stats.listenCount}</div>
+          <div className="admin-stat-card__label" style={{ marginTop: "0.5rem" }}>
+            Listens
+          </div>
+        </div>
+
+        {/* Journal */}
+        <div className="admin-stat-card" style={{ textAlign: "center", padding: "1rem" }}>
+          <div className="admin-stat-card__value">{stats.journalCount}</div>
+          <div className="admin-stat-card__label" style={{ marginTop: "0.5rem" }}>
+            Journal
+          </div>
+        </div>
+
+        {/* Last active */}
+        <div className="admin-stat-card" style={{ textAlign: "center", padding: "1rem" }}>
+          <div
+            className="admin-stat-card__value"
+            style={{
+              fontSize: "1rem",
+              letterSpacing: "-0.02em",
+              color: member.last_practiced_at
+                ? "var(--color-foreground)"
+                : "var(--color-muted-fg)",
+            }}
+          >
+            {formatRelativeDate(member.last_practiced_at)}
+          </div>
+          <div className="admin-stat-card__label" style={{ marginTop: "0.5rem" }}>
+            Last Active
+          </div>
+        </div>
       </div>
 
-      {/* ── Profile ───────────────────────────────────────────────────── */}
-      <section className="bg-card border border-border rounded-lg p-5">
-        <h2 className="font-semibold text-sm text-foreground mb-4">Profile</h2>
-        <dl className="grid sm:grid-cols-2 gap-x-8 gap-y-4">
-          {/* Most useful support fields first */}
-          <ProfileField label="Email">{member.email}</ProfileField>
+      {/* ── Profile ────────────────────────────────────────────────────────── */}
+      <div className="admin-section">
+        <div className="admin-section__header">
+          <p className="admin-section__title">Profile</p>
+        </div>
+        <div className="admin-section__body">
+          <dl
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(13rem, 1fr))",
+              gap: "1.25rem 2rem",
+            }}
+          >
+            <ProfileField label="Email">{member.email}</ProfileField>
 
-          <ProfileField label="Name">
-            {member.name ?? (
-              <span className="text-muted-foreground">Not set</span>
-            )}
-          </ProfileField>
+            <ProfileField label="Name">
+              {member.name ?? (
+                <span style={{ color: "var(--color-muted-fg)" }}>Not set</span>
+              )}
+            </ProfileField>
 
-          <ProfileField label="Member Since">
-            {formatDate(member.created_at)}
-          </ProfileField>
+            <ProfileField label="Member Since">
+              {formatDate(member.created_at)}
+            </ProfileField>
 
-          <ProfileField label="Timezone">{member.timezone || "—"}</ProfileField>
+            <ProfileField label="Timezone">
+              {member.timezone || "—"}
+            </ProfileField>
 
-          <ProfileField label="Password Set">
-            {member.password_set ? "Yes" : "No — magic link only"}
-          </ProfileField>
+            <ProfileField label="Password Set">
+              {member.password_set ? "Yes" : "No — magic link only"}
+            </ProfileField>
 
-          {member.subscription_end_date ? (
             <ProfileField label="Subscription End">
-              <span className="text-amber-600 font-medium">
-                {formatDate(member.subscription_end_date)}
+              {member.subscription_end_date ? (
+                <span style={{ color: "#b45309", fontWeight: 600 }}>
+                  {formatDate(member.subscription_end_date)}
+                </span>
+              ) : (
+                <span style={{ color: "var(--color-muted-fg)" }}>Ongoing</span>
+              )}
+            </ProfileField>
+
+            <ProfileField label="Stripe Customer">
+              {stripeUrl ? (
+                <a
+                  href={stripeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    color: "var(--color-primary)",
+                    fontFamily: "monospace",
+                    fontSize: "0.75rem",
+                    textDecoration: "none",
+                  }}
+                >
+                  {member.stripe_customer_id} ↗
+                </a>
+              ) : (
+                <span style={{ color: "var(--color-muted-fg)" }}>Not linked</span>
+              )}
+            </ProfileField>
+
+            <ProfileField label="Member ID">
+              <span
+                style={{
+                  fontFamily: "monospace",
+                  fontSize: "0.6875rem",
+                  color: "var(--color-muted-fg)",
+                }}
+              >
+                {member.id}
               </span>
             </ProfileField>
-          ) : (
-            <ProfileField label="Subscription End">
-              <span className="text-muted-foreground">Ongoing</span>
-            </ProfileField>
-          )}
+          </dl>
+        </div>
+      </div>
 
-          {/* Stripe — key admin action surface */}
-          <ProfileField label="Stripe Customer">
-            {stripeUrl ? (
-              <a
-                href={stripeUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:text-primary-hover transition-colors font-mono text-xs"
-              >
-                {member.stripe_customer_id} ↗
-              </a>
-            ) : (
-              <span className="text-muted-foreground">Not linked</span>
-            )}
-          </ProfileField>
-
-          {/* ID — technical reference, shown last */}
-          <ProfileField label="Member ID">
-            <span className="font-mono text-xs text-muted-foreground">
-              {member.id}
-            </span>
-          </ProfileField>
-        </dl>
-      </section>
-
-      {/* ── Billing note ──────────────────────────────────────────────── */}
-      <div className="flex items-start gap-2 bg-muted/40 border border-border rounded-lg px-4 py-3 text-xs text-muted-foreground">
-        <span className="mt-0.5 text-base leading-none flex-shrink-0">ℹ</span>
+      {/* ── Billing note ───────────────────────────────────────────────────── */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          gap: "0.625rem",
+          background: "var(--color-muted)",
+          border: "1px solid var(--color-border)",
+          borderRadius: "0.625rem",
+          padding: "0.875rem 1rem",
+          fontSize: "0.8125rem",
+          color: "var(--color-muted-fg)",
+        }}
+      >
+        <span style={{ fontSize: "1rem", flexShrink: 0, marginTop: "0.05rem" }}>ℹ</span>
         <span>
           Billing is managed exclusively in Stripe. To change a subscription,
           issue a refund, or cancel, use the{" "}
@@ -369,7 +412,10 @@ export default async function AdminMemberDetailPage({
               href={stripeUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="underline text-foreground hover:text-primary transition-colors"
+              style={{
+                textDecoration: "underline",
+                color: "var(--color-foreground)",
+              }}
             >
               Stripe Dashboard ↗
             </a>
@@ -380,65 +426,108 @@ export default async function AdminMemberDetailPage({
         </span>
       </div>
 
-      {/* ── Recent activity timeline ──────────────────────────────────── */}
-      <section className="bg-card border border-border rounded-lg p-5">
-        <h2 className="font-semibold text-sm text-foreground mb-4">
-          Recent Activity
-          <span className="ml-2 text-xs text-muted-foreground font-normal">
+      {/* ── Recent activity ─────────────────────────────────────────────────── */}
+      <div className="admin-section">
+        <div className="admin-section__header">
+          <p className="admin-section__title">Recent Activity</p>
+          <span style={{ fontSize: "0.75rem", color: "var(--color-muted-fg)" }}>
             Last {activity.length} events
           </span>
-        </h2>
+        </div>
+        <div className="admin-section__body">
+          {activity.length === 0 ? (
+            <p style={{ fontSize: "0.875rem", color: "var(--color-muted-fg)" }}>
+              No activity recorded yet.
+            </p>
+          ) : (
+            <ol style={{ position: "relative", listStyle: "none", padding: 0, margin: 0 }}>
+              {/* Timeline line */}
+              <div
+                style={{
+                  position: "absolute",
+                  left: "5px",
+                  top: "8px",
+                  bottom: "8px",
+                  width: "1px",
+                  background: "var(--color-border)",
+                }}
+              />
 
-        {activity.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No activity recorded yet.
-          </p>
-        ) : (
-          <ol className="space-y-0 relative">
-            {/* Vertical connecting line */}
-            <div className="absolute left-[5px] top-2 bottom-2 w-px bg-border" />
+              {activity.map((event) => {
+                const contentTitle =
+                  event.content_id && CONTENT_EVENT_TYPES.has(event.event_type)
+                    ? contentTitleMap.get(event.content_id)
+                    : undefined;
 
-            {activity.map((event) => {
-              // Resolve content title when available and relevant
-              const contentTitle =
-                event.content_id &&
-                CONTENT_EVENT_TYPES.has(event.event_type)
-                  ? contentTitleMap.get(event.content_id)
-                  : undefined;
+                return (
+                  <li
+                    key={event.id}
+                    style={{
+                      position: "relative",
+                      display: "flex",
+                      gap: "0.875rem",
+                      paddingLeft: "1.5rem",
+                      paddingBottom: "1rem",
+                    }}
+                  >
+                    {/* Dot */}
+                    <span
+                      style={{
+                        position: "absolute",
+                        left: 0,
+                        top: "6px",
+                        width: "11px",
+                        height: "11px",
+                        borderRadius: "50%",
+                        background: getEventDotColor(event.event_type),
+                        border: "2px solid var(--color-card)",
+                        flexShrink: 0,
+                      }}
+                    />
 
-              return (
-                <li
-                  key={event.id}
-                  className="relative flex gap-3 pl-5 pb-4 last:pb-0"
-                >
-                  {/* Dot */}
-                  <span
-                    className={`absolute left-0 top-1.5 w-3 h-3 rounded-full border-2 border-card ${getEventDotStyle(
-                      event.event_type
-                    )}`}
-                  />
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-foreground leading-snug">
-                      {EVENT_LABEL[event.event_type] ?? event.event_type}
-                    </p>
-                    {/* Content title — shown when resolved, clipped to one line */}
-                    {contentTitle && (
-                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                        {contentTitle}
+                    {/* Content */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p
+                        style={{
+                          fontSize: "0.875rem",
+                          color: "var(--color-foreground)",
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {EVENT_LABEL[event.event_type] ?? event.event_type}
                       </p>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">
-                      {formatDateTime(event.occurred_at)}
-                    </p>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-        )}
-      </section>
+                      {contentTitle && (
+                        <p
+                          style={{
+                            fontSize: "0.75rem",
+                            color: "var(--color-muted-fg)",
+                            marginTop: "0.125rem",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {contentTitle}
+                        </p>
+                      )}
+                      <p
+                        style={{
+                          fontSize: "0.6875rem",
+                          color: "var(--color-muted-fg)",
+                          marginTop: "0.125rem",
+                          fontVariantNumeric: "tabular-nums",
+                        }}
+                      >
+                        {formatDateTime(event.occurred_at)}
+                      </p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

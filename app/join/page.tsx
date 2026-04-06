@@ -73,8 +73,14 @@ export default async function JoinPage({
   }
 
   // ── Price IDs resolved server-side (never bundled into client JS) ─────────
-  const monthlyPriceId = config.stripe.prices.level1Monthly;
-  const annualPriceId = config.stripe.prices.level1Annual;
+  const level1Monthly = config.stripe.prices.level1Monthly;
+  const level1Annual  = config.stripe.prices.level1Annual;
+  const level2Monthly = config.stripe.prices.level2Monthly;
+  const level2Annual  = config.stripe.prices.level2Annual;
+  const level3Monthly = config.stripe.prices.level3Monthly;
+  const level3Annual  = config.stripe.prices.level3Annual;
+  const level4Monthly = config.stripe.prices.level4Monthly;
+  const level4Annual  = config.stripe.prices.level4Annual;
 
   // ── Check-email holding screen ────────────────────────────────────────────
   if (step === "check-email") {
@@ -198,13 +204,19 @@ export default async function JoinPage({
           background: "#FAFAF8",
         }}
       >
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <PricingToggle
             isAuthenticated={!!user}
             userEmail={user?.email ?? null}
             initialError={errorParam ?? null}
-            monthlyPriceId={monthlyPriceId}
-            annualPriceId={annualPriceId}
+            level1Monthly={level1Monthly}
+            level1Annual={level1Annual}
+            level2Monthly={level2Monthly}
+            level2Annual={level2Annual}
+            level3Monthly={level3Monthly}
+            level3Annual={level3Annual}
+            level4Monthly={level4Monthly}
+            level4Annual={level4Annual}
           />
         </div>
       </section>

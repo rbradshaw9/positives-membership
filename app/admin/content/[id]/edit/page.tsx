@@ -40,33 +40,27 @@ export default async function AdminContentEditPage({ params, searchParams }: Pro
 
   return (
     <div className="max-w-2xl">
-      <div className="mb-6">
-        <Link
-          href="/admin/content"
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors mb-4 inline-block"
-        >
+      <div className="admin-breadcrumb">
+        <Link href="/admin/content" className="admin-breadcrumb__back">
           ← Back to content
         </Link>
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="font-heading font-bold text-2xl text-foreground tracking-[-0.02em] mb-1">
-              Edit content
-            </h1>
-            <p className="text-muted-foreground text-sm line-clamp-1">{row.title}</p>
-          </div>
-          <Link
-            href="/today"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors flex-shrink-0 mt-1"
-          >
-            Preview Today ↗
-          </Link>
-        </div>
+        <Link
+          href="/today"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="admin-breadcrumb__action"
+        >
+          Preview Today ↗
+        </Link>
+      </div>
+
+      <div className="admin-page-header">
+        <h1 className="admin-page-header__title">Edit content</h1>
+        <p className="admin-page-header__subtitle">{row.title}</p>
       </div>
 
       {errorParam && (
-        <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm rounded-lg p-4 mb-6">
+        <div className="admin-banner admin-banner--error">
           {errorParam === "title_required"
             ? "Title is required."
             : "Failed to save. Check server logs."}
@@ -106,7 +100,7 @@ export default async function AdminContentEditPage({ params, searchParams }: Pro
 
       {/* Video upload panel — visible for all video-capable types */}
       {row.type !== "daily_audio" && (
-        <div className="max-w-2xl mt-4 bg-card border border-border rounded-lg p-6">
+        <div className="admin-form-card" style={{ marginTop: "1rem" }}>
           <VideoUploadPanel
             contentId={row.id}
             currentMuxPlaybackId={row.mux_playback_id ?? null}

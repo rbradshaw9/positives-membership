@@ -164,13 +164,16 @@ The following are in active use in production:
 | Hosting | Vercel | — |
 | Database / Auth | Supabase (PostgreSQL + SSR client) | ^0.10.0 |
 | Payments | Stripe | ^21.0.1 |
-| Video Hosting | Vimeo | — |
-| Admin rich-text editor | Tiptap | v3 (tiptap/react, tiptap/starter-kit, tiptap-markdown) |
-| Member-side markdown rendering | react-markdown + remark-gfm | ^10.x / ^4.x |
+| Video Hosting (primary) | Mux | `@mux/mux-player-react` ^3.11.7, `@mux/mux-node` ^12.8.1, `@mux/upchunk` ^3.5.0 |
+| Video Hosting (legacy fallback) | Vimeo | `@vimeo/player` ^2.30.3 |
+| Admin rich-text editor | Tiptap | v3 (`@tiptap/react`, `@tiptap/starter-kit`, `tiptap-markdown`) |
+| Member-side markdown rendering | react-markdown | ^10.x |
 | Date utilities | date-fns-tz | ^3.2.0 |
 
 **Critical implementation notes:**
-- Tailwind is v4. The config syntax is different from v3. Use `@import "tailwindcss"` in globals.css (not `@tailwind base/components/utilities`). Theme extension is done in `tailwind.config.ts` using CSS variable references.
+- Tailwind is v4. Use `@import "tailwindcss"` in globals.css (not `@tailwind base/components/utilities`). Theme extension is done in `tailwind.config.ts` using CSS variable references.
+- **Mux is the live primary video host.** Use `<VideoEmbed muxPlaybackId="..." muxAssetId="..." />`. The admin has a full Mux upload pipeline at `/api/admin/video/*` (upload → poll status → commit). `VideoUploadPanel` is the admin component that drives this flow.
+- **Vimeo is supported as a legacy fallback** — existing content may have `vimeo_id` set. `VideoEmbed` handles both. Do not add new Vimeo-hosted content; prefer Mux.
 - **shadcn/ui is NOT installed.** Do not reference or generate shadcn component imports. Use the project's Tailwind utility classes and CSS custom properties directly.
 - **Lucide React is NOT installed.** Do not use lucide-react imports. Use inline SVG or emoji for icons if needed.
 - There is no component library — all components are custom-built using Tailwind utility classes against the project's CSS custom property tokens.
@@ -184,9 +187,12 @@ Currently live admin routes:
 - `/admin` — overview
 - `/admin/content` — content list with publish/unpublish toggle
 - `/admin/content/new` — create new content
-- `/admin/content/[id]/edit` — edit existing content (includes Tiptap body editor)
+- `/admin/content/[id]/edit` — edit existing content (includes Tiptap body editor + Mux video upload panel)
 - `/admin/members` — paginated member list with search (email/name) and filters (status, tier)
 - `/admin/members/[id]` — member detail: profile, stats (streak, journal entries, listens), and activity timeline
+- `/admin/months` — monthly practice list (card grid, status badges, content progress chips)
+- `/admin/months/[id]` — month workspace: theme, weekly reflections, daily audio grid (drag-to-reorder) with assign/unassign
+- `/admin/ingestion` — placeholder (pipeline not yet wired)
 
 Admin mutations that bypass RLS use the Supabase service-role client (via `SUPABASE_SERVICE_ROLE_KEY`). Member management pages are read-only — billing must be managed exclusively in the Stripe Dashboard.
 
@@ -220,7 +226,7 @@ Each content row may have a `tier_min` column (the `subscription_tier` enum: `le
 
 The following are planned but NOT yet live:
 
-- **Audio Ingestion:** Google Drive → S3 (the full ingestion pipeline — transcription, AI tagging, admin review). Currently audio is added manually via admin.
+- **Audio Ingestion:** Google Drive → S3 (the full ingestion pipeline — transcription, AI tagging, admin review). The `/admin/ingestion` page is a placeholder.
 - **Private Podcast Delivery:** Castos
 - **Email Automation:** ActiveCampaign
 - **Transactional Messaging:** Twilio or similar
@@ -248,9 +254,9 @@ The intended long-term daily audio pipeline is:
    - the Positives platform
    - the private member podcast feed via Castos
 
-Video content is hosted in Vimeo. Audio currently uses Castos episode URLs or S3 keys added manually by admin.
+Video content is hosted in Mux (primary) or Vimeo (legacy). Content rows may have `mux_asset_id` + `mux_playback_id` (Mux) or `vimeo_id` (Vimeo). The `VideoEmbed` component handles both. Audio currently uses URLs added manually by admin.
 
-Do not assume Mux, direct audio upload to Castos, or client-side access control.
+Do not assume direct audio upload to Castos or client-side access control.
 
 ## Retention & Behavior Design
 
@@ -349,10 +355,11 @@ If any referenced resource file is missing or outdated, prefer the current roadm
 - Admin billing controls do not exist in the app — billing must go through the Stripe Dashboard
 
 ### Infrastructure
-- Vimeo is the video host
+- **Mux is the live primary video host** — use `mux_playback_id` / `mux_asset_id` fields on content; use `<VideoEmbed muxPlaybackId={...} />`
+- Vimeo is a supported legacy fallback — `VideoEmbed` handles it via `vimeoId` prop; do not add new Vimeo-hosted content
 - Google Drive → S3 is the planned (not yet live) audio ingestion path
 - Castos is the planned (not yet live) private podcast delivery layer
-- Do not generate code that assumes Mux, direct Castos upload, or client-side access control
+- Do not generate code that assumes direct Castos upload or client-side access control
 
 ### Technology
 - This project uses Tailwind v4 — do not use v3 `@tailwind` directives or `theme()` function syntax

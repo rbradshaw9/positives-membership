@@ -4,25 +4,18 @@ import { createMonthlyPractice } from "./actions";
 
 /**
  * app/admin/months/page.tsx
- * Admin month list — card grid with inline analytics.
- *
- * Displays all monthly_practice rows, newest first.
- * Each card shows: label, content fill bar, and key stats.
- * "+ New month" creates a month via server action.
+ * Admin month list — redesigned with admin-* CSS system.
  */
 
 export const metadata = {
   title: "Months — Positives Admin",
 };
 
-const STATUS_STYLE: Record<string, string> = {
-  published:
-    "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-  draft: "bg-muted text-muted-foreground",
-  ready_for_review:
-    "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  archived:
-    "bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400",
+const STATUS_BADGE: Record<string, string> = {
+  published: "admin-badge admin-badge--published",
+  draft: "admin-badge admin-badge--draft",
+  ready_for_review: "admin-badge admin-badge--review",
+  archived: "admin-badge admin-badge--archived",
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -43,30 +36,43 @@ export default async function AdminMonthsPage({
   const months = await getAdminMonths();
 
   return (
-    <div className="max-w-4xl">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+    <div style={{ maxWidth: "56rem" }}>
+      {/* Page header */}
+      <div
+        className="admin-page-header"
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: "1rem",
+          flexWrap: "wrap",
+        }}
+      >
         <div>
-          <h1 className="font-heading font-bold text-2xl text-foreground tracking-[-0.02em] mb-1">
-            Months
-          </h1>
-          <p className="text-muted-foreground text-sm">
+          <p className="admin-page-header__eyebrow">Content</p>
+          <h1 className="admin-page-header__title">Months</h1>
+          <p className="admin-page-header__subtitle">
             {months.length} month{months.length !== 1 ? "s" : ""}
           </p>
         </div>
 
         {/* New month form */}
-        <form action={createMonthlyPractice} className="flex items-center gap-2">
+        <form action={createMonthlyPractice} className="admin-page-header__actions">
           <input
             type="month"
             name="month_year"
             required
-            className="bg-card border border-border rounded px-3 py-2 text-sm text-foreground"
+            style={{
+              background: "var(--color-card)",
+              border: "1px solid var(--color-border)",
+              borderRadius: "0.5rem",
+              padding: "0.5rem 0.75rem",
+              fontSize: "0.875rem",
+              color: "var(--color-foreground)",
+              colorScheme: "dark",
+            }}
           />
-          <button
-            type="submit"
-            className="px-4 py-2 rounded bg-primary text-primary-foreground font-medium text-sm hover:bg-primary-hover transition-colors shadow-soft"
-          >
+          <button type="submit" className="admin-btn admin-btn--primary">
             + New month
           </button>
         </form>
@@ -74,7 +80,17 @@ export default async function AdminMonthsPage({
 
       {/* Banners */}
       {params.success && (
-        <div className="bg-green-100 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-800 dark:text-green-300 text-sm rounded-lg p-4 mb-6">
+        <div
+          style={{
+            background: "rgba(34,197,94,0.08)",
+            border: "1px solid rgba(34,197,94,0.2)",
+            color: "#15803d",
+            fontSize: "0.875rem",
+            borderRadius: "0.625rem",
+            padding: "0.875rem 1rem",
+            marginBottom: "1.25rem",
+          }}
+        >
           {params.success === "published"
             ? "Month published."
             : params.success === "updated"
@@ -83,7 +99,17 @@ export default async function AdminMonthsPage({
         </div>
       )}
       {params.error && (
-        <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm rounded-lg p-4 mb-6">
+        <div
+          style={{
+            background: "rgba(239,68,68,0.06)",
+            border: "1px solid rgba(239,68,68,0.15)",
+            color: "#dc2626",
+            fontSize: "0.875rem",
+            borderRadius: "0.625rem",
+            padding: "0.875rem 1rem",
+            marginBottom: "1.25rem",
+          }}
+        >
           {params.error === "invalid_month"
             ? "Invalid month format — use YYYY-MM."
             : params.error === "create_failed"
@@ -94,14 +120,25 @@ export default async function AdminMonthsPage({
 
       {/* Month cards */}
       {months.length === 0 ? (
-        <div className="bg-card border border-border rounded-lg p-12 text-center">
-          <p className="text-muted-foreground text-sm mb-1">No months yet</p>
-          <p className="text-xs text-muted-foreground">
+        <div
+          className="admin-table-wrap"
+          style={{ padding: "3rem", textAlign: "center" }}
+        >
+          <p style={{ fontSize: "0.875rem", color: "var(--color-muted-fg)", marginBottom: "0.375rem" }}>
+            No months yet
+          </p>
+          <p style={{ fontSize: "0.75rem", color: "var(--color-muted-fg)" }}>
             Use the date picker above to create your first month.
           </p>
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+            gap: "1rem",
+          }}
+        >
           {months.map((month) => {
             const fillPct =
               month.daily_total > 0
@@ -112,64 +149,99 @@ export default async function AdminMonthsPage({
               <Link
                 key={month.id}
                 href={`/admin/months/${month.id}`}
-                className="block bg-card border border-border rounded-lg p-5 hover:shadow-soft transition-shadow group"
+                className="admin-month-card"
               >
                 {/* Label + status */}
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="font-semibold text-base text-foreground group-hover:text-primary transition-colors">
-                    {month.label}
-                  </h2>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: "0.875rem",
+                  }}
+                >
+                  <h2 className="admin-month-card__title">{month.label}</h2>
                   <span
-                    className={`inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium ${
-                      STATUS_STYLE[month.status] ?? STATUS_STYLE.draft
-                    }`}
+                    className={STATUS_BADGE[month.status] ?? STATUS_BADGE.draft}
                   >
                     {STATUS_LABEL[month.status] ?? month.status}
                   </span>
                 </div>
 
                 {/* Content fill bar */}
-                <div className="mb-3">
-                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                    <span>
-                      Daily: {month.daily_count}/{month.daily_total}
-                    </span>
+                <div style={{ marginBottom: "0.875rem" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      fontSize: "0.6875rem",
+                      color: "var(--color-muted-fg)",
+                      marginBottom: "0.375rem",
+                    }}
+                  >
+                    <span>Daily: {month.daily_count}/{month.daily_total}</span>
                     <span>{fillPct}%</span>
                   </div>
-                  <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                  <div
+                    style={{
+                      height: "4px",
+                      width: "100%",
+                      background: "var(--color-muted)",
+                      borderRadius: "999px",
+                      overflow: "hidden",
+                    }}
+                  >
                     <div
-                      className="h-full bg-primary rounded-full transition-all"
-                      style={{ width: `${fillPct}%` }}
+                      style={{
+                        height: "100%",
+                        width: `${fillPct}%`,
+                        background:
+                          fillPct === 100
+                            ? "var(--color-primary)"
+                            : "linear-gradient(90deg, var(--color-primary), var(--color-secondary))",
+                        borderRadius: "999px",
+                        transition: "width 400ms ease",
+                      }}
                     />
                   </div>
                 </div>
 
                 {/* Stats row */}
-                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                  <span className="tabular-nums">
-                    {month.weekly_count} weekly
-                  </span>
-                  <span className="tabular-nums">
-                    {month.monthly_theme_count === 0
-                      ? "No theme"
-                      : "Theme ✓"}
-                  </span>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "1rem",
+                    fontSize: "0.75rem",
+                    color: "var(--color-muted-fg)",
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
+                  <span>{month.weekly_count} weekly</span>
+                  <span>{month.monthly_theme_count === 0 ? "No theme" : "Theme ✓"}</span>
                 </div>
 
                 {/* Analytics row */}
                 {(month.unique_listeners > 0 ||
                   month.total_listens > 0 ||
                   month.total_notes > 0) && (
-                  <div className="mt-3 pt-3 border-t border-border flex items-center gap-4 text-xs text-muted-foreground">
-                    <span className="tabular-nums">
-                      🎧 {month.unique_listeners}
-                    </span>
-                    <span className="tabular-nums">
-                      ▶ {month.total_listens}
-                    </span>
-                    <span className="tabular-nums">
-                      📝 {month.total_notes}
-                    </span>
+                  <div
+                    style={{
+                      marginTop: "0.875rem",
+                      paddingTop: "0.875rem",
+                      borderTop: "1px solid var(--color-border)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "1rem",
+                      fontSize: "0.75rem",
+                      color: "var(--color-muted-fg)",
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
+                    <span>🎧 {month.unique_listeners}</span>
+                    <span>▶ {month.total_listens}</span>
+                    <span>📝 {month.total_notes}</span>
                   </div>
                 )}
               </Link>

@@ -82,7 +82,8 @@ export function SuccessClient({ sessionId }: SuccessClientProps) {
     setPhase("success");
 
     setTimeout(() => {
-      router.push("/today");
+      // ?welcome=1 triggers WelcomeModal on first landing — stripped by the modal after mount
+      router.push("/today?welcome=1");
     }, 1600);
   }
 

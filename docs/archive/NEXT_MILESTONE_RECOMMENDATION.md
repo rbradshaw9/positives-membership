@@ -1,7 +1,8 @@
 # Next Milestone Recommendation
 
-> Based on actual repo state, not aspirational docs.
+> ✅ **Sprint 10 is complete.** This document described the Sprint 10 milestone (tier gating + coaching + journal entry). Retained for historical reference.
 > Generated 2026-04-01.
+
 
 ---
 

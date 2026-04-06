@@ -1,7 +1,9 @@
 # Planning Memo — Tracking, Streaks & Journal/Notes
 ## Positives Platform · Sprint 1–2 Boundary Refinement
 
-> **Type:** Architecture/UX planning — not a coding task
+> ✅ **Sprints 1–2 are complete.** This document is retained as historical reference only.
+
+> **Type:** Architecture/UX planning — not a coding task (historical)
 > **Scope:** Engagement tracking, streak model, journal/notes product, responsive UX, sprint boundary decisions
 > **Builds on:** `member-experience-implementation-plan.md`, `sprint-1-build-plan.md`
 

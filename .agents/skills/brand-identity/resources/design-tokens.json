@@ -1,56 +1,135 @@
 {
   "meta": {
     "brand_name": "Positives",
-    "description": "Core design tokens for UI implementation. Positives should feel like a premium, expertly designed product with authority, calm, clarity, and optimism. The visual system should feel modern, intentional, and elevated — closer to Apple-grade product design than a typical wellness or self-help app."
+    "source_of_truth": "app/globals.css :root block",
+    "description": "Core design tokens for Positives UI. Always source from CSS custom properties — these values are synced from globals.css. The brand feels premium, calm, spacious, and mobile-first. Primary is teal (#2EC4B6), secondary is sky-blue (#44A8D8). Dark surfaces use near-black (#0A0A0A / #111215). Avoid warm earth tones or blue-heavy palettes — those are from a previous brand iteration."
   },
   "colors": {
     "primary": {
-      "DEFAULT": "#2F6FED",
-      "hover": "#245DD0",
+      "css_var": "--color-primary",
+      "DEFAULT": "#2EC4B6",
+      "hover": "#1A9E92",
       "foreground": "#FFFFFF"
     },
     "secondary": {
-      "DEFAULT": "#4E8C78",
-      "hover": "#427866",
+      "css_var": "--color-secondary",
+      "DEFAULT": "#44A8D8",
+      "hover": "#3690BC",
       "foreground": "#FFFFFF"
     },
-    "background": "#F6F3EE",
-    "foreground": "#121417",
-    "muted": "#ECE7DF",
-    "muted_foreground": "#68707A",
-    "card": "#FFFFFF",
-    "card_foreground": "#121417",
-    "popover": "#FFFFFF",
-    "popover_foreground": "#121417",
-    "border": "#DDD7CF",
-    "input": "#DDD7CF",
-    "ring": "#2F6FED",
     "accent": {
-      "DEFAULT": "#D98A4E",
-      "hover": "#C7793D",
-      "foreground": "#FFFFFF"
+      "css_var": "--color-accent",
+      "DEFAULT": "#F59E0B",
+      "hover": "#D97706",
+      "foreground": "#FFFFFF",
+      "note": "Amber accent — use sparingly for highlights and badges"
     },
-    "destructive": "#B94A3F",
-    "success": "#3E7F67",
-    "warning": "#C7933D",
-    "surface_dark": "#171A1F",
-    "surface_tint": "#F1EEE8"
+    "background": {
+      "css_var": "--color-background",
+      "value": "#FAFAFA"
+    },
+    "foreground": {
+      "css_var": "--color-foreground",
+      "value": "#09090B"
+    },
+    "muted": {
+      "css_var": "--color-muted",
+      "value": "#F4F4F5"
+    },
+    "muted_foreground": {
+      "css_var": "--color-muted-fg",
+      "value": "#52525B"
+    },
+    "card": {
+      "css_var": "--color-card",
+      "value": "#FFFFFF"
+    },
+    "card_foreground": {
+      "css_var": "--color-card-fg",
+      "value": "#09090B"
+    },
+    "border": {
+      "css_var": "--color-border",
+      "value": "#E4E4E7"
+    },
+    "ring": {
+      "css_var": "--color-ring",
+      "value": "#2EC4B6"
+    },
+    "destructive": {
+      "css_var": "--color-destructive",
+      "value": "#EF4444"
+    },
+    "success": {
+      "css_var": "--color-success",
+      "value": "#22C55E"
+    },
+    "warning": {
+      "css_var": "--color-warning",
+      "value": "#F59E0B"
+    },
+    "surface_dark": {
+      "css_var": "--color-surface-dark",
+      "value": "#0A0A0A",
+      "note": "Near-black — used for dark section bg and player bg"
+    },
+    "surface_tint": {
+      "css_var": "--color-surface-tint",
+      "value": "#F8FBFC"
+    },
+    "surface_shell": {
+      "css_var": "--color-surface-shell",
+      "value": "#111215",
+      "note": "Member nav/tabbar background"
+    },
+    "shell_border": {
+      "css_var": "--color-shell-border",
+      "value": "rgba(255,255,255,0.08)"
+    },
+    "shell_foreground": {
+      "css_var": "--color-shell-foreground",
+      "value": "#FAFAFA"
+    },
+    "player_bg": {
+      "css_var": "--color-player-bg",
+      "value": "#0A0A0A"
+    },
+    "player_track": {
+      "css_var": "--color-player-track",
+      "value": "#27272A"
+    },
+    "player_bar": {
+      "css_var": "--color-player-bar",
+      "value": "#2EC4B6"
+    }
+  },
+  "gradients": {
+    "brand_gradient": {
+      "css_var": "--brand-gradient",
+      "value": "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)",
+      "note": "Primary CTA buttons, active chips, gradient accents"
+    },
+    "brand_gradient_hover": {
+      "css_var": "--brand-gradient-hover",
+      "value": "linear-gradient(135deg, #1A9E92 0%, #3690BC 100%)"
+    },
+    "brand_gradient_soft": {
+      "css_var": "--brand-gradient-soft",
+      "value": "linear-gradient(160deg, rgba(46, 196, 182, 0.12) 0%, rgba(68, 168, 216, 0.08) 100%)",
+      "note": "Subtle background tints on hero sections"
+    }
   },
   "typography": {
-    "font_family_headings": [
-      "Inter",
-      "SF Pro Display",
-      "Helvetica Neue",
-      "Arial",
-      "sans-serif"
-    ],
-    "font_family_body": [
-      "Inter",
-      "SF Pro Text",
-      "Helvetica Neue",
-      "Arial",
-      "sans-serif"
-    ],
+    "font_family_headings": {
+      "css_var": "--font-heading",
+      "stack": ["Montserrat", "SF Pro Display", "Helvetica Neue", "Arial", "sans-serif"],
+      "note": "Loaded via next/font as --font-montserrat, then referenced via --font-heading"
+    },
+    "font_family_body": {
+      "css_var": "--font-sans",
+      "stack": ["Poppins", "SF Pro Text", "Helvetica Neue", "Arial", "sans-serif"],
+      "note": "Loaded via next/font as --font-poppins, then referenced via --font-sans"
+    },
     "font_weight_bold": "700",
     "font_weight_semibold": "600",
     "font_weight_medium": "500",
@@ -61,17 +140,78 @@
     "letter_spacing_headings": "-0.03em",
     "letter_spacing_body": "-0.01em"
   },
-  "ui": {
-    "border_radius_default": "1.25rem",
-    "border_radius_small": "0.875rem",
-    "border_radius_large": "1.75rem",
-    "border_radius_xlarge": "2.25rem",
-    "border_radius_pill": "9999px",
-    "spacing_base_unit": "4px",
-    "shadow_soft": "0 6px 24px rgba(18, 20, 23, 0.05)",
-    "shadow_medium": "0 12px 36px rgba(18, 20, 23, 0.08)",
-    "shadow_large": "0 18px 60px rgba(18, 20, 23, 0.12)",
-    "shadow_focus": "0 0 0 4px rgba(47, 111, 237, 0.18)",
-    "border_width_default": "1px"
+  "radii": {
+    "note": "Positives uses generously rounded corners — closer to pill/card shapes than sharp squares.",
+    "sm": { "css_var": "--radius-sm", "value": "0.75rem" },
+    "default": { "css_var": "--radius", "value": "1rem" },
+    "lg": { "css_var": "--radius-lg", "value": "1.25rem" },
+    "xl": { "css_var": "--radius-xl", "value": "1.5rem" },
+    "pill": { "css_var": "--radius-pill", "value": "9999px" }
+  },
+  "shadows": {
+    "soft": {
+      "css_var": "--shadow-soft",
+      "value": "0 1px 2px rgba(0,0,0,0.04), 0 1px 4px rgba(0,0,0,0.04)"
+    },
+    "medium": {
+      "css_var": "--shadow-medium",
+      "value": "0 4px 12px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.04)"
+    },
+    "large": {
+      "css_var": "--shadow-large",
+      "value": "0 12px 40px rgba(0,0,0,0.10), 0 4px 12px rgba(0,0,0,0.06)"
+    },
+    "focus": {
+      "css_var": "--shadow-focus",
+      "value": "0 0 0 4px rgba(46, 196, 182, 0.18)"
+    },
+    "glow": {
+      "css_var": "--shadow-glow",
+      "value": "0 0 20px rgba(46,196,182,0.25)",
+      "note": "Used on btn-primary — subtle teal glow"
+    },
+    "player": {
+      "css_var": "--shadow-player",
+      "value": "0 -2px 20px rgba(0,0,0,0.35)"
+    }
+  },
+  "utility_classes": {
+    "note": "These global CSS classes are defined in globals.css. Use them instead of repeating inline styles.",
+    "layout": {
+      "member_container": "Max-width 72rem responsive container for member pages (px-5 mobile, px-8 desktop)",
+      "member_shell": "Full-height member area wrapper with CSS vars for player/tabbar height",
+      "member_shell__content": "Content area — auto-adds bottom padding for sticky player + tabbar",
+      "member_hero": "Page header hero bg (radial teal/blue gradient on white)"
+    },
+    "surfaces": {
+      "surface_card": "Standard card: bg-card, border, radius-lg, shadow-soft",
+      "surface_card--elevated": "Same as surface-card with shadow-medium",
+      "surface_card--tint": "bg-surface-tint variant",
+      "surface_card--editorial": "Radial teal tint overlay on white — used for content preview cards",
+      "surface_card--dark": "Dark bg with dual teal+blue radial gradients — used on coaching/premium sections"
+    },
+    "buttons": {
+      "btn-primary": "Pill, brand-gradient fill, shadow-glow — primary CTA",
+      "btn-secondary": "Pill, white/8% fill, white border — dark-surface secondary action",
+      "btn-outline": "Pill, transparent, border — light-surface secondary action",
+      "btn-ghost": "Transparent, muted hover — tertiary/navigation"
+    },
+    "type": {
+      "ui-section-eyebrow": "0.6875rem uppercase bold teal — section labels",
+      "member-card-title": "Montserrat clamp heading 1.35–2rem",
+      "member-body-copy": "0.975rem muted body text",
+      "member-detail-kicker": "0.75rem uppercase bold muted — card sub-labels"
+    },
+    "forms": {
+      "member-input": "Member-facing input: radius, 1.5px border, focus teal ring",
+      "admin-input": "Admin-only input: radius 0.375rem, lighter styling",
+      "search-field": "Icon + input combo with teal focus ring"
+    },
+    "components": {
+      "member-segmented-control": "Tab-style pill switcher",
+      "filter-chip": "Pill filter toggle; gradient + glow when active",
+      "stat-card": "KPI card: Montserrat value, uppercase label",
+      "prose-positives": "Scoped react-markdown renderer for member content cards"
+    }
   }
 }

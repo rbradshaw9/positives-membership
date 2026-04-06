@@ -23,13 +23,11 @@ export const metadata = {
   title: "Month Workspace — Positives Admin",
 };
 
-const STATUS_STYLE: Record<string, string> = {
-  published:
-    "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-  draft: "bg-muted text-muted-foreground",
-  ready_for_review:
-    "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  archived: "bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400",
+const STATUS_BADGE: Record<string, string> = {
+  published: "admin-badge admin-badge--published",
+  draft: "admin-badge admin-badge--draft",
+  ready_for_review: "admin-badge admin-badge--review",
+  archived: "admin-badge admin-badge--archived",
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -64,22 +62,15 @@ export default async function MonthWorkspacePage({
     totalSlots > 0 ? Math.round((filledSlots / totalSlots) * 100) : 0;
 
   return (
-    <div className="max-w-5xl">
+    <div style={{ maxWidth: "60rem" }}>
       {/* Breadcrumb */}
-      <nav className="text-xs text-muted-foreground mb-4">
-        <Link
-          href="/admin/months"
-          className="hover:text-foreground transition-colors"
-        >
-          Months
-        </Link>
-        <span className="mx-1.5">›</span>
-        <span className="text-foreground">{month.label}</span>
-      </nav>
+      <Link href="/admin/months" className="admin-back-link">
+        ← Months
+      </Link>
 
       {/* Success / error banners */}
       {sp.success && (
-        <div className="bg-green-100 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-800 dark:text-green-300 text-sm rounded-lg p-4 mb-4">
+        <div className="admin-banner admin-banner--success">
           {sp.success === "published"
             ? "Month and all content published."
             : sp.success === "updated"
@@ -88,39 +79,31 @@ export default async function MonthWorkspacePage({
         </div>
       )}
       {sp.error && (
-        <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm rounded-lg p-4 mb-4">
+        <div className="admin-banner admin-banner--error">
           Something went wrong — check server logs.
         </div>
       )}
 
       {/* ─── Section 1: Header ─── */}
-      <div className="flex items-start justify-between mb-6">
+      <div className="admin-page-header admin-page-header--split">
         <div>
-          <h1 className="font-heading font-bold text-2xl text-foreground tracking-[-0.02em] mb-1">
-            {month.label}
-          </h1>
-          <div className="flex items-center gap-2">
-            <span
-              className={`inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium ${
-                STATUS_STYLE[month.status] ?? STATUS_STYLE.draft
-              }`}
-            >
+          <p className="admin-page-header__eyebrow">Month Workspace</p>
+          <h1 className="admin-page-header__title">{month.label}</h1>
+          <div className="admin-month-status-row">
+            <span className={STATUS_BADGE[month.status] ?? STATUS_BADGE.draft}>
               {STATUS_LABEL[month.status] ?? month.status}
             </span>
-            <span className="text-xs text-muted-foreground tabular-nums">
+            <span className="admin-month-year-label">
               {month.month_year}
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="admin-page-header__actions">
           {month.status !== "published" && (
             <form action={publishEntireMonth}>
               <input type="hidden" name="id" value={month.id} />
-              <button
-                type="submit"
-                className="px-4 py-2 rounded bg-green-600 text-white font-medium text-sm hover:bg-green-700 transition-colors shadow-soft"
-              >
+              <button type="submit" className="admin-btn admin-btn--primary">
                 Publish All
               </button>
             </form>
@@ -129,12 +112,12 @@ export default async function MonthWorkspacePage({
       </div>
 
       {/* ─── Section 2: Stats Ribbon ─── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+      <div className="admin-stats-ribbon">
         {[
           {
             label: "Daily Fill",
             value: `${filledSlots}/${totalSlots}`,
-            sub: `${fillPct}%`,
+            sub: `${fillPct}% complete`,
           },
           {
             label: "Unique Listeners",
@@ -152,135 +135,121 @@ export default async function MonthWorkspacePage({
             sub: "entries",
           },
         ].map((stat) => (
-          <div
-            key={stat.label}
-            className="bg-card border border-border rounded-lg px-4 py-3"
-          >
-            <p className="text-xs text-muted-foreground mb-0.5">
-              {stat.label}
-            </p>
-            <p className="text-lg font-semibold text-foreground tabular-nums">
-              {stat.value}
-            </p>
-            <p className="text-xs text-muted-foreground">{stat.sub}</p>
+          <div key={stat.label} className="admin-stat-card">
+            <p className="admin-stat-card__value">{stat.value}</p>
+            <p className="admin-stat-card__label">{stat.label}</p>
+            <p className="admin-stat-card__delta">{stat.sub}</p>
           </div>
         ))}
       </div>
 
       {/* ─── Section 3: Description + Notes ─── */}
-      <div className="bg-card border border-border rounded-lg p-5 mb-6">
-        <h2 className="font-semibold text-sm text-foreground mb-3">
-          Month Details
-        </h2>
-        <form action={updateMonthlyPractice}>
-          <input type="hidden" name="id" value={month.id} />
-          <div className="grid sm:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block text-xs text-muted-foreground mb-1">
-                Description
-              </label>
-              <textarea
-                name="description"
-                rows={3}
-                defaultValue={month.description ?? ""}
-                placeholder="Month description (optional)…"
-                className="w-full bg-muted border border-border rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground resize-none"
-              />
+      <div className="admin-section" style={{ marginBottom: "1.5rem" }}>
+        <div className="admin-section__header">
+          <span className="admin-section__title">Month Details</span>
+        </div>
+        <div className="admin-section__body">
+          <form action={updateMonthlyPractice}>
+            <input type="hidden" name="id" value={month.id} />
+            <div className="admin-form-grid-2" style={{ marginBottom: "1rem" }}>
+              <div className="admin-form-field">
+                <label className="admin-form-section__label">Description</label>
+                <textarea
+                  name="description"
+                  rows={3}
+                  defaultValue={month.description ?? ""}
+                  placeholder="Month description (optional)…"
+                  className="admin-textarea admin-textarea--no-resize"
+                />
+              </div>
+              <div className="admin-form-field">
+                <label className="admin-form-section__label">Admin Notes</label>
+                <textarea
+                  name="admin_notes"
+                  rows={3}
+                  defaultValue={month.admin_notes ?? ""}
+                  placeholder="Internal notes…"
+                  className="admin-textarea admin-textarea--no-resize"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-xs text-muted-foreground mb-1">
-                Admin Notes
-              </label>
-              <textarea
-                name="admin_notes"
-                rows={3}
-                defaultValue={month.admin_notes ?? ""}
-                placeholder="Internal notes…"
-                className="w-full bg-muted border border-border rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground resize-none"
-              />
-            </div>
-          </div>
-          <button
-            type="submit"
-            className="px-4 py-2 rounded bg-primary text-primary-foreground font-medium text-sm hover:bg-primary-hover transition-colors shadow-soft"
-          >
-            Save Details
-          </button>
-        </form>
+            <button type="submit" className="admin-btn admin-btn--primary">
+              Save Details
+            </button>
+          </form>
+        </div>
       </div>
 
       {/* ─── Section 4: Theme + Weekly Reflections ─── */}
-      <div className="grid sm:grid-cols-2 gap-4 mb-6">
+      <div className="admin-section-grid-2">
         {/* Theme */}
-        <div className="bg-card border border-border rounded-lg p-5">
-          <h2 className="font-semibold text-sm text-foreground mb-3">
-            Monthly Theme
-          </h2>
-          {month.theme ? (
-            <div>
-              <Link
-                href={`/admin/content/${month.theme.id}/edit`}
-                className="font-medium text-foreground hover:text-primary transition-colors text-sm"
-              >
-                {month.theme.title}
-              </Link>
-              <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                <span
-                  className={`inline-flex items-center px-2 py-0.5 rounded-sm font-medium ${
-                    STATUS_STYLE[month.theme.status] ?? STATUS_STYLE.draft
-                  }`}
+        <div className="admin-section">
+          <div className="admin-section__header">
+            <span className="admin-section__title">Monthly Theme</span>
+          </div>
+          <div className="admin-section__body">
+            {month.theme ? (
+              <div>
+                <Link
+                  href={`/admin/content/${month.theme.id}/edit`}
+                  className="admin-content-link"
                 >
-                  {STATUS_LABEL[month.theme.status] ?? month.theme.status}
-                </span>
-                <span className="tabular-nums">👁 {month.theme.views}</span>
+                  {month.theme.title}
+                </Link>
+                <div className="admin-content-meta">
+                  <span className={STATUS_BADGE[month.theme.status] ?? STATUS_BADGE.draft}>
+                    {STATUS_LABEL[month.theme.status] ?? month.theme.status}
+                  </span>
+                  <span className="admin-content-meta__views">
+                    👁 {month.theme.views}
+                  </span>
+                </div>
               </div>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No theme assigned.{" "}
-              <Link
-                href="/admin/content/new"
-                className="text-primary hover:text-primary-hover transition-colors"
-              >
-                Create one →
-              </Link>
-            </p>
-          )}
+            ) : (
+              <p className="admin-hint">
+                No theme assigned.{" "}
+                <Link
+                  href="/admin/content/new"
+                  style={{ color: "var(--color-primary)", textDecoration: "none" }}
+                >
+                  Create one →
+                </Link>
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Weekly Reflections */}
-        <div className="bg-card border border-border rounded-lg p-5">
-          <h2 className="font-semibold text-sm text-foreground mb-3">
-            Weekly Reflections
-          </h2>
-          {month.weeklyReflections.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No weekly reflections yet.
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {month.weeklyReflections.map((w) => (
-                <li key={w.id} className="flex items-center justify-between">
-                  <Link
-                    href={`/admin/content/${w.id}/edit`}
-                    className="text-sm text-foreground hover:text-primary transition-colors line-clamp-1"
-                  >
-                    {w.title}
-                  </Link>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0 ml-3">
-                    <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded-sm font-medium ${
-                        STATUS_STYLE[w.status] ?? STATUS_STYLE.draft
-                      }`}
+        <div className="admin-section">
+          <div className="admin-section__header">
+            <span className="admin-section__title">Weekly Reflections</span>
+          </div>
+          <div className="admin-section__body">
+            {month.weeklyReflections.length === 0 ? (
+              <p className="admin-hint">No weekly reflections yet.</p>
+            ) : (
+              <ul className="admin-weekly-list">
+                {month.weeklyReflections.map((w) => (
+                  <li key={w.id} className="admin-weekly-item">
+                    <Link
+                      href={`/admin/content/${w.id}/edit`}
+                      className="admin-weekly-item__link"
                     >
-                      {STATUS_LABEL[w.status] ?? w.status}
-                    </span>
-                    <span className="tabular-nums">👁 {w.views}</span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+                      {w.title}
+                    </Link>
+                    <div className="admin-weekly-item__meta">
+                      <span className={STATUS_BADGE[w.status] ?? STATUS_BADGE.draft}>
+                        {STATUS_LABEL[w.status] ?? w.status}
+                      </span>
+                      <span className="admin-content-meta__views">
+                        👁 {w.views}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       </div>
 

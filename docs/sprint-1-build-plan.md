@@ -1,7 +1,9 @@
 # Sprint 1 Build Plan — Today Comes Alive
 ## Positives Platform · April 2026
 
-> **Status:** Execution-ready · Approved for build
+> ✅ **Sprint 1 is complete.** This document is retained as historical reference only.
+
+> **Status:** Complete
 > **Scope:** Today page only — Daily, Weekly, Monthly content live + Progress tracking foundation
 > **Depends on:** `member-experience-implementation-plan.md`
 

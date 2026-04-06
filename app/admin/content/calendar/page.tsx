@@ -11,10 +11,19 @@ export const metadata = {
 
 type SearchParams = Promise<{ start?: string }>;
 
-const STATUS_STYLE: Record<string, string> = {
-  published: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-  ready_for_review: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  draft: "bg-muted text-muted-foreground",
+// Maps content status → admin-badge modifier class
+const STATUS_BADGE: Record<string, string> = {
+  published: "admin-badge admin-badge--published",
+  ready_for_review: "admin-badge admin-badge--review",
+  draft: "admin-badge admin-badge--draft",
+  archived: "admin-badge admin-badge--archived",
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  published: "Published",
+  ready_for_review: "Review",
+  draft: "Draft",
+  archived: "Archived",
 };
 
 const TYPE_LABEL: Record<string, string> = {
@@ -22,6 +31,8 @@ const TYPE_LABEL: Record<string, string> = {
   weekly_principle: "Weekly",
   monthly_theme: "Monthly",
 };
+
+// ── Item card (inside each day cell) ────────────────────────────────────────
 
 function ItemCard({
   item,
@@ -35,31 +46,35 @@ function ItemCard({
   sectionLabel: string;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-background/90 px-3 py-3">
+    <div className="surface-card" style={{ padding: "0.625rem 0.75rem", borderRadius: "0.75rem" }}>
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        <span
+          className="text-[10px] font-semibold uppercase tracking-[0.14em]"
+          style={{ color: "var(--color-text-subtle)" }}
+        >
           {sectionLabel}
         </span>
-        {item ? (
-          <span
-            className={`inline-flex items-center rounded-sm px-1.5 py-0.5 text-[10px] font-medium ${
-              STATUS_STYLE[item.status] ?? STATUS_STYLE.draft
-            }`}
-          >
-            {item.status === "ready_for_review" ? "Review" : item.status}
+        {item && (
+          <span className={STATUS_BADGE[item.status] ?? STATUS_BADGE.draft}
+            style={{ fontSize: "0.625rem", padding: "0.125rem 0.5rem" }}>
+            {STATUS_LABEL[item.status] ?? item.status}
           </span>
-        ) : null}
+        )}
       </div>
 
       {item ? (
         <>
-          <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          <div
+            className="mb-1 text-[11px] font-medium uppercase tracking-wide"
+            style={{ color: "var(--color-text-subtle)" }}
+          >
             {TYPE_LABEL[item.type] ?? item.type}
           </div>
 
           <Link
             href={item.href}
-            className="line-clamp-2 text-sm font-medium text-foreground transition-colors hover:text-primary"
+            className="line-clamp-2 text-sm font-medium transition-colors hover:text-primary"
+            style={{ color: "var(--color-text-default)" }}
           >
             {item.title}
           </Link>
@@ -68,23 +83,27 @@ function ItemCard({
             {extras > 0 ? (
               <Link
                 href={fallbackHref}
-                className="inline-block text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+                className="inline-block text-[11px] transition-colors hover:text-foreground"
+                style={{ color: "var(--color-text-subtle)" }}
               >
                 +{extras} more
               </Link>
             ) : (
-              <span className="text-[11px] text-muted-foreground">Scheduled</span>
+              <span className="text-[11px]" style={{ color: "var(--color-text-subtle)" }}>
+                Scheduled
+              </span>
             )}
             <Link
               href={item.href}
-              className="text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+              className="text-[11px] font-medium transition-colors hover:text-foreground"
+              style={{ color: "var(--color-text-subtle)" }}
             >
               Edit
             </Link>
           </div>
         </>
       ) : (
-        <p className="text-xs leading-relaxed text-muted-foreground">
+        <p className="text-xs leading-relaxed" style={{ color: "var(--color-text-subtle)" }}>
           Nothing assigned here yet.
         </p>
       )}
@@ -92,34 +111,46 @@ function ItemCard({
   );
 }
 
+// ── Day cell ─────────────────────────────────────────────────────────────────
+
 function DayCell({ day }: { day: AdminCalendarDay }) {
-  const dailyStateClass = day.hasDailyGap
-    ? "border-amber-300 bg-amber-50/80 dark:border-amber-800 dark:bg-amber-950/20"
+  // Functional state colors — amber = missing coverage, rose = unpublished risk
+  const cellStyle: React.CSSProperties = day.hasDailyGap
+    ? { borderColor: "#FCD34D", background: "rgba(254,243,199,0.6)" }
     : day.hasDailyPublishRisk
-      ? "border-rose-300 bg-rose-50/80 dark:border-rose-800 dark:bg-rose-950/20"
-      : "border-border bg-card";
+      ? { borderColor: "#FCA5A5", background: "rgba(254,226,226,0.5)" }
+      : {};
 
   return (
     <div
-      className={[
-        "flex min-h-72 flex-col rounded-2xl border p-3 shadow-soft",
-        dailyStateClass,
-        day.isToday ? "ring-2 ring-primary/30" : "",
-        !day.isCurrentMonth ? "opacity-80" : "",
-      ].join(" ")}
+      className="surface-card flex min-h-72 flex-col"
+      style={{
+        padding: "0.75rem",
+        borderRadius: "1rem",
+        ...(day.isToday ? { outline: "2px solid rgba(47,111,237,0.25)", outlineOffset: "1px" } : {}),
+        ...(!day.isCurrentMonth ? { opacity: 0.8 } : {}),
+        ...cellStyle,
+      }}
       title={day.label}
     >
+      {/* ── Day header ── */}
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
-          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          <p
+            className="text-[11px] font-medium uppercase tracking-wide"
+            style={{ color: "var(--color-text-subtle)" }}
+          >
             {day.weekday}
           </p>
           <div className="mt-1 flex items-center gap-2">
-            <span className="font-heading text-xl font-bold tracking-[-0.02em] text-foreground">
+            <span
+              className="font-heading text-xl font-bold"
+              style={{ letterSpacing: "-0.02em", color: "var(--color-text-default)" }}
+            >
               {day.dayOfMonth}
             </span>
             {day.isToday && (
-              <span className="rounded-sm bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">
+              <span className="admin-badge admin-badge--published" style={{ fontSize: "0.65rem" }}>
                 Today
               </span>
             )}
@@ -127,27 +158,29 @@ function DayCell({ day }: { day: AdminCalendarDay }) {
         </div>
 
         {(day.hasDailyGap || day.hasDailyPublishRisk) && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+          <span
+            className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium"
+            style={{
+              background: "rgba(254,243,199,0.9)",
+              color: "#92400E",
+            }}
+          >
             <svg
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              width="11" height="11" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2"
+              strokeLinecap="round" strokeLinejoin="round"
               aria-hidden="true"
             >
               <path d="M12 9v4" />
               <path d="M12 17h.01" />
               <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
             </svg>
-            {day.hasDailyGap ? "Missing daily" : "Daily not published"}
+            {day.hasDailyGap ? "Missing daily" : "Not published"}
           </span>
         )}
       </div>
 
+      {/* ── Content slots ── */}
       <div className="flex flex-1 flex-col gap-2">
         <ItemCard
           item={day.daily}
@@ -169,54 +202,89 @@ function DayCell({ day }: { day: AdminCalendarDay }) {
         />
 
         {!day.daily && (
-          <p className="rounded-xl border border-dashed border-amber-300 bg-amber-100/50 px-3 py-2 text-xs font-medium text-amber-900 dark:border-amber-800 dark:text-amber-200">
+          <p
+            className="rounded-xl border border-dashed px-3 py-2 text-xs font-medium"
+            style={{
+              borderColor: "#FCD34D",
+              background: "rgba(254,243,199,0.4)",
+              color: "#92400E",
+            }}
+          >
             No daily audio scheduled for this date.
           </p>
         )}
 
         {day.daily && day.hasDailyPublishRisk && (
-          <p className="rounded-xl border border-dashed border-rose-300 bg-rose-100/60 px-3 py-2 text-xs font-medium text-rose-900 dark:border-rose-800 dark:text-rose-200">
+          <p
+            className="rounded-xl border border-dashed px-3 py-2 text-xs font-medium"
+            style={{
+              borderColor: "#FCA5A5",
+              background: "rgba(254,226,226,0.4)",
+              color: "#991B1B",
+            }}
+          >
             Daily audio exists here, but none of the scheduled items are published yet.
           </p>
         )}
 
         {(day.hasWeeklyGap || day.hasMonthlyGap) && (
-          <div className="rounded-xl border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
+          <div
+            className="rounded-xl border border-dashed px-3 py-2 text-xs"
+            style={{ borderColor: "var(--color-border)", color: "var(--color-text-subtle)" }}
+          >
             {day.hasWeeklyGap && <p>No published weekly principle for this week.</p>}
             {day.hasMonthlyGap && <p>No published monthly theme for this month.</p>}
           </div>
         )}
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-2 border-t border-border pt-3">
+      {/* ── Create actions ── */}
+      <div
+        className="mt-3 flex flex-wrap gap-2 pt-3"
+        style={{ borderTop: "1px solid var(--color-border)" }}
+      >
         <Link
           href={day.createDailyHref}
-          className="rounded-full border border-border px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="rounded-full px-3 py-1.5 text-[11px] font-medium transition-colors hover:bg-muted"
+          style={{
+            border: "1px solid var(--color-border)",
+            color: "var(--color-text-subtle)",
+          }}
         >
-          Create Daily
+          + Daily
         </Link>
 
         {day.createWeeklyHref && (
           <Link
             href={day.createWeeklyHref}
-            className="rounded-full border border-border px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="rounded-full px-3 py-1.5 text-[11px] font-medium transition-colors hover:bg-muted"
+            style={{
+              border: "1px solid var(--color-border)",
+              color: "var(--color-text-subtle)",
+            }}
           >
-            Create Weekly
+            + Weekly
           </Link>
         )}
 
         {day.createMonthlyHref && (
           <Link
             href={day.createMonthlyHref}
-            className="rounded-full border border-border px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="rounded-full px-3 py-1.5 text-[11px] font-medium transition-colors hover:bg-muted"
+            style={{
+              border: "1px solid var(--color-border)",
+              color: "var(--color-text-subtle)",
+            }}
           >
-            Create Monthly
+            + Monthly
           </Link>
         )}
       </div>
     </div>
   );
 }
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function AdminContentCalendarPage({
   searchParams,
@@ -227,136 +295,158 @@ export default async function AdminContentCalendarPage({
   const calendar = await getAdminContentCalendar(params.start);
 
   return (
-    <div className="max-w-7xl">
-      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+    <div style={{ maxWidth: "90rem" }}>
+      {/* ── Page header ── */}
+      <div className="admin-page-header">
         <div>
           <Link
             href="/admin/content"
-            className="mb-4 inline-block text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className="mb-3 inline-block text-xs font-medium transition-colors"
+            style={{ color: "var(--color-text-subtle)" }}
           >
-            ← Back to content
+            ← Content
           </Link>
-          <h1
-            className="font-heading text-2xl font-bold tracking-[-0.02em] text-foreground"
-            style={{ textWrap: "balance" } as React.CSSProperties}
-          >
-            Content Calendar
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h1 className="admin-page-header__title">Content Calendar</h1>
+          <p className="admin-page-header__subtitle">
             Four-week operational view for daily coverage, weekly principles, and monthly themes.
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="admin-page-header__actions">
           <Link
             href={`/admin/content/calendar?start=${calendar.previousStart}`}
-            className="rounded border border-border px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            className="btn-ghost"
+            style={{ fontSize: "0.875rem", padding: "0.5rem 0.875rem" }}
           >
-            Previous 4 weeks
+            ← Previous
           </Link>
           <Link
             href="/admin/content/calendar"
-            className="rounded border border-border px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            className="btn-ghost"
+            style={{ fontSize: "0.875rem", padding: "0.5rem 0.875rem" }}
           >
-            Current range
+            Today
           </Link>
           <Link
             href={`/admin/content/calendar?start=${calendar.nextStart}`}
-            className="rounded border border-border px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            className="btn-ghost"
+            style={{ fontSize: "0.875rem", padding: "0.5rem 0.875rem" }}
           >
-            Next 4 weeks
+            Next →
           </Link>
         </div>
       </div>
 
-      <div className="mb-5 flex flex-col gap-4 rounded-2xl border border-border bg-card p-5 shadow-soft md:flex-row md:items-center md:justify-between">
+      {/* ── Range summary ── */}
+      <div
+        className="surface-card mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
+        style={{ padding: "1.125rem 1.5rem" }}
+      >
         <div>
-          <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+          <p className="admin-page-header__eyebrow" style={{ marginBottom: "0.25rem" }}>
             Visible range
           </p>
-          <h2 className="font-heading text-xl font-semibold tracking-[-0.03em] text-foreground">
+          <h2
+            className="font-heading font-semibold"
+            style={{
+              fontSize: "1.2rem",
+              letterSpacing: "-0.03em",
+              color: "var(--color-text-default)",
+            }}
+          >
             {calendar.visibleMonthSummary}
           </h2>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm" style={{ color: "var(--color-text-subtle)" }}>
             {calendar.start} through {calendar.end}
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2 text-xs">
-          <span className="rounded-full bg-amber-100 px-3 py-1 font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+        <div className="flex flex-wrap gap-2">
+          <span className="admin-badge admin-badge--review">
             {calendar.dailyGapCount} daily gap{calendar.dailyGapCount === 1 ? "" : "s"}
           </span>
           {calendar.dailyPublishRiskCount > 0 && (
-            <span className="rounded-full bg-rose-100 px-3 py-1 font-medium text-rose-800 dark:bg-rose-900/30 dark:text-rose-300">
+            <span className="admin-badge admin-badge--past-due">
               {calendar.dailyPublishRiskCount} day
               {calendar.dailyPublishRiskCount === 1 ? "" : "s"} not yet published
             </span>
           )}
           {calendar.weeklyGapCount > 0 && (
-            <span className="rounded-full bg-muted px-3 py-1 font-medium text-muted-foreground">
+            <span className="admin-badge admin-badge--draft">
               {calendar.weeklyGapCount} week
-              {calendar.weeklyGapCount === 1 ? "" : "s"} missing a published principle
+              {calendar.weeklyGapCount === 1 ? "" : "s"} missing principle
             </span>
           )}
           {calendar.monthlyGapCount > 0 && (
-            <span className="rounded-full bg-muted px-3 py-1 font-medium text-muted-foreground">
+            <span className="admin-badge admin-badge--draft">
               {calendar.monthlyGapCount} month
-              {calendar.monthlyGapCount === 1 ? "" : "s"} missing a published theme
+              {calendar.monthlyGapCount === 1 ? "" : "s"} missing theme
             </span>
           )}
         </div>
       </div>
 
+      {/* ── Operational Focus + Legend ── */}
       <div className="mb-5 grid gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
-          <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-            Operational Focus
-          </p>
-          <h2 className="mt-2 font-heading text-2xl font-semibold tracking-[-0.03em] text-foreground">
+        <div className="surface-card" style={{ padding: "1.25rem 1.5rem" }}>
+          <p className="admin-page-header__eyebrow">Operational focus</p>
+          <h2
+            className="mt-2 font-heading font-semibold"
+            style={{
+              fontSize: "1.15rem",
+              letterSpacing: "-0.03em",
+              color: "var(--color-text-default)",
+              marginBottom: "0.5rem",
+            }}
+          >
             Daily coverage first
           </h2>
-          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-            The calendar is optimized to show missing daily audio immediately. Weekly principles
+          <p className="text-sm leading-relaxed" style={{ color: "var(--color-text-subtle)" }}>
+            The calendar is optimized to surface missing daily audio. Weekly principles
             and monthly themes remain visible, but they stay secondary to day-by-day coverage.
           </p>
         </div>
 
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
-          <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-            Legend
-          </p>
-          <div className="mt-3 flex flex-col gap-2 text-sm text-muted-foreground">
+        <div className="surface-card" style={{ padding: "1.25rem 1.5rem" }}>
+          <p className="admin-page-header__eyebrow">Legend</p>
+          <div className="mt-3 flex flex-col gap-2 text-sm" style={{ color: "var(--color-text-subtle)" }}>
             <span className="inline-flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-amber-200" />
+              <span className="h-3 w-3 rounded-full" style={{ background: "#FCD34D" }} />
               Missing daily coverage
             </span>
             <span className="inline-flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-rose-200" />
+              <span className="h-3 w-3 rounded-full" style={{ background: "#FCA5A5" }} />
               Daily scheduled but unpublished
             </span>
             <span className="inline-flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-green-200" />
+              <span className="h-3 w-3 rounded-full" style={{ background: "#6EE7B7" }} />
               Published and ready
             </span>
             <span className="inline-flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-muted" />
+              <span
+                className="h-3 w-3 rounded-full"
+                style={{ background: "var(--color-border)" }}
+              />
               Draft or review content
             </span>
           </div>
         </div>
       </div>
 
+      {/* ── Weekday row labels ── */}
       <div className="mb-3 grid grid-cols-7 gap-2">
         {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((label) => (
           <div
             key={label}
-            className="px-2 py-1 text-center text-xs font-medium uppercase tracking-wide text-muted-foreground"
+            className="px-2 py-1 text-center text-[11px] font-semibold uppercase tracking-wide"
+            style={{ color: "var(--color-text-subtle)" }}
           >
             {label}
           </div>
         ))}
       </div>
 
+      {/* ── Calendar grid ── */}
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-7">
         {calendar.days.map((day) => (
           <DayCell key={day.date} day={day} />

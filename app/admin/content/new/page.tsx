@@ -34,23 +34,21 @@ export default async function AdminContentNewPage({
 
   return (
     <div className="max-w-2xl">
-      <div className="mb-6">
-        <Link
-          href="/admin/content"
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors mb-4 inline-block"
-        >
+      <div className="admin-breadcrumb">
+        <Link href="/admin/content" className="admin-breadcrumb__back">
           ← Back to content
         </Link>
-        <h1 className="font-heading font-bold text-2xl text-foreground tracking-[-0.02em] mb-1">
-          New content
-        </h1>
-        <p className="text-muted-foreground text-sm">
+      </div>
+
+      <div className="admin-page-header">
+        <h1 className="admin-page-header__title">New content</h1>
+        <p className="admin-page-header__subtitle">
           Create a Daily, Weekly, or Monthly content record.
         </p>
       </div>
 
       {params.error && (
-        <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm rounded-lg p-4 mb-6">
+        <div className="admin-banner admin-banner--error">
           {params.error === "title_required"
             ? "Title is required."
             : "Failed to save. Check server logs."}
@@ -145,39 +143,34 @@ export function ContentForm({
     : "";
 
   return (
-    <form
-      action={action}
-      className="bg-card border border-border rounded-lg p-6 flex flex-col gap-5"
-    >
+    <form action={action} className="admin-form-card">
       {values?.id && <input type="hidden" name="id" value={values.id} />}
 
       {/* ─── Core ────────────────────────────────────────────────────────── */}
 
       {/* Type */}
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="type" className="text-sm font-medium text-foreground">
-          Content type <span className="text-destructive">*</span>
+      <div className="admin-form-field">
+        <label htmlFor="type" className="admin-label">
+          Content type <span className="admin-label__required">*</span>
         </label>
         <select
           id="type"
           name="type"
           defaultValue={type}
-          className="admin-input"
+          className="admin-select"
         >
           <option value="daily_audio">Daily — audio practice</option>
           <option value="weekly_principle">Weekly — principle</option>
           <option value="monthly_theme">Monthly — theme</option>
           <option value="coaching_call">Coaching call (Level 3+)</option>
         </select>
-        <p className="text-xs text-muted-foreground">
-          Determines which Today card this appears in
-        </p>
+        <p className="admin-hint">Determines which Today card this appears in</p>
       </div>
 
       {/* Title */}
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="title" className="text-sm font-medium text-foreground">
-          Title <span className="text-destructive">*</span>
+      <div className="admin-form-field">
+        <label htmlFor="title" className="admin-label">
+          Title <span className="admin-label__required">*</span>
         </label>
         <input
           id="title"
@@ -191,8 +184,8 @@ export function ContentForm({
       </div>
 
       {/* Excerpt */}
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="excerpt" className="text-sm font-medium text-foreground">
+      <div className="admin-form-field">
+        <label htmlFor="excerpt" className="admin-label">
           Excerpt
         </label>
         <input
@@ -203,14 +196,12 @@ export function ContentForm({
           placeholder="Short pull-quote shown on the Today card"
           className="admin-input"
         />
-        <p className="text-xs text-muted-foreground">
-          Optional — shown beneath the title on Today cards
-        </p>
+        <p className="admin-hint">Optional — shown beneath the title on Today cards</p>
       </div>
 
       {/* Description */}
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="description" className="text-sm font-medium text-foreground">
+      <div className="admin-form-field">
+        <label htmlFor="description" className="admin-label">
           Description
         </label>
         <textarea
@@ -219,20 +210,20 @@ export function ContentForm({
           rows={3}
           defaultValue={values?.description ?? ""}
           placeholder="Longer context or framing…"
-          className="admin-input resize-none"
+          className="admin-textarea admin-textarea--no-resize"
         />
       </div>
 
       {/* Status */}
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="status" className="text-sm font-medium text-foreground">
-          Status <span className="text-destructive">*</span>
+      <div className="admin-form-field">
+        <label htmlFor="status" className="admin-label">
+          Status <span className="admin-label__required">*</span>
         </label>
         <select
           id="status"
           name="status"
           defaultValue={values?.status ?? "draft"}
-          className="admin-input"
+          className="admin-select"
         >
           <option value="draft">Draft — not visible to members</option>
           <option value="ready_for_review">Ready for review</option>
@@ -242,21 +233,19 @@ export function ContentForm({
       </div>
 
       {/* ─── Tier & scheduling (Sprint 10) ──────────────────────────────── */}
-      <div className="border-t border-border pt-4 flex flex-col gap-4">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          Access &amp; scheduling
-        </p>
+      <div className="admin-form-section">
+        <p className="admin-form-section__label">Access &amp; scheduling</p>
 
         {/* Tier min */}
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="tier_min" className="text-sm font-medium text-foreground">
+        <div className="admin-form-field">
+          <label htmlFor="tier_min" className="admin-label">
             Minimum tier
           </label>
           <select
             id="tier_min"
             name="tier_min"
             defaultValue={values?.tier_min ?? ""}
-            className="admin-input"
+            className="admin-select"
           >
             <option value="">All tiers (no restriction)</option>
             <option value="level_1">Level 1+</option>
@@ -264,15 +253,15 @@ export function ContentForm({
             <option value="level_3">Level 3+ (default for coaching)</option>
             <option value="level_4">Level 4 only</option>
           </select>
-          <p className="text-xs text-muted-foreground">
+          <p className="admin-hint">
             Members below this tier will not see this content in library or search.
           </p>
         </div>
 
         {/* starts_at — relevant for coaching calls and future events */}
         {(isCoaching || !!values?.starts_at) && (
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="starts_at" className="text-sm font-medium text-foreground">
+          <div className="admin-form-field">
+            <label htmlFor="starts_at" className="admin-label">
               Call date &amp; time
             </label>
             <input
@@ -282,7 +271,7 @@ export function ContentForm({
               defaultValue={startsAtLocal}
               className="admin-input"
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="admin-hint">
               When the live call happens. Leave blank for replays with no scheduled time.
             </p>
           </div>
@@ -290,14 +279,12 @@ export function ContentForm({
       </div>
 
       {/* ─── Publishing date ─────────────────────────────────────────────── */}
-      <div className="border-t border-border pt-4 flex flex-col gap-4">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          Publishing date
-        </p>
+      <div className="admin-form-section">
+        <p className="admin-form-section__label">Publishing date</p>
 
         {isDaily && (
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="publish_date" className="text-sm font-medium text-foreground">
+          <div className="admin-form-field">
+            <label htmlFor="publish_date" className="admin-label">
               Publish date (Eastern)
             </label>
             <input
@@ -307,15 +294,13 @@ export function ContentForm({
               defaultValue={values?.publish_date ?? dateDefaults?.publish_date ?? todayEastern}
               className="admin-input"
             />
-            <p className="text-xs text-muted-foreground">
-              Members see this practice on this date (Eastern timezone)
-            </p>
+            <p className="admin-hint">Members see this practice on this date (Eastern timezone)</p>
           </div>
         )}
 
         {isWeekly && (
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="week_start" className="text-sm font-medium text-foreground">
+          <div className="admin-form-field">
+            <label htmlFor="week_start" className="admin-label">
               Week start date (Monday)
             </label>
             <input
@@ -325,15 +310,13 @@ export function ContentForm({
               defaultValue={values?.week_start ?? dateDefaults?.week_start ?? ""}
               className="admin-input"
             />
-            <p className="text-xs text-muted-foreground">
-              Active for the full 7-day week starting on this Monday
-            </p>
+            <p className="admin-hint">Active for the full 7-day week starting on this Monday</p>
           </div>
         )}
 
         {isMonthly && (
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="month_year" className="text-sm font-medium text-foreground">
+          <div className="admin-form-field">
+            <label htmlFor="month_year" className="admin-label">
               Month (YYYY-MM)
             </label>
             <input
@@ -343,34 +326,30 @@ export function ContentForm({
               defaultValue={values?.month_year ?? dateDefaults?.month_year ?? ""}
               className="admin-input"
             />
-            <p className="text-xs text-muted-foreground">
-              Active during the entire calendar month
-            </p>
+            <p className="admin-hint">Active during the entire calendar month</p>
           </div>
         )}
       </div>
 
       {/* ─── Content body ────────────────────────────────────────────────── */}
-      <div className="border-t border-border pt-4 flex flex-col gap-4">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          Content body
-        </p>
+      <div className="admin-form-section">
+        <p className="admin-form-section__label">Content body</p>
 
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="body" className="text-sm font-medium text-foreground">
+        <div className="admin-form-field">
+          <label htmlFor="body" className="admin-label">
             Body / supporting notes
           </label>
           <BodyEditor
             defaultValue={values?.body ?? ""}
-            placeholder="Write body content\u2026 Headings, bold, lists, and links supported."
+            placeholder="Write body content… Headings, bold, lists, and links supported."
           />
-          <p className="text-xs text-muted-foreground">
+          <p className="admin-hint">
             Shown below the excerpt on Weekly/Monthly cards. Saves as Markdown.
           </p>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="reflection_prompt" className="text-sm font-medium text-foreground">
+        <div className="admin-form-field">
+          <label htmlFor="reflection_prompt" className="admin-label">
             Reflection prompt
           </label>
           <input
@@ -381,7 +360,7 @@ export function ContentForm({
             placeholder="What does this practice bring up for you today?"
             className="admin-input"
           />
-          <p className="text-xs text-muted-foreground">
+          <p className="admin-hint">
             Shown above the &ldquo;Reflect&rdquo; button to guide member journaling
           </p>
         </div>
@@ -391,14 +370,12 @@ export function ContentForm({
 
       {/* Daily: explicit Castos + S3 fields */}
       {isDaily && (
-        <div className="border-t border-border pt-4 flex flex-col gap-4">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Audio (Daily)
-          </p>
+        <div className="admin-form-section">
+          <p className="admin-form-section__label">Audio (Daily)</p>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="duration_seconds" className="text-sm font-medium text-foreground">
+          <div className="admin-form-grid-2">
+            <div className="admin-form-field">
+              <label htmlFor="duration_seconds" className="admin-label">
                 Duration (seconds)
               </label>
               <input
@@ -411,13 +388,13 @@ export function ContentForm({
                 placeholder="480"
                 className="admin-input"
               />
-              <p className="text-xs text-muted-foreground">e.g. 480 = 8 min</p>
+              <p className="admin-hint">e.g. 480 = 8 min</p>
             </div>
             <div />
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="castos_episode_url" className="text-sm font-medium text-foreground">
+          <div className="admin-form-field">
+            <label htmlFor="castos_episode_url" className="admin-label">
               Castos episode URL
             </label>
             <input
@@ -430,8 +407,8 @@ export function ContentForm({
             />
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="s3_audio_key" className="text-sm font-medium text-foreground">
+          <div className="admin-form-field">
+            <label htmlFor="s3_audio_key" className="admin-label">
               S3 object key
             </label>
             <input
@@ -448,13 +425,11 @@ export function ContentForm({
 
       {/* Coaching: Zoom join URL + optional replay video */}
       {isCoaching && (
-        <div className="border-t border-border pt-4 flex flex-col gap-4">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Coaching (call details)
-          </p>
+        <div className="admin-form-section">
+          <p className="admin-form-section__label">Coaching (call details)</p>
 
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="join_url" className="text-sm font-medium text-foreground">
+          <div className="admin-form-field">
+            <label htmlFor="join_url" className="admin-label">
               Zoom join URL
             </label>
             <input
@@ -465,13 +440,11 @@ export function ContentForm({
               placeholder="https://us02web.zoom.us/j/…"
               className="admin-input"
             />
-            <p className="text-xs text-muted-foreground">
-              Server-side only. Never exposed in client JS.
-            </p>
+            <p className="admin-hint">Server-side only. Never exposed in client JS.</p>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="media_url" className="text-sm font-medium text-foreground">
+          <div className="admin-form-field">
+            <label htmlFor="media_url" className="admin-label">
               Replay video URL (after call)
             </label>
             <input
@@ -482,13 +455,11 @@ export function ContentForm({
               placeholder="Paste Vimeo or YouTube URL after the call"
               className="admin-input"
             />
-            <p className="text-xs text-muted-foreground">
-              Auto-detected: Vimeo or YouTube. Add after the call ends.
-            </p>
+            <p className="admin-hint">Auto-detected: Vimeo or YouTube. Add after the call ends.</p>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="duration_seconds" className="text-sm font-medium text-foreground">
+          <div className="admin-form-field">
+            <label htmlFor="duration_seconds" className="admin-label">
               Duration (seconds)
             </label>
             <input
@@ -507,13 +478,11 @@ export function ContentForm({
 
       {/* Weekly/Monthly: single media URL with auto-detect */}
       {(isWeekly || isMonthly) && (
-        <div className="border-t border-border pt-4 flex flex-col gap-4">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Media (optional)
-          </p>
+        <div className="admin-form-section">
+          <p className="admin-form-section__label">Media (optional)</p>
 
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="media_url" className="text-sm font-medium text-foreground">
+          <div className="admin-form-field">
+            <label htmlFor="media_url" className="admin-label">
               Media URL
             </label>
             <input
@@ -524,14 +493,14 @@ export function ContentForm({
               placeholder="Paste a Vimeo, YouTube, or audio URL…"
               className="admin-input"
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="admin-hint">
               Auto-detected: Vimeo, YouTube, Castos, or direct audio (.mp3, .m4a).
               Leave empty for text-only content.
             </p>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="duration_seconds" className="text-sm font-medium text-foreground">
+          <div className="admin-form-field">
+            <label htmlFor="duration_seconds" className="admin-label">
               Duration (seconds)
             </label>
             <input
@@ -549,13 +518,11 @@ export function ContentForm({
       )}
 
       {/* ─── Downloads & links ───────────────────────────────────────────── */}
-      <div className="border-t border-border pt-4 flex flex-col gap-4">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          Downloads &amp; links
-        </p>
+      <div className="admin-form-section">
+        <p className="admin-form-section__label">Downloads &amp; links</p>
 
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="download_url" className="text-sm font-medium text-foreground">
+        <div className="admin-form-field">
+          <label htmlFor="download_url" className="admin-label">
             Download URL
           </label>
           <input
@@ -566,16 +533,12 @@ export function ContentForm({
             placeholder="https://… (PDF, worksheet, or other resource)"
             className="admin-input"
           />
-          <p className="text-xs text-muted-foreground">
-            Optional — shown as a download link on the Today card
-          </p>
+          <p className="admin-hint">Optional — shown as a download link on the Today card</p>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-foreground">
-            Resource links
-          </label>
-          <p className="text-xs text-muted-foreground mb-1">
+        <div className="admin-form-field">
+          <label className="admin-label">Resource links</label>
+          <p className="admin-hint" style={{ marginBottom: "0.375rem" }}>
             Additional links shown beneath the content (e.g. articles, tools, worksheets).
           </p>
           <ResourceLinksEditor initialValue={values?.resource_links} />
@@ -583,8 +546,8 @@ export function ContentForm({
       </div>
 
       {/* ─── Internal ────────────────────────────────────────────────────── */}
-      <div className="border-t border-border pt-4 flex flex-col gap-1.5">
-        <label htmlFor="admin_notes" className="text-sm font-medium text-foreground">
+      <div className="admin-form-field">
+        <label htmlFor="admin_notes" className="admin-label">
           Admin notes
         </label>
         <textarea
@@ -593,22 +556,16 @@ export function ContentForm({
           rows={2}
           defaultValue={values?.admin_notes ?? ""}
           placeholder="Internal notes — never shown to members"
-          className="admin-input resize-none"
+          className="admin-textarea admin-textarea--no-resize"
         />
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-3 pt-2">
-        <button
-          type="submit"
-          className="flex-1 px-4 py-2.5 rounded bg-primary text-primary-foreground font-medium text-sm hover:bg-primary-hover transition-colors shadow-soft"
-        >
+      <div className="admin-form-actions">
+        <button type="submit" className="admin-btn admin-btn--primary">
           {submitLabel}
         </button>
-        <Link
-          href="/admin/content"
-          className="px-4 py-2.5 rounded border border-border text-muted-foreground font-medium text-sm hover:text-foreground hover:bg-muted transition-colors"
-        >
+        <Link href="/admin/content" className="admin-btn admin-btn--outline">
           Cancel
         </Link>
       </div>

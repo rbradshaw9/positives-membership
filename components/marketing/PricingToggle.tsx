@@ -7,38 +7,50 @@ import { PricingCard } from "./PricingCard";
  * components/marketing/PricingToggle.tsx
  *
  * Owns the billing interval state ("monthly" | "annual").
- * Renders the toggle UI and three pricing cards.
+ * Renders the toggle UI + all 4 pricing cards.
  *
- * Pass 2 changes:
- *   - Passes selectedPriceId down to Level 1 PricingCard
- *   - Removed the visually-hidden AuthGate container
- *   - AuthGate.tsx + auth-first Server Actions remain in the codebase
- *     but are no longer referenced here; they will be cleaned up in Pass 3.
- *
- * Level 1:  fully interactive — toggle switches priceId + price display
- * Level 2:  coming soon — static, disabled CTA
- * Level 3:  coming soon — static, disabled CTA
+ * Each card receives its priceId from the server (never bundled into client JS).
+ * Cards where priceId is empty/null render a "Notify me" state automatically.
  */
 
 interface PricingToggleProps {
-  /** Passed from server so price IDs are never bundled into client JS */
-  monthlyPriceId: string;
-  annualPriceId: string;
-  // isAuthenticated + userEmail retained in signature so JoinPage
-  // doesn't need to change. Will be removed in Pass 3 cleanup.
+  /** All price IDs resolved server-side from env — never exposed to client bundle */
+  level1Monthly: string;
+  level1Annual: string;
+  level2Monthly: string;
+  level2Annual: string;
+  level3Monthly: string;
+  level3Annual: string;
+  level4Monthly: string;
+  level4Annual: string;
+  // Legacy props — no longer used but kept to avoid breaking callers
   isAuthenticated?: boolean;
   userEmail?: string | null;
   initialError?: string | null;
+  /** @deprecated Use level1Monthly/level1Annual instead */
+  monthlyPriceId?: string;
+  /** @deprecated Use level1Monthly/level1Annual instead */
+  annualPriceId?: string;
 }
 
 export function PricingToggle({
-  monthlyPriceId,
-  annualPriceId,
+  level1Monthly,
+  level1Annual,
+  level2Monthly,
+  level2Annual,
+  level3Monthly,
+  level3Annual,
+  level4Monthly,
+  level4Annual,
 }: PricingToggleProps) {
   const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
 
-  const selectedPriceId =
-    billing === "annual" ? annualPriceId : monthlyPriceId;
+  const prices = {
+    1: billing === "annual" ? level1Annual : level1Monthly,
+    2: billing === "annual" ? level2Annual : level2Monthly,
+    3: billing === "annual" ? level3Annual : level3Monthly,
+    4: billing === "annual" ? level4Annual : level4Monthly,
+  };
 
   return (
     <div>
@@ -87,14 +99,15 @@ export function PricingToggle({
       </div>
 
       <p className="text-center text-xs mb-8" style={{ color: "#B0A89E" }}>
-        Annual pricing currently applies to Level 1 membership.
+        Annual billing currently available for Level 1.
       </p>
 
-      {/* ── Pricing cards ─────────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <PricingCard level={1} billing={billing} priceId={selectedPriceId} />
-        <PricingCard level={2} billing={billing} comingSoon />
-        <PricingCard level={3} billing={billing} comingSoon />
+      {/* ── Pricing cards — 2-col on mobile, 4-col on xl ─── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+        <PricingCard level={1} billing={billing} priceId={prices[1]} />
+        <PricingCard level={2} billing={billing} priceId={prices[2]} />
+        <PricingCard level={3} billing={billing} priceId={prices[3]} />
+        <PricingCard level={4} billing={billing} priceId={prices[4]} />
       </div>
     </div>
   );
