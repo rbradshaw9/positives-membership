@@ -1,5 +1,5 @@
 import { unstable_cache } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { getAdminClient } from "@/lib/supabase/admin";
 import { getEffectiveDate } from "@/lib/dates/effective-date";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import type { Tables } from "@/types/supabase";
@@ -31,7 +31,8 @@ export type TodayContent = Pick<
 >;
 
 async function fetchTodayContent(effectiveDate: string): Promise<TodayContent | null> {
-  const supabase = await createClient();
+  // getAdminClient() does not read cookies — safe to call inside unstable_cache.
+  const supabase = getAdminClient();
 
   const { data, error } = await supabase
     .from("content")

@@ -1,5 +1,5 @@
 import { unstable_cache } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { getAdminClient } from "@/lib/supabase/admin";
 import { getEffectiveMonthYear } from "@/lib/dates/effective-date";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import type { Tables } from "@/types/supabase";
@@ -32,7 +32,8 @@ export type MonthlyContent = Pick<
 >;
 
 async function fetchMonthlyContent(targetMonthYear: string): Promise<MonthlyContent | null> {
-  const supabase = await createClient();
+  // getAdminClient() does not read cookies — safe to call inside unstable_cache.
+  const supabase = getAdminClient();
 
   const { data, error } = await supabase
     .from("content")

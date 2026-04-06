@@ -30,28 +30,44 @@ function CheckIcon({ color = "#4E8C78" }: { color?: string }) {
 
 const LANDING_FAQS = [
   {
+    q: "What exactly is Positives?",
+    a: "Positives is a daily practice membership built by Dr. Paul Jenkins, a licensed Clinical Psychologist with 30+ years of experience. Each day you get a short guided audio session (5–15 minutes) designed to reset your thinking and help you move through your day with more clarity and calm. Alongside that, you get a weekly mindset principle and a monthly masterclass with Dr. Paul.",
+  },
+  {
     q: "How long are the daily sessions?",
-    a: "Most sessions are 5–15 minutes. Designed to fit before work, during a break, or before bed — whenever works for your rhythm.",
+    a: "Most daily sessions are 5–15 minutes. They're designed to fit before work, during lunch, or whenever suits your rhythm. You don't need to block off a long window — a few focused minutes is the whole idea.",
+  },
+  {
+    q: "How is Positives different from a meditation app?",
+    a: "Meditation apps train you to sit still. Positives trains you to think differently — the kind of mindset work that changes how you respond to stress, make decisions, and show up in relationships. Dr. Paul's approach is backed by 30+ years of clinical psychology, not just breathwork.",
   },
   {
     q: "Is this the same as the Live on Purpose podcast?",
-    a: "No. The podcast is Dr. Paul's free public show. Positives is a private daily practice created specifically for members — new content, more personal, designed to be experienced daily.",
+    a: "No — the Live on Purpose Radio podcast is Dr. Paul's free, public show. Positives is a private daily practice created specifically for members. The content goes deeper, is more personal, and is designed to be experienced daily rather than occasionally.",
   },
   {
     q: "What if I miss a day?",
-    a: "Every session is saved in your library. You can listen at any pace without feeling behind. There are no streaks required, no guilt mechanics — just a practice you can return to.",
-  },
-  {
-    q: "Can I cancel anytime?",
-    a: "Yes. Cancel immediately from your account settings. No calls, no hoops.",
+    a: "Every session is always available in your member library. You can listen at any pace, skip days, or circle back. There's no streak requirement or guilt mechanic — Positives is a practice, not a course with a deadline.",
   },
   {
     q: "Is there a free trial?",
-    a: "No free trial, but every membership includes a 30-day money-back guarantee. If Positives doesn't meaningfully improve your days within 30 days, email us for a full refund — no questions asked.",
+    a: "There's no free trial, but every membership includes an unconditional 30-day money-back guarantee. If the practice doesn't meaningfully improve your days within 30 days, email us and we'll refund you in full — no questions asked.",
+  },
+  {
+    q: "Can I cancel anytime?",
+    a: "Yes. You can cancel immediately from your account settings. No calls, no cancellation hoops, no \"please tell us why\" friction. If you want to leave, you can leave.",
   },
   {
     q: "What devices does this work on?",
-    a: "Positives works in any modern web browser on any device. Phone, tablet, desktop. No app download required.",
+    a: "Positives works in any modern web browser on any device — phone, tablet, desktop. No app download required. A mobile app is on the roadmap.",
+  },
+  {
+    q: "What is the 'Founding Member' rate?",
+    a: "The founding member rate ($49/month, down from $97/month) is a special price for early members who join during our launch. Your rate stays locked in permanently — when we raise prices for new members, yours doesn't change.",
+  },
+  {
+    q: "What do the other pricing tiers include?",
+    a: "Level 1 (Membership) is live now and includes everything: daily audio, weekly principles, monthly masterclass, and the full member library. Higher tiers — including group coaching, live events, and 1:1 coaching with Dr. Paul — are coming soon. Join now to lock your founding rate.",
   },
 ];
 
@@ -893,7 +909,7 @@ export function LandingPageClient() {
       </section>
 
       {/* ━━ 9b. FAQ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <section className="w-full" style={{ background: "#FAFAF8", borderTop: "1px solid rgba(221,215,207,0.55)" }}>
+      <section id="faq" className="w-full" style={{ background: "#FAFAF8", borderTop: "1px solid rgba(221,215,207,0.55)" }}>
         <div
           className="max-w-3xl mx-auto px-8"
           style={{ paddingTop: "clamp(4rem, 8vw, 7rem)", paddingBottom: "clamp(4rem, 8vw, 7rem)" }}
@@ -918,9 +934,9 @@ export function LandingPageClient() {
           <LandingFaq />
 
           <p className="text-center mt-8 text-sm" style={{ color: "#9AA0A8" }}>
-            Have more questions?{" "}
-            <Link href="/faq" style={{ color: "#2F6FED", textDecoration: "underline" }}>
-              See all FAQs →
+            Still have questions?{" "}
+            <Link href="/support" style={{ color: "#2F6FED", textDecoration: "underline" }}>
+              Contact support →
             </Link>
           </p>
         </div>
@@ -1019,7 +1035,7 @@ export function LandingPageClient() {
                 <p className="text-xs font-semibold uppercase mb-3" style={{ color: "#9AA0A8", letterSpacing: "0.1em" }}>Learn</p>
                 <div className="space-y-2">
                   <Link href="/about" className="block text-sm" style={{ color: "#68707A" }}>About Dr. Paul</Link>
-                  <Link href="/faq" className="block text-sm" style={{ color: "#68707A" }}>FAQ</Link>
+                  <Link href="/#faq" className="block text-sm" style={{ color: "#68707A" }}>FAQ</Link>
                 </div>
               </div>
               <div>
