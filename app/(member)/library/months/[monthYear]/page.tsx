@@ -1,16 +1,21 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getMonthDetail } from "@/lib/queries/get-monthly-archive";
-import { VideoEmbed } from "@/components/media/VideoEmbed";
-import { MarkdownBody } from "@/components/content/MarkdownBody";
+import { getArchiveDailyAudios } from "@/lib/queries/get-monthly-daily-audios";
+import { getMonthWeeklyContent } from "@/lib/queries/get-month-weekly-content";
+import { getMemberNoteContentIds } from "@/lib/queries/get-library-content";
+import { requireActiveMember } from "@/lib/auth/require-active-member";
+import { MonthlyThemeCard } from "@/components/today/MonthlyThemeCard";
+import { WeeklyArchive } from "@/components/today/WeeklyArchive";
+import { MonthlyAudioArchive } from "@/components/today/MonthlyAudioArchive";
 import Link from "next/link";
 import type { Metadata } from "next";
 
 /**
  * app/(member)/library/months/[monthYear]/page.tsx
  *
- * Month detail page — shows monthly theme video, weekly principles list,
- * and daily practice count for a specific past month.
+ * Month archive page — mirrors the /today layout but for a past month.
+ * Shows: header, monthly theme, weekly reflections, daily practice playlist.
  */
 
 interface Props {
@@ -19,184 +24,181 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { monthYear } = await params;
+  const label = monthYearToLabel(monthYear);
   return {
-    title: `${monthYear} — Positives Library`,
+    title: `${label} — Positives Library`,
+    description: `Explore the ${label} monthly practice archive.`,
   };
+}
+
+/** "2026-04" → "April 2026" */
+function monthYearToLabel(monthYear: string): string {
+  const [year, month] = monthYear.split("-").map(Number);
+  return new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(
+    new Date(year, month - 1, 1)
+  );
+}
+
+/** "2026-04" → "April" */
+function monthName(monthYear: string): string {
+  const [year, month] = monthYear.split("-").map(Number);
+  return new Intl.DateTimeFormat("en-US", { month: "long" }).format(
+    new Date(year, month - 1, 1)
+  );
 }
 
 export default async function MonthDetailPage({ params }: Props) {
   const { monthYear } = await params;
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
-
-  const { data: member } = await supabase
-    .from("member")
-    .select("id, subscription_status")
-    .eq("id", user.id)
-    .single();
-
-  if (!member || member.subscription_status !== "active") redirect("/account");
+  const member = await requireActiveMember();
 
   const detail = await getMonthDetail(monthYear);
-
   if (!detail) notFound();
 
-  const { practice, theme, weekly_content, daily_count } = detail;
+  const { practice, theme, daily_count } = detail;
+
+  // Fetch the rich data needed by the /today-style components
+  const [monthWeekly, archiveDailyGroup, noteContentIds] = await Promise.all([
+    getMonthWeeklyContent(monthYear),
+    getArchiveDailyAudios(monthYear),
+    theme ? getMemberNoteContentIds(member.id) : Promise.resolve(new Set<string>()),
+  ]);
+
+  const currentMonth = monthName(monthYear);
+  const label = practice.label;
 
   return (
-    <main className="member-container py-8 md:py-12">
-      {/* ── Back ─────────────────────────────────────────────────────── */}
-      <Link
-        href="/library"
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-8"
+    <div>
+      {/* ── Header bar — mirrors /today contextual bar ──────────────── */}
+      <section
+        className="border-b border-border"
+        style={{
+          background:
+            "radial-gradient(ellipse at 10% 0%, rgba(46,196,182,0.12) 0%, transparent 55%), var(--color-card)",
+        }}
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-          <polyline points="15 18 9 12 15 6" />
-        </svg>
-        Library
-      </Link>
+        <div className="member-container py-5 md:py-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <Link
+                href="/library"
+                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
+                Library
+              </Link>
+              <p
+                className="text-[11px] font-bold uppercase tracking-[0.16em] mb-1.5"
+                style={{ color: "var(--color-accent)" }}
+              >
+                Monthly Archive
+              </p>
+              <h1 className="heading-balance font-heading font-bold text-2xl md:text-3xl text-foreground tracking-[-0.03em] leading-tight">
+                {label}
+              </h1>
+              {practice.description && (
+                <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
+                  {practice.description}
+                </p>
+              )}
+            </div>
 
-      <div className="flex flex-col gap-10">
-        {/* ── Month header ─────────────────────────────────────────────── */}
-        <div className="flex flex-col gap-2">
-          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--color-primary)" }}>
-            Monthly Archive
-          </p>
-          <h1 className="heading-balance font-heading font-bold text-3xl md:text-4xl text-foreground tracking-tight">
-            {practice.label}
-          </h1>
-          {practice.description && (
-            <p className="text-foreground/70 text-base leading-relaxed max-w-2xl">
-              {practice.description}
-            </p>
-          )}
-          <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap mt-1">
-            {daily_count > 0 && <span>{daily_count} daily practices</span>}
-            {weekly_content.length > 0 && <span>· {weekly_content.length} weekly principles</span>}
-            {theme && <span>· Monthly theme</span>}
+            {/* Stats badge */}
+            <span
+              className="shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold mt-1"
+              style={{
+                background: "color-mix(in srgb, var(--color-primary) 12%, transparent)",
+                color: "var(--color-primary)",
+                border: "1px solid color-mix(in srgb, var(--color-primary) 22%, transparent)",
+              }}
+            >
+              {daily_count > 0 && `${daily_count} daily`}
+              {daily_count > 0 && monthWeekly.length > 0 && " · "}
+              {monthWeekly.length > 0 && `${monthWeekly.length} weekly`}
+              {(daily_count > 0 || monthWeekly.length > 0) && theme && " · "}
+              {theme && "Theme"}
+            </span>
           </div>
         </div>
+      </section>
 
-        {/* ── Monthly theme ─────────────────────────────────────────────── */}
-        {theme && (
-          <section aria-labelledby="theme-heading" className="flex flex-col gap-5">
-            <h2 id="theme-heading" className="font-heading font-semibold text-xl text-foreground">
-              Monthly Theme
-            </h2>
-            <h3 className="font-heading font-bold text-lg text-foreground">{theme.title}</h3>
+      {/* ── Content — same layout as /today ─────────────────────────── */}
+      <div className="member-container py-6 flex flex-col gap-8">
 
-            {(theme.vimeo_video_id || theme.youtube_video_id) && (
-              <div className="overflow-hidden rounded-2xl border border-border shadow-sm">
-                <VideoEmbed
-                  vimeoId={theme.vimeo_video_id}
-                  youtubeId={theme.youtube_video_id}
-                  contentId={theme.id}
-                  title={theme.title}
-                />
-              </div>
-            )}
-
-            {(theme.description || theme.body) && (
-              <MarkdownBody
-                content={theme.body ?? theme.description ?? ""}
-                className="text-foreground/75"
-              />
-            )}
-
-            {theme.reflection_prompt && (
-              <div
-                className="p-5 rounded-2xl border-l-4"
-                style={{
-                  borderLeftColor: "var(--color-primary)",
-                  background: "color-mix(in srgb, var(--color-primary) 5%, var(--color-surface))",
-                  borderColor: "color-mix(in srgb, var(--color-primary) 15%, var(--color-border))",
-                }}
-              >
-                <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--color-primary)" }}>
-                  Reflection
-                </p>
-                <p className="text-foreground/80 leading-relaxed italic">{theme.reflection_prompt}</p>
-              </div>
-            )}
-          </section>
-        )}
-
-        {/* ── Weekly principles ──────────────────────────────────────── */}
-        {weekly_content.length > 0 && (
-          <section aria-labelledby="weekly-heading" className="flex flex-col gap-4">
-            <h2 id="weekly-heading" className="font-heading font-semibold text-xl text-foreground">
-              Weekly Principles
-            </h2>
-            <div className="flex flex-col gap-2">
-              {weekly_content.map((week, i) => (
-                <Link
-                  key={week.id}
-                  href={`/library/${week.id}`}
-                  className="group flex items-center gap-4 p-4 rounded-xl border transition-all duration-200 hover:border-primary/30 hover:shadow-sm"
-                  style={{ borderColor: "var(--color-border)", background: "var(--color-surface, #fff)" }}
-                >
+        {/* ── Zone 1: Monthly theme + first weekly side-by-side ──────── */}
+        {(theme || monthWeekly.length > 0) && (
+          <section aria-label="This month and weekly content" className="flex flex-col gap-3">
+            <div className="grid gap-5 lg:grid-cols-2">
+              {/* Monthly theme — left on desktop */}
+              {theme && (
+                <div className="flex flex-col gap-2">
                   <span
-                    className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
-                    style={{
-                      background: "color-mix(in srgb, var(--color-primary) 12%, transparent)",
-                      color: "var(--color-primary)",
-                    }}
+                    className="text-[10px] font-bold uppercase tracking-[0.14em]"
+                    style={{ color: "var(--color-accent)" }}
                   >
-                    {i + 1}
+                    {currentMonth}&apos;s Theme
                   </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm text-foreground group-hover:text-primary transition-colors line-clamp-1">
-                      {week.title}
-                    </p>
-                    {week.excerpt && (
-                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{week.excerpt}</p>
+                  <MonthlyThemeCard
+                    content={theme as import("@/lib/queries/get-monthly-content").MonthlyContent}
+                    initialHasNote={theme ? noteContentIds.has(theme.id) : false}
+                    viewerUserId={member.id}
+                  />
+                </div>
+              )}
+
+              {/* First weekly — right on desktop (if theme exists), or full width */}
+              {monthWeekly.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <span
+                    className="text-[10px] font-bold uppercase tracking-[0.14em]"
+                    style={{ color: "var(--color-secondary)" }}
+                  >
+                    Week 1 Reflection
+                  </span>
+                  <div
+                    className="surface-card rounded-2xl border border-border p-5 flex flex-col gap-3"
+                  >
+                    <h3 className="font-heading font-bold text-lg text-foreground">
+                      {monthWeekly[monthWeekly.length - 1].title}
+                    </h3>
+                    {monthWeekly[monthWeekly.length - 1].excerpt && (
+                      <p className="text-sm text-foreground/70 leading-relaxed">
+                        {monthWeekly[monthWeekly.length - 1].excerpt}
+                      </p>
                     )}
+                    <Link
+                      href={`/library/${monthWeekly[monthWeekly.length - 1].id}`}
+                      className="btn-primary self-start inline-flex items-center gap-2 text-sm"
+                    >
+                      View reflection
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                    </Link>
                   </div>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                    className="flex-shrink-0 text-muted-foreground group-hover:text-primary transition-colors" aria-hidden="true">
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
-                </Link>
-              ))}
+                </div>
+              )}
             </div>
           </section>
         )}
 
-        {/* ── Daily practices note ───────────────────────────────────── */}
-        {daily_count > 0 && (
-          <section>
-            <div
-              className="flex items-center gap-4 p-5 rounded-2xl border"
-              style={{ borderColor: "var(--color-border)", background: "var(--color-surface, #fff)" }}
-            >
-              <div
-                className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center"
-                style={{ background: "color-mix(in srgb, var(--color-primary) 10%, transparent)" }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"
-                  style={{ color: "var(--color-primary)" }} aria-hidden="true">
-                  <path d="M9 19V6l12-3v13" />
-                  <circle cx="6" cy="18" r="3" />
-                  <circle cx="18" cy="15" r="3" />
-                </svg>
-              </div>
-              <div>
-                <p className="font-semibold text-foreground text-sm">
-                  {daily_count} Daily Practice{daily_count !== 1 ? "s" : ""}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Daily audios from {practice.label} are available in the Today page.
-                </p>
-              </div>
-            </div>
-          </section>
+        {/* ── Zone 2: Weekly reflections archive ─────────────────────── */}
+        {monthWeekly.length > 1 && (
+          <WeeklyArchive
+            weeks={monthWeekly}
+            currentWeekStart={null}
+          />
+        )}
+
+        {/* ── Zone 3: Daily practice playlist ───────────────────────── */}
+        {archiveDailyGroup && archiveDailyGroup.audios.length > 0 && (
+          <MonthlyAudioArchive
+            monthGroups={[archiveDailyGroup]}
+            currentMonthName={currentMonth}
+          />
         )}
       </div>
-    </main>
+    </div>
   );
 }
