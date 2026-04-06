@@ -141,6 +141,27 @@ export async function deleteModule(formData: FormData) {
   redirect(`/admin/courses/${courseId}?success=module_deleted`);
 }
 
+export async function updateModule(formData: FormData) {
+  const moduleId = formData.get("module_id")?.toString();
+  const courseId = formData.get("course_id")?.toString();
+  const title = formData.get("title")?.toString().trim();
+  if (!moduleId || !title) redirect(`/admin/courses/${courseId ?? ""}?error=missing_fields`);
+
+  const supabase = adminClient();
+  const { error } = await supabase
+    .from("course_module")
+    .update({
+      title,
+      description: formData.get("description")?.toString().trim() || null,
+    })
+    .eq("id", moduleId);
+
+  if (error) console.error("[updateModule] Error:", error.message);
+
+  revalidatePath(`/admin/courses/${courseId}`);
+  redirect(`/admin/courses/${courseId}?success=module_updated`);
+}
+
 // ─── Session CRUD ───────────────────────────────────────────────────────────
 
 export async function createSession(formData: FormData) {
@@ -172,6 +193,33 @@ export async function createSession(formData: FormData) {
 
   revalidatePath(`/admin/courses/${courseId}`);
   redirect(`/admin/courses/${courseId}?success=session_created`);
+}
+
+export async function updateSession(formData: FormData) {
+  const sessionId = formData.get("session_id")?.toString();
+  const courseId = formData.get("course_id")?.toString();
+  const title = formData.get("title")?.toString().trim();
+  if (!sessionId || !title)
+    redirect(`/admin/courses/${courseId ?? ""}?error=missing_fields`);
+
+  const supabase = adminClient();
+  const { error } = await supabase
+    .from("course_session")
+    .update({
+      title,
+      description: formData.get("description")?.toString().trim() || null,
+      body: formData.get("body")?.toString().trim() || null,
+      video_url: formData.get("video_url")?.toString().trim() || null,
+      duration_seconds: formData.get("duration_seconds")?.toString()
+        ? parseInt(formData.get("duration_seconds")!.toString(), 10)
+        : null,
+    })
+    .eq("id", sessionId);
+
+  if (error) console.error("[updateSession] Error:", error.message);
+
+  revalidatePath(`/admin/courses/${courseId}`);
+  redirect(`/admin/courses/${courseId}?success=session_updated`);
 }
 
 export async function deleteSession(formData: FormData) {
@@ -283,8 +331,9 @@ export async function importFromLearnDash(
         const ldCourse = await courseRes.json();
 
         // Create course in our DB
-        const courseTitle =
-          ldCourse.title?.rendered || ldCourse.title || "Untitled Course";
+        const courseTitle = decodeHtmlEntities(
+          ldCourse.title?.rendered || ldCourse.title || "Untitled Course"
+        );
         const courseDesc =
           ldCourse.content?.rendered?.replace(/<[^>]*>/g, "").trim() || null;
 
@@ -337,7 +386,7 @@ export async function importFromLearnDash(
 
         for (let li = 0; li < lessons.length; li++) {
           const lesson = lessons[li];
-          const sectionName = lesson.ld_course_section?.heading || "Main Content";
+          const sectionName = decodeHtmlEntities(lesson.ld_course_section?.heading || "Main Content");
 
           // Create module for this section if not already created
           if (!moduleMap.has(sectionName)) {
@@ -374,8 +423,9 @@ export async function importFromLearnDash(
           if (!module) continue;
 
           // Create session from lesson
-          const lessonTitle =
-            lesson.title?.rendered || lesson.title || "Untitled Lesson";
+          const lessonTitle = decodeHtmlEntities(
+            lesson.title?.rendered || lesson.title || "Untitled Lesson"
+          );
           const lessonDesc =
             lesson.content?.rendered?.replace(/<[^>]*>/g, "").trim() || null;
 
@@ -407,8 +457,9 @@ export async function importFromLearnDash(
               const topics = await topicsRes.json();
               for (let ti = 0; ti < topics.length; ti++) {
                 const topic = topics[ti];
-                const topicTitle =
-                  topic.title?.rendered || topic.title || "Untitled Topic";
+                const topicTitle = decodeHtmlEntities(
+                  topic.title?.rendered || topic.title || "Untitled Topic"
+                );
                 const topicDesc =
                   topic.content?.rendered?.replace(/<[^>]*>/g, "").trim() ||
                   null;
@@ -457,6 +508,17 @@ export async function importFromLearnDash(
  * Fetch available courses from a LearnDash installation for selection.
  * Used by the import UI to show a course picker.
  */
+/** Decode HTML entities (&#8211;, &amp;, etc.) from WordPress titles */
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'");
+}
+
 export async function fetchLearnDashCourses(
   formData: FormData
 ): Promise<{
@@ -475,7 +537,6 @@ export async function fetchLearnDashCourses(
   const authHeader = `Basic ${Buffer.from(`${wpUser}:${wpPassword}`).toString("base64")}`;
 
   try {
-    // Auto-detect API version
     const hdrs = { Authorization: authHeader, "Content-Type": "application/json" };
     const apiVer = await detectLdApiVersion(baseUrl, hdrs);
 
@@ -492,16 +553,36 @@ export async function fetchLearnDashCourses(
     }
 
     const data = await res.json();
-    return {
-      courses: data.map(
-        (c: { id: number; title: { rendered: string }; meta?: { course_lessons?: number } }) => ({
-          id: c.id,
-          title: c.title?.rendered || "Untitled",
-          lessons_count: c.meta?.course_lessons ?? 0,
-        })
-      ),
-      error: null,
-    };
+
+    // Fetch lesson counts from /steps endpoint for each course
+    const courses = await Promise.all(
+      data.map(
+        async (c: { id: number; title: { rendered: string } }) => {
+          let lessonsCount = 0;
+          try {
+            const stepsRes = await fetch(
+              `${baseUrl}/wp-json/ldlms/${apiVer}/sfwd-courses/${c.id}/steps`,
+              { headers: hdrs }
+            );
+            if (stepsRes.ok) {
+              const steps = await stepsRes.json();
+              const lessons = steps?.t?.["sfwd-lessons"] ?? [];
+              const topics = steps?.t?.["sfwd-topic"] ?? [];
+              lessonsCount = lessons.length + topics.length;
+            }
+          } catch {
+            // fallback: 0 if steps endpoint fails
+          }
+          return {
+            id: c.id,
+            title: decodeHtmlEntities(c.title?.rendered || "Untitled"),
+            lessons_count: lessonsCount,
+          };
+        }
+      )
+    );
+
+    return { courses, error: null };
   } catch (err) {
     return {
       courses: [],
