@@ -174,10 +174,32 @@ export function LearnDashImportPanel() {
                 marginBottom: "1rem",
               }}
             >
-              Found {courses.length} course{courses.length !== 1 ? "s" : ""}.
-              Select which to import:
+              Found {courses.length} course{courses.length !== 1 ? "s" : ""}. Select which to import:
             </p>
 
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "0.5rem" }}>
+              <button
+                type="button"
+                onClick={() =>
+                  setSelectedIds(
+                    selectedIds.size === courses.length
+                      ? new Set()
+                      : new Set(courses.map((c) => c.id))
+                  )
+                }
+                style={{
+                  fontSize: "0.6875rem",
+                  color: "var(--color-primary)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: 0,
+                  fontWeight: 500,
+                }}
+              >
+                {selectedIds.size === courses.length ? "Deselect All" : "Select All"}
+              </button>
+            </div>
             <div
               style={{
                 display: "flex",
@@ -309,8 +331,10 @@ export function LearnDashImportPanel() {
                   lineHeight: 1.6,
                 }}
               >
-                {result.coursesImported} courses, {result.modulesImported}{" "}
-                modules, {result.sessionsImported} sessions imported.
+                {result.coursesImported} course{result.coursesImported !== 1 ? "s" : ""},
+                {" "}{result.modulesImported} module{result.modulesImported !== 1 ? "s" : ""},
+                {" "}{result.lessonsImported} lesson{result.lessonsImported !== 1 ? "s" : ""},
+                {" "}{result.sessionsImported} topic{result.sessionsImported !== 1 ? "s" : ""} imported.
               </p>
               {result.errors.length > 0 && (
                 <div style={{ marginTop: "0.5rem" }}>
