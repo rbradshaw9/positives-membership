@@ -3,6 +3,8 @@ import { requireActiveMember } from "@/lib/auth/require-active-member";
 import { PasswordNudgeBanner } from "@/components/member/PasswordNudgeBanner";
 import { MemberShellClient } from "@/components/member/MemberShellClient";
 import { config } from "@/lib/config";
+import { isStreakActive } from "@/lib/streak/compute-streak";
+import { getEffectiveDate } from "@/lib/dates/effective-date";
 
 /**
  * app/(member)/layout.tsx
@@ -25,10 +27,15 @@ export default async function MemberLayout({
   const supabase = await createClient();
   const { data: streakRow } = await supabase
     .from("member")
-    .select("practice_streak")
+    .select("practice_streak, last_practiced_at")
     .eq("id", member.id)
     .single();
-  const streak = streakRow?.practice_streak ?? 0;
+  // Only show a non-zero streak if the member practiced today or yesterday.
+  // If they missed a day, show 0 — the DB value itself gets corrected on next listen.
+  const today = getEffectiveDate();
+  const streak = isStreakActive(streakRow?.last_practiced_at, today)
+    ? (streakRow?.practice_streak ?? 0)
+    : 0;
 
   return (
     <MemberShellClient

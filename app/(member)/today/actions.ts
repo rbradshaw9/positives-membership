@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { shouldIncrementStreak } from "@/lib/streak/compute-streak";
+import { computeNewStreak } from "@/lib/streak/compute-streak";
 
 /**
  * app/(member)/today/actions.ts
@@ -101,15 +101,17 @@ export async function markListened(contentId: string): Promise<void> {
     ? new Date(member.last_practiced_at)
     : null;
 
-  const increment = shouldIncrementStreak(lastPracticedAt, now);
+  const newStreak = computeNewStreak(
+    lastPracticedAt,
+    member.practice_streak ?? 0,
+    now
+  );
 
   const { error: streakError } = await supabase
     .from("member")
     .update({
       last_practiced_at: now.toISOString(),
-      practice_streak: increment
-        ? (member.practice_streak ?? 0) + 1
-        : member.practice_streak,
+      practice_streak: newStreak,
     })
     .eq("id", user.id);
 

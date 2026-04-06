@@ -9,6 +9,7 @@ import { getMemberNoteContentIds } from "@/lib/queries/get-library-content";
 import { getEffectiveDate, getEffectiveMonthYear } from "@/lib/dates/effective-date";
 import { getGreeting } from "@/lib/greeting";
 import { requireActiveMember } from "@/lib/auth/require-active-member";
+import { isStreakActive } from "@/lib/streak/compute-streak";
 import { DailyPracticeCard } from "@/components/today/DailyPracticeCard";
 import { WeeklyPrincipleCard } from "@/components/today/WeeklyPrincipleCard";
 import { MonthlyThemeCard } from "@/components/today/MonthlyThemeCard";
@@ -48,7 +49,7 @@ export default async function TodayPage() {
       getMonthWeeklyContent(effectiveMonthYear),
       supabase
         .from("member")
-        .select("practice_streak")
+        .select("practice_streak, last_practiced_at")
         .eq("id", member.id)
         .single()
         .then((r) => r.data),
@@ -84,7 +85,11 @@ export default async function TodayPage() {
       : Promise.resolve(false),
   ]);
 
-  const streak = memberRow?.practice_streak ?? 0;
+  // Only show a non-zero streak if the member practiced today or yesterday.
+  // If they missed a day the DB value is stale — display 0 until they listen again.
+  const streak = isStreakActive(memberRow?.last_practiced_at, effectiveDateStr)
+    ? (memberRow?.practice_streak ?? 0)
+    : 0;
 
   const effectiveDate = new Date(effectiveDateStr + "T12:00:00");
   const todayLabel = new Intl.DateTimeFormat("en-US", {
