@@ -56,10 +56,10 @@ interface VideoEmbedProps {
   /** Vimeo video ID or full Vimeo URL (https://vimeo.com/123456789) */
   vimeoId?: string | null;
   youtubeId?: string | null;
-  /** Content row ID — primary upsert key for video_views. */
+  /** Content row ID — primary upsert key for video_views (daily/weekly/monthly). */
   contentId?: string | null;
-  /** Secondary lookup key for course lessons (no content_id). */
-  vimeoVideoId?: string | null;
+  /** Course lesson ID — alternative key for video_views (course videos). */
+  courseLessonId?: string | null;
   /** Pass from server component for analytics. */
   viewerUserId?: string | null;
   title: string;
@@ -70,7 +70,7 @@ export function VideoEmbed({
   vimeoId,
   youtubeId,
   contentId,
-  vimeoVideoId,
+  courseLessonId,
   title,
   dark = false,
 }: VideoEmbedProps) {
@@ -93,19 +93,19 @@ export function VideoEmbed({
   const isVimeo = !!resolvedVimeoId;
   const isYouTube = !isVimeo && !!youtubeId;
 
-  // Tracking key: prefer contentId, fall back to vimeoVideoId
-  const trackingId = contentId || vimeoVideoId || null;
+  // Tracking key: need at least one of contentId or courseLessonId
+  const hasTracking = !!contentId || !!courseLessonId;
 
   // ── Fetch resume position on mount ─────────────────────────────────────
   useEffect(() => {
-    if (!trackingId) {
+    if (!hasTracking) {
       setResumeAt(0);
       return;
     }
-    getVideoResumePosition({ contentId: trackingId }).then((seconds) => {
+    getVideoResumePosition({ contentId, courseLessonId }).then((seconds) => {
       setResumeAt(seconds);
     });
-  }, [trackingId]);
+  }, [hasTracking, contentId, courseLessonId]);
 
   // ── Cleanup registry on unmount ────────────────────────────────────────
   useEffect(() => {
@@ -146,7 +146,8 @@ export function VideoEmbed({
           pause();
           // Record session start
           void recordVideoProgress({
-            contentId: trackingId,
+            contentId,
+            courseLessonId,
             watchPercent: 0,
             resumeAtSeconds: resolvedResume,
           });
@@ -161,7 +162,8 @@ export function VideoEmbed({
             ]);
             const pct = duration > 0 ? (currentTime / duration) * 100 : 0;
             void recordVideoProgress({
-              contentId: trackingId,
+              contentId,
+              courseLessonId,
               watchPercent: pct,
               resumeAtSeconds: currentTime,
             });
@@ -171,7 +173,8 @@ export function VideoEmbed({
         // On ended: save 100%
         player!.on("ended", () => {
           void recordVideoProgress({
-            contentId: trackingId,
+            contentId,
+            courseLessonId,
             watchPercent: 100,
             resumeAtSeconds: 0,
           });
@@ -185,7 +188,8 @@ export function VideoEmbed({
             if (pct >= milestone && !reportedMilestonesRef.current.has(milestone)) {
               reportedMilestonesRef.current.add(milestone);
               void recordVideoProgress({
-                contentId: trackingId,
+                contentId,
+                courseLessonId,
                 watchPercent: milestone,
                 resumeAtSeconds: seconds,
               });
@@ -218,7 +222,8 @@ export function VideoEmbed({
     pauseAllVideos,
     registerVideoPauser,
     unregisterVideoPauser,
-    trackingId,
+    contentId,
+    courseLessonId,
   ]);
 
   if (!resolvedVimeoId && !youtubeId) return null;

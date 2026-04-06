@@ -844,6 +844,7 @@ export type Database = {
         Row: {
           completed: boolean
           content_id: string | null
+          course_lesson_id: string | null
           id: string
           last_seen_at: string
           mux_asset_id: string | null
@@ -857,6 +858,7 @@ export type Database = {
         Insert: {
           completed?: boolean
           content_id?: string | null
+          course_lesson_id?: string | null
           id?: string
           last_seen_at?: string
           mux_asset_id?: string | null
@@ -870,6 +872,7 @@ export type Database = {
         Update: {
           completed?: boolean
           content_id?: string | null
+          course_lesson_id?: string | null
           id?: string
           last_seen_at?: string
           mux_asset_id?: string | null
@@ -886,6 +889,13 @@ export type Database = {
             columns: ["content_id"]
             isOneToOne: false
             referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_views_course_lesson_id_fkey"
+            columns: ["course_lesson_id"]
+            isOneToOne: false
+            referencedRelation: "course_lesson"
             referencedColumns: ["id"]
           },
         ]

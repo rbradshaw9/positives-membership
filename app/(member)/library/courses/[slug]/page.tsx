@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCourseBySlug } from "@/lib/queries/get-courses";
+import { getLastWatchedLesson } from "@/app/(member)/today/video-actions";
 import { CourseOutline } from "@/components/courses/CourseOutline";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -63,6 +64,9 @@ export default async function CourseDetailPage({ params }: Props) {
       ? Math.round((course.completed_count / course.lesson_count) * 100)
       : 0;
   const isComplete = course.lesson_count > 0 && course.completed_count >= course.lesson_count;
+
+  // Fetch the last watched lesson for the "Continue Learning" card
+  const lastWatched = await getLastWatchedLesson(course.id);
 
   // Find the first incomplete lesson for the "Continue" CTA
   let nextLessonId: string | null = null;
@@ -170,6 +174,44 @@ export default async function CourseDetailPage({ params }: Props) {
             )}
           </div>
         </div>
+
+        {/* ── Continue Learning card ───────────────────────────────────── */}
+        {lastWatched && lastWatched.watchPercent < 95 && (
+          <Link
+            href={`/library/courses/${slug}/${lastWatched.lessonId}`}
+            className="group flex items-center gap-4 p-4 md:p-5 rounded-2xl border transition-all duration-200 hover:shadow-md"
+            style={{
+              borderColor: "color-mix(in srgb, var(--color-primary) 25%, var(--color-border))",
+              background: "color-mix(in srgb, var(--color-primary) 4%, var(--color-surface, #fff))",
+            }}
+          >
+            <div
+              className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center"
+              style={{ background: "var(--color-primary)", color: "#fff" }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <polygon points="5,3 19,12 5,21" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wider mb-0.5" style={{ color: "var(--color-primary)" }}>
+                Continue Learning
+              </p>
+              <p className="text-sm font-medium text-foreground line-clamp-1 group-hover:text-primary transition-colors">
+                {lastWatched.lessonTitle}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {lastWatched.moduleTitle} · {Math.round(lastWatched.watchPercent)}% watched
+              </p>
+            </div>
+            <svg
+              width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+              className="flex-shrink-0 text-muted-foreground group-hover:text-primary transition-colors" aria-hidden="true"
+            >
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </Link>
+        )}
 
         {/* ── Outline ──────────────────────────────────────────────────── */}
         {course.modules.length > 0 ? (

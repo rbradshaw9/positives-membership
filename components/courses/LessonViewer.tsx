@@ -108,8 +108,7 @@ export function LessonViewer({ lesson, memberId }: LessonViewerProps) {
         <div className="overflow-hidden rounded-2xl border border-border shadow-sm">
           <VideoEmbed
             vimeoId={vimeoId}
-            contentId={null}
-            vimeoVideoId={`course-lesson-${lesson.id}`}
+            courseLessonId={lesson.id}
             title={lesson.title}
           />
         </div>
