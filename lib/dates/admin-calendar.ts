@@ -35,6 +35,27 @@ export function startOfWeekMonday(date: Date): Date {
   return addDays(date, diff);
 }
 
+/**
+ * Returns the start of the "month week" for a given date.
+ * Month weeks are always anchored to the 1st of each month:
+ *   Week 1: days  1 – 7  → returns YYYY-MM-01
+ *   Week 2: days  8 – 14 → returns YYYY-MM-08
+ *   Week 3: days 15 – 21 → returns YYYY-MM-15
+ *   Week 4: days 22 – 31 → returns YYYY-MM-22
+ *
+ * Months with 5 calendar weeks simply extend Week 4 through the end of the
+ * month — no 5th topic needed, content creators always produce exactly 4.
+ */
+export function startOfMonthWeek(date: Date): Date {
+  const day = date.getUTCDate(); // 1-31
+  let weekDay: number;
+  if (day <= 7) weekDay = 1;
+  else if (day <= 14) weekDay = 8;
+  else if (day <= 21) weekDay = 15;
+  else weekDay = 22;
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), weekDay));
+}
+
 export function getCalendarStart(value: string): string {
   return formatDateOnly(startOfWeekMonday(parseDateOnly(value)));
 }

@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getMonthDetail } from "@/lib/queries/get-monthly-archive";
 import { VideoEmbed } from "@/components/media/VideoEmbed";
+import { MarkdownBody } from "@/components/content/MarkdownBody";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -101,16 +102,10 @@ export default async function MonthDetailPage({ params }: Props) {
             )}
 
             {(theme.description || theme.body) && (
-              <div className="text-foreground/75 leading-relaxed">
-                {theme.body ? (
-                  <div
-                    className="prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: theme.body }}
-                  />
-                ) : (
-                  <p>{theme.description}</p>
-                )}
-              </div>
+              <MarkdownBody
+                content={theme.body ?? theme.description ?? ""}
+                className="text-foreground/75"
+              />
             )}
 
             {theme.reflection_prompt && (

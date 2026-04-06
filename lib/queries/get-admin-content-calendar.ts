@@ -12,6 +12,7 @@ import {
   getRangeDays,
   getWeekdayShortLabel,
   parseDateOnly,
+  startOfMonthWeek,
   startOfWeekMonday,
 } from "@/lib/dates/admin-calendar";
 import type { Tables } from "@/types/supabase";
@@ -121,7 +122,7 @@ export async function getAdminContentCalendar(
   const visibleDates = getRangeDays(start, 28);
   const rangeMonths = Array.from(new Set(visibleDates.map(getMonthYear)));
   const weekStarts = Array.from(
-    new Set(visibleDates.map((date) => formatDateOnly(startOfWeekMonday(parseDateOnly(date)))))
+    new Set(visibleDates.map((date) => formatDateOnly(startOfMonthWeek(parseDateOnly(date)))))
   );
 
   const supabase = await createClient();
@@ -171,7 +172,8 @@ export async function getAdminContentCalendar(
   }
 
   const days = visibleDates.map((date) => {
-    const weekStart = formatDateOnly(startOfWeekMonday(parseDateOnly(date)));
+    const weekStart = formatDateOnly(startOfMonthWeek(parseDateOnly(date)));
+    const calendarWeekStart = formatDateOnly(startOfWeekMonday(parseDateOnly(date)));
     const monthYear = getMonthYear(date);
     const dailyRows = dailyByDate.get(date) ?? [];
     const weeklyRows = weeklyByStart.get(weekStart) ?? [];
@@ -180,6 +182,7 @@ export async function getAdminContentCalendar(
     const weekly = pickBest(weeklyRows);
     const monthly = pickBest(monthlyRows);
     const hasPublishedDaily = dailyRows.some((row) => row.status === "published");
+    // isWeekStart: true on the 1st, 8th, 15th, 22nd of any month (month-week boundary)
     const isWeekStart = date === weekStart;
     const isMonthStart = date === getMonthStart(date);
 
