@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import { StickyCtaBar } from "@/components/marketing/StickyCtaBar";
 
 /* ─── Check Icon ─────────────────────────────────────────────────────────── */
 
@@ -259,6 +260,7 @@ function AudioPlayer() {
 /* ─── Main Landing Page Client Component ────────────────────────────────── */
 
 export function LandingPageClient() {
+  const heroSentinelRef = useRef<HTMLDivElement>(null);
   return (
     <div className="min-h-dvh flex flex-col overflow-x-hidden" style={{ background: "#FAFAF8" }}>
 
@@ -409,6 +411,11 @@ export function LandingPageClient() {
           </p>
         </div>
       </section>
+
+      {/* Sentinel — marks bottom of hero for sticky mobile CTA */}
+      <div ref={heroSentinelRef} aria-hidden="true" />
+
+      <StickyCtaBar sentinelRef={heroSentinelRef} />
 
       {/* ━━ 3. PROBLEM ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section className="w-full" style={{ background: "#121417", borderTop: "1px solid #1C2028" }}>

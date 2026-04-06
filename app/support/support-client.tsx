@@ -2,40 +2,13 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { useActionState } from "react";
+import { submitSupportForm, type SupportFormState } from "./actions";
+
+const initial: SupportFormState = { status: "idle" };
 
 export default function SupportPage() {
-  const [formState, setFormState] = useState<"idle" | "sending" | "sent" | "error">("idle");
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    subject: "general",
-    message: "",
-  });
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setFormState("sending");
-    try {
-      const res = await fetch("https://formspree.io/f/support@gopositives.com", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          subject: formData.subject,
-          message: formData.message,
-        }),
-      });
-      if (res.ok) {
-        setFormState("sent");
-      } else {
-        setFormState("error");
-      }
-    } catch {
-      setFormState("error");
-    }
-  }
+  const [state, formAction, isPending] = useActionState(submitSupportForm, initial);
 
   return (
     <div className="min-h-dvh" style={{ background: "#FAFAF8" }}>
@@ -157,10 +130,7 @@ export default function SupportPage() {
       </section>
 
       {/* ─── Contact Form ────────────────────────────────────────────────── */}
-      <section
-        className="w-full"
-        style={{ paddingBottom: "clamp(5rem, 10vw, 9rem)" }}
-      >
+      <section className="w-full" style={{ paddingBottom: "clamp(5rem, 10vw, 9rem)" }}>
         <div className="max-w-3xl mx-auto px-8">
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-12">
             {/* Left: Direct contact */}
@@ -213,7 +183,7 @@ export default function SupportPage() {
                 Send a message
               </p>
 
-              {formState === "sent" ? (
+              {state.status === "sent" ? (
                 <div
                   className="rounded-2xl p-10 text-center"
                   style={{
@@ -235,12 +205,12 @@ export default function SupportPage() {
                     Message sent.
                   </h2>
                   <p style={{ fontSize: "0.95rem", color: "#68707A", lineHeight: "1.72" }}>
-                    Thanks for reaching out. We&apos;ll get back to you at <strong>{formData.email}</strong> within one business day.
+                    Thanks for reaching out. We&apos;ll get back to you within one business day.
                   </p>
                 </div>
               ) : (
                 <form
-                  onSubmit={handleSubmit}
+                  action={formAction}
                   className="rounded-2xl p-8 space-y-5"
                   style={{
                     background: "#FFFFFF",
@@ -255,19 +225,16 @@ export default function SupportPage() {
                       </label>
                       <input
                         id="support-name"
+                        name="name"
                         type="text"
                         required
-                        value={formData.name}
-                        onChange={(e) => setFormData((f) => ({ ...f, name: e.target.value }))}
                         placeholder="Your name"
-                        className="w-full rounded-xl px-4 py-3 text-sm transition-all outline-none"
+                        className="w-full rounded-xl px-4 py-3 text-sm outline-none"
                         style={{
                           background: "#FAFAF8",
                           border: "1px solid #DDD7CF",
                           color: "#121417",
                         }}
-                        onFocus={(e) => (e.currentTarget.style.border = "1px solid #2F6FED")}
-                        onBlur={(e) => (e.currentTarget.style.border = "1px solid #DDD7CF")}
                       />
                     </div>
                     <div>
@@ -276,19 +243,16 @@ export default function SupportPage() {
                       </label>
                       <input
                         id="support-email"
+                        name="email"
                         type="email"
                         required
-                        value={formData.email}
-                        onChange={(e) => setFormData((f) => ({ ...f, email: e.target.value }))}
                         placeholder="you@example.com"
-                        className="w-full rounded-xl px-4 py-3 text-sm transition-all outline-none"
+                        className="w-full rounded-xl px-4 py-3 text-sm outline-none"
                         style={{
                           background: "#FAFAF8",
                           border: "1px solid #DDD7CF",
                           color: "#121417",
                         }}
-                        onFocus={(e) => (e.currentTarget.style.border = "1px solid #2F6FED")}
-                        onBlur={(e) => (e.currentTarget.style.border = "1px solid #DDD7CF")}
                       />
                     </div>
                   </div>
@@ -299,8 +263,7 @@ export default function SupportPage() {
                     </label>
                     <select
                       id="support-subject"
-                      value={formData.subject}
-                      onChange={(e) => setFormData((f) => ({ ...f, subject: e.target.value }))}
+                      name="subject"
                       className="w-full rounded-xl px-4 py-3 text-sm appearance-none cursor-pointer outline-none"
                       style={{
                         background: "#FAFAF8",
@@ -322,44 +285,38 @@ export default function SupportPage() {
                     </label>
                     <textarea
                       id="support-message"
+                      name="message"
                       required
                       rows={5}
-                      value={formData.message}
-                      onChange={(e) => setFormData((f) => ({ ...f, message: e.target.value }))}
                       placeholder="How can we help?"
-                      className="w-full rounded-xl px-4 py-3 text-sm resize-none transition-all outline-none"
+                      className="w-full rounded-xl px-4 py-3 text-sm resize-none outline-none"
                       style={{
                         background: "#FAFAF8",
                         border: "1px solid #DDD7CF",
                         color: "#121417",
                       }}
-                      onFocus={(e) => (e.currentTarget.style.border = "1px solid #2F6FED")}
-                      onBlur={(e) => (e.currentTarget.style.border = "1px solid #DDD7CF")}
                     />
                   </div>
 
-                  {formState === "error" && (
+                  {state.status === "error" && (
                     <p className="text-sm" style={{ color: "#C94444" }}>
-                      Something went wrong. Please email us directly at{" "}
-                      <a href="mailto:support@gopositives.com" style={{ textDecoration: "underline" }}>
-                        support@gopositives.com
-                      </a>
+                      {state.message}
                     </p>
                   )}
 
                   <button
                     type="submit"
-                    disabled={formState === "sending"}
+                    disabled={isPending}
                     className="w-full flex items-center justify-center font-semibold rounded-xl py-3 transition-opacity"
                     style={{
                       background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
                       color: "#FFFFFF",
                       fontSize: "0.95rem",
                       letterSpacing: "-0.01em",
-                      opacity: formState === "sending" ? 0.7 : 1,
+                      opacity: isPending ? 0.7 : 1,
                     }}
                   >
-                    {formState === "sending" ? "Sending…" : "Send message →"}
+                    {isPending ? "Sending…" : "Send message →"}
                   </button>
                 </form>
               )}
