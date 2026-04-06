@@ -103,7 +103,6 @@ export default async function AdminContentEditPage({ params, searchParams }: Pro
         <div className="admin-form-card" style={{ marginTop: "1rem" }}>
           <VideoUploadPanel
             contentId={row.id}
-            currentMuxPlaybackId={row.mux_playback_id ?? null}
             currentVimeoId={row.vimeo_video_id ?? null}
             contentTitle={row.title}
             contentType={row.type}

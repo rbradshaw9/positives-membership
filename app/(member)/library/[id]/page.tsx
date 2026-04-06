@@ -95,7 +95,7 @@ export default async function LibraryItemPage({ params }: Props) {
   const existingNote = await getNoteForContent(id);
   const hasNote = !!existingNote;
 
-  const hasVideo = !!(item.vimeo_video_id || item.youtube_video_id || item.mux_playback_id);
+  const hasVideo = !!(item.vimeo_video_id || item.youtube_video_id);
   const hasBody = !!(item.body || item.description);
   const bodyContent = item.body || item.description || "";
   const dateContext = getDateContext(item);
@@ -156,10 +156,7 @@ export default async function LibraryItemPage({ params }: Props) {
             <VideoEmbed
               vimeoId={item.vimeo_video_id}
               youtubeId={item.youtube_video_id}
-              muxPlaybackId={item.mux_playback_id}
-              muxAssetId={item.mux_asset_id ?? null}
               contentId={item.id}
-              viewerUserId={member.id}
               title={item.title}
             />
           </div>

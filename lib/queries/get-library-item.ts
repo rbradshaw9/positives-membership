@@ -21,8 +21,6 @@ export type LibraryItemDetail = Pick<
   | "resource_links"
   | "vimeo_video_id"
   | "youtube_video_id"
-  | "mux_playback_id"
-  | "mux_asset_id"
   | "castos_episode_url"
   | "s3_audio_key"
   | "duration_seconds"
@@ -39,7 +37,7 @@ export async function getLibraryItem(id: string): Promise<LibraryItemDetail | nu
   const { data, error } = await supabase
     .from("content")
     .select(
-      "id, type, title, excerpt, description, body, reflection_prompt, download_url, resource_links, vimeo_video_id, youtube_video_id, mux_playback_id, mux_asset_id, castos_episode_url, s3_audio_key, duration_seconds, publish_date, week_start, month_year, tier_min, status"
+      "id, type, title, excerpt, description, body, reflection_prompt, download_url, resource_links, vimeo_video_id, youtube_video_id, castos_episode_url, s3_audio_key, duration_seconds, publish_date, week_start, month_year, tier_min, status"
     )
     .eq("id", id)
     .maybeSingle();

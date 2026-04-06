@@ -10,7 +10,6 @@ const nextConfig: NextConfig = {
   // MuxPlayer and Tiptap are the two heaviest dependencies on member/admin pages.
   experimental: {
     optimizePackageImports: [
-      "@mux/mux-player-react",
       "@tiptap/react",
       "@tiptap/starter-kit",
       "@tiptap/extension-link",
@@ -29,10 +28,15 @@ const nextConfig: NextConfig = {
         hostname: "*.supabase.co",
         pathname: "/storage/v1/object/public/**",
       },
-      // Mux thumbnails
+      // Vimeo CDN thumbnails
       {
         protocol: "https",
-        hostname: "image.mux.com",
+        hostname: "i.vimeocdn.com",
+      },
+      // Vimeo user images
+      {
+        protocol: "https",
+        hostname: "*.cloud.vimeo.com",
       },
     ],
   },
