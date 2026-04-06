@@ -114,44 +114,46 @@ export function LessonViewer({ lesson, memberId }: LessonViewerProps) {
         </div>
       )}
 
-      {/* ── Mark complete checkbox ─────────────────────────────────────── */}
-      <div
-        className="flex items-center gap-3 p-4 rounded-xl border transition-colors"
+      {/* ── Mark complete button ──────────────────────────────────────── */}
+      <button
+        type="button"
+        onClick={handleToggleComplete}
+        disabled={isPending}
+        className="group w-full flex items-center justify-center gap-2.5 py-3.5 px-6 rounded-xl text-sm font-semibold transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 disabled:opacity-60"
         style={{
-          borderColor: completed
-            ? "color-mix(in srgb, var(--color-primary) 30%, var(--color-border))"
-            : "var(--color-border)",
           background: completed
-            ? "color-mix(in srgb, var(--color-primary) 5%, transparent)"
-            : "transparent",
+            ? "linear-gradient(135deg, #059669, #10B981)"
+            : "var(--color-primary, #2EC4B6)",
+          color: "#ffffff",
+          boxShadow: completed
+            ? "0 2px 12px rgba(5, 150, 105, 0.25)"
+            : "0 2px 12px rgba(46, 196, 182, 0.2)",
+          transform: isPending ? "scale(0.98)" : "scale(1)",
         }}
+        aria-label={completed ? "Mark lesson as incomplete" : "Mark lesson as complete"}
       >
-        <button
-          type="button"
-          onClick={handleToggleComplete}
-          disabled={isPending}
-          className="relative w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-          style={{
-            borderColor: completed ? "var(--color-primary)" : "var(--color-border)",
-            background: completed ? "var(--color-primary)" : "transparent",
-          }}
-          aria-checked={completed}
-          role="checkbox"
-          aria-label="Mark lesson as complete"
-        >
-          {completed && (
-            <svg width="10" height="10" viewBox="0 0 12 12" fill="white" aria-hidden="true">
-              <path d="M10 3L5 8.5 2 5.5l-1 1 4 4 6-7-1-1z" />
+        {isPending ? (
+          <div
+            className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin"
+            aria-label="Saving…"
+          />
+        ) : completed ? (
+          <>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="20 6 9 17 4 12" />
             </svg>
-          )}
-        </button>
-        <span className="text-sm font-medium text-foreground">
-          {completed ? "Marked as complete" : "Mark as complete"}
-        </span>
-        {isPending && (
-          <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin ml-auto" />
+            Completed — tap to undo
+          </>
+        ) : (
+          <>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="16 10 11 15 8 12" opacity="0.5" />
+            </svg>
+            Mark as Complete
+          </>
         )}
-      </div>
+      </button>
 
       {/* ── Body content ──────────────────────────────────────────────────── */}
       {(lesson as LessonWithContext & { body?: string | null }).body && (
