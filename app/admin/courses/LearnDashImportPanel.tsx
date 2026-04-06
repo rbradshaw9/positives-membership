@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import {
   fetchLearnDashCourses,
   importFromLearnDash,
+  getLearnDashDefaults,
 } from "./actions";
 import type { LearnDashImportResult } from "./actions";
 
@@ -25,6 +26,35 @@ export function LearnDashImportPanel() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<LearnDashImportResult | null>(null);
+  const [preConfigured, setPreConfigured] = useState(false);
+
+  // Auto-connect if env vars are set
+  useEffect(() => {
+    startTransition(async () => {
+      const defaults = await getLearnDashDefaults();
+      if (defaults.configured) {
+        setWpUrl(defaults.wpUrl);
+        setWpUser(defaults.wpUser);
+        setWpPassword(defaults.wpPassword);
+        setPreConfigured(true);
+
+        // Auto-fetch courses
+        const fd = new FormData();
+        fd.append("wp_url", defaults.wpUrl);
+        fd.append("wp_user", defaults.wpUser);
+        fd.append("wp_password", defaults.wpPassword);
+        const res = await fetchLearnDashCourses(fd);
+        if (!res.error && res.courses.length > 0) {
+          setCourses(res.courses);
+          setSelectedIds(new Set(res.courses.map((c) => c.id)));
+          setStep("select");
+        } else if (res.error) {
+          setError(res.error);
+        }
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleConnect() {
     setError(null);
@@ -86,117 +116,51 @@ export function LearnDashImportPanel() {
             color: "var(--color-muted-fg)",
           }}
         >
-          {step === "connect"
-            ? "Step 1: Connect"
-            : step === "select"
-              ? "Step 2: Select courses"
-              : "Complete"}
+          {isPending && step === "connect"
+            ? "Connecting…"
+            : preConfigured && step !== "connect"
+              ? `Connected · ${new URL(wpUrl || "https://x.com").hostname}`
+              : step === "connect"
+                ? "Step 1: Connect"
+                : step === "select"
+                  ? "Step 2: Select courses"
+                  : "Complete"}
         </span>
       </div>
 
       <div className="admin-section__body">
-        {/* ── Step 1: Connect ── */}
+        {/* ── Step 1: Connect (only shown when not pre-configured) ── */}
         {step === "connect" && (
           <>
-            <p
-              style={{
-                fontSize: "0.8125rem",
-                color: "var(--color-muted-fg)",
-                marginBottom: "1rem",
-                lineHeight: 1.6,
-              }}
-            >
-              Connect to your WordPress site running LearnDash. We&apos;ll
-              fetch your course catalog so you can pick which courses to
-              import.
-            </p>
-            <p
-              style={{
-                fontSize: "0.75rem",
-                color: "var(--color-muted-fg)",
-                marginBottom: "1rem",
-                lineHeight: 1.6,
-                padding: "0.625rem 0.875rem",
-                background: "rgba(68,168,216,0.04)",
-                borderRadius: "0.5rem",
-                border: "1px solid rgba(68,168,216,0.12)",
-              }}
-            >
-              <strong>How to get an Application Password:</strong> In WordPress
-              → Users → your profile → scroll to &quot;Application Passwords&quot; →
-              enter any name → click &quot;Add New Application Password&quot; → copy
-              the generated password.
-            </p>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "0.75rem",
-              }}
-            >
-              <div
-                className="admin-form-field"
-                style={{ gridColumn: "1 / -1" }}
-              >
-                <label className="admin-label">
-                  WordPress URL{" "}
-                  <span className="admin-label__required">*</span>
-                </label>
-                <input
-                  type="url"
-                  value={wpUrl}
-                  onChange={(e) => setWpUrl(e.target.value)}
-                  placeholder="https://your-site.com"
-                  className="admin-input"
-                />
-              </div>
-              <div className="admin-form-field">
-                <label className="admin-label">
-                  WordPress Username{" "}
-                  <span className="admin-label__required">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={wpUser}
-                  onChange={(e) => setWpUser(e.target.value)}
-                  placeholder="admin"
-                  className="admin-input"
-                />
-              </div>
-              <div className="admin-form-field">
-                <label className="admin-label">
-                  Application Password{" "}
-                  <span className="admin-label__required">*</span>
-                </label>
-                <input
-                  type="password"
-                  value={wpPassword}
-                  onChange={(e) => setWpPassword(e.target.value)}
-                  placeholder="xxxx xxxx xxxx xxxx"
-                  className="admin-input"
-                />
-              </div>
-            </div>
-
-            {error && (
-              <div
-                className="admin-banner admin-banner--error"
-                style={{ marginTop: "0.75rem" }}
-              >
-                {error}
-              </div>
+            {isPending ? (
+              <p style={{ fontSize: "0.8125rem", color: "var(--color-muted-fg)" }}>Connecting to LearnDash…</p>
+            ) : preConfigured ? (
+              <p style={{ fontSize: "0.8125rem", color: "#22c55e" }}>✅ Connected via environment configuration.</p>
+            ) : (
+              <>
+                <p style={{ fontSize: "0.8125rem", color: "var(--color-muted-fg)", marginBottom: "1rem", lineHeight: 1.6 }}>
+                  Connect to your WordPress site running LearnDash.
+                </p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                  <div className="admin-form-field" style={{ gridColumn: "1 / -1" }}>
+                    <label className="admin-label">WordPress URL <span className="admin-label__required">*</span></label>
+                    <input type="url" value={wpUrl} onChange={(e) => setWpUrl(e.target.value)} placeholder="https://your-site.com" className="admin-input" />
+                  </div>
+                  <div className="admin-form-field">
+                    <label className="admin-label">Username <span className="admin-label__required">*</span></label>
+                    <input type="text" value={wpUser} onChange={(e) => setWpUser(e.target.value)} placeholder="admin" className="admin-input" />
+                  </div>
+                  <div className="admin-form-field">
+                    <label className="admin-label">Application Password <span className="admin-label__required">*</span></label>
+                    <input type="password" value={wpPassword} onChange={(e) => setWpPassword(e.target.value)} placeholder="xxxx xxxx xxxx xxxx" className="admin-input" />
+                  </div>
+                </div>
+                {error && <div className="admin-banner admin-banner--error" style={{ marginTop: "0.75rem" }}>{error}</div>}
+                <button type="button" onClick={handleConnect} disabled={isPending || !wpUrl || !wpUser || !wpPassword} className="admin-btn admin-btn--primary" style={{ marginTop: "0.75rem" }}>
+                  Connect &amp; Browse Courses
+                </button>
+              </>
             )}
-
-            <button
-              type="button"
-              onClick={handleConnect}
-              disabled={isPending || !wpUrl || !wpUser || !wpPassword}
-              className="admin-btn admin-btn--primary"
-              style={{ marginTop: "0.75rem", opacity: isPending ? 0.6 : 1 }}
-            >
-              {isPending ? "Connecting…" : "Connect & Browse Courses"}
-            </button>
           </>
         )}
 

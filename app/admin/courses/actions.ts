@@ -24,6 +24,19 @@ function slugify(text: string): string {
     .replace(/^-|-$/g, "");
 }
 
+/** Returns pre-configured LearnDash credentials from env vars (server-only). */
+export async function getLearnDashDefaults(): Promise<{
+  wpUrl: string;
+  wpUser: string;
+  wpPassword: string;
+  configured: boolean;
+}> {
+  const wpUrl = process.env.LEARNDASH_WP_URL ?? "";
+  const wpUser = process.env.LEARNDASH_WP_USER ?? "";
+  const wpPassword = process.env.LEARNDASH_WP_APP_PASSWORD ?? "";
+  return { wpUrl, wpUser, wpPassword, configured: !!(wpUrl && wpUser && wpPassword) };
+}
+
 // ─── Course CRUD ────────────────────────────────────────────────────────────
 
 export async function createCourse(formData: FormData) {
