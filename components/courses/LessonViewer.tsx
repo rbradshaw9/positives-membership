@@ -119,16 +119,16 @@ export function LessonViewer({ lesson, memberId }: LessonViewerProps) {
         type="button"
         onClick={handleToggleComplete}
         disabled={isPending}
-        className="group w-full flex items-center justify-center gap-2.5 py-3.5 px-6 rounded-xl text-sm font-semibold transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 disabled:opacity-60"
+        className="group inline-flex items-center gap-2 py-2 px-4 rounded-full text-sm font-semibold transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 disabled:opacity-60 hover:scale-[1.02] active:scale-[0.98]"
         style={{
           background: completed
             ? "linear-gradient(135deg, #059669, #10B981)"
-            : "var(--color-primary, #2EC4B6)",
-          color: "#ffffff",
-          boxShadow: completed
-            ? "0 2px 12px rgba(5, 150, 105, 0.25)"
-            : "0 2px 12px rgba(46, 196, 182, 0.2)",
-          transform: isPending ? "scale(0.98)" : "scale(1)",
+            : "color-mix(in srgb, var(--color-primary) 12%, transparent)",
+          color: completed ? "#ffffff" : "var(--color-primary, #2EC4B6)",
+          border: completed
+            ? "none"
+            : "1px solid color-mix(in srgb, var(--color-primary) 25%, transparent)",
+          transform: isPending ? "scale(0.97)" : undefined,
         }}
         aria-label={completed ? "Mark lesson as incomplete" : "Mark lesson as complete"}
       >
