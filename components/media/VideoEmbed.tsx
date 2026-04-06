@@ -117,10 +117,36 @@ export function VideoEmbed({
   // ── Vimeo: SDK-based coordination, resume, milestone tracking ──────────
   useEffect(() => {
     if (!expanded || !isVimeo || !iframeRef.current) return;
-    const resolvedResume = resumeAt ?? 0;
+    // chosenStart is the user's explicit choice: resume position or 0 (start over)
+    const seekTo = chosenStart ?? resumeAt ?? 0;
 
     let cancelled = false;
     let player: Player | null = null;
+
+    // Throttle: save position to DB at most once per 10s
+    let lastSaveTime = 0;
+    let latestSeconds = 0;
+    let latestDuration = 0;
+
+    const savePosition = (force = false) => {
+      const now = Date.now();
+      if (!force && now - lastSaveTime < 10_000) return;
+      if (!latestDuration) return;
+      lastSaveTime = now;
+      const pct = (latestSeconds / latestDuration) * 100;
+      void recordVideoProgress({
+        contentId,
+        courseLessonId,
+        watchPercent: pct,
+        resumeAtSeconds: latestSeconds,
+      });
+    };
+
+    // Save on tab close / navigate away
+    const handleBeforeUnload = () => savePosition(true);
+    const handleVisChange = () => {
+      if (document.visibilityState === "hidden") savePosition(true);
+    };
 
     const tryInit = (attempts = 0) => {
       if (cancelled || !iframeRef.current) return;
@@ -131,8 +157,8 @@ export function VideoEmbed({
         if (cancelled) { player?.destroy(); return; }
 
         // Seek to resume position
-        if (resolvedResume > 0) {
-          player!.setCurrentTime(resolvedResume).catch(() => {});
+        if (seekTo > 0) {
+          player!.setCurrentTime(seekTo).catch(() => {});
         }
 
         // Register pauser in the global registry
@@ -144,29 +170,31 @@ export function VideoEmbed({
         player!.on("play", () => {
           pauseAllVideos(registryId);
           pause();
-          // Record session start
-          void recordVideoProgress({
-            contentId,
-            courseLessonId,
-            watchPercent: 0,
-            resumeAtSeconds: resolvedResume,
-          });
         });
 
-        // On pause: save position
+        // On seeked: save position immediately when user scrubs/skips
+        player!.on("seeked", async () => {
+          try {
+            const [currentTime, duration] = await Promise.all([
+              player!.getCurrentTime(),
+              player!.getDuration(),
+            ]);
+            latestSeconds = currentTime;
+            latestDuration = duration;
+            savePosition(true);
+          } catch { /* player may be destroyed */ }
+        });
+
+        // On pause: save position immediately
         player!.on("pause", async () => {
           try {
             const [currentTime, duration] = await Promise.all([
               player!.getCurrentTime(),
               player!.getDuration(),
             ]);
-            const pct = duration > 0 ? (currentTime / duration) * 100 : 0;
-            void recordVideoProgress({
-              contentId,
-              courseLessonId,
-              watchPercent: pct,
-              resumeAtSeconds: currentTime,
-            });
+            latestSeconds = currentTime;
+            latestDuration = duration;
+            savePosition(true);
           } catch { /* player may be destroyed */ }
         });
 
@@ -180,22 +208,28 @@ export function VideoEmbed({
           });
         });
 
-        // Milestone tracking
+        // Continuous tracking: save position + milestone flags
         player!.on("timeupdate", ({ seconds, duration }: { seconds: number; duration: number }) => {
           if (!duration) return;
+          latestSeconds = seconds;
+          latestDuration = duration;
+
+          // Throttled save (every ~10s)
+          savePosition(false);
+
+          // Milestone tracking (25, 50, 75, 95)
           const pct = (seconds / duration) * 100;
           for (const milestone of MILESTONES) {
             if (pct >= milestone && !reportedMilestonesRef.current.has(milestone)) {
               reportedMilestonesRef.current.add(milestone);
-              void recordVideoProgress({
-                contentId,
-                courseLessonId,
-                watchPercent: milestone,
-                resumeAtSeconds: seconds,
-              });
+              savePosition(true);
             }
           }
         });
+
+        // Register global save handlers
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        document.addEventListener("visibilitychange", handleVisChange);
 
       }).catch(() => {
         if (attempts < 5 && !cancelled) {
@@ -209,6 +243,10 @@ export function VideoEmbed({
     return () => {
       cancelled = true;
       clearTimeout(timeout);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisChange);
+      // Save final position on cleanup
+      savePosition(true);
       unregisterVideoPauser(registryId);
       vimeoPlayerRef.current?.destroy().catch(() => {});
       vimeoPlayerRef.current = null;
@@ -217,6 +255,7 @@ export function VideoEmbed({
     expanded,
     isVimeo,
     resumeAt,
+    chosenStart,
     registryId,
     pause,
     pauseAllVideos,
