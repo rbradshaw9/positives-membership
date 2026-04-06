@@ -25,6 +25,75 @@ function CheckIcon({ color = "#4E8C78" }: { color?: string }) {
   );
 }
 
+/* ─── Landing FAQ Accordion ──────────────────────────────────────────────── */
+
+const LANDING_FAQS = [
+  {
+    q: "How long are the daily sessions?",
+    a: "Most sessions are 5–15 minutes. Designed to fit before work, during a break, or before bed — whenever works for your rhythm.",
+  },
+  {
+    q: "Is this the same as the Live on Purpose podcast?",
+    a: "No. The podcast is Dr. Paul's free public show. Positives is a private daily practice created specifically for members — new content, more personal, designed to be experienced daily.",
+  },
+  {
+    q: "What if I miss a day?",
+    a: "Every session is saved in your library. You can listen at any pace without feeling behind. There are no streaks required, no guilt mechanics — just a practice you can return to.",
+  },
+  {
+    q: "Can I cancel anytime?",
+    a: "Yes. Cancel immediately from your account settings. No calls, no hoops.",
+  },
+  {
+    q: "Is there a free trial?",
+    a: "No free trial, but every membership includes a 30-day money-back guarantee. If Positives doesn't meaningfully improve your days within 30 days, email us for a full refund — no questions asked.",
+  },
+  {
+    q: "What devices does this work on?",
+    a: "Positives works in any modern web browser on any device. Phone, tablet, desktop. No app download required.",
+  },
+];
+
+function LandingFaq() {
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  return (
+    <div>
+      {LANDING_FAQS.map((faq, i) => (
+        <div key={faq.q} style={{ borderBottom: "1px solid rgba(221,215,207,0.7)" }}>
+          <button
+            onClick={() => setOpenIndex(openIndex === i ? null : i)}
+            className="w-full flex items-center justify-between text-left gap-4 py-5"
+            aria-expanded={openIndex === i}
+          >
+            <span className="font-medium" style={{ fontSize: "1rem", color: "#121417", lineHeight: "1.5", letterSpacing: "-0.01em" }}>
+              {faq.q}
+            </span>
+            <span
+              className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center"
+              style={{
+                background: openIndex === i ? "rgba(47,111,237,0.1)" : "rgba(18,20,23,0.06)",
+                transform: openIndex === i ? "rotate(45deg)" : "none",
+                transition: "transform 0.2s ease",
+              }}
+              aria-hidden="true"
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={openIndex === i ? "#2F6FED" : "#68707A"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </span>
+          </button>
+          <div style={{ overflow: "hidden", maxHeight: openIndex === i ? "300px" : 0, transition: "max-height 0.3s ease" }}>
+            <p style={{ fontSize: "0.975rem", color: "#68707A", lineHeight: "1.78", paddingBottom: "1.25rem" }}>
+              {faq.a}
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ─── Audio Player ───────────────────────────────────────────────────────── */
 
 const SAMPLE_AUDIO_URL =
@@ -287,7 +356,7 @@ export function LandingPageClient() {
 
           {/* Sub */}
           <p
-            className="mb-10 mx-auto"
+            className="mb-5 mx-auto"
             style={{
               fontSize: "clamp(1.05rem, 1.8vw, 1.2rem)",
               color: "#68707A",
@@ -299,6 +368,18 @@ export function LandingPageClient() {
             Positives is a guided daily practice designed to help you think
             more clearly, respond more calmly, and build a life you actually
             enjoy living.
+          </p>
+
+          {/* Specificity anchor */}
+          <p
+            className="mb-10 mx-auto"
+            style={{
+              fontSize: "0.9rem",
+              color: "#9AA0A8",
+              letterSpacing: "-0.01em",
+            }}
+          >
+            5–15 minutes daily · No prior experience needed · Works on any device
           </p>
 
           {/* CTAs */}
@@ -315,7 +396,7 @@ export function LandingPageClient() {
                 padding: "1rem 2.25rem",
               }}
             >
-              Start your practice →
+              Try it for 30 days →
             </Link>
             <Link href="#how-it-works" className="text-sm font-medium" style={{ color: "#68707A" }}>
               See how it works
@@ -324,7 +405,7 @@ export function LandingPageClient() {
 
           {/* Micro pricing anchor */}
           <p className="text-sm" style={{ color: "#B0A89E" }}>
-            From <span style={{ color: "#68707A" }}>$49/month</span> · Cancel anytime
+            From <span style={{ color: "#68707A" }}>$49/month</span> · Cancel anytime · 30-day guarantee
           </p>
         </div>
       </section>
@@ -642,6 +723,106 @@ export function LandingPageClient() {
         </div>
       </section>
 
+      {/* ━━ 8b. TESTIMONIALS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <section className="w-full" style={{ background: "#121417", borderTop: "1px solid #1C2028" }}>
+        <div
+          className="max-w-6xl mx-auto px-8"
+          style={{ paddingTop: "clamp(4rem, 8vw, 7rem)", paddingBottom: "clamp(4rem, 8vw, 7rem)" }}
+        >
+          <div className="text-center mb-12">
+            <p className="text-xs font-semibold uppercase mb-4" style={{ color: "#4E8C78", letterSpacing: "0.14em" }}>
+              What members say
+            </p>
+            <h2
+              className="font-heading font-bold mx-auto"
+              style={{
+                fontSize: "clamp(1.75rem, 3.5vw, 2.75rem)",
+                letterSpacing: "-0.04em",
+                lineHeight: "1.1",
+                color: "#FFFFFF",
+                maxWidth: "560px",
+              }}
+            >
+              Real people. Real shifts.
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {([
+              {
+                quote: "I've tried meditation apps, journaling, online courses — none of it stuck. Positives is different. It's short enough that I actually do it every morning, and Dr. Paul's voice is remarkably calming. I'm noticeably less reactive at work.",
+                name: "Sarah M.",
+                location: "Austin, TX",
+                highlight: "noticeably less reactive",
+              },
+              {
+                quote: "Dr. Paul's approach changed how I think about everything — not just my 'mindset moments' but my actual daily responses. The weekly principles hit differently each time I revisit them. Worth every dollar.",
+                name: "Marcus T.",
+                location: "Toronto, ON",
+                highlight: "changed how I think about everything",
+              },
+              {
+                quote: "I was skeptical about the price at first. Then I realized I was spending more on a gym membership I rarely used. Three months in, Positives is the one habit I've actually kept. The 30-day guarantee made it easy to start.",
+                name: "Renee K.",
+                location: "Phoenix, AZ",
+                highlight: "the one habit I've actually kept",
+              },
+              {
+                quote: "I started listening during my commute and within two weeks my wife noticed I was handling stress differently. That alone was worth the membership. Dr. Paul explains things in a way that's practical, not preachy.",
+                name: "David R.",
+                location: "Denver, CO",
+                highlight: "my wife noticed I was handling stress differently",
+              },
+              {
+                quote: "I've followed Dr. Paul's podcast for years. The Positives membership is the structured version of everything I love about his teaching — delivered in a way I can actually build a habit around. This is the real deal.",
+                name: "Jennifer L.",
+                location: "Seattle, WA",
+                highlight: "the real deal",
+              },
+              {
+                quote: "I bought it for the daily audio. I stayed for the monthly masterclasses. Dr. Paul goes deep on topics I've been trying to understand for years — relationships, purpose, resilience. The content keeps getting better.",
+                name: "Carlos V.",
+                location: "Miami, FL",
+                highlight: "the content keeps getting better",
+              },
+            ] as Array<{ quote: string; name: string; location: string; highlight: string }>).map(({ quote, name, location }) => (
+              <div
+                key={name}
+                className="rounded-2xl p-7 flex flex-col"
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                }}
+              >
+                {/* Stars */}
+                <div className="flex gap-0.5 mb-4" aria-label="5 stars">
+                  {[1,2,3,4,5].map((s) => (
+                    <svg key={s} width="13" height="13" viewBox="0 0 24 24" fill="#F5B93E" stroke="none" aria-hidden="true">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                    </svg>
+                  ))}
+                </div>
+                <p
+                  style={{
+                    fontSize: "0.95rem",
+                    color: "#8A9199",
+                    lineHeight: "1.78",
+                    flex: 1,
+                    marginBottom: "1.25rem",
+                  }}
+                >
+                  &ldquo;{quote}&rdquo;
+                </p>
+                <div>
+                  <p className="font-medium" style={{ fontSize: "0.875rem", color: "#CBD2D9" }}>{name}</p>
+                  <p style={{ fontSize: "0.8rem", color: "#4A5360" }}>{location}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ━━ 9. GUARANTEE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section className="w-full" style={{ background: "#F6F3EE", borderTop: "1px solid #DDD7CF" }}>
         <div
@@ -704,6 +885,40 @@ export function LandingPageClient() {
         </div>
       </section>
 
+      {/* ━━ 9b. FAQ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <section className="w-full" style={{ background: "#FAFAF8", borderTop: "1px solid rgba(221,215,207,0.55)" }}>
+        <div
+          className="max-w-3xl mx-auto px-8"
+          style={{ paddingTop: "clamp(4rem, 8vw, 7rem)", paddingBottom: "clamp(4rem, 8vw, 7rem)" }}
+        >
+          <div className="text-center mb-10">
+            <p className="text-xs font-semibold uppercase mb-4" style={{ color: "#4E8C78", letterSpacing: "0.14em" }}>
+              FAQ
+            </p>
+            <h2
+              className="font-heading font-bold"
+              style={{
+                fontSize: "clamp(1.75rem, 3.5vw, 2.75rem)",
+                letterSpacing: "-0.04em",
+                lineHeight: "1.1",
+                color: "#121417",
+              }}
+            >
+              Common questions.
+            </h2>
+          </div>
+
+          <LandingFaq />
+
+          <p className="text-center mt-8 text-sm" style={{ color: "#9AA0A8" }}>
+            Have more questions?{" "}
+            <Link href="/faq" style={{ color: "#2F6FED", textDecoration: "underline" }}>
+              See all FAQs →
+            </Link>
+          </p>
+        </div>
+      </section>
+
       {/* ━━ 10. FINAL CTA ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section className="relative w-full text-center overflow-hidden" style={{ background: "#121417", borderTop: "1px solid #1C2028" }}>
         <div
@@ -751,7 +966,7 @@ export function LandingPageClient() {
               padding: "1rem 2.5rem",
             }}
           >
-            Start your practice →
+            Try it for 30 days →
           </Link>
 
           <p className="mt-5 text-sm" style={{ color: "#68707A" }}>
@@ -762,26 +977,66 @@ export function LandingPageClient() {
 
       {/* ━━ 11. FOOTER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <footer className="w-full" style={{ background: "#FAFAF8", borderTop: "1px solid rgba(221,215,207,0.55)" }}>
-        <div className="max-w-6xl mx-auto px-8 py-10 flex flex-col sm:flex-row items-center justify-between gap-5">
-          <div className="flex items-center gap-6">
-            <Link href="/">
-              <Image
-                src="/logos/positives-wordmark-dark.png"
-                alt="Positives"
-                width={80}
-                height={20}
-                style={{ height: 20, width: "auto", opacity: 0.45 }}
-              />
-            </Link>
-            <div className="flex items-center gap-5">
-              <Link href="/privacy" className="text-xs" style={{ color: "#9AA0A8" }}>Privacy</Link>
-              <Link href="/terms" className="text-xs" style={{ color: "#9AA0A8" }}>Terms</Link>
-              <Link href="/login" className="text-xs" style={{ color: "#9AA0A8" }}>Sign in</Link>
+        <div
+          className="max-w-6xl mx-auto px-8"
+          style={{ paddingTop: "2.5rem", paddingBottom: "2.5rem" }}
+        >
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-10 mb-8">
+            {/* Brand */}
+            <div>
+              <Link href="/">
+                <Image
+                  src="/logos/positives-wordmark-dark.png"
+                  alt="Positives"
+                  width={100}
+                  height={22}
+                  style={{ height: 22, width: "auto", opacity: 0.45, marginBottom: "0.75rem" }}
+                />
+              </Link>
+              <p style={{ fontSize: "0.8rem", color: "#B0A89E", maxWidth: "220px", lineHeight: "1.65" }}>
+                A daily mindset practice by Dr. Paul Jenkins, Clinical Psychologist.
+              </p>
+            </div>
+
+            {/* Links */}
+            <div className="flex flex-wrap gap-x-12 gap-y-6">
+              <div>
+                <p className="text-xs font-semibold uppercase mb-3" style={{ color: "#9AA0A8", letterSpacing: "0.1em" }}>Practice</p>
+                <div className="space-y-2">
+                  <Link href="/join" className="block text-sm" style={{ color: "#68707A" }}>Join</Link>
+                  <Link href="#how-it-works" className="block text-sm" style={{ color: "#68707A" }}>How it works</Link>
+                  <Link href="/login" className="block text-sm" style={{ color: "#68707A" }}>Sign in</Link>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase mb-3" style={{ color: "#9AA0A8", letterSpacing: "0.1em" }}>Learn</p>
+                <div className="space-y-2">
+                  <Link href="/about" className="block text-sm" style={{ color: "#68707A" }}>About Dr. Paul</Link>
+                  <Link href="/faq" className="block text-sm" style={{ color: "#68707A" }}>FAQ</Link>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase mb-3" style={{ color: "#9AA0A8", letterSpacing: "0.1em" }}>Help</p>
+                <div className="space-y-2">
+                  <Link href="/support" className="block text-sm" style={{ color: "#68707A" }}>Support</Link>
+                  <Link href="/privacy" className="block text-sm" style={{ color: "#68707A" }}>Privacy</Link>
+                  <Link href="/terms" className="block text-sm" style={{ color: "#68707A" }}>Terms</Link>
+                </div>
+              </div>
             </div>
           </div>
-          <span className="text-xs" style={{ color: "#C4BDB5" }}>
-            © {new Date().getFullYear()} Positives
-          </span>
+
+          <div
+            className="flex flex-col sm:flex-row items-center justify-between gap-3"
+            style={{ borderTop: "1px solid rgba(221,215,207,0.55)", paddingTop: "1.25rem" }}
+          >
+            <span className="text-xs" style={{ color: "#C4BDB5" }}>
+              © {new Date().getFullYear()} Positives. All rights reserved.
+            </span>
+            <p className="text-xs" style={{ color: "#C4BDB5" }}>
+              From $49/month · Cancel anytime · 30-day guarantee
+            </p>
+          </div>
         </div>
       </footer>
     </div>

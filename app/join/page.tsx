@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { config } from "@/lib/config";
 import { Logo } from "@/components/marketing/Logo";
 import { PricingToggle } from "@/components/marketing/PricingToggle";
+import { JoinPageFaq } from "./join-faq";
 
 export const metadata = {
   title: "Join Positives — Choose Your Membership",
@@ -192,6 +193,16 @@ export default async function JoinPage({
           >
             Begin the Positives practice today and build a mindset that grows stronger every day.
           </p>
+          <p
+            className="mb-0"
+            style={{
+              fontSize: "0.85rem",
+              color: "#9AA0A8",
+              letterSpacing: "-0.01em",
+            }}
+          >
+            Level 1 is live now · Higher tiers with coaching and events launching in 2025 · Join to lock your founding rate
+          </p>
         </div>
       </section>
 
@@ -375,7 +386,41 @@ export default async function JoinPage({
         </div>
       </section>
 
-      {/* ━━ 5. FINAL CTA ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      {/* ━━ 4. FAQ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <section className="w-full" style={{ background: "#FAFAF8", borderTop: "1px solid rgba(221,215,207,0.55)" }}>
+        <div
+          className="max-w-3xl mx-auto px-8"
+          style={{ paddingTop: "clamp(4rem, 8vw, 7rem)", paddingBottom: "clamp(4rem, 8vw, 7rem)" }}
+        >
+          <div className="text-center mb-10">
+            <p className="text-xs font-semibold uppercase mb-4" style={{ color: "#4E8C78", letterSpacing: "0.14em" }}>
+              FAQ
+            </p>
+            <h2
+              className="font-heading font-bold"
+              style={{
+                fontSize: "clamp(1.75rem, 3.5vw, 2.75rem)",
+                letterSpacing: "-0.04em",
+                lineHeight: "1.1",
+                color: "#121417",
+              }}
+            >
+              Questions before you join.
+            </h2>
+          </div>
+
+          <JoinPageFaq />
+
+          <p className="text-center mt-8 text-sm" style={{ color: "#9AA0A8" }}>
+            More questions?{" "}
+            <a href="/faq" style={{ color: "#2F6FED", textDecoration: "underline" }}>See all FAQs →</a>
+            {" "}&middot;{" "}
+            <a href="/support" style={{ color: "#2F6FED", textDecoration: "underline" }}>Contact support →</a>
+          </p>
+        </div>
+      </section>
+
+      {/* ━━ 5. FINAL CTA ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section
         className="relative w-full text-center overflow-hidden"
         style={{ background: "#121417", borderTop: "1px solid #1C2028" }}
@@ -434,18 +479,19 @@ export default async function JoinPage({
         </div>
       </section>
 
-      {/* ━━ FOOTER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      {/* ━━ FOOTER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <footer
         className="w-full"
         style={{ background: "#FAFAF8", borderTop: "1px solid rgba(221,215,207,0.55)" }}
       >
-        <div className="max-w-6xl mx-auto px-8 py-10 flex flex-col sm:flex-row items-center justify-between gap-5">
-          <div className="flex items-center gap-6">
+        <div className="max-w-6xl mx-auto px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-5">
             <Logo href="/" kind="full" height={22} className="opacity-45" />
-            <div className="flex items-center gap-5">
-              <Link href="/privacy" className="text-xs" style={{ color: "#9AA0A8" }}>Privacy</Link>
-              <Link href="/terms" className="text-xs" style={{ color: "#9AA0A8" }}>Terms</Link>
-            </div>
+            <Link href="/about" className="text-xs" style={{ color: "#9AA0A8" }}>About Dr. Paul</Link>
+            <Link href="/faq" className="text-xs" style={{ color: "#9AA0A8" }}>FAQ</Link>
+            <Link href="/support" className="text-xs" style={{ color: "#9AA0A8" }}>Support</Link>
+            <Link href="/privacy" className="text-xs" style={{ color: "#9AA0A8" }}>Privacy</Link>
+            <Link href="/terms" className="text-xs" style={{ color: "#9AA0A8" }}>Terms</Link>
           </div>
           <span className="text-xs" style={{ color: "#C4BDB5" }}>
             © {new Date().getFullYear()} Positives
