@@ -29,6 +29,10 @@ export default async function AdminLayout({
     {
       href: "/admin/months",
       label: "Monthly Setup",
+      subLinks: [
+        { href: "/admin/months", label: "View All" },
+        { href: "/admin/months/new", label: "Add New" },
+      ],
       icon: (
         <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M4.5 1C4.22386 1 4 1.22386 4 1.5V2H3C2.17157 2 1.5 2.67157 1.5 3.5V12.5C1.5 13.3284 2.17157 14 3 14H12C12.8284 14 13.5 13.3284 13.5 12.5V3.5C13.5 2.67157 12.8284 2 12 2H11V1.5C11 1.22386 10.7761 1 10.5 1C10.2239 1 10 1.22386 10 1.5V2H5V1.5C5 1.22386 4.77614 1 4.5 1ZM5 3V3.5C5 3.77614 5.22386 4 5.5 4C5.77614 4 6 3.77614 6 3.5V3H9V3.5C9 3.77614 9.22386 4 9.5 4C9.77614 4 10 3.77614 10 3.5V3H11C11.8284 3 12.5 3.67157 12.5 4.5V5H2.5V4.5C2.5 3.67157 3.17157 3 4 3H5ZM2.5 6H12.5V12.5C12.5 12.7761 12.2761 13 12 13H3C2.72386 13 2.5 12.7761 2.5 12.5V6Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"/>
@@ -38,21 +42,15 @@ export default async function AdminLayout({
     {
       href: "/admin/courses",
       label: "Courses",
+      subLinks: [
+        { href: "/admin/courses", label: "View All" },
+        { href: "/admin/courses/new", label: "Add New" },
+      ],
       icon: (
         <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M2 3.5C2 3.22386 2.22386 3 2.5 3H12.5C12.7761 3 13 3.22386 13 3.5V9.5C13 9.77614 12.7761 10 12.5 10H2.5C2.22386 10 2 9.77614 2 9.5V3.5ZM2.5 2C1.67157 2 1 2.67157 1 3.5V9.5C1 10.3284 1.67157 11 2.5 11H7V12H4.5C4.22386 12 4 12.2239 4 12.5C4 12.7761 4.22386 13 4.5 13H10.5C10.7761 13 11 12.7761 11 12.5C11 12.2239 10.7761 12 10.5 12H8V11H12.5C13.3284 11 14 10.3284 14 9.5V3.5C14 2.67157 13.3284 2 12.5 2H2.5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"/>
         </svg>
       ),
-    },
-    {
-      href: "/admin/content/calendar",
-      label: "Calendar",
-      icon: (
-        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M7.5 0.875C5.49797 0.875 3.875 2.49797 3.875 4.5C3.875 6.15288 4.98124 7.54738 6.49373 7.98351L5.42128 13.2907C5.36683 13.5613 5.54851 13.8267 5.81912 13.882C6.08974 13.9373 6.35494 13.7557 6.40939 13.485L7.5 7.99414L8.59061 13.485C8.64506 13.7557 8.91026 13.9373 9.18088 13.882C9.45149 13.8267 9.63317 13.5613 9.57872 13.2907L8.50627 7.98351C10.0188 7.54738 11.125 6.15288 11.125 4.5C11.125 2.49797 9.50203 0.875 7.5 0.875ZM4.875 4.5C4.875 3.05025 6.05025 1.875 7.5 1.875C8.94975 1.875 10.125 3.05025 10.125 4.5C10.125 5.94975 8.94975 7.125 7.5 7.125C6.05025 7.125 4.875 5.94975 4.875 4.5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"/>
-        </svg>
-      ),
-      indent: true,
     },
   ];
 
@@ -111,14 +109,32 @@ export default async function AdminLayout({
           {/* Content section */}
           <p className="admin-nav-section-label">Content</p>
           {contentItems.map((item) => (
-            <AdminNavLink
-              key={item.href}
-              href={item.href}
-              icon={item.icon}
-              indent={item.indent}
-            >
-              {item.label}
-            </AdminNavLink>
+            <div key={item.href}>
+              <AdminNavLink href={item.href} icon={item.icon}>
+                {item.label}
+              </AdminNavLink>
+              {item.subLinks && (
+                <div style={{ paddingLeft: "2rem", display: "flex", flexDirection: "column", gap: "0.125rem", marginTop: "-0.125rem", marginBottom: "0.25rem" }}>
+                  {item.subLinks.map((sub) => (
+                    <Link
+                      key={sub.href}
+                      href={sub.href}
+                      style={{
+                        fontSize: "0.6875rem",
+                        color: "var(--color-muted-fg)",
+                        textDecoration: "none",
+                        padding: "0.2rem 0.5rem",
+                        borderRadius: "0.25rem",
+                        transition: "color 120ms ease",
+                      }}
+                      className="admin-nav-sublink"
+                    >
+                      {sub.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
           ))}
 
           {/* Management section */}

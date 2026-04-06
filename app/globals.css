@@ -947,6 +947,19 @@ select.member-input { cursor: pointer; }
   font-size: 0.75rem;
 }
 
+.admin-nav-sublink {
+  font-size: 0.6875rem;
+  color: var(--color-muted-fg);
+  text-decoration: none;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.25rem;
+  transition: color 120ms ease, background 120ms ease;
+}
+.admin-nav-sublink:hover {
+  color: var(--admin-sidebar-fg-hover);
+  background: rgba(255, 255, 255, 0.05);
+}
+
 .admin-nav-link__icon {
   display: flex;
   align-items: center;

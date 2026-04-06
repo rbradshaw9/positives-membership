@@ -5,8 +5,10 @@ import {
   fetchLearnDashCourses,
   importFromLearnDash,
   getLearnDashDefaults,
+  getImportedLearnDashIds,
 } from "./actions";
 import type { LearnDashImportResult } from "./actions";
+
 
 /**
  * LearnDashImportPanel — two-step import flow:
@@ -24,6 +26,7 @@ export function LearnDashImportPanel() {
   const [wpPassword, setWpPassword] = useState("");
   const [courses, setCourses] = useState<LDCourse[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [importedIds, setImportedIds] = useState<Set<number>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<LearnDashImportResult | null>(null);
   const [preConfigured, setPreConfigured] = useState(false);
@@ -31,14 +34,18 @@ export function LearnDashImportPanel() {
   // Auto-connect if env vars are set
   useEffect(() => {
     startTransition(async () => {
-      const defaults = await getLearnDashDefaults();
+      const [defaults, alreadyImported] = await Promise.all([
+        getLearnDashDefaults(),
+        getImportedLearnDashIds(),
+      ]);
+      setImportedIds(new Set(alreadyImported));
+
       if (defaults.configured) {
         setWpUrl(defaults.wpUrl);
         setWpUser(defaults.wpUser);
         setWpPassword(defaults.wpPassword);
         setPreConfigured(true);
 
-        // Auto-fetch courses
         const fd = new FormData();
         fd.append("wp_url", defaults.wpUrl);
         fd.append("wp_user", defaults.wpUser);
@@ -46,7 +53,12 @@ export function LearnDashImportPanel() {
         const res = await fetchLearnDashCourses(fd);
         if (!res.error && res.courses.length > 0) {
           setCourses(res.courses);
-          setSelectedIds(new Set(res.courses.map((c) => c.id)));
+          // Pre-select only courses not yet imported
+          setSelectedIds(new Set(
+            res.courses
+              .filter((c) => !alreadyImported.includes(c.id))
+              .map((c) => c.id)
+          ));
           setStep("select");
         } else if (res.error) {
           setError(res.error);
@@ -71,7 +83,10 @@ export function LearnDashImportPanel() {
         setError("No courses found on this LearnDash installation.");
       } else {
         setCourses(res.courses);
-        setSelectedIds(new Set(res.courses.map((c) => c.id)));
+        // Pre-select only non-imported
+        setSelectedIds(new Set(
+          res.courses.filter((c) => !importedIds.has(c.id)).map((c) => c.id)
+        ));
         setStep("select");
       }
     });
@@ -167,104 +182,100 @@ export function LearnDashImportPanel() {
         {/* ── Step 2: Select Courses ── */}
         {step === "select" && (
           <>
-            <p
-              style={{
-                fontSize: "0.8125rem",
-                color: "var(--color-muted-fg)",
-                marginBottom: "1rem",
-              }}
-            >
-              Found {courses.length} course{courses.length !== 1 ? "s" : ""}. Select which to import:
-            </p>
-
-            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "0.5rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+              <p style={{ fontSize: "0.8125rem", color: "var(--color-muted-fg)" }}>
+                Found {courses.length} course{courses.length !== 1 ? "s" : ""}. Select which to import:
+              </p>
               <button
                 type="button"
-                onClick={() =>
+                onClick={() => {
+                  const unimported = courses.filter((c) => !importedIds.has(c.id));
+                  const allUnimportedSelected = unimported.every((c) => selectedIds.has(c.id));
                   setSelectedIds(
-                    selectedIds.size === courses.length
+                    allUnimportedSelected
                       ? new Set()
-                      : new Set(courses.map((c) => c.id))
-                  )
-                }
+                      : new Set(unimported.map((c) => c.id))
+                  );
+                }}
                 style={{
-                  fontSize: "0.6875rem",
-                  color: "var(--color-primary)",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: 0,
-                  fontWeight: 500,
+                  fontSize: "0.6875rem", color: "var(--color-primary)",
+                  background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 500,
                 }}
               >
-                {selectedIds.size === courses.length ? "Deselect All" : "Select All"}
+                {courses.filter((c) => !importedIds.has(c.id)).every((c) => selectedIds.has(c.id))
+                  ? "Deselect All" : "Select All"}
               </button>
             </div>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "0.5rem",
-                marginBottom: "1rem",
-              }}
-            >
-              {courses.map((c) => (
+
+            {/* Courses not yet imported */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1rem" }}>
+              {courses.filter((c) => !importedIds.has(c.id)).map((c) => (
                 <label
                   key={c.id}
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.75rem",
-                    padding: "0.75rem 1rem",
-                    borderRadius: "0.5rem",
-                    border: `1px solid ${
-                      selectedIds.has(c.id)
-                        ? "var(--color-primary)"
-                        : "var(--color-border)"
-                    }`,
-                    background: selectedIds.has(c.id)
-                      ? "rgba(46,196,182,0.03)"
-                      : "transparent",
-                    cursor: "pointer",
-                    transition: "border-color 120ms ease, background 120ms ease",
+                    display: "flex", alignItems: "center", gap: "0.75rem",
+                    padding: "0.75rem 1rem", borderRadius: "0.5rem",
+                    border: `1px solid ${selectedIds.has(c.id) ? "var(--color-primary)" : "var(--color-border)"}`,
+                    background: selectedIds.has(c.id) ? "rgba(46,196,182,0.03)" : "transparent",
+                    cursor: "pointer", transition: "border-color 120ms ease, background 120ms ease",
                   }}
                 >
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.has(c.id)}
+                  <input type="checkbox" checked={selectedIds.has(c.id)}
                     onChange={() => toggleCourse(c.id)}
-                    style={{ accentColor: "var(--color-primary)" }}
-                  />
+                    style={{ accentColor: "var(--color-primary)" }} />
                   <div style={{ flex: 1 }}>
-                    <p
-                      style={{
-                        fontSize: "0.8125rem",
-                        fontWeight: 600,
-                        color: "var(--color-foreground)",
-                      }}
-                    >
+                    <p style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--color-foreground)" }}>
                       {c.title}
                     </p>
-                    <p
-                      style={{
-                        fontSize: "0.6875rem",
-                        color: "var(--color-muted-fg)",
-                        marginTop: "0.125rem",
-                      }}
-                    >
-                      {c.lessons_count} lesson
-                      {c.lessons_count !== 1 ? "s" : ""}
+                    <p style={{ fontSize: "0.6875rem", color: "var(--color-muted-fg)", marginTop: "0.125rem" }}>
+                      {c.lessons_count} lesson{c.lessons_count !== 1 ? "s" : ""}
                     </p>
                   </div>
                 </label>
               ))}
+              {courses.filter((c) => !importedIds.has(c.id)).length === 0 && (
+                <p style={{ fontSize: "0.8125rem", color: "#22c55e", padding: "0.5rem 0" }}>
+                  ✅ All courses have already been imported.
+                </p>
+              )}
             </div>
 
+            {/* Already imported section */}
+            {courses.some((c) => importedIds.has(c.id)) && (
+              <div style={{ marginBottom: "1rem" }}>
+                <p style={{
+                  fontSize: "0.6875rem", fontWeight: 600, color: "var(--color-muted-fg)",
+                  textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.5rem",
+                }}>
+                  Already Imported
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
+                  {courses.filter((c) => importedIds.has(c.id)).map((c) => (
+                    <div
+                      key={c.id}
+                      style={{
+                        display: "flex", alignItems: "center", gap: "0.75rem",
+                        padding: "0.625rem 1rem", borderRadius: "0.5rem",
+                        border: "1px solid var(--color-border)",
+                        background: "rgba(34,197,94,0.03)", opacity: 0.7,
+                      }}
+                    >
+                      <span style={{ fontSize: "0.75rem" }}>✅</span>
+                      <div style={{ flex: 1 }}>
+                        <p style={{ fontSize: "0.8125rem", color: "var(--color-muted-fg)" }}>{c.title}</p>
+                      </div>
+                      <span style={{
+                        fontSize: "0.5625rem", fontWeight: 600, color: "#22c55e",
+                        textTransform: "uppercase", letterSpacing: "0.05em",
+                      }}>Imported</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {error && (
-              <div
-                className="admin-banner admin-banner--error"
-                style={{ marginTop: "0.75rem" }}
-              >
+              <div className="admin-banner admin-banner--error" style={{ marginTop: "0.75rem" }}>
                 {error}
               </div>
             )}
@@ -285,10 +296,7 @@ export function LearnDashImportPanel() {
                 type="button"
                 onClick={() => setStep("connect")}
                 className="admin-btn"
-                style={{
-                  background: "var(--color-muted)",
-                  color: "var(--color-foreground)",
-                }}
+                style={{ background: "var(--color-muted)", color: "var(--color-foreground)" }}
               >
                 Back
               </button>

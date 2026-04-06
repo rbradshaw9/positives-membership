@@ -59,6 +59,24 @@ export async function getLearnDashDefaults(): Promise<{
   return { wpUrl, wpUser, wpPassword, configured: !!(wpUrl && wpUser && wpPassword) };
 }
 
+/**
+ * Returns a Set of LearnDash course IDs that have already been imported.
+ * We detect these by reading admin_notes for the pattern "Imported from LearnDash ID: XXXXX".
+ */
+export async function getImportedLearnDashIds(): Promise<number[]> {
+  const { data } = await adminClient()
+    .from("course")
+    .select("admin_notes")
+    .like("admin_notes", "Imported from LearnDash ID:%");
+
+  const imported: number[] = [];
+  for (const row of data ?? []) {
+    const match = String(row.admin_notes ?? "").match(/Imported from LearnDash ID:\s*(\d+)/);
+    if (match) imported.push(parseInt(match[1], 10));
+  }
+  return imported;
+}
+
 // ─── Course CRUD ─────────────────────────────────────────────────────────────
 
 export async function createCourse(formData: FormData) {
