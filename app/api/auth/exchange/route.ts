@@ -30,8 +30,8 @@ import { getStripe } from "@/lib/stripe/config";
  * after Stripe redirects, before a session exists.
  */
 
-// Force dynamic — we never want this response cached
-export const dynamic = "force-dynamic";
+// All routes are dynamic by default in Next.js 16 with cacheComponents enabled.
+// The 'force-dynamic' export is no longer needed (and is now incompatible).
 
 function getAdminClient() {
   return createClient(

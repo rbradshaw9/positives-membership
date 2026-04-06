@@ -1,13 +1,17 @@
+import { unstable_cache } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getEffectiveMonthYear } from "@/lib/dates/effective-date";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import type { Tables } from "@/types/supabase";
 
 /**
  * lib/queries/get-monthly-content.ts
+ *
  * Returns the current active monthly_theme content.
  *
- * Sprint 5 — includes new rich fields (body, reflection_prompt, download_url,
- * youtube_video_id) so MonthlyThemeCard can render deeper content.
+ * Wrapped in unstable_cache tagged with CACHE_TAGS.monthlyContent.
+ * Busted immediately on any admin publish via revalidateTag.
+ * 12-hour TTL backstop — monthly content almost never changes after publish.
  */
 
 export type MonthlyContent = Pick<
@@ -27,11 +31,8 @@ export type MonthlyContent = Pick<
   | "month_year"
 >;
 
-export async function getMonthlyContent(
-  monthYear?: string
-): Promise<MonthlyContent | null> {
+async function fetchMonthlyContent(targetMonthYear: string): Promise<MonthlyContent | null> {
   const supabase = await createClient();
-  const targetMonthYear = monthYear ?? getEffectiveMonthYear();
 
   const { data, error } = await supabase
     .from("content")
@@ -52,3 +53,17 @@ export async function getMonthlyContent(
   return data;
 }
 
+export async function getMonthlyContent(
+  monthYear?: string
+): Promise<MonthlyContent | null> {
+  const targetMonthYear = monthYear ?? getEffectiveMonthYear();
+
+  return unstable_cache(
+    () => fetchMonthlyContent(targetMonthYear),
+    ["monthly-content", targetMonthYear],
+    {
+      tags: [CACHE_TAGS.monthlyContent],
+      revalidate: 60 * 60 * 12, // 12-hour backstop
+    }
+  )();
+}

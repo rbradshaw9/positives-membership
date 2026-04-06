@@ -2,10 +2,12 @@
 
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
+import { revalidateTag } from "next/cache";
 import {
   parseMediaUrl,
   mediaColumnsFromParsed,
 } from "@/lib/media/parse-media-url";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 
 /**
  * app/admin/content/actions.ts
@@ -182,6 +184,19 @@ export async function createContent(formData: FormData) {
     redirect("/admin/content/new?error=insert_failed");
   }
 
+  // Bust all public content caches immediately so members see the new item
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-expect-error — unstable_cache uses single-arg revalidateTag (not the cacheComponents overload)
+  revalidateTag(CACHE_TAGS.todayContent);
+  // @ts-expect-error
+  revalidateTag(CACHE_TAGS.weeklyContent);
+  // @ts-expect-error
+  revalidateTag(CACHE_TAGS.monthlyContent);
+  // @ts-expect-error
+  revalidateTag(CACHE_TAGS.libraryContent);
+  // @ts-expect-error
+  revalidateTag(CACHE_TAGS.coachingContent);
+
   redirect("/admin/content?success=created");
 }
 
@@ -210,6 +225,18 @@ export async function updateContent(formData: FormData) {
     redirect(`/admin/content/${input.id}/edit?error=update_failed`);
   }
 
+  // Bust all public content caches immediately
+  // @ts-expect-error
+  revalidateTag(CACHE_TAGS.todayContent);
+  // @ts-expect-error
+  revalidateTag(CACHE_TAGS.weeklyContent);
+  // @ts-expect-error
+  revalidateTag(CACHE_TAGS.monthlyContent);
+  // @ts-expect-error
+  revalidateTag(CACHE_TAGS.libraryContent);
+  // @ts-expect-error
+  revalidateTag(CACHE_TAGS.coachingContent);
+
   redirect("/admin/content?success=updated");
 }
 
@@ -224,6 +251,18 @@ export async function togglePublish(formData: FormData) {
 
   const supabase = adminClient();
   await supabase.from("content").update({ status: newStatus }).eq("id", id);
+
+  // Bust all public content caches immediately — status flip affects what members see
+  // @ts-expect-error
+  revalidateTag(CACHE_TAGS.todayContent);
+  // @ts-expect-error
+  revalidateTag(CACHE_TAGS.weeklyContent);
+  // @ts-expect-error
+  revalidateTag(CACHE_TAGS.monthlyContent);
+  // @ts-expect-error
+  revalidateTag(CACHE_TAGS.libraryContent);
+  // @ts-expect-error
+  revalidateTag(CACHE_TAGS.coachingContent);
 
   redirect("/admin/content");
 }

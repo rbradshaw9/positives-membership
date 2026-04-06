@@ -1,13 +1,17 @@
+import { unstable_cache } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getEffectiveDate } from "@/lib/dates/effective-date";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import type { Tables } from "@/types/supabase";
 
 /**
  * lib/queries/get-weekly-content.ts
+ *
  * Returns the current active weekly_principle content.
  *
- * Sprint 5 — includes new rich fields (body, reflection_prompt, download_url,
- * youtube_video_id) so WeeklyPrincipleCard can render media-aware depth.
+ * Wrapped in unstable_cache tagged with CACHE_TAGS.weeklyContent.
+ * Busted immediately on any admin publish via revalidateTag.
+ * 6-hour TTL backstop — weekly content rarely changes mid-week.
  */
 
 export type WeeklyContent = Pick<
@@ -29,9 +33,8 @@ export type WeeklyContent = Pick<
   | "week_start"
 >;
 
-export async function getWeeklyContent(): Promise<WeeklyContent | null> {
+async function fetchWeeklyContent(effectiveDate: string): Promise<WeeklyContent | null> {
   const supabase = await createClient();
-  const effectiveDate = getEffectiveDate();
 
   const { data, error } = await supabase
     .from("content")
@@ -51,4 +54,17 @@ export async function getWeeklyContent(): Promise<WeeklyContent | null> {
   }
 
   return data;
+}
+
+export async function getWeeklyContent(): Promise<WeeklyContent | null> {
+  const effectiveDate = getEffectiveDate();
+
+  return unstable_cache(
+    () => fetchWeeklyContent(effectiveDate),
+    ["weekly-content", effectiveDate],
+    {
+      tags: [CACHE_TAGS.weeklyContent],
+      revalidate: 60 * 60 * 6, // 6-hour backstop
+    }
+  )();
 }

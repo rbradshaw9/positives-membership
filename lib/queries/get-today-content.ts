@@ -1,13 +1,20 @@
+import { unstable_cache } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getEffectiveDate } from "@/lib/dates/effective-date";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import type { Tables } from "@/types/supabase";
 
 /**
  * lib/queries/get-today-content.ts
- * Server-side query for the current day's daily_audio content.
  *
- * Sprint 5 — includes reflection_prompt so DailyPracticeCard can show
- * a specific reflection question if one is set.
+ * Returns today's daily_audio content.
+ *
+ * Wrapped in unstable_cache (compatible with current Next.js 16 config without
+ * cacheComponents). Tagged with CACHE_TAGS.todayContent so admin publish actions
+ * can bust the cache immediately via revalidateTag.
+ *
+ * Cache key includes effectiveDate so it auto-rotates at midnight daily.
+ * 2-hour TTL is a backstop — revalidateTag fires immediately on any publish.
  */
 
 export type TodayContent = Pick<
@@ -23,9 +30,8 @@ export type TodayContent = Pick<
   | "publish_date"
 >;
 
-export async function getTodayContent(): Promise<TodayContent | null> {
+async function fetchTodayContent(effectiveDate: string): Promise<TodayContent | null> {
   const supabase = await createClient();
-  const effectiveDate = getEffectiveDate();
 
   const { data, error } = await supabase
     .from("content")
@@ -45,4 +51,17 @@ export async function getTodayContent(): Promise<TodayContent | null> {
   }
 
   return data;
+}
+
+export async function getTodayContent(): Promise<TodayContent | null> {
+  const effectiveDate = getEffectiveDate();
+
+  return unstable_cache(
+    () => fetchTodayContent(effectiveDate),
+    ["today-content", effectiveDate],
+    {
+      tags: [CACHE_TAGS.todayContent],
+      revalidate: 60 * 60 * 2, // 2-hour backstop
+    }
+  )();
 }
