@@ -28,7 +28,7 @@ export default async function AdminLayout({
   const contentItems = [
     {
       href: "/admin/months",
-      label: "Months",
+      label: "Monthly Setup",
       icon: (
         <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M4.5 1C4.22386 1 4 1.22386 4 1.5V2H3C2.17157 2 1.5 2.67157 1.5 3.5V12.5C1.5 13.3284 2.17157 14 3 14H12C12.8284 14 13.5 13.3284 13.5 12.5V3.5C13.5 2.67157 12.8284 2 12 2H11V1.5C11 1.22386 10.7761 1 10.5 1C10.2239 1 10 1.22386 10 1.5V2H5V1.5C5 1.22386 4.77614 1 4.5 1ZM5 3V3.5C5 3.77614 5.22386 4 5.5 4C5.77614 4 6 3.77614 6 3.5V3H9V3.5C9 3.77614 9.22386 4 9.5 4C9.77614 4 10 3.77614 10 3.5V3H11C11.8284 3 12.5 3.67157 12.5 4.5V5H2.5V4.5C2.5 3.67157 3.17157 3 4 3H5ZM2.5 6H12.5V12.5C12.5 12.7761 12.2761 13 12 13H3C2.72386 13 2.5 12.7761 2.5 12.5V6Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"/>
@@ -36,8 +36,8 @@ export default async function AdminLayout({
       ),
     },
     {
-      href: "/admin/content",
-      label: "Library",
+      href: "/admin/courses",
+      label: "Courses",
       icon: (
         <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M2 3.5C2 3.22386 2.22386 3 2.5 3H12.5C12.7761 3 13 3.22386 13 3.5V9.5C13 9.77614 12.7761 10 12.5 10H2.5C2.22386 10 2 9.77614 2 9.5V3.5ZM2.5 2C1.67157 2 1 2.67157 1 3.5V9.5C1 10.3284 1.67157 11 2.5 11H7V12H4.5C4.22386 12 4 12.2239 4 12.5C4 12.7761 4.22386 13 4.5 13H10.5C10.7761 13 11 12.7761 11 12.5C11 12.2239 10.7761 12 10.5 12H8V11H12.5C13.3284 11 14 10.3284 14 9.5V3.5C14 2.67157 13.3284 2 12.5 2H2.5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"/>

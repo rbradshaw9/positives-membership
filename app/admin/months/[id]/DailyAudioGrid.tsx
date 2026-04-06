@@ -26,6 +26,7 @@ interface Props {
   monthYear: string;
   dailySlots: DailySlot[];
   unassigned: { id: string; title: string; created_at: string }[];
+  quickCreateAction?: (formData: FormData) => Promise<void>;
 }
 
 export function DailyAudioGrid({
@@ -33,7 +34,9 @@ export function DailyAudioGrid({
   monthYear,
   dailySlots,
   unassigned,
+  quickCreateAction,
 }: Props) {
+  const [quickAddDate, setQuickAddDate] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [draggingDate, setDraggingDate] = useState<string | null>(null);
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
@@ -359,6 +362,24 @@ export function DailyAudioGrid({
                     ) : (
                       <span style={{ fontSize: "0.5625rem", color: "var(--color-muted-fg)" }}>—</span>
                     )}
+                    {quickCreateAction && (
+                      <button
+                        type="button"
+                        onClick={() => setQuickAddDate(quickAddDate === slot.date ? null : slot.date)}
+                        style={{
+                          fontSize: "0.5625rem",
+                          color: "var(--color-primary)",
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          padding: 0,
+                          fontWeight: 600,
+                          marginTop: "0.125rem",
+                        }}
+                      >
+                        + New
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -366,6 +387,117 @@ export function DailyAudioGrid({
           })}
         </div>
       </div>
+
+      {/* Quick add inline form */}
+      {quickAddDate && quickCreateAction && (
+        <div
+          style={{
+            marginTop: "1rem",
+            padding: "1rem 1.25rem",
+            borderRadius: "0.625rem",
+            border: "1px solid var(--color-primary)",
+            background: "rgba(46,196,182,0.03)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "0.75rem",
+            }}
+          >
+            <p
+              style={{
+                fontSize: "0.8125rem",
+                fontWeight: 700,
+                color: "var(--color-foreground)",
+              }}
+            >
+              New Daily Audio —{" "}
+              {new Date(quickAddDate + "T12:00:00").toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+              })}
+            </p>
+            <button
+              type="button"
+              onClick={() => setQuickAddDate(null)}
+              style={{
+                fontSize: "0.75rem",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: "var(--color-muted-fg)",
+              }}
+            >
+              ✕ Close
+            </button>
+          </div>
+          <form action={quickCreateAction}>
+            <input type="hidden" name="month_id" value={monthId} />
+            <input type="hidden" name="month_year" value={monthYear} />
+            <input type="hidden" name="publish_date" value={quickAddDate} />
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+              <div className="admin-form-field" style={{ gridColumn: "1 / -1" }}>
+                <label className="admin-label">
+                  Title <span className="admin-label__required">*</span>
+                </label>
+                <input
+                  name="title"
+                  type="text"
+                  required
+                  placeholder="Daily Practice Title"
+                  className="admin-input"
+                />
+              </div>
+              <div className="admin-form-field">
+                <label className="admin-label">Audio URL (Castos / direct MP3)</label>
+                <input
+                  name="castos_episode_url"
+                  type="url"
+                  placeholder="https://…"
+                  className="admin-input"
+                />
+              </div>
+              <div className="admin-form-field">
+                <label className="admin-label">S3 Key / Google Drive ID</label>
+                <input
+                  name="s3_audio_key"
+                  type="text"
+                  placeholder="audio/2026/04/practice-01.mp3"
+                  className="admin-input"
+                />
+              </div>
+              <div className="admin-form-field">
+                <label className="admin-label">Duration (seconds)</label>
+                <input
+                  name="duration_seconds"
+                  type="number"
+                  placeholder="600"
+                  className="admin-input"
+                />
+              </div>
+              <div className="admin-form-field">
+                <label className="admin-label">Status</label>
+                <select name="status" defaultValue="draft" className="admin-select">
+                  <option value="draft">Draft</option>
+                  <option value="published">Published</option>
+                </select>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="admin-btn admin-btn--primary"
+              style={{ marginTop: "0.75rem" }}
+            >
+              Create Daily Audio
+            </button>
+          </form>
+        </div>
+      )}
     </div>
   );
 }
