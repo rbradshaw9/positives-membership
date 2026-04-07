@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { getAdminClient } from "@/lib/supabase/admin";
 
 /**
  * lib/queries/get-courses.ts
@@ -259,10 +258,10 @@ export async function getCourseLesson(
 
   if (error || !lesson) return null;
 
-  const module = lesson.course_module;
-  const course = (module as unknown as { course?: { id: string; title: string; slug: string | null } })?.course;
+  const courseModule = lesson.course_module;
+  const course = (courseModule as unknown as { course?: { id: string; title: string; slug: string | null } })?.course;
 
-  const moduleId: string = module?.id ?? "";
+  const moduleId: string = courseModule?.id ?? "";
   const courseId: string = course?.id ?? "";
 
   // Get all lessons in this module for prev/next
@@ -314,7 +313,7 @@ export async function getCourseLesson(
     course_id: courseId,
     course_title: course?.title ?? "",
     course_slug: course?.slug ?? null,
-    module_title: module?.title ?? "",
+    module_title: courseModule?.title ?? "",
     prev_lesson_id,
     next_lesson_id,
   };

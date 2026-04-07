@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { getAccessibleCourses } from "@/lib/queries/get-courses";
@@ -101,7 +100,7 @@ export default async function LibraryPage() {
               </div>
               <p className="font-semibold text-foreground mb-1">No courses yet</p>
               <p className="text-sm text-muted-foreground max-w-xs">
-                Courses included with your membership will appear here as they're published.
+                Courses included with your membership will appear here as they&apos;re published.
               </p>
             </div>
           )}
@@ -133,7 +132,7 @@ export default async function LibraryPage() {
               style={{ borderColor: "var(--color-border)" }}
             >
               <p className="font-semibold text-foreground mb-1">No archive yet</p>
-              <p className="text-sm text-muted-foreground">Past monthly content will appear here as it's published.</p>
+              <p className="text-sm text-muted-foreground">Past monthly content will appear here as it&apos;s published.</p>
             </div>
           )}
         </section>

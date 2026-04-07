@@ -21,8 +21,9 @@ interface PricingToggleProps {
   level2Annual: string;
   level3Monthly: string;
   level3Annual: string;
-  level4Monthly: string;
-  level4Annual: string;
+  /** L4 is admin-assigned only. Omit these and the card renders a 'Book a call' CTA. */
+  level4Monthly?: string;
+  level4Annual?: string;
   // Legacy props — no longer used but kept to avoid breaking callers
   isAuthenticated?: boolean;
   userEmail?: string | null;
@@ -40,8 +41,8 @@ export function PricingToggle({
   level2Annual,
   level3Monthly,
   level3Annual,
-  level4Monthly,
-  level4Annual,
+  level4Monthly = "",
+  level4Annual = "",
 }: PricingToggleProps) {
   const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
 

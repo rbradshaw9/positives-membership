@@ -22,7 +22,6 @@ interface MemberTopNavProps {
 }
 
 export function MemberTopNav({
-  streak = 0,
   memberName,
   communityPreviewEnabled = false,
 }: MemberTopNavProps) {

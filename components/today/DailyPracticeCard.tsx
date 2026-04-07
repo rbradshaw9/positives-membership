@@ -70,6 +70,8 @@ export function DailyPracticeCard({
   return (
     <>
       <article
+        aria-labelledby={hasContent ? "today-practice-title" : "today-practice-empty-title"}
+        role="region"
         className="rounded-[1.75rem] p-6 md:p-8 shadow-large relative overflow-hidden bg-[linear-gradient(180deg,#121418_0%,#0A0A0A_100%)]"
         style={{
           color: "white",
@@ -122,6 +124,7 @@ export function DailyPracticeCard({
           {!hasContent ? (
             <>
               <h2 className="font-heading font-bold text-2xl md:text-3xl leading-heading tracking-[-0.03em] mb-2"
+                id="today-practice-empty-title"
                 style={{ color: "rgba(255,255,255,0.5)" }}>
                 Your practice is coming
               </h2>
@@ -133,6 +136,7 @@ export function DailyPracticeCard({
             <>
               {/* Title — full white, dominant */}
               <h2
+                id="today-practice-title"
                 className="heading-balance font-heading font-bold text-2xl md:text-3xl leading-heading tracking-[-0.03em] mb-2"
                 style={{ color: "#ffffff" }}
               >

@@ -18,14 +18,11 @@ interface LibrarySearchClientProps {
   initialQuery: string;
   /** Current tab filter value to preserve in URL */
   activeTab: string;
-  /** href to clear the search */
-  clearHref: string;
 }
 
 export function LibrarySearchClient({
   initialQuery,
   activeTab,
-  clearHref,
 }: LibrarySearchClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();

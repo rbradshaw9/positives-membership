@@ -8,6 +8,17 @@ test("protected member routes redirect to login", async ({ page }) => {
   }
 });
 
+test("signed-in non-admin is redirected away from admin", async ({ page }) => {
+  await loginWithPassword(page, {
+    email: MEMBER_EMAIL,
+    password: MEMBER_PASSWORD,
+    next: "/today",
+  });
+
+  await page.goto("/admin");
+  await expect(page).toHaveURL(/\/today$/);
+});
+
 test("member can navigate launch routes and use practice tabs", async ({ page }) => {
   const memberNav = page.getByRole("navigation", { name: "Member navigation" });
 
@@ -17,7 +28,7 @@ test("member can navigate launch routes and use practice tabs", async ({ page })
     next: "/today",
   });
 
-  await expect(page.getByRole("region", { name: "Today's Practice" })).toBeVisible();
+  await expect(page.getByRole("region", { name: /daily practice/i })).toBeVisible();
   await expect(memberNav.getByRole("link", { name: "Community", exact: true })).toHaveCount(0);
 
   await memberNav.getByRole("link", { name: "Library", exact: true }).click();
@@ -26,22 +37,23 @@ test("member can navigate launch routes and use practice tabs", async ({ page })
 
   await memberNav.getByRole("link", { name: "My Practice", exact: true }).click();
   await expect(page).toHaveURL(/\/practice(\?tab=daily)?$/);
-  await expect(page.getByRole("link", { name: "Daily" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Weekly" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Monthly" })).toBeVisible();
+  const practiceSections = page.getByRole("navigation", { name: "Practice sections" });
+  await expect(practiceSections.getByRole("link", { name: "Daily", exact: true })).toBeVisible();
+  await expect(practiceSections.getByRole("link", { name: "Weekly", exact: true })).toBeVisible();
+  await expect(practiceSections.getByRole("link", { name: "Monthly", exact: true })).toBeVisible();
   await expect(
-    page.getByRole("navigation", { name: "Practice sections" }).getByRole("link", { name: "Overview" })
+    practiceSections.getByRole("link", { name: "Overview" })
   ).toHaveCount(0);
   await expect(
-    page.getByRole("navigation", { name: "Practice sections" }).getByRole("link", { name: "Journal" })
+    practiceSections.getByRole("link", { name: "Journal" })
   ).toHaveCount(0);
   await expect(
-    page.getByRole("navigation", { name: "Practice sections" }).getByRole("link", { name: "Saved" })
+    practiceSections.getByRole("link", { name: "Saved" })
   ).toHaveCount(0);
 
-  await page.getByRole("link", { name: "Weekly" }).click();
+  await practiceSections.getByRole("link", { name: "Weekly", exact: true }).click();
   await expect(page).toHaveURL(/\/practice\?tab=weekly$/);
-  await page.getByRole("link", { name: "Monthly" }).click();
+  await practiceSections.getByRole("link", { name: "Monthly", exact: true }).click();
   await expect(page).toHaveURL(/\/practice\?tab=monthly$/);
 
   await page.getByRole("button", { name: /open profile menu/i }).click();
@@ -70,7 +82,7 @@ test("persistent player survives navigation when today audio is available", asyn
   test.skip((await playButton.count()) === 0, "No playable today audio available for smoke verification.");
 
   await playButton.click();
-  await expect(page.locator(".persistent-player")).toBeVisible();
+  await expect(page.locator(".persistent-player")).toHaveCount(0);
 
   await memberNav.getByRole("link", { name: "Library", exact: true }).click();
   await expect(page).toHaveURL(/\/library$/);

@@ -23,8 +23,8 @@ export async function requireAdmin() {
   const adminEmails = config.app.adminEmails;
 
   if (!adminEmails.includes(user.email ?? "")) {
-    // Not an admin — redirect to member dashboard
-    redirect("/dashboard");
+    // Not an admin — return them to the member app entry point.
+    redirect("/today");
   }
 
   return user;

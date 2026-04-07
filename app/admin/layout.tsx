@@ -186,7 +186,7 @@ function AdminNavLink({
   icon,
   children,
   indent,
-  exact: _exact,
+  exact,
 }: {
   href: string;
   icon: React.ReactNode;
@@ -194,6 +194,7 @@ function AdminNavLink({
   indent?: boolean;
   exact?: boolean;
 }) {
+  void exact;
   return (
     <Link
       href={href}

@@ -1,6 +1,6 @@
 # Production Verification Checklist — Positives Platform
 
-Use this checklist before declaring the app ready for the first live end-to-end test.
+Use this checklist before declaring the Level 1 launch ready for the first live end-to-end test.
 Run through it top to bottom. Each step depends on the previous.
 
 ---
@@ -22,6 +22,15 @@ Verify all required vars are set in Vercel:
 | `NEXT_PUBLIC_APP_URL` | ✅ | `https://positives-membership.vercel.app` |
 | `ADMIN_EMAILS` | ✅ | `ryan@drpauljenkins.com` |
 
+Keep these intentionally unset for an L1-only launch unless the broader rollout is approved:
+
+- `STRIPE_PRICE_LEVEL_2_MONTHLY`
+- `STRIPE_PRICE_LEVEL_2_ANNUAL`
+- `STRIPE_PRICE_LEVEL_3_MONTHLY`
+- `STRIPE_PRICE_LEVEL_3_ANNUAL`
+- `STRIPE_PRICE_LEVEL_4_MONTHLY`
+- `STRIPE_PRICE_LEVEL_4_ANNUAL`
+
 ---
 
 ## 2. Supabase connection
@@ -37,9 +46,9 @@ Verify all required vars are set in Vercel:
 
 ## 3. Auth flow — unauthenticated
 
-- [ ] Visit `https://positives-membership.vercel.app/` → redirects to `/login`
+- [ ] Visit `https://positives-membership.vercel.app/` and verify the expected marketing route behavior
 - [ ] Visit `https://positives-membership.vercel.app/today` → redirects to `/login`
-- [ ] Visit `https://positives-membership.vercel.app/dashboard` → redirects to `/login`
+- [ ] Visit `https://positives-membership.vercel.app/admin` as a signed-out visitor → redirects to `/login`
 
 **What this confirms:** Proxy middleware is running and protecting routes.
 
@@ -94,6 +103,7 @@ Check Stripe Dashboard → Developers → Webhooks → Recent deliveries for `20
 - [ ] Page loads — daily practice content renders (or empty state if no content yet)
 - [ ] Bottom nav renders correctly
 - [ ] No redirect to `/login` or `/subscribe`
+- [ ] Start audio on `/today`, navigate to `/library`, and confirm the persistent player continues
 
 **What this confirms:** `requireActiveMember()` guard passes for active members.
 
@@ -103,7 +113,7 @@ Check Stripe Dashboard → Developers → Webhooks → Recent deliveries for `20
 
 - [ ] Navigate to `https://positives-membership.vercel.app/admin`
 - [ ] Signed in as `ryan@drpauljenkins.com` → admin panel renders
-- [ ] Any other account → redirected (access denied)
+- [ ] Any other account → redirected to `/today`
 
 **What this confirms:** `ADMIN_EMAILS` env var is correctly wired.
 
@@ -125,9 +135,9 @@ See `docs/setup/stripe-live.md` for full webhook details.
 
 These are out of scope for this activation pass but should be tracked:
 
-- No content in the `content` table yet — `/today` will show empty state
-- No Castos private podcast feed configured
-- No ActiveCampaign integration
-- No Vimeo video content
-- Ingestion pipeline (Google Drive → S3) not yet active
-- S3 audio signing not configured
+- Community launch remains intentionally off behind `ENABLE_COMMUNITY_PREVIEW=false`
+- Level 2-4 commerce remains intentionally off until price IDs are configured
+- Castos private podcast feed is not configured
+- ActiveCampaign / lifecycle email is not configured
+- Ingestion pipeline (Google Drive → S3) is not active
+- AI embeddings and semantic search are not populated

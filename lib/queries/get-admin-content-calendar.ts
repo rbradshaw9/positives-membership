@@ -13,7 +13,6 @@ import {
   getWeekdayShortLabel,
   parseDateOnly,
   startOfMonthWeek,
-  startOfWeekMonday,
 } from "@/lib/dates/admin-calendar";
 import type { Tables } from "@/types/supabase";
 
@@ -173,7 +172,6 @@ export async function getAdminContentCalendar(
 
   const days = visibleDates.map((date) => {
     const weekStart = formatDateOnly(startOfMonthWeek(parseDateOnly(date)));
-    const calendarWeekStart = formatDateOnly(startOfWeekMonday(parseDateOnly(date)));
     const monthYear = getMonthYear(date);
     const dailyRows = dailyByDate.get(date) ?? [];
     const weeklyRows = weeklyByStart.get(weekStart) ?? [];

@@ -18,7 +18,7 @@ interface Props {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
+  await params;
   return {
     title: `Course — Positives`,
     description: `View course lessons and track your progress.`,

@@ -53,7 +53,11 @@ function mapStatus(stripeStatus: string): SubscriptionStatus {
  * If the price ID is unknown, throws an error rather than silently assigning
  * the wrong tier. The webhook returns 400, prompting Stripe to retry.
  */
-function mapTier(priceId: string | null): SubscriptionTier {
+function mapTier(priceId: string | null, metadata?: Record<string, string>): SubscriptionTier {
+  // Custom L4 subscriptions created via the admin tool use inline price_data.
+  // Their price IDs are not in the env-var map, but they carry assigned_tier in metadata.
+  if (metadata?.assigned_tier === "level_4") return "level_4";
+
   if (!priceId) {
     throw new Error(
       `[Stripe] Cannot map tier: subscription has no price ID. ` +
@@ -62,19 +66,18 @@ function mapTier(priceId: string | null): SubscriptionTier {
   }
 
   const {
-    level1Monthly, level2Monthly, level3Monthly, level4Monthly,
-    level1Annual, level2Annual, level3Annual, level4Annual,
+    level1Monthly, level2Monthly, level3Monthly, level4ThreePay,
+    level1Annual, level2Annual, level3Annual,
   } = config.stripe.prices;
 
   const tierMap: Record<string, SubscriptionTier> = {};
-  if (level1Monthly) tierMap[level1Monthly] = "level_1";
-  if (level2Monthly) tierMap[level2Monthly] = "level_2";
-  if (level3Monthly) tierMap[level3Monthly] = "level_3";
-  if (level4Monthly) tierMap[level4Monthly] = "level_4";
-  if (level1Annual)  tierMap[level1Annual]  = "level_1";
-  if (level2Annual)  tierMap[level2Annual]  = "level_2";
-  if (level3Annual)  tierMap[level3Annual]  = "level_3";
-  if (level4Annual)  tierMap[level4Annual]  = "level_4";
+  if (level1Monthly)  tierMap[level1Monthly]  = "level_1";
+  if (level2Monthly)  tierMap[level2Monthly]  = "level_2";
+  if (level3Monthly)  tierMap[level3Monthly]  = "level_3";
+  if (level4ThreePay) tierMap[level4ThreePay] = "level_4";
+  if (level1Annual)   tierMap[level1Annual]   = "level_1";
+  if (level2Annual)   tierMap[level2Annual]   = "level_2";
+  if (level3Annual)   tierMap[level3Annual]   = "level_3";
 
   const tier = tierMap[priceId];
 
@@ -99,7 +102,7 @@ async function updateMemberSubscription(
     subscription.items.data[0]?.price?.id ?? null;
 
   const status = mapStatus(subscription.status);
-  const tier = mapTier(priceId);
+  const tier = mapTier(priceId, subscription.metadata as Record<string, string>);
 
   // current_period_end was removed in Stripe API 2026-03-25.dahlia.
   // Use cancel_at or ended_at as the effective subscription end date.

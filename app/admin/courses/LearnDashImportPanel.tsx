@@ -8,8 +8,6 @@ import {
   getImportedLearnDashIds,
 } from "./actions";
 import type { LearnDashImportResult } from "./actions";
-
-
 /**
  * LearnDashImportPanel — two-step import flow:
  * 1. Connect: paste WP URL + credentials → fetch available courses
@@ -65,7 +63,6 @@ export function LearnDashImportPanel() {
         }
       }
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function handleConnect() {

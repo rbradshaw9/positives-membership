@@ -641,7 +641,6 @@ export async function importFromLearnDash(formData: FormData): Promise<LearnDash
           result.lessonsImported++;
 
           // ── Fetch and create topics (sessions) under this lesson ────────────
-          let topics: Record<string, unknown>[] = [];
           if (step.topicIds.length > 0) {
             // Fetch topics individually to preserve order
             for (let ti = 0; ti < step.topicIds.length; ti++) {

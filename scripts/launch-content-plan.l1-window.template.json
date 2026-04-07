@@ -1,0 +1,708 @@
+{
+  "metadata": {
+    "name": "Level 1 launch runway — fully populated",
+    "window_start": "2026-04-07",
+    "window_end": "2026-06-01",
+    "notes": "Placeholder audio uses SoundHelix MP3s. Replace castos_episode_url values with real Castos URLs before live launch. All status values set to published."
+  },
+  "months": [
+    {
+      "month_year": "2026-04",
+      "status": "published",
+      "description": "April is about foundations. We begin with the practices that anchor everything else — presence, honesty, and the willingness to begin again.",
+      "admin_notes": "Launch month — seed content only"
+    },
+    {
+      "month_year": "2026-05",
+      "status": "published",
+      "description": "May is about momentum. Small consistent actions compound into something you can trust. This month we build the habit of showing up.",
+      "admin_notes": "Launch runway month"
+    },
+    {
+      "month_year": "2026-06",
+      "status": "published",
+      "description": "June is about depth. We've built the foundation and the habit — now we go deeper into what it means to live with genuine intention.",
+      "admin_notes": "Launch runway month"
+    }
+  ],
+  "monthly_themes": [
+    {
+      "month_year": "2026-04",
+      "title": "The Practice of Beginning",
+      "status": "published",
+      "excerpt": "Every meaningful change starts with a single honest moment. April is for finding yours.",
+      "body": "There is a particular kind of courage required to begin — not the courage of certainty, but the courage of willingness. This month, we are not asking you to have it all figured out. We are asking you to show up anyway.\n\nThe practice of beginning is not a one-time event. It is a daily choice to return to what matters, even when the previous day felt like a setback. Especially then.\n\nEach piece of content this month is designed to help you locate the thing you already know — the quiet signal beneath the noise — and take one small, honest step toward it.",
+      "reflection_prompt": "What is one thing you have been waiting to begin? What would it look like to take the smallest possible version of that first step today?"
+    },
+    {
+      "month_year": "2026-05",
+      "title": "The Discipline of Consistency",
+      "status": "published",
+      "excerpt": "You don't need motivation. You need a practice. May is about building one.",
+      "body": "Motivation comes and goes. It is a visitor, not a resident. Consistency, on the other hand, is something you build — slowly, through the accumulation of ordinary days where you chose to show up anyway.\n\nThis month we examine the subtle ways we undermine our own consistency: the all-or-nothing thinking, the skipped days that become skipped weeks, the stories we tell ourselves about needing to be ready before we begin.\n\nThe practices in May are short by design. They ask less than you think you need to give. That is the point. The goal is not to find two hours of perfect focus — it is to find three minutes of real attention, every day, and protect it like it matters. Because it does.",
+      "reflection_prompt": "Where in your life have you been waiting for the right conditions before you commit? What would it mean to commit now, with the conditions exactly as they are?"
+    },
+    {
+      "month_year": "2026-06",
+      "title": "Living With Intention",
+      "status": "published",
+      "excerpt": "Intention is not a goal. It is a way of moving through your days. June is for practicing that.",
+      "body": "We use the word intention a lot, but we often mean something closer to hope or preference. A real intention has a different quality — it is specific, it requires something from you, and it changes how you move through your day.\n\nThis month we slow down. Not because the pace has been wrong, but because depth requires it. We look at the gap between what we say we value and how we actually allocate our time, energy, and attention.\n\nThe work of June is quiet. Some days it will feel like nothing is happening. That is usually when the most important shifts occur.",
+      "reflection_prompt": "If you could describe how you want to feel at the end of each day — not what you want to have accomplished, but how you want to feel — what would that be? How close is your current daily rhythm to that feeling?"
+    }
+  ],
+  "weekly_principles": [
+    {
+      "week_start": "2026-04-06",
+      "month_year": "2026-04",
+      "title": "Showing Up Before You Feel Ready",
+      "status": "published",
+      "excerpt": "Readiness is rarely a precondition. It is usually a reward for beginning.",
+      "body": "We have been taught to wait until we are prepared. Until we know enough, feel enough, have enough. But readiness, as most people understand it, is a moving target — it recedes as you approach it.\n\nWhat actually creates readiness is action. Not reckless action, but the kind of honest, imperfect beginning that says: I don't have all the answers and I'm going to move anyway.\n\nThis week, notice where you are waiting for a signal that it's time. Then ask: what if this moment is the signal?",
+      "reflection_prompt": "What are you waiting to feel before you begin something important? What would change if you decided to begin with the feeling you have right now?",
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+    },
+    {
+      "week_start": "2026-04-13",
+      "month_year": "2026-04",
+      "title": "The Honesty in Slowing Down",
+      "status": "published",
+      "excerpt": "Speed can be a way of avoiding what you already know.",
+      "body": "There is a particular kind of busyness that functions as avoidance. We move quickly because the thing we most need to examine requires stillness, and stillness is uncomfortable.\n\nSlowing down is not a productivity strategy. It is an act of honesty. When you stop moving long enough to look at where you are — not where you plan to be, but where you actually are — you recover information that speed had been obscuring.\n\nThis week, find one moment each day to pause before moving to the next thing. Not to rest. To look.",
+      "reflection_prompt": "Where in your life are you moving quickly to avoid seeing something clearly? What might you discover if you slowed down for just ten minutes today?",
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"
+    },
+    {
+      "week_start": "2026-04-20",
+      "month_year": "2026-04",
+      "title": "What You Practice, You Become",
+      "status": "published",
+      "excerpt": "Every repeated action is a vote for the person you are becoming.",
+      "body": "Identity is not fixed. It is being constantly written by the choices you make, and more importantly, the choices you repeat.\n\nThis is both a warning and an invitation. The warning: unconscious habits are still habits. They are still shaping you. The invitation: you have more authorship over who you are becoming than you may realize.\n\nThe question is not who you want to be in some future version of your life. The question is what you are practicing today — right now, in the texture of your ordinary hours.",
+      "reflection_prompt": "What is one thing you do repeatedly that, if you were honest with yourself, you're not proud of? What is one thing you could practice instead — not to replace it entirely, but to offer a small counter-vote?",
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"
+    },
+    {
+      "week_start": "2026-04-27",
+      "month_year": "2026-04",
+      "title": "The Gift of One Clear Thing",
+      "status": "published",
+      "excerpt": "Clarity about one priority is worth more than a list of ten.",
+      "body": "We live in a culture of maximization. More. Better. Faster. And the cost of this is that we rarely go deep on anything — we spread our attention across so many commitments that none of them receives the quality of presence that would make them matter.\n\nThis week we practice reduction. Not giving up on things, but temporarily choosing the one thing that, if you did it well, would make everything else easier or less necessary.\n\nOne clear thing, done with full attention, creates more forward motion than ten half-finished things.",
+      "reflection_prompt": "If you could only work on one thing this week — truly only one — what would it be? What does your hesitation to choose one thing tell you?",
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"
+    },
+    {
+      "week_start": "2026-05-04",
+      "month_year": "2026-05",
+      "title": "Consistency Over Intensity",
+      "status": "published",
+      "excerpt": "Three minutes every day will outperform three hours once a week.",
+      "body": "We romanticize intensity. The marathon session. The deep dive. The all-nighter that finally gets the thing done. And sometimes, intensity is exactly what's needed.\n\nBut intensity, as a primary strategy, burns out. It requires recovery. It creates peaks and valleys rather than steady ground.\n\nConsistency, on the other hand, compounds. It builds a groove in the path. It lowers the activation energy required each time. And over months and years, it creates results that intensity alone never could.\n\nThis week, find your smallest viable practice — the version you could do on your worst day — and protect it.",
+      "reflection_prompt": "What is the smallest version of your most important practice? Not the ideal version, but the version you could realistically do when you are tired, pressed for time, and not feeling it?",
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3"
+    },
+    {
+      "week_start": "2026-05-11",
+      "month_year": "2026-05",
+      "title": "The Courage to Receive",
+      "status": "published",
+      "excerpt": "Giving is often easier than receiving. Both are necessary.",
+      "body": "Most people who are drawn to personal growth are natural givers. They are generous with their time, their energy, their attention. And they are often deeply uncomfortable receiving the same.\n\nReceiving — compliments, help, rest, love — requires a kind of vulnerability that giving does not. To receive without deflecting, without immediately offering something back, without minimizing: this is its own practice.\n\nThis week, notice the moments when someone offers you something — a kind word, an offer of help, a moment of care — and your instinct is to deflect or minimize. Try something different. Try just saying thank you and letting it land.",
+      "reflection_prompt": "When someone offers you a compliment or help, what is your typical response? What would it mean to receive it fully — not to be polite, but actually let it in?",
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3"
+    },
+    {
+      "week_start": "2026-05-18",
+      "month_year": "2026-05",
+      "title": "Making Peace With Imperfect Progress",
+      "status": "published",
+      "excerpt": "Done and imperfect is almost always better than perfect and undelivered.",
+      "body": "Perfectionism is not about high standards. It is about fear of judgment — specifically, the judgment that would come if you showed your work before it was flawless.\n\nThe trouble is, nothing is ever flawless. There is always something that could be better. And so the perfectionist waits, polishes, delays, and sometimes never delivers at all.\n\nImperfect progress is still progress. A rough draft shared is infinitely more useful than a perfect draft that never exists. This week, see if you can find something you have been over-preparing and simply put it forward.",
+      "reflection_prompt": "What is one thing you have been waiting to share, submit, or deliver until it was 'ready'? What would it look like to release a version of it this week — not carelessly, but courageously?",
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3"
+    },
+    {
+      "week_start": "2026-05-25",
+      "month_year": "2026-05",
+      "title": "The Practice of Full Presence",
+      "status": "published",
+      "excerpt": "You cannot be fully present and fully distracted at the same time. One always wins.",
+      "body": "We live in a time of engineered distraction. Every app, every notification, every scroll is designed to capture and hold your attention — and the people who design them are very good at their jobs.\n\nFull presence — being genuinely here, in this conversation, in this meal, in this moment — has become a radical act. It requires deliberate choice and consistent defense.\n\nThis week, identify one recurring moment in your day — a meal, a conversation, a commute — and commit to being fully present for it. No phone. No planning. Just here.",
+      "reflection_prompt": "What is one moment in your daily life where you are physically present but mentally elsewhere? What would it feel like to actually be there — not just in body, but in attention?",
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"
+    },
+    {
+      "week_start": "2026-06-01",
+      "month_year": "2026-06",
+      "title": "Living Your Values Under Pressure",
+      "status": "published",
+      "excerpt": "Your values are whatever you actually do when it costs you something.",
+      "body": "We all have stated values — the things we say matter to us, the principles we identify with, the person we describe ourselves as being.\n\nAnd then there are our actual values. These are revealed not in comfort, but in pressure. In the moment when it would be easier to cut a corner, avoid a hard conversation, or choose the expedient thing over the right thing.\n\nThe gap between stated values and lived values is not a character flaw. It is information. It tells you where your next work is.\n\nThis week, pay attention to the moments when being who you say you are costs you something. That is where values are actually built.",
+      "reflection_prompt": "Think of a recent moment when you chose the easier path over the more aligned one. What was the cost? What would you do differently if the same situation came up again?",
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3"
+    }
+  ],
+  "daily_audios": [
+    {
+      "publish_date": "2026-04-07",
+      "month_year": "2026-04",
+      "title": "The Weight of What Goes Unsaid",
+      "status": "published",
+      "excerpt": "The things we leave unsaid shape us as much as what we express.",
+      "reflection_prompt": "What is something you have left unsaid that is affecting an important relationship? What would become possible if you said it?",
+      "duration_seconds": 390,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+    },
+    {
+      "publish_date": "2026-04-08",
+      "month_year": "2026-04",
+      "title": "Beginning With What You Have",
+      "status": "published",
+      "excerpt": "The resources you're waiting for are not the ones you need to begin.",
+      "reflection_prompt": "What are the resources you actually have right now — even the imperfect ones — that you could begin with today?",
+      "duration_seconds": 420,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"
+    },
+    {
+      "publish_date": "2026-04-09",
+      "month_year": "2026-04",
+      "title": "The Difference Between Rest and Avoidance",
+      "status": "published",
+      "excerpt": "Rest replenishes. Avoidance drains. They can look identical from the outside.",
+      "reflection_prompt": "When you step away from something difficult today, are you resting or avoiding? How do you tell the difference?",
+      "duration_seconds": 360,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"
+    },
+    {
+      "publish_date": "2026-04-10",
+      "month_year": "2026-04",
+      "title": "Trusting What You Know",
+      "status": "published",
+      "excerpt": "You already know more than you're giving yourself credit for.",
+      "reflection_prompt": "What is one decision you've been overthinking that you probably already know the answer to?",
+      "duration_seconds": 420,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"
+    },
+    {
+      "publish_date": "2026-04-11",
+      "month_year": "2026-04",
+      "title": "Small Honesty",
+      "status": "published",
+      "excerpt": "Big integrity is built from thousands of small honest moments.",
+      "reflection_prompt": "Where in your life are you telling a small lie — to yourself or to someone else — that bigger honesty would resolve?",
+      "duration_seconds": 400,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3"
+    },
+    {
+      "publish_date": "2026-04-12",
+      "month_year": "2026-04",
+      "title": "The Relief of Changing Your Mind",
+      "status": "published",
+      "excerpt": "Changing your mind in the face of new information is not weakness. It's intelligence.",
+      "reflection_prompt": "Is there a position you've been defending that you've privately started to question? What would it mean to let yourself update?",
+      "duration_seconds": 410,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3"
+    },
+    {
+      "publish_date": "2026-04-13",
+      "month_year": "2026-04",
+      "title": "When Discipline Feels Like Freedom",
+      "status": "published",
+      "excerpt": "Structure doesn't constrain you. Ambiguity does.",
+      "reflection_prompt": "What structure or constraint in your life actually creates more freedom for you, even if it doesn't feel like it at first glance?",
+      "duration_seconds": 390,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3"
+    },
+    {
+      "publish_date": "2026-04-14",
+      "month_year": "2026-04",
+      "title": "Noticing Before Fixing",
+      "status": "published",
+      "excerpt": "The urge to fix immediately can prevent you from understanding what's actually broken.",
+      "reflection_prompt": "What is one situation in your life you have been trying to fix without fully understanding? What would happen if you spent today just noticing it?",
+      "duration_seconds": 420,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"
+    },
+    {
+      "publish_date": "2026-04-15",
+      "month_year": "2026-04",
+      "title": "How You Treat People on Hard Days",
+      "status": "published",
+      "excerpt": "Character is most clearly revealed when you're tired, frustrated, or under pressure.",
+      "reflection_prompt": "Think about how you behaved toward someone when you were at your worst recently. What would you do differently?",
+      "duration_seconds": 430,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3"
+    },
+    {
+      "publish_date": "2026-04-16",
+      "month_year": "2026-04",
+      "title": "Protecting Your Attention",
+      "status": "published",
+      "excerpt": "What you pay attention to grows. Be deliberate about what you water.",
+      "reflection_prompt": "What has been getting most of your attention this week? Is that where you want it to go?",
+      "duration_seconds": 400,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3"
+    },
+    {
+      "publish_date": "2026-04-17",
+      "month_year": "2026-04",
+      "title": "The Practice of Asking Better Questions",
+      "status": "published",
+      "excerpt": "The quality of your life is shaped by the quality of the questions you live inside.",
+      "reflection_prompt": "What question are you currently living inside? Is it a question that opens possibility or closes it?",
+      "duration_seconds": 420,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3"
+    },
+    {
+      "publish_date": "2026-04-18",
+      "month_year": "2026-04",
+      "title": "Finding the Signal in Your Resistance",
+      "status": "published",
+      "excerpt": "Resistance often points directly at what matters most.",
+      "reflection_prompt": "What are you resisting most right now? What does the intensity of that resistance tell you about why it matters?",
+      "duration_seconds": 390,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3"
+    },
+    {
+      "publish_date": "2026-04-19",
+      "month_year": "2026-04",
+      "title": "Enough for Today",
+      "status": "published",
+      "excerpt": "The work is never finished. Done enough for today is its own kind of completion.",
+      "reflection_prompt": "What would 'enough for today' actually look like for you? How would you know when you've reached it?",
+      "duration_seconds": 380,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-13.mp3"
+    },
+    {
+      "publish_date": "2026-04-20",
+      "month_year": "2026-04",
+      "title": "The Person You Return To",
+      "status": "published",
+      "excerpt": "Underneath every identity you perform, there is a self you return to in private. How well do you know that person?",
+      "reflection_prompt": "Who are you when no one is watching and you have no role to play? What does that version of you need?",
+      "duration_seconds": 420,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-14.mp3"
+    },
+    {
+      "publish_date": "2026-04-21",
+      "month_year": "2026-04",
+      "title": "Speaking Precisely",
+      "status": "published",
+      "excerpt": "Vague language often conceals vague thinking. Precision is a form of respect.",
+      "reflection_prompt": "Where in your communication have you been speaking in generalities when you mean something specific? What would it sound like to say it precisely?",
+      "duration_seconds": 400,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3"
+    },
+    {
+      "publish_date": "2026-04-22",
+      "month_year": "2026-04",
+      "title": "Choosing Response Over Reaction",
+      "status": "published",
+      "excerpt": "The gap between stimulus and response is where your freedom lives.",
+      "reflection_prompt": "Think of a situation where you typically react quickly and emotionally. What would a considered response look like instead?",
+      "duration_seconds": 430,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-16.mp3"
+    },
+    {
+      "publish_date": "2026-04-23",
+      "month_year": "2026-04",
+      "title": "The Texture of a Good Day",
+      "status": "published",
+      "excerpt": "If you can't describe what a good day feels like, it's hard to build one.",
+      "reflection_prompt": "Describe a day that felt genuinely good — not productive, not successful, but good. What were its qualities?",
+      "duration_seconds": 390,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-17.mp3"
+    },
+    {
+      "publish_date": "2026-04-24",
+      "month_year": "2026-04",
+      "title": "What You Model for Others",
+      "status": "published",
+      "excerpt": "Whether you intend to or not, you are always teaching the people around you how to be.",
+      "reflection_prompt": "Think about a younger person — a child, a mentee, someone early in their career — who watches you. What are you modeling for them right now?",
+      "duration_seconds": 420,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+    },
+    {
+      "publish_date": "2026-04-25",
+      "month_year": "2026-04",
+      "title": "The Myth of the Right Moment",
+      "status": "published",
+      "excerpt": "The right moment is the one you're in. The rest is procrastination with a better story.",
+      "reflection_prompt": "What are you waiting for the right moment to do? What would happen if you treated this as the right moment?",
+      "duration_seconds": 410,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"
+    },
+    {
+      "publish_date": "2026-04-26",
+      "month_year": "2026-04",
+      "title": "Feeding What You Want to Grow",
+      "status": "published",
+      "excerpt": "Every system you participate in is a vote. Be conscious of what you're voting for.",
+      "reflection_prompt": "What habits, media, or conversations are you currently participating in? Do they feed what you want to grow, or something else?",
+      "duration_seconds": 400,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"
+    },
+    {
+      "publish_date": "2026-04-27",
+      "month_year": "2026-04",
+      "title": "Saying No as a Practice",
+      "status": "published",
+      "excerpt": "Every yes is a no to something else. The question is whether you're choosing consciously.",
+      "reflection_prompt": "What is one commitment you have said yes to that you wish you had said no to? What would you protect if you said no to it today?",
+      "duration_seconds": 420,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"
+    },
+    {
+      "publish_date": "2026-04-28",
+      "month_year": "2026-04",
+      "title": "The Long Game",
+      "status": "published",
+      "excerpt": "Most things that are worth having take longer than you hoped and require more than you expected.",
+      "reflection_prompt": "What is one thing you are working toward that requires long-term patience? What would it mean to fall in love with the process, not just the outcome?",
+      "duration_seconds": 440,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3"
+    },
+    {
+      "publish_date": "2026-04-29",
+      "month_year": "2026-04",
+      "title": "Gratitude as Intelligence",
+      "status": "published",
+      "excerpt": "Gratitude is not just a feeling. It is a way of accurately perceiving how much is already here.",
+      "reflection_prompt": "What is one thing in your life right now that you take for granted but that, if it were gone, you would miss deeply?",
+      "duration_seconds": 390,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3"
+    },
+    {
+      "publish_date": "2026-04-30",
+      "month_year": "2026-04",
+      "title": "Leaving Space for What You Don't Know",
+      "status": "published",
+      "excerpt": "Certainty is comfortable but it closes doors. Curiosity keeps them open.",
+      "reflection_prompt": "Where have you been certain about something that might benefit from a little more curiosity? What would you explore if you held your view more lightly?",
+      "duration_seconds": 410,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3"
+    },
+    {
+      "publish_date": "2026-05-01",
+      "month_year": "2026-05",
+      "title": "Your First Hour",
+      "status": "published",
+      "excerpt": "How you begin your day shapes everything that follows. Most people give their first hour to someone else.",
+      "reflection_prompt": "What do you do with the first hour of your day? Is that how you would choose to use it if you thought about it deliberately?",
+      "duration_seconds": 420,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"
+    },
+    {
+      "publish_date": "2026-05-02",
+      "month_year": "2026-05",
+      "title": "The Practice of Not Knowing",
+      "status": "published",
+      "excerpt": "I don't know is one of the most honest things you can say. It is also one of the bravest.",
+      "reflection_prompt": "Where are you performing certainty that you don't actually feel? What would it be like to admit — to yourself or someone else — that you're not sure?",
+      "duration_seconds": 400,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3"
+    },
+    {
+      "publish_date": "2026-05-03",
+      "month_year": "2026-05",
+      "title": "Recovery as Part of the Work",
+      "status": "published",
+      "excerpt": "Rest is not the opposite of performance. It is a component of it.",
+      "reflection_prompt": "When did you last truly rest — not consume, not scroll, but recover? What would genuine rest look like for you this week?",
+      "duration_seconds": 390,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3"
+    },
+    {
+      "publish_date": "2026-05-04",
+      "month_year": "2026-05",
+      "title": "Who You Need to Forgive",
+      "status": "published",
+      "excerpt": "Unforgiveness is a debt you keep paying with your own peace.",
+      "reflection_prompt": "Is there someone you are still carrying resentment toward? What would it free up in you — not for them, but for yourself — to release it?",
+      "duration_seconds": 430,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3"
+    },
+    {
+      "publish_date": "2026-05-05",
+      "month_year": "2026-05",
+      "title": "The Stories You Inherited",
+      "status": "published",
+      "excerpt": "Many of the beliefs that limit you were given to you before you were old enough to question them.",
+      "reflection_prompt": "What is one belief about yourself, money, relationships, or work that came from your upbringing? Is it still serving you?",
+      "duration_seconds": 420,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3"
+    },
+    {
+      "publish_date": "2026-05-06",
+      "month_year": "2026-05",
+      "title": "Commitment Without Conditions",
+      "status": "published",
+      "excerpt": "Conditional commitment is just preference with better branding.",
+      "reflection_prompt": "Where in your life are you committed — but only under certain conditions? What would unconditional commitment to that thing look like?",
+      "duration_seconds": 400,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-13.mp3"
+    },
+    {
+      "publish_date": "2026-05-07",
+      "month_year": "2026-05",
+      "title": "The Wisdom in Discomfort",
+      "status": "published",
+      "excerpt": "Discomfort is usually the body's way of saying something matters.",
+      "reflection_prompt": "What discomfort have you been trying to eliminate or suppress? What might it be trying to tell you?",
+      "duration_seconds": 410,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-14.mp3"
+    },
+    {
+      "publish_date": "2026-05-08",
+      "month_year": "2026-05",
+      "title": "What a Good Mentor Would Say",
+      "status": "published",
+      "excerpt": "We often know exactly what we need to hear. We just need to ask ourselves.",
+      "reflection_prompt": "If your wisest, most caring mentor could see your situation right now, what would they tell you? Can you believe them?",
+      "duration_seconds": 390,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3"
+    },
+    {
+      "publish_date": "2026-05-09",
+      "month_year": "2026-05",
+      "title": "Letting Things Take the Time They Take",
+      "status": "published",
+      "excerpt": "Impatience with the process is usually impatience with yourself.",
+      "reflection_prompt": "What are you rushing right now that might benefit from more time? What would patience actually look like in practice?",
+      "duration_seconds": 420,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-16.mp3"
+    },
+    {
+      "publish_date": "2026-05-10",
+      "month_year": "2026-05",
+      "title": "Taking Up the Right Amount of Space",
+      "status": "published",
+      "excerpt": "Neither shrinking nor overexpanding — just occupying your actual place.",
+      "reflection_prompt": "In what situations do you make yourself smaller than you need to be? In which ones do you overreach? What would the right amount of space look like?",
+      "duration_seconds": 430,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-17.mp3"
+    },
+    {
+      "publish_date": "2026-05-11",
+      "month_year": "2026-05",
+      "title": "Your Relationship With Your Own Standards",
+      "status": "published",
+      "excerpt": "High standards are a form of self-respect. Impossible standards are a form of self-punishment.",
+      "reflection_prompt": "Are your standards for yourself high, or are they impossible? How do you know the difference?",
+      "duration_seconds": 400,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+    },
+    {
+      "publish_date": "2026-05-12",
+      "month_year": "2026-05",
+      "title": "Being Where You Are",
+      "status": "published",
+      "excerpt": "The present moment is the only place where anything can actually be done.",
+      "reflection_prompt": "How much of your mental energy is currently living in the past or the future? What would it feel like to be fully here?",
+      "duration_seconds": 390,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"
+    },
+    {
+      "publish_date": "2026-05-13",
+      "month_year": "2026-05",
+      "title": "The Line Between Adapting and Compromising",
+      "status": "published",
+      "excerpt": "Flexibility is a skill. But there are some things that shouldn't flex.",
+      "reflection_prompt": "Where have you been adapting — adjusting who you are to fit a situation — when you should be holding firm? How do you tell the difference?",
+      "duration_seconds": 420,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"
+    },
+    {
+      "publish_date": "2026-05-14",
+      "month_year": "2026-05",
+      "title": "When the Answer Is No",
+      "status": "published",
+      "excerpt": "Saying no to the wrong things is how you stay available for the right ones.",
+      "reflection_prompt": "What are you saying yes to out of guilt or obligation rather than genuine desire? What is that protecting you from having to face?",
+      "duration_seconds": 410,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"
+    },
+    {
+      "publish_date": "2026-05-15",
+      "month_year": "2026-05",
+      "title": "The Quality of Your Inner Monologue",
+      "status": "published",
+      "excerpt": "You talk to yourself all day long. Would you speak to a friend the way you speak to yourself?",
+      "reflection_prompt": "Listen to how you talk to yourself when something goes wrong. What is the tone? Would you use that tone with someone you love?",
+      "duration_seconds": 40,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3"
+    },
+    {
+      "publish_date": "2026-05-16",
+      "month_year": "2026-05",
+      "title": "Celebrating What Is Working",
+      "status": "published",
+      "excerpt": "We are trained to find what's broken. Equally important to find what's whole.",
+      "reflection_prompt": "What is working in your life right now — genuinely working — that you haven't paused to acknowledge? Take a moment to do that today.",
+      "duration_seconds": 380,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3"
+    },
+    {
+      "publish_date": "2026-05-17",
+      "month_year": "2026-05",
+      "title": "Honoring Your Energy, Not Just Your Time",
+      "status": "published",
+      "excerpt": "Time can be scheduled. Energy cannot. It must be managed differently.",
+      "reflection_prompt": "When are you at your best — most energized, most focused, most alive? Are you protecting that time for your most important work?",
+      "duration_seconds": 420,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3"
+    },
+    {
+      "publish_date": "2026-05-18",
+      "month_year": "2026-05",
+      "title": "The Power of a Simple Question",
+      "status": "published",
+      "excerpt": "One honest question, asked with real curiosity, can do more than an hour of advice.",
+      "reflection_prompt": "What is one question — for yourself or someone else — that you have been afraid to ask because of where the answer might lead?",
+      "duration_seconds": 400,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"
+    },
+    {
+      "publish_date": "2026-05-19",
+      "month_year": "2026-05",
+      "title": "Your Relationship With Failure",
+      "status": "published",
+      "excerpt": "How you relate to failure determines how much you are willing to attempt.",
+      "reflection_prompt": "What is your honest relationship with failure? Does the possibility of it stop you from beginning things? What would change if it didn't?",
+      "duration_seconds": 430,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3"
+    },
+    {
+      "publish_date": "2026-05-20",
+      "month_year": "2026-05",
+      "title": "Asking for What You Need",
+      "status": "published",
+      "excerpt": "People cannot give you what you need if you haven't told them what it is.",
+      "reflection_prompt": "What is something you need right now — from a relationship, a job, a situation — that you haven't directly asked for? What stops you?",
+      "duration_seconds": 410,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3"
+    },
+    {
+      "publish_date": "2026-05-21",
+      "month_year": "2026-05",
+      "title": "The Weight You Carry for Others",
+      "status": "published",
+      "excerpt": "There is a difference between caring for someone and carrying their work for them.",
+      "reflection_prompt": "Are there burdens you are carrying that belong to someone else? What would it mean to set them down — not with indifference, but with love?",
+      "duration_seconds": 420,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3"
+    },
+    {
+      "publish_date": "2026-05-22",
+      "month_year": "2026-05",
+      "title": "Staying in the Room",
+      "status": "published",
+      "excerpt": "The hardest part of difficult conversations is often just not leaving.",
+      "reflection_prompt": "What is a conversation you have been avoiding? What would it mean to stay in the room — physically or metaphorically — for long enough to actually move through it?",
+      "duration_seconds": 400,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3"
+    },
+    {
+      "publish_date": "2026-05-23",
+      "month_year": "2026-05",
+      "title": "Honest Accounting",
+      "status": "published",
+      "excerpt": "The first step to changing anything is seeing it clearly — without defense or exaggeration.",
+      "reflection_prompt": "Pick one area of your life and do an honest accounting. Not harsh, not flattering — just accurate. What do you see?",
+      "duration_seconds": 390,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-13.mp3"
+    },
+    {
+      "publish_date": "2026-05-24",
+      "month_year": "2026-05",
+      "title": "Completion as a Practice",
+      "status": "published",
+      "excerpt": "Unfinished things have a cost. Completing them — or consciously releasing them — creates space.",
+      "reflection_prompt": "What is something you started and never finished that is still occupying mental space? What would it mean to either complete it or consciously set it down?",
+      "duration_seconds": 410,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-14.mp3"
+    },
+    {
+      "publish_date": "2026-05-25",
+      "month_year": "2026-05",
+      "title": "The Practice of Presence",
+      "status": "published",
+      "excerpt": "Being here fully — not performing presence, but actually arriving — is its own kind of discipline.",
+      "reflection_prompt": "Choose one conversation or activity today and commit to being fully present for it. What do you notice that you usually miss?",
+      "duration_seconds": 420,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3"
+    },
+    {
+      "publish_date": "2026-05-26",
+      "month_year": "2026-05",
+      "title": "Seeing People Clearly",
+      "status": "published",
+      "excerpt": "We often see who we need people to be rather than who they actually are.",
+      "reflection_prompt": "Is there someone in your life you might be seeing through the lens of who you need them to be rather than who they are? What would happen if you looked again?",
+      "duration_seconds": 400,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-16.mp3"
+    },
+    {
+      "publish_date": "2026-05-27",
+      "month_year": "2026-05",
+      "title": "What Is Yours to Carry",
+      "status": "published",
+      "excerpt": "If you try to carry everything, you will eventually be able to carry nothing.",
+      "reflection_prompt": "Of everything you are currently responsible for, what is genuinely yours to carry? What can be shared, delegated, or released?",
+      "duration_seconds": 390,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-17.mp3"
+    },
+    {
+      "publish_date": "2026-05-28",
+      "month_year": "2026-05",
+      "title": "The Courage of Ordinary Effort",
+      "status": "published",
+      "excerpt": "Not every day is dramatic. Most great things are built from ordinary days done well.",
+      "reflection_prompt": "What would it mean to bring your full effort and care to your most ordinary task today — not the important ones, but the routine ones?",
+      "duration_seconds": 410,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+    },
+    {
+      "publish_date": "2026-05-29",
+      "month_year": "2026-05",
+      "title": "Where You Have Grown",
+      "status": "published",
+      "excerpt": "Progress is often invisible while it is happening. Zoom out occasionally and look.",
+      "reflection_prompt": "Compare yourself to who you were one year ago. Where have you genuinely grown, even quietly? Take a moment to acknowledge that.",
+      "duration_seconds": 420,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"
+    },
+    {
+      "publish_date": "2026-05-30",
+      "month_year": "2026-05",
+      "title": "Your Next Right Thing",
+      "status": "published",
+      "excerpt": "You don't need to see the whole staircase. Just the next step.",
+      "reflection_prompt": "If you set aside everything you're uncertain about and just asked 'what's the next right thing I can do right now?' — what is the answer?",
+      "duration_seconds": 390,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"
+    },
+    {
+      "publish_date": "2026-05-31",
+      "month_year": "2026-05",
+      "title": "Beginning Again",
+      "status": "published",
+      "excerpt": "Every morning is permission to start over. Not from scratch — from here.",
+      "reflection_prompt": "What is something you have given up on or put aside that still matters to you? What would it look like to begin again with what you know now?",
+      "duration_seconds": 430,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"
+    },
+    {
+      "publish_date": "2026-06-01",
+      "month_year": "2026-06",
+      "title": "Rooted and Open",
+      "status": "published",
+      "excerpt": "Stability and openness are not opposites. The most rooted trees move freely in the wind.",
+      "reflection_prompt": "What gives you stability — the kind that allows you to be open and curious without being swept away? Are you tending to those roots?",
+      "duration_seconds": 420,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3"
+    }
+  ]
+}

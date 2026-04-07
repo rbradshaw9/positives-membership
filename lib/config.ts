@@ -58,11 +58,19 @@ export const config = {
       get level1Monthly() { return optional("STRIPE_PRICE_LEVEL_1_MONTHLY"); },
       get level2Monthly() { return optional("STRIPE_PRICE_LEVEL_2_MONTHLY"); },
       get level3Monthly() { return optional("STRIPE_PRICE_LEVEL_3_MONTHLY"); },
-      get level4Monthly() { return optional("STRIPE_PRICE_LEVEL_4_MONTHLY"); },
+      /** L4 3-pay plan: $1,500/month × 3. Pay-in-full uses invoice (no price ID). */
+      get level4ThreePay() { return optional("STRIPE_PRICE_LEVEL_4_THREE_PAY"); },
       get level1Annual() { return optional("STRIPE_PRICE_LEVEL_1_ANNUAL"); },
       get level2Annual() { return optional("STRIPE_PRICE_LEVEL_2_ANNUAL"); },
       get level3Annual() { return optional("STRIPE_PRICE_LEVEL_3_ANNUAL"); },
-      get level4Annual() { return optional("STRIPE_PRICE_LEVEL_4_ANNUAL"); },
+    },
+
+    /**
+     * Stripe Product IDs — used for inline price_data on custom L4 packages.
+     * Never exposed to client code.
+     */
+    products: {
+      get level4() { return optional("STRIPE_PRODUCT_LEVEL_4"); },
     },
   },
 } as const;

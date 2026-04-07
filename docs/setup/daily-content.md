@@ -1,10 +1,12 @@
-# Daily Content — Manual Publishing Guide
+# Daily Content — Publishing Guide
 
 ## Overview
 
 Before the automated ingestion pipeline is built (Milestone 05+), daily audio content
-is created manually through the admin interface. This guide covers the full flow from
-creating a record to verifying it appears correctly on `/today`.
+is created manually through the admin interface or via the structured launch-content
+plan workflow. This guide covers both paths and the verification steps for `/today`.
+
+For launch-window batch work, prefer [docs/launch-content-ops.md](/Users/ryanbradshaw/AntiGravity/positives-membership/docs/launch-content-ops.md).
 
 ---
 
@@ -26,7 +28,7 @@ Fill in the form:
 | Description | No | Shown below title |
 | Duration (seconds) | No | e.g. `480` = 8 minutes |
 | Publish date | No | Defaults to today |
-| Status | Yes | Set to **Active** to show on `/today` |
+| Status | Yes | Set to **Published** to show on `/today` |
 | Castos episode URL | No | Direct `.mp3` URL — preferred playback source |
 | S3 object key | No | Fallback if no Castos URL |
 
@@ -55,27 +57,29 @@ Click **Save content** — you'll be redirected to the content list on success.
 Run this query to confirm the row is correct:
 
 ```sql
-SELECT id, title, type, is_active, published_at, castos_episode_url, s3_audio_key
+SELECT id, title, type, status, publish_date, published_at, castos_episode_url, s3_audio_key
 FROM content
 WHERE type = 'daily_audio'
-ORDER BY published_at DESC
+ORDER BY publish_date DESC
 LIMIT 5;
 ```
 
 ---
 
-## Making a record the active daily practice
+## Making a record the current daily practice
 
-Only one record is shown on `/today` — the latest row where `is_active = true`.
+`/today` reads the row where:
 
-To switch which episode is shown:
+- `type = 'daily_audio'`
+- `status = 'published'`
+- `publish_date = <effective Eastern date>`
+
+To move a daily practice to another slot:
 
 ```sql
--- Deactivate all daily audio
-UPDATE content SET is_active = false WHERE type = 'daily_audio';
-
--- Activate the one you want
-UPDATE content SET is_active = true WHERE id = 'your-content-id-here';
+UPDATE content
+SET publish_date = '2026-04-07'
+WHERE id = 'your-content-id-here';
 ```
 
 ---
@@ -85,7 +89,8 @@ UPDATE content SET is_active = true WHERE id = 'your-content-id-here';
 | Field | Why it matters |
 |---|---|
 | `type = 'daily_audio'` | Fixed — set automatically by admin form |
-| `is_active = true` | Row must be active to appear on `/today` |
+| `status = 'published'` | Row must be published to appear on `/today` |
+| `publish_date` | Must match the effective Eastern calendar date |
 | `title` | Displayed to members |
 | `castos_episode_url` or `s3_audio_key` | Needed for audio playback |
 

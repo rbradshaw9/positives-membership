@@ -251,7 +251,29 @@ export default async function AdminMemberDetailPage({
               {TIER_LABEL[member.subscription_tier] ?? member.subscription_tier}
             </span>
           )}
+          {member.subscription_tier !== "level_4" && (
+            <Link
+              href={`/admin/members/${member.id}/assign-l4`}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.375rem",
+                fontSize: "0.75rem",
+                fontWeight: 600,
+                color: "var(--color-primary)",
+                border: "1px solid var(--color-border)",
+                borderRadius: "9999px",
+                padding: "0.3rem 0.75rem",
+                textDecoration: "none",
+                background: "var(--color-card)",
+                transition: "background 0.15s",
+              }}
+            >
+              Assign L4 →
+            </Link>
+          )}
         </div>
+
       </div>
 
       {/* ── At-a-glance stats ──────────────────────────────────────────────── */}

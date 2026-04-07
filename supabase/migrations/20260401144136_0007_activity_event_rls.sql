@@ -13,4 +13,4 @@ CREATE POLICY "activity_event: members read own" ON activity_event
   TO authenticated
   USING (member_id = auth.uid());
 
--- No member INSERT/UPDATE/DELETE policies — all writes are server-side only.
+-- No member INSERT/UPDATE/DELETE policies — all writes are server-side only.;

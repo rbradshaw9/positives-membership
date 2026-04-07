@@ -147,6 +147,14 @@ function buildRow(input: ContentInput) {
   return row;
 }
 
+function revalidateContentTags() {
+  revalidateTag(CACHE_TAGS.todayContent, "max");
+  revalidateTag(CACHE_TAGS.weeklyContent, "max");
+  revalidateTag(CACHE_TAGS.monthlyContent, "max");
+  revalidateTag(CACHE_TAGS.libraryContent, "max");
+  revalidateTag(CACHE_TAGS.coachingContent, "max");
+}
+
 /** Resolve monthly_practice_id from month_year (null if not found) */
 async function resolveMonthlyPracticeId(
   supabase: ReturnType<typeof adminClient>,
@@ -184,18 +192,7 @@ export async function createContent(formData: FormData) {
     redirect("/admin/content/new?error=insert_failed");
   }
 
-  // Bust all public content caches immediately so members see the new item
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-expect-error — unstable_cache uses single-arg revalidateTag (not the cacheComponents overload)
-  revalidateTag(CACHE_TAGS.todayContent);
-  // @ts-expect-error
-  revalidateTag(CACHE_TAGS.weeklyContent);
-  // @ts-expect-error
-  revalidateTag(CACHE_TAGS.monthlyContent);
-  // @ts-expect-error
-  revalidateTag(CACHE_TAGS.libraryContent);
-  // @ts-expect-error
-  revalidateTag(CACHE_TAGS.coachingContent);
+  revalidateContentTags();
 
   redirect("/admin/content?success=created");
 }
@@ -225,17 +222,7 @@ export async function updateContent(formData: FormData) {
     redirect(`/admin/content/${input.id}/edit?error=update_failed`);
   }
 
-  // Bust all public content caches immediately
-  // @ts-expect-error
-  revalidateTag(CACHE_TAGS.todayContent);
-  // @ts-expect-error
-  revalidateTag(CACHE_TAGS.weeklyContent);
-  // @ts-expect-error
-  revalidateTag(CACHE_TAGS.monthlyContent);
-  // @ts-expect-error
-  revalidateTag(CACHE_TAGS.libraryContent);
-  // @ts-expect-error
-  revalidateTag(CACHE_TAGS.coachingContent);
+  revalidateContentTags();
 
   redirect("/admin/content?success=updated");
 }
@@ -252,17 +239,7 @@ export async function togglePublish(formData: FormData) {
   const supabase = adminClient();
   await supabase.from("content").update({ status: newStatus }).eq("id", id);
 
-  // Bust all public content caches immediately — status flip affects what members see
-  // @ts-expect-error
-  revalidateTag(CACHE_TAGS.todayContent);
-  // @ts-expect-error
-  revalidateTag(CACHE_TAGS.weeklyContent);
-  // @ts-expect-error
-  revalidateTag(CACHE_TAGS.monthlyContent);
-  // @ts-expect-error
-  revalidateTag(CACHE_TAGS.libraryContent);
-  // @ts-expect-error
-  revalidateTag(CACHE_TAGS.coachingContent);
+  revalidateContentTags();
 
   redirect("/admin/content");
 }

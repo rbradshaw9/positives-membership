@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 /**
  * app/(marketing)/layout.tsx
  * Layout for the public marketing route group.

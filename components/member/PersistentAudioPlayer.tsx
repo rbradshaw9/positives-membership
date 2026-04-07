@@ -17,6 +17,7 @@ import { useMemberAudio } from "@/components/member/audio/MemberAudioProvider";
 const MINI_KEY = "positives:player:mini";
 
 function readMini(): boolean {
+  if (typeof window === "undefined") return false;
   try {
     return sessionStorage.getItem(MINI_KEY) === "1";
   } catch {
@@ -60,12 +61,7 @@ export function PersistentAudioPlayer() {
 
   const pathname = usePathname();
   const playerRef = useRef<HTMLDivElement>(null);
-  const [mini, setMini] = useState(false);
-
-  // Read persisted mini state on mount
-  useEffect(() => {
-    setMini(readMini());
-  }, []);
+  const [mini, setMini] = useState(readMini);
 
   function toggleMini() {
     setMini((v) => {

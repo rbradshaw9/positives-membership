@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { VideoEmbed } from "@/components/media/VideoEmbed";
-import { markLessonComplete, markLessonIncomplete, updateCourseVideoProgress } from "@/app/(member)/library/courses/actions";
+import { markLessonComplete, markLessonIncomplete } from "@/app/(member)/library/courses/actions";
 import type { LessonWithContext } from "@/lib/queries/get-courses";
 import Link from "next/link";
 
@@ -30,18 +30,9 @@ function formatDuration(seconds: number | null): string {
 }
 
 export function LessonViewer({ lesson, memberId }: LessonViewerProps) {
+  void memberId;
   const [completed, setCompleted] = useState(lesson.completed ?? false);
   const [isPending, startTransition] = useTransition();
-
-  // Called by VideoEmbed at each milestone — auto-marks at 95%
-  async function handleVideoMilestone(watchPercent: number) {
-    if (watchPercent >= 95 && !completed) {
-      startTransition(async () => {
-        await updateCourseVideoProgress(lesson.id, lesson.course_id, watchPercent);
-        setCompleted(true);
-      });
-    }
-  }
 
   function handleToggleComplete() {
     startTransition(async () => {
@@ -164,7 +155,7 @@ export function LessonViewer({ lesson, memberId }: LessonViewerProps) {
           }}
         />
       )}
-      {!( lesson as LessonWithContext & { body?: string | null }).body && lesson.description && (
+      {!(lesson as LessonWithContext & { body?: string | null }).body && lesson.description && (
         <p className="text-foreground/70 leading-relaxed">{lesson.description}</p>
       )}
 

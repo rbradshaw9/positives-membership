@@ -27,3 +27,4 @@ CREATE POLICY "journal: members update own" ON journal
 CREATE INDEX IF NOT EXISTS idx_journal_member_content
   ON journal (member_id, content_id)
   WHERE content_id IS NOT NULL;
+;

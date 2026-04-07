@@ -1,218 +1,207 @@
-# Positives — Live Launch Test Runbook
+# Positives — Level 1 Launch Rehearsal Runbook
 
-**Purpose:** Step-by-step guide to walk the full happy path before/during launch.  
-**Updated:** March 31, 2026  
-**Environment:** Production — `https://positives-membership.vercel.app`
-
----
-
-## Pre-Flight Checklist
-
-Before running the test, confirm:
-
-- [ ] Stripe webhook is registered (see Setup below)
-- [ ] `STRIPE_WEBHOOK_SECRET` in Vercel matches the webhook signing secret in Stripe
-- [ ] `STRIPE_PRICE_LEVEL_1_MONTHLY` matches the live price ID in Stripe
-- [ ] You have access to Vercel runtime logs
-- [ ] You have access to the Supabase table editor (member table)
-- [ ] You are using a **real email address** you can receive magic links on
-- [ ] **Supabase auth URLs are set correctly** (see `docs/setup/supabase-auth-urls.md`):
-  - Site URL = `https://positives-membership.vercel.app`
-  - Redirect URLs include `https://positives-membership.vercel.app/**` and `http://localhost:3000/**`
+**Purpose:** Operator-grade rehearsal for the Level 1 public launch.\
+**Last updated:** April 7, 2026\
+**Scope:** Level 1 only. Community stays off. Level 2-4 stay preview / notify-me only.
 
 ---
 
-## Stripe Webhook Setup (One-Time)
+## 1. Preflight
 
-1. Go to **Stripe Dashboard → Developers → Webhooks → Add endpoint**
-2. Endpoint URL: `https://positives-membership.vercel.app/api/webhooks/stripe`
-3. Select these events:
-   - `checkout.session.completed`
-   - `customer.subscription.created`
-   - `customer.subscription.updated`
-   - `customer.subscription.deleted`
-   - `invoice.payment_failed`
-4. Copy the **signing secret** (`whsec_...`) and confirm it matches `STRIPE_WEBHOOK_SECRET` in Vercel
+Run these from the repo root before touching production data:
 
----
-
-## Happy Path Test Steps
-
-### Step 1 — Sign Up
-
-1. Open a **private/incognito browser window**
-2. Navigate to `https://positives-membership.vercel.app/`
-3. **Expect:** `307 → /login`
-4. Enter a real test email address you control
-5. Submit the magic link form
-6. Check your email and click the magic link
-
-**✅ Success:** You land on `/subscribe`  
-**❌ Failure:** You stay on `/login` or see an error → check Supabase Auth settings and redirect URL configuration
-
----
-
-### Step 2 — Verify Inactive Member State
-
-On `/subscribe` confirm you see:
-- "Your membership is not active"
-- Your email address shown
-- $49/month price
-- "Start membership →" button
-
-**Check in Supabase:**
-- Open `member` table
-- Find your row by email
-- Confirm `subscription_status = 'inactive'` (or `null`)
-- Confirm `stripe_customer_id IS NULL` at this point
-
----
-
-### Step 3 — Start Checkout
-
-1. Click **"Start membership →"**
-2. **Expect:** Server-side redirect to Stripe Checkout (`checkout.stripe.com/...`)
-
-**Check Vercel logs** (filter: last 5 min, source: serverless):
-```
-[Stripe] Starting checkout for userId: <uuid>
-[Stripe] No existing customer — creating one for userId: <uuid>
-[Stripe] Customer created: cus_xxx for userId: <uuid>
-[Stripe] stripe_customer_id persisted for userId: <uuid>
-[Stripe] Creating checkout session — customer: cus_xxx, price: price_xxx
-[Stripe] Checkout session created: cs_xxx for userId: <uuid>
+```bash
+npx supabase migration list
+npm run lint
+npm run build
+npm run audit:launch
+PLAYWRIGHT_PORT=3011 npx playwright test tests/e2e/auth-and-member.spec.ts --project=chromium
+PLAYWRIGHT_PORT=3012 npx playwright test tests/e2e/admin-calendar.spec.ts --project=chromium
 ```
 
-**Check Supabase:**
-- `member.stripe_customer_id` should now be set to `cus_xxx`
+Go / no-go rule:
+
+- `npx supabase migration list` must show local and remote aligned
+- `npm run lint` must pass
+- `npm run build` must pass
+- both Playwright smoke suites must pass
+- `npm run audit:launch` must report zero blockers before launch day
 
 ---
 
-### Step 4 — Complete Stripe Checkout
+## 2. Environment lock
 
-1. On the Stripe Checkout page, use Stripe's test card:
-   - **Card:** `4242 4242 4242 4242`
-   - **Expiry:** Any future date
-   - **CVC:** Any 3 digits
-   - **Name:** Any name
+Verify production env intent against [.env.example](/Users/ryanbradshaw/AntiGravity/positives-membership/.env.example):
 
-   > **Note:** In live mode, use a real card. In test mode, use the test card above.
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `STRIPE_SECRET_KEY`
+- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_PRICE_LEVEL_1_MONTHLY`
+- `NEXT_PUBLIC_APP_URL`
+- `ADMIN_EMAILS`
 
-2. Complete the purchase
-3. **Expect:** Redirect to `https://positives-membership.vercel.app/subscribe/success`
+For an L1-only launch, keep these unset in production:
 
----
+- `STRIPE_PRICE_LEVEL_2_MONTHLY`
+- `STRIPE_PRICE_LEVEL_2_ANNUAL`
+- `STRIPE_PRICE_LEVEL_3_MONTHLY`
+- `STRIPE_PRICE_LEVEL_3_ANNUAL`
+- `STRIPE_PRICE_LEVEL_4_MONTHLY`
+- `STRIPE_PRICE_LEVEL_4_ANNUAL`
 
-### Step 5 — Verify Webhook Fired
+Operational launch settings:
 
-**Check Vercel logs** (filter: last 2 min):
-```
-[Stripe Webhook] Received verified event: checkout.session.completed (id: evt_xxx)
-[Stripe] checkout.session.completed — session: cs_xxx, customer: cus_xxx, userId: <uuid>
-[Stripe] Member activated via checkout — userId: <uuid>, customerId: cus_xxx
-
-[Stripe Webhook] Received verified event: customer.subscription.created (id: evt_xxx)
-[Stripe] Member updated — customer: cus_xxx, memberId: <uuid>, status: active, tier: level_1
-```
-
-> `userId` in the `checkout.session.completed` log comes from `session.client_reference_id`,
-> which is set explicitly to the authenticated app user ID during checkout session creation.
-> If the log shows `userId: none`, the session was created without `client_reference_id` — the
-> fallback path via `stripe_customer_id` will be attempted instead.
-
-**Check Stripe Dashboard → Webhooks → your endpoint → Recent deliveries:**
-- Both events should show `200` response
-
-**Check Supabase `member` table:**
-| Column | Expected Value |
-|--------|---------------|
-| `subscription_status` | `active` |
-| `subscription_tier` | `level_1` |
-| `stripe_customer_id` | `cus_xxx` |
+- `ENABLE_COMMUNITY_PREVIEW=false`
+- Supabase auth Site URL and Redirect URLs must match [docs/setup/supabase-auth-urls.md](/Users/ryanbradshaw/AntiGravity/positives-membership/docs/setup/supabase-auth-urls.md)
 
 ---
 
-### Step 6 — Confirm Member Access
+## 3. Content runway
 
-1. From `/subscribe/success`, click **"Go to Today's Practice"**
-2. **Expect:** Load `/today` successfully — no redirect back to `/subscribe`
-3. If the page loads, membership is active and access control is working
+Before the rehearsal, fill the launch window through June 1, 2026.
 
-**✅ Full happy path complete.**
+Expected runway:
 
----
+- one published `daily_audio` for every day from `2026-04-07` through `2026-06-01`
+- one published `weekly_principle` for every Monday in that window
+- published `monthly_theme` rows for `2026-05` and `2026-06`
+- no published daily or weekly rows missing both `castos_episode_url` and `s3_audio_key`
 
-## Failure Recognition Guide
+Use the structured content workflow in [docs/launch-content-ops.md](/Users/ryanbradshaw/AntiGravity/positives-membership/docs/launch-content-ops.md).
 
-### "Your membership is not active" after paying
+Quick verification queries:
 
-The webhook did not fire or did not update the member row.
-
-**Diagnose:**
-1. Check Vercel logs for `[Stripe Webhook]` entries
-2. Check Stripe → Webhooks → Recent deliveries for 4xx/5xx responses
-3. Check Supabase `member` table — is `subscription_status` still `inactive`?
-4. Check Stripe → Customers → find `cus_xxx` → verify subscription is active
-
-**Common causes:**
-- `STRIPE_WEBHOOK_SECRET` mismatch → webhook returns 400 signature failure
-- Webhook not registered in Stripe Dashboard
-- `stripe_customer_id` not set on member row (see logs for "No member row found")
-
----
-
-### Redirect loop between `/subscribe` and `/today`
-
-The member row exists but `subscription_status` is not `active`.
-
-**Check Supabase `member` table** — look at `subscription_status`.  
-**Check Vercel logs** for webhook delivery confirmation.
-
----
-
-### Magic link not working / auth callback error
-
-**Check Supabase Dashboard → Authentication → URL Configuration:**
-- Site URL must be: `https://positives-membership.vercel.app`
-- Redirect URLs must include: `https://positives-membership.vercel.app/**`
-
----
-
-### `/today` shows empty content (no audio)
-
-This is expected until content is added via the admin panel.
-
-**To add test content:**
-1. Sign in as admin (`ryan@drpauljenkins.com`)
-2. Navigate to `/admin/content/new`
-3. Add a title, a Castos episode URL or S3 key, and set `is_active = true`
-4. Return to `/today` and refresh
-
----
-
-## What to Monitor After First Real Member Signs Up
-
-| Where | What to check |
-|-------|--------------|
-| **Vercel Logs** | `[Stripe Webhook]` events received + processed |
-| **Stripe Dashboard → Webhooks** | All deliveries showing 200 |
-| **Supabase → member table** | `subscription_status = active` for new row |
-| **Stripe → Customers** | Customer exists, subscription active |
-| **Stripe → Subscriptions** | Status = Active, price = Level 1 |
-
----
-
-## Manual Member Fix (if webhook fails)
-
-If a member paid but didn't get access, fix directly in Supabase:
-
-```sql
-UPDATE member
-SET 
-  subscription_status = 'active',
-  subscription_tier = 'level_1',
-  stripe_customer_id = 'cus_xxx'  -- from Stripe Dashboard
-WHERE email = 'member@example.com';
+```bash
+npx supabase db query --linked "select month_year, status from monthly_practice order by month_year;" --output table
+npx supabase db query --linked \"select type, status, count(*) from content group by 1,2 order by 1,2;\" --output table
+npx supabase db query --linked \"select title, week_start from content where type = 'weekly_principle' and status = 'published' and castos_episode_url is null and s3_audio_key is null order by week_start;\" --output table
 ```
 
-Then ask the member to refresh `/today`.
+Then rerun:
+
+```bash
+npm run audit:launch
+```
+
+---
+
+## 4. Member rehearsal
+
+Use an incognito window and a real inbox you control.
+
+### A. Unauthenticated route checks
+
+Confirm these redirect correctly while signed out:
+
+- `/today`
+- `/library`
+- `/practice`
+- `/community`
+- `/coaching`
+- `/account`
+- `/admin`
+
+### B. Authentication checks
+
+Confirm both paths work:
+
+1. Password login to an existing member account
+2. Magic-link login for a fresh or inactive account
+
+### C. Checkout happy path
+
+1. Open `/join`
+2. Start Level 1 checkout
+3. Verify Stripe Checkout loads with the correct live Level 1 product
+4. Complete checkout
+5. Confirm redirect to `/subscribe/success`
+6. Confirm the success flow signs the member in and lands them in `/today`
+
+Stripe / member verification:
+
+```bash
+npx supabase db query --linked \"select email, subscription_status, subscription_tier, stripe_customer_id from member order by created_at desc limit 10;\" --output table
+```
+
+Expected result for the new checkout member:
+
+- `subscription_status = active`
+- `subscription_tier = level_1`
+- `stripe_customer_id` populated
+
+### D. Level 1 member experience
+
+Once signed in as an active member:
+
+1. Open `/today`
+2. Confirm a real daily practice renders
+3. Start playback on `/today`
+4. Navigate to `/library`, `/practice`, then `/account`
+5. Confirm the persistent player survives after leaving `/today`
+6. Save a note or reflection
+7. Open the billing portal from `/account`
+
+### E. Admin checks
+
+While signed in as an admin:
+
+1. Open `/admin/content/calendar`
+2. Confirm create links still prefill dates correctly
+3. Edit one piece of content and save it successfully
+4. Confirm a signed-in non-admin is redirected away from `/admin`
+
+---
+
+## 5. Logs and dashboards
+
+During the rehearsal, monitor:
+
+- Stripe Dashboard → Webhooks → recent deliveries
+- Vercel runtime logs for checkout, webhook, and auth callback traffic
+- Supabase member/content tables for expected writes
+
+Key things to confirm:
+
+- webhook deliveries return `200`
+- member activation happens once, not repeatedly
+- success-page token exchange signs the user in without inbox fallback
+- no server errors appear in runtime logs during `/today`, `/join`, `/subscribe/success`, or `/admin`
+
+---
+
+## 6. Manual recovery
+
+### If a member pays but stays inactive
+
+Verify the Stripe customer and subscription, then patch the member row:
+
+```bash
+npx supabase db query --linked \"update member set subscription_status = 'active', subscription_tier = 'level_1', stripe_customer_id = 'cus_xxx' where email = 'member@example.com';\" --output table
+```
+
+### If a content row was published to the wrong slot
+
+Use the content plan workflow with `--allow-update` to correct the slot, or update the row directly:
+
+```bash
+npx supabase db query --linked \"select id, title, type, publish_date, week_start, month_year, status from content where title ilike '%replace-me%' order by created_at desc;\" --output table
+```
+
+---
+
+## 7. Launch-day go signal
+
+Launch only after all of these are true on the target day:
+
+- schema truth is aligned
+- code gates are green
+- content audit is green
+- one full end-to-end rehearsal completed cleanly
+- Level 1 checkout, success-page auth, and Today playback all worked
+- admin edit/save worked
+- non-admin admin redirect worked
+
+If any one of those is red, hold launch and fix the blocker first.

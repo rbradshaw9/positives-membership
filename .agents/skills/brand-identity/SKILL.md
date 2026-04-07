@@ -279,41 +279,53 @@ Note: not every retention mechanism listed here is necessarily implemented yet. 
 Tiers are stored in the `subscription_tier` enum: `level_1`, `level_2`, `level_3`, `level_4`. Tier access is enforced server-side via the `tier_min` field on content records.
 
 ### Level 1 — Membership ✅ Live
-- daily audio
-- weekly principles
-- monthly themes
-- content library
-- private podcast feed (planned — Castos not yet integrated)
+The foundation tier. All members begin here. No live interaction at this tier.
+- Daily audio message from Dr. Paul
+- Weekly reflections and practices
+- Monthly theme videos
+- Access to the Positives content library
+- Private podcast feed for daily audios (planned — Castos not yet integrated)
 
-### Level 2 — Membership + Events + Q&A ⏳ Partially planned
-- everything in Level 1
-- virtual events (planned — not yet built)
-- Q&A access (planned — not yet built)
-- event replays (planned — not yet built)
+**Price: $37/month · Annual: 2 months free (10 × $37 = $370/yr)**
 
-### Level 3 — Coaching Circle ✅ Live
-- everything in Levels 1 and 2
-- weekly group coaching sessions (live — `coaching_call` content type)
-- coaching replays (live — stored as `coaching_call` with Vimeo replay)
-- implementation support
+> Note: The live Stripe price may reflect an early promotional rate. Do not change existing subscriber pricing without confirming with ops.
 
-### Level 4 — Executive Coaching ✅ Live
-- everything in Levels 1–3
-- bi-weekly 1:1 coaching
-- personalized support
+### Level 2 — Membership + Events + Q&A ⏳ Planned
+Introduces live interaction and structured Q&A.
+- Everything in Level 1
+- Access to the Positives Q&A section (coach-moderated, structured — not a general forum)
+- Quarterly two-day live virtual events
+- Replay access to those events
+- Access to the annual Positives event (format TBD)
+
+**Price: $97–$127/month (specific launch price TBD) · Annual: 2 months free**
+
+### Level 3 — Coaching Circle ✅ Live (coaching_call type)
+Adds consistent live coaching and accountability.
+- Everything in Levels 1 and 2
+- Weekly live group coaching sessions with certified Positives coaches
+- Coaching session replays
+- Implementation support
+- Coaches are certified by Dr. Paul — not licensed therapists
+- Format TBD: cohort groups or one large weekly session
+
+**Price: $297–$397/month (specific launch price TBD) · Annual: 2 months free**
+
+### Level 4 — Executive Coaching (Price not publicly listed)
+Highest-touch experience. Not publicly priced — members book a Breakthrough Session to determine fit.
+- Everything in Levels 1–3
+- Bi-weekly 1:1 coaching calls
+- Personalized support tailored to their situation
+
+**Price: $4,500 minimum / 90 days · Not publicly listed**
 
 ## Pricing Presentation Rules
 
-When presenting the core membership price, always show:
-
-- **Regular price:** $97/month
-- **Offer price:** $49/month
-
-Do not show the offer price in isolation.
-
-Do not use dark patterns.
-
-Members must always have clear access to billing management and cancellation through Stripe.
+- Annual billing = 2 months free for all tiers (10 × monthly rate, billed once per year)
+- Level 4 pricing is NEVER shown publicly — the CTA is always to book a Breakthrough Session
+- Do not use urgency, scarcity, or dark patterns
+- Members must always have clear access to billing management and cancellation through Stripe
+- Do not show a price without context (e.g. always pair with what's included)
 
 ## Reference Documentation
 

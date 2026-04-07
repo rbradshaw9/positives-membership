@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "seed:users": "node scripts/seed-test-users.mjs",
+    "content:launch": "node scripts/apply-launch-content-plan.mjs",
     "audit:launch": "node scripts/audit-launch-readiness.mjs",
     "test:e2e": "npm run seed:users && playwright test"
   },

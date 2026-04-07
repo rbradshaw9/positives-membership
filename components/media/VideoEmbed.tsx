@@ -78,7 +78,9 @@ export function VideoEmbed({
   const [expanded, setExpanded] = useState(false);
 
   // Resume position — null = still loading from DB
-  const [resumeAt, setResumeAt] = useState<number | null>(null);
+  const [resumeAt, setResumeAt] = useState<number | null>(() => {
+    return contentId || courseLessonId ? null : 0;
+  });
   // Chosen start: undefined = haven't chosen yet (overlay showing)
   const [chosenStart, setChosenStart] = useState<number | undefined>(undefined);
 
@@ -104,17 +106,12 @@ export function VideoEmbed({
 
   const resolvedVimeoId = vimeoId ? extractVimeoId(vimeoId) : null;
   const isVimeo = !!resolvedVimeoId;
-  const isYouTube = !isVimeo && !!youtubeId;
-
   // Tracking key: need at least one of contentId or courseLessonId
   const hasTracking = !!contentId || !!courseLessonId;
 
   // ── Fetch resume position on mount ─────────────────────────────────────
   useEffect(() => {
-    if (!hasTracking) {
-      setResumeAt(0);
-      return;
-    }
+    if (!hasTracking) return;
     getVideoResumePosition({ contentId, courseLessonId }).then((seconds) => {
       setResumeAt(seconds);
     });

@@ -2,7 +2,7 @@
 
 Practice-based membership platform for daily grounding, emotional resilience, and personal growth.
 
-Positives is designed to feel like a gym for personal growth. Members do not complete it — they return to it. The product centers on a daily audio practice supported by weekly principles, monthly themes, journaling, progress tracking, coaching, and private podcast delivery.
+Positives is designed to feel like a gym for personal growth. Members do not complete it — they return to it. The product centers on a daily audio practice supported by weekly principles, monthly themes, journaling, progress tracking, and a calm member experience.
 
 ---
 
@@ -14,12 +14,14 @@ The core experience is simple:
 - **Weekly** — a principle and simple practice
 - **Monthly** — a deeper theme for reflection and growth
 
-Over time, members can deepen engagement through:
+The current public launch target is intentionally narrow:
 
 - Content library
-- Quarterly events
-- Coaching circle
-- Executive coaching
+- Journal and progress tracking
+- Member account and billing management
+- Level 1 checkout and onboarding
+
+Higher tiers, events, and community features remain preview / post-launch work until explicitly activated.
 
 ---
 
@@ -87,6 +89,23 @@ Mux is the system of record for hosted video content. The admin includes a drag-
 
 ---
 
+## Launch Scope
+
+### Live now
+
+- Level 1 daily practice
+- Library
+- Journal
+- Account and billing
+- Admin publishing tools
+
+### Preview only
+
+- Level 2-4 offers on `/join`
+- Coaching expansion
+- Events
+- Community launch
+
 ## Membership Structure
 
 ### Level 1 — Core Practice
@@ -101,16 +120,22 @@ Mux is the system of record for hosted video content. The admin includes a drag-
 - Community Q&A access
 - Event replays
 
+Current status: preview only, not part of the Level 1 launch.
+
 ### Level 3 — Coaching Circle
 - Everything in Levels 1–2
 - Weekly group coaching calls
 - Coaching replays
 - Implementation support
 
+Current status: preview only, not part of the Level 1 launch.
+
 ### Level 4 — Executive Coaching
 - Everything in Levels 1–3
 - Bi-weekly 1:1 coaching
 - Personalized support
+
+Current status: preview only, not part of the Level 1 launch.
 
 ---
 
@@ -122,7 +147,7 @@ Mux is the system of record for hosted video content. The admin includes a drag-
 | Content Library | ✅ Built |
 | Journal / Notes | ✅ Built |
 | Coaching System | ✅ Built |
-| Community / Q&A | ✅ Built (feature-flagged) |
+| Community / Q&A | ✅ Built (feature-flagged, launch-off) |
 | Mux Video Pipeline | ✅ Built |
 | Admin Dashboard | ✅ Built |
 | Practice Heatmap | ✅ Built |
@@ -170,7 +195,7 @@ All development sprints are complete as of 2026-04.
 
 ## Status
 
-Active platform with members. Core product complete. Current focus: admin tooling polish and multi-tier pricing on the `/join` page.
+Active platform with members. Current focus: Level 1 launch hardening, schema truth, content readiness, and release verification.
 
 ---
 

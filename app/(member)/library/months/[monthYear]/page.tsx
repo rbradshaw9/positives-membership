@@ -1,5 +1,4 @@
-import { notFound, redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { notFound } from "next/navigation";
 import { getMonthDetail } from "@/lib/queries/get-monthly-archive";
 import { getArchiveDailyAudios } from "@/lib/queries/get-monthly-daily-audios";
 import { getMonthWeeklyContent } from "@/lib/queries/get-month-weekly-content";

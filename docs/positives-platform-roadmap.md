@@ -191,7 +191,59 @@ The `pgvector` extension is enabled. IVFFlat indexes are deferred until tables h
 
 ---
 
+## 1.11 Membership Tiers & Pricing (Canonical Reference)
+
+> **This is the authoritative pricing and tier definition for all product, engineering, and design decisions.**
+> Last updated: April 2026
+
+### Level 1 — Membership ✅ Live
+The foundation tier. All members begin here. No live interaction at this tier.
+
+| | |
+|---|---|
+| **Includes** | Daily audio · Weekly reflections and practices · Monthly theme videos · Content library · Private podcast feed (Castos — planned) |
+| **Monthly price** | $37/month |
+| **Annual price** | $370/year (2 months free — 10 × monthly) |
+| **Status** | Live in production |
+
+### Level 2 — Membership + Events + Q&A ⏳ Planned
+Introduces live interaction and the ability to ask questions. Q&A is structured and coach-moderated — not a general community forum.
+
+| | |
+|---|---|
+| **Includes** | Everything in L1 · Q&A section access · Quarterly two-day live virtual events · Event replays · Annual Positives event (format TBD) |
+| **Monthly price** | $97–$127/month (specific launch price TBD) |
+| **Annual price** | 2 months free (10 × monthly) |
+| **Status** | Planned — Phase 2 |
+
+### Level 3 — Coaching Circle ✅ Live (coaching_call type)
+Consistent live coaching and accountability. Coaches are certified by Dr. Paul in the Positives methodology — not licensed therapists.
+
+| | |
+|---|---|
+| **Includes** | Everything in L1 & L2 · Weekly live group coaching · Coaching replays · Implementation support from certified coaches |
+| **Monthly price** | $297–$397/month (specific launch price TBD) |
+| **Annual price** | 2 months free (10 × monthly) |
+| **Format TBD** | Cohort groups or one large weekly session |
+| **Status** | Live (coaching_call content type active) |
+
+### Level 4 — Executive Coaching (Price not publicly listed)
+Highest-touch experience. Price is never shown publicly. Interested members book a Breakthrough Session to determine fit.
+
+| | |
+|---|---|
+| **Includes** | Everything in L1–L3 · Bi-weekly 1:1 coaching calls · Personalized support |
+| **Price** | $4,500 minimum / 90 days |
+| **Public pricing** | ❌ Never shown — CTA is always "Book a Breakthrough Session" |
+| **Status** | Planned — Phase 5 |
+
+### Annual Pricing Rule
+All tiers: **annual = 2 months free = 10 × monthly rate, billed once per year.** No exceptions.
+
+---
+
 ## 2. Development Phases Roadmap
+
 
 ### Phase 1 — ✅ Core Product + Coaching + Tier Gating (Shipped)
 
@@ -366,6 +418,30 @@ The team needs operational visibility into member status, subscription tier, and
 | **Mobile app wrapper** | PWA or Capacitor wrapper for iOS/Android store presence. Push notifications. |
 
 **Outcome:** Positives scales from a single-tier daily practice into a multi-tier personal growth ecosystem with coaching, community, and AI guidance.
+
+---
+
+#### L4 Post-Expiry Automation Sequence *(Marketing Automation — pending platform selection)*
+
+When a Level 4 coaching subscription ends (Stripe fires `customer.subscription.deleted` with `metadata.assigned_tier = "level_4"`), the following sequence should be triggered via the chosen marketing automation platform (ActiveCampaign or equivalent):
+
+| Day | Action |
+|-----|--------|
+| **−14** | Sales team notified to schedule a renewal call before the package expires |
+| **0** | Subscription ends → member tagged `l4_completed` in marketing platform |
+| **1** | Email 1: "Your coaching package is ending — ready for another round?" + L4 renewal offer |
+| **4** | Email 2: Follow-up with social proof / transformation story |
+| **7** | Email 3: Final L4 renewal offer with deadline |
+| **8** | If no renewal → email 4: Downsell offer to Level 3 (full access at $297/mo) |
+| **14** | If still no action → automated downgrade to L3 via webhook callback to `/api/webhooks/automation` |
+
+**Technical requirements (when building):**
+- Stripe webhook handler (`customer.subscription.deleted`) detects L4 expiry and fires a tag/event to marketing automation platform
+- Marketing automation platform calls back to a Positives API endpoint to execute the L3 downgrade
+- Admin is notified of the downgrade so they can do a personal outreach
+- L4 renewal is always manual (admin uses the Assign L4 tool) — never automated
+- The priority order is always: **Renew L4 → Downsell to L3** — never drop below L3 without a conversation
+
 
 ---
 

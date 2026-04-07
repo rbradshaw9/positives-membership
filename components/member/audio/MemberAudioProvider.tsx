@@ -47,6 +47,20 @@ type MemberAudioContextValue = {
 
 const MemberAudioContext = createContext<MemberAudioContextValue | null>(null);
 
+const SPEED_KEY = "positives:player:speed";
+
+function readStoredPlaybackRate(): number {
+  if (typeof window === "undefined") return 1;
+  try {
+    const saved = localStorage.getItem(SPEED_KEY);
+    if (!saved) return 1;
+    const rate = parseFloat(saved);
+    return Number.isFinite(rate) && rate > 0 && rate <= 3 ? rate : 1;
+  } catch {
+    return 1;
+  }
+}
+
 export function MemberAudioProvider({
   children,
 }: {
@@ -74,21 +88,7 @@ export function MemberAudioProvider({
   });
 
   // ── Playback speed ────────────────────────────────────────────────────────
-  const SPEED_KEY = "positives:player:speed";
-  const [playbackRate, setPlaybackRateState] = useState<number>(1);
-
-  // Load persisted speed on mount
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(SPEED_KEY);
-      if (saved) {
-        const rate = parseFloat(saved);
-        if (Number.isFinite(rate) && rate > 0 && rate <= 3) {
-          setPlaybackRateState(rate);
-        }
-      }
-    } catch { /* ignore storage errors */ }
-  }, []);
+  const [playbackRate, setPlaybackRateState] = useState<number>(readStoredPlaybackRate);
 
   // Apply rate to the <audio> element whenever it changes or a new track loads
   useEffect(() => {

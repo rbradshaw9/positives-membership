@@ -4,6 +4,17 @@
 
 ---
 
+## 0. Launch Mode
+
+Positives is currently targeting a **Level 1-only launch**.
+
+- Treat Level 1 as the only live commercial offering.
+- Treat Level 2-4 as preview / notify-me until price IDs and launch approval are in place.
+- Keep `ENABLE_COMMUNITY_PREVIEW=false` for production launch readiness.
+- Do not assume events, email automation, Castos automation, or AI retrieval are part of launch scope.
+
+---
+
 ## 1. Platform Overview
 
 **Positives** is a membership platform built around a daily personal
@@ -51,6 +62,12 @@ Level 1 — Core Practice\
 Level 2 — Positives Plus\
 Level 3 — Positives Circle\
 Level 4 — Executive Coaching
+
+For implementation and launch decisions, assume:
+
+- Level 1 is live
+- Level 2-4 are preview only
+- Community remains off unless the feature flag is intentionally enabled
 
 Tier access is stored on:
 

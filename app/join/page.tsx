@@ -80,8 +80,6 @@ export default async function JoinPage({
   const level2Annual  = config.stripe.prices.level2Annual;
   const level3Monthly = config.stripe.prices.level3Monthly;
   const level3Annual  = config.stripe.prices.level3Annual;
-  const level4Monthly = config.stripe.prices.level4Monthly;
-  const level4Annual  = config.stripe.prices.level4Annual;
 
   // ── Check-email holding screen ────────────────────────────────────────────
   if (step === "check-email") {
@@ -201,7 +199,7 @@ export default async function JoinPage({
               letterSpacing: "-0.01em",
             }}
           >
-            Level 1 is live now · Higher tiers with coaching and events launching in 2025 · Join to lock your founding rate
+            Level 1 is live now · Higher tiers stay in preview until their launches are announced · Join to lock your founding rate
           </p>
         </div>
       </section>
@@ -226,9 +224,8 @@ export default async function JoinPage({
             level2Annual={level2Annual}
             level3Monthly={level3Monthly}
             level3Annual={level3Annual}
-            level4Monthly={level4Monthly}
-            level4Annual={level4Annual}
           />
+
         </div>
       </section>
 

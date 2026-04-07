@@ -32,7 +32,6 @@ function currentMonthName(): string {
 export function MonthlyThemeCard({
   content,
   initialHasNote = false,
-  viewerUserId,
 }: MonthlyThemeCardProps) {
   const [noteOpen, setNoteOpen] = useState(false);
   const [existingNote, setExistingNote] = useState("");
