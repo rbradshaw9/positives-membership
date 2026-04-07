@@ -1,5 +1,7 @@
 import type Stripe from "stripe";
 import { getAdminClient } from "@/lib/supabase/admin";
+import { resend, FROM_ADDRESS, REPLY_TO } from "@/lib/email/resend";
+import { welcomeEmailHtml, welcomeEmailText } from "@/lib/email/templates/welcome";
 
 /**
  * server/services/stripe/handle-checkout.ts
@@ -273,4 +275,28 @@ async function handleGuestCheckout(
     `[Stripe] Onboarding token stored — userId: ${userId}. ` +
       `Guest checkout complete. Member ready for instant login.`
   );
+
+  // ── Step 6: Send welcome email ───────────────────────────────────────────
+  // Non-fatal — a send failure should never block the webhook response.
+  try {
+    const firstName = session.customer_details?.name?.split(" ")[0] ?? "there";
+    const loginUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://positives.com"}/auth/login?token_hash=${tokenHash}&type=email`;
+
+    await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: email,
+      replyTo: REPLY_TO,
+      subject: "Welcome to Positives — your first practice is ready.",
+      html: welcomeEmailHtml({ firstName, loginUrl }),
+      text: welcomeEmailText({ firstName, loginUrl }),
+    });
+
+    console.log(`[Resend] Welcome email sent — userId: ${userId}, email: ${email}`);
+  } catch (emailErr) {
+    console.error(
+      `[Resend] Failed to send welcome email to ${email}: ` +
+        `${emailErr instanceof Error ? emailErr.message : String(emailErr)}. ` +
+        `Member is active — this is non-fatal.`
+    );
+  }
 }
