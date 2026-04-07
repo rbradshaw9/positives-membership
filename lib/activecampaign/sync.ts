@@ -1,0 +1,214 @@
+/**
+ * lib/activecampaign/sync.ts
+ *
+ * Business logic for syncing Positives member state into ActiveCampaign.
+ *
+ * All functions are non-fatal — errors are logged but never thrown,
+ * so AC issues never block Stripe webhook acknowledgment.
+ *
+ * Tag IDs (created 2026-04-07):
+ *   level_1         → 1
+ *   level_2         → 2
+ *   level_3         → 3
+ *   level_4         → 4
+ *   past_due        → 5
+ *   canceled        → 6
+ *   founding_member → 7
+ *   onboarding_complete → 8
+ *
+ * List IDs:
+ *   Positives Members → 3
+ */
+
+import { ac, acIsConfigured } from "./client";
+import type { Enums } from "@/types/supabase";
+
+type SubscriptionTier = Enums<"subscription_tier">;
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const LIST_ID = 3;
+
+const TIER_TAG: Record<SubscriptionTier, number> = {
+  level_1: 1,
+  level_2: 2,
+  level_3: 3,
+  level_4: 4,
+};
+
+const TAG = {
+  past_due:            5,
+  canceled:            6,
+  founding_member:     7,
+  onboarding_complete: 8,
+} as const;
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type ContactSyncPayload = {
+  email: string;
+  firstName?: string;
+  lastName?: string;
+};
+
+type ContactSyncResponse = {
+  contact: { id: string };
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Upsert a contact in AC. Returns the AC contact ID. */
+async function syncContact(payload: ContactSyncPayload): Promise<string> {
+  const res = await ac.post<ContactSyncResponse>("/contact/sync", {
+    contact: {
+      email:     payload.email,
+      firstName: payload.firstName ?? "",
+      lastName:  payload.lastName ?? "",
+    },
+  });
+  return res.contact.id;
+}
+
+/** Subscribe a contact to the Positives Members list. */
+async function subscribeToList(contactId: string): Promise<void> {
+  await ac.post("/contactLists", {
+    contactList: {
+      list:    LIST_ID,
+      contact: contactId,
+      status:  1, // 1 = active/subscribed
+    },
+  });
+}
+
+/** Add a tag to a contact by tag ID. */
+async function addTag(contactId: string, tagId: number): Promise<void> {
+  await ac.post("/contactTags", {
+    contactTag: { contact: contactId, tag: tagId },
+  });
+}
+
+/** Remove a tag from a contact (fetches contactTags first to find the record ID). */
+async function removeTagIfPresent(contactId: string, tagId: number): Promise<void> {
+  type TagList = { contactTags: Array<{ id: string; tag: string }> };
+  const res = await ac.get<TagList>(`/contacts/${contactId}/contactTags`);
+  const record = res.contactTags.find((t) => t.tag === String(tagId));
+  if (record) {
+    await ac.delete(`/contactTags/${record.id}`);
+  }
+}
+
+// ─── Public sync functions ────────────────────────────────────────────────────
+
+/**
+ * Called on checkout.session.completed.
+ * Creates/updates the contact in AC, subscribes them to the list,
+ * applies their tier tag, and applies founding_member.
+ */
+export async function syncNewMember(params: {
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  tier: SubscriptionTier;
+}): Promise<void> {
+  if (!acIsConfigured()) return;
+
+  try {
+    const contactId = await syncContact({
+      email:     params.email,
+      firstName: params.firstName,
+      lastName:  params.lastName,
+    });
+
+    await subscribeToList(contactId);
+    await addTag(contactId, TIER_TAG[params.tier]);
+    await addTag(contactId, TAG.founding_member);
+
+    console.log(`[AC] New member synced — ${params.email}, tier: ${params.tier}, id: ${contactId}`);
+  } catch (err) {
+    console.error("[AC] syncNewMember failed (non-fatal):", err);
+  }
+}
+
+/**
+ * Called on customer.subscription.updated.
+ * Removes the old tier tag and applies the new one.
+ */
+export async function syncTierChange(params: {
+  email: string;
+  oldTier: SubscriptionTier | null;
+  newTier: SubscriptionTier;
+}): Promise<void> {
+  if (!acIsConfigured()) return;
+
+  try {
+    const contactId = await syncContact({ email: params.email });
+
+    if (params.oldTier && params.oldTier !== params.newTier) {
+      await removeTagIfPresent(contactId, TIER_TAG[params.oldTier]);
+    }
+
+    await addTag(contactId, TIER_TAG[params.newTier]);
+    // Ensure they're re-subscribed in case they were previously unsubscribed
+    await subscribeToList(contactId);
+
+    console.log(`[AC] Tier updated — ${params.email}: ${params.oldTier ?? "?"} → ${params.newTier}`);
+  } catch (err) {
+    console.error("[AC] syncTierChange failed (non-fatal):", err);
+  }
+}
+
+/**
+ * Called on customer.subscription.deleted.
+ * Applies the canceled tag and removes tier tags.
+ */
+export async function syncCancellation(params: { email: string; tier: SubscriptionTier | null }): Promise<void> {
+  if (!acIsConfigured()) return;
+
+  try {
+    const contactId = await syncContact({ email: params.email });
+
+    if (params.tier) {
+      await removeTagIfPresent(contactId, TIER_TAG[params.tier]);
+    }
+
+    await addTag(contactId, TAG.canceled);
+
+    console.log(`[AC] Cancellation synced — ${params.email}`);
+  } catch (err) {
+    console.error("[AC] syncCancellation failed (non-fatal):", err);
+  }
+}
+
+/**
+ * Called on invoice.payment_failed.
+ * Applies the past_due tag.
+ */
+export async function syncPaymentFailed(params: { email: string }): Promise<void> {
+  if (!acIsConfigured()) return;
+
+  try {
+    const contactId = await syncContact({ email: params.email });
+    await addTag(contactId, TAG.past_due);
+
+    console.log(`[AC] Payment failed synced — ${params.email}`);
+  } catch (err) {
+    console.error("[AC] syncPaymentFailed failed (non-fatal):", err);
+  }
+}
+
+/**
+ * Called on invoice.payment_succeeded (renewal).
+ * Removes past_due tag if present (they've caught up).
+ */
+export async function syncPaymentRecovered(params: { email: string }): Promise<void> {
+  if (!acIsConfigured()) return;
+
+  try {
+    const contactId = await syncContact({ email: params.email });
+    await removeTagIfPresent(contactId, TAG.past_due);
+
+    console.log(`[AC] Payment recovered — past_due tag removed for ${params.email}`);
+  } catch (err) {
+    console.error("[AC] syncPaymentRecovered failed (non-fatal):", err);
+  }
+}

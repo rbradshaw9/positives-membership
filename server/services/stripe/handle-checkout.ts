@@ -2,6 +2,7 @@ import type Stripe from "stripe";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { resend, FROM_ADDRESS, REPLY_TO } from "@/lib/email/resend";
 import { welcomeEmailHtml, welcomeEmailText } from "@/lib/email/templates/welcome";
+import { syncNewMember } from "@/lib/activecampaign/sync";
 
 /**
  * server/services/stripe/handle-checkout.ts
@@ -299,4 +300,13 @@ async function handleGuestCheckout(
         `Member is active — this is non-fatal.`
     );
   }
+
+  // ── Step 7: Sync to ActiveCampaign ──────────────────────────────────────
+  // Non-fatal — subscribes member to AC list and applies tier + founding_member tags.
+  await syncNewMember({
+    email,
+    firstName: session.customer_details?.name?.split(" ")[0],
+    lastName:  session.customer_details?.name?.split(" ").slice(1).join(" ") || undefined,
+    tier:      "level_1", // L1 is the only tier available at checkout today
+  });
 }

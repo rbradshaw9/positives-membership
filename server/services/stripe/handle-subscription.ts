@@ -5,6 +5,7 @@ import { config } from "@/lib/config";
 import { resend, FROM_ADDRESS, REPLY_TO } from "@/lib/email/resend";
 import { receiptEmailHtml, receiptEmailText } from "@/lib/email/templates/receipt";
 import { paymentFailedEmailHtml, paymentFailedEmailText } from "@/lib/email/templates/payment-failed";
+import { syncCancellation, syncPaymentFailed, syncPaymentRecovered } from "@/lib/activecampaign/sync";
 
 type SubscriptionStatus = Enums<"subscription_status">;
 type SubscriptionTier = Enums<"subscription_tier">;
@@ -20,10 +21,7 @@ type SubscriptionTier = Enums<"subscription_tier">;
  * The Stripe customer ID is used to locate the member record.
  * Ensure member.stripe_customer_id is set when a customer is created in Stripe.
  *
- * TODO (later milestones):
- * - Handle subscription trial states
- * - Trigger ActiveCampaign tag updates on status change
- * - Trigger Castos feed access update on status change
+ * ActiveCampaign sync is wired into all lifecycle events (non-fatal).
  */
 
 // getAdminClient() — see lib/supabase/admin.ts
@@ -198,6 +196,12 @@ export async function handleSubscriptionDeleted(
   }
 
   console.log(`[Stripe] Subscription canceled — customer: ${customerId}`);
+
+  // Non-fatal: sync cancellation to ActiveCampaign
+  const canceledMember = await getMemberByCustomerId(customerId);
+  if (canceledMember?.email) {
+    await syncCancellation({ email: canceledMember.email, tier: null });
+  }
 }
 
 /** Fetch member email + name from Supabase by Stripe customer ID. */
@@ -264,6 +268,12 @@ export async function handlePaymentFailed(invoice: Stripe.Invoice) {
   } catch (emailErr) {
     console.error("[Stripe] Failed to send payment-failed email (non-fatal):", emailErr);
   }
+
+  // Non-fatal: sync past_due state to ActiveCampaign
+  const failedMember = await getMemberByCustomerId(customerId);
+  if (failedMember?.email) {
+    await syncPaymentFailed({ email: failedMember.email });
+  }
 }
 
 export async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
@@ -312,5 +322,11 @@ export async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
     }
   } catch (emailErr) {
     console.error("[Stripe] Failed to send receipt email (non-fatal):", emailErr);
+  }
+
+  // Non-fatal: remove past_due tag in AC if this was a recovery payment
+  const recoveredMember = await getMemberByCustomerId(customerId);
+  if (recoveredMember?.email) {
+    await syncPaymentRecovered({ email: recoveredMember.email });
   }
 }
