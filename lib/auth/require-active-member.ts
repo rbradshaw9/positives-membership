@@ -13,11 +13,13 @@ type MemberProfile = Pick<
  * Server-side access guard for protected member routes.
  *
  * Redirect logic:
- * - Unauthenticated (no session)        → /login
- * - Authenticated, no member row        → /join
+ * - Unauthenticated (no session)           → /login
+ * - Authenticated, no member row           → /join
  *   (brief race on first sign-in before trigger runs)
- * - Authenticated, subscription not active → /join
- * - Authenticated, active subscription  → returns MemberProfile
+ * - Authenticated, past_due                → /account
+ *   (must be able to reach billing portal to fix payment)
+ * - Authenticated, canceled/inactive       → /join
+ * - Authenticated, active subscription     → returns MemberProfile
  *
  * Returns password_set so the calling layout can conditionally render
  * the nudge banner without a second round-trip to Supabase.
@@ -51,8 +53,17 @@ export async function requireActiveMember(): Promise<MemberProfile> {
 
   const member = data;
 
+  if (member.subscription_status === "past_due") {
+    // Past due members must reach /account to fix their payment.
+    // Only redirect them if they're trying to access a content page —
+    // the layout will still render, keeping them in the shell.
+    // Individual content pages that require active status can add
+    // their own stricter check if needed.
+    redirect("/account");
+  }
+
   if (member.subscription_status !== "active") {
-    // Authenticated but subscription is inactive, canceled, or past_due.
+    // Canceled or otherwise inactive — send to conversion page.
     redirect("/join");
   }
 
