@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/member/PageHeader";
 import { SectionLabel } from "@/components/member/SectionLabel";
 import { Button } from "@/components/ui/Button";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
-import { ReferralCard } from "@/components/account/ReferralCard";
+import { AffiliateCTA } from "@/components/affiliate/AffiliateCTA";
 import { signOut } from "./actions";
 
 export const metadata = {
@@ -147,25 +147,26 @@ export default async function AccountPage() {
               <SectionLabel id="section-referral">Affiliate Program</SectionLabel>
               {member?.rewardful_affiliate_id ? (
                 <SurfaceCard elevated className="surface-card--editorial">
-                  <p className="member-detail-kicker">You&apos;re an affiliate</p>
-                  <h2 className="mt-3 text-xl font-semibold tracking-[-0.02em] text-foreground">
-                    Earn 20% recurring
-                  </h2>
-                  <p className="mt-2 text-sm leading-body text-muted-foreground">
-                    View your referral link, track clicks and conversions, and download share
-                    resources — all in your affiliate portal.
-                  </p>
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="member-detail-kicker">Active affiliate</p>
+                      <h2 className="mt-2 text-lg font-semibold tracking-[-0.02em] text-foreground">
+                        You&apos;re earning 20% recurring
+                      </h2>
+                      <p className="mt-1.5 text-sm leading-body text-muted-foreground">
+                        View your link, stats, share kit, and commission history.
+                      </p>
+                    </div>
+                    <span className="text-3xl flex-shrink-0" aria-hidden="true">🔗</span>
+                  </div>
                   <div className="mt-5">
-                    <Button href="/account/affiliate" variant="secondary" size="sm">
-                      Open Affiliate Portal →
+                    <Button href="/account/affiliate" variant="primary" size="sm">
+                      Open Affiliate Portal
                     </Button>
                   </div>
                 </SurfaceCard>
               ) : (
-                <ReferralCard
-                  initialToken={member?.rewardful_affiliate_token ?? null}
-                  initialAffiliateId={member?.rewardful_affiliate_id ?? null}
-                />
+                <AffiliateCTA />
               )}
             </section>
           </div>
