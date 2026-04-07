@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/member/PageHeader";
 import { SectionLabel } from "@/components/member/SectionLabel";
 import { Button } from "@/components/ui/Button";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
+import { ReferralCard } from "@/components/account/ReferralCard";
 import { signOut } from "./actions";
 
 export const metadata = {
@@ -36,7 +37,7 @@ export default async function AccountPage() {
   const { data: member } = await supabase
     .from("member")
     .select(
-      "email, name, password_set, subscription_tier, subscription_status, stripe_customer_id, timezone"
+      "email, name, password_set, subscription_tier, subscription_status, stripe_customer_id, timezone, rewardful_affiliate_token"
     )
     .eq("id", user!.id)
     .single();
@@ -140,6 +141,11 @@ export default async function AccountPage() {
             <section aria-labelledby="section-timezone">
               <SectionLabel id="section-timezone">Timezone</SectionLabel>
               <TimezoneForm currentTimezone={timezone} />
+            </section>
+
+            <section aria-labelledby="section-referral">
+              <SectionLabel id="section-referral">Refer a Friend</SectionLabel>
+              <ReferralCard initialToken={member?.rewardful_affiliate_token ?? null} />
             </section>
           </div>
 

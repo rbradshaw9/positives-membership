@@ -681,6 +681,8 @@ export type Database = {
           onboarding_token: string | null
           password_set: boolean
           practice_streak: number
+          rewardful_affiliate_token: string | null
+          rewardful_referral_id: string | null
           stripe_customer_id: string | null
           subscription_end_date: string | null
           subscription_status: Database["public"]["Enums"]["subscription_status"]
@@ -699,6 +701,8 @@ export type Database = {
           onboarding_token?: string | null
           password_set?: boolean
           practice_streak?: number
+          rewardful_affiliate_token?: string | null
+          rewardful_referral_id?: string | null
           stripe_customer_id?: string | null
           subscription_end_date?: string | null
           subscription_status?: Database["public"]["Enums"]["subscription_status"]
@@ -717,6 +721,8 @@ export type Database = {
           onboarding_token?: string | null
           password_set?: boolean
           practice_streak?: number
+          rewardful_affiliate_token?: string | null
+          rewardful_referral_id?: string | null
           stripe_customer_id?: string | null
           subscription_end_date?: string | null
           subscription_status?: Database["public"]["Enums"]["subscription_status"]
@@ -759,6 +765,50 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      onboarding_sequence: {
+        Row: {
+          created_at: string
+          day: number
+          email: string
+          error_message: string | null
+          failed: boolean
+          id: string
+          member_id: string
+          send_at: string
+          sent_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          day: number
+          email: string
+          error_message?: string | null
+          failed?: boolean
+          id?: string
+          member_id: string
+          send_at: string
+          sent_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          day?: number
+          email?: string
+          error_message?: string | null
+          failed?: boolean
+          id?: string
+          member_id?: string
+          send_at?: string
+          sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_sequence_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "member"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       progress: {
         Row: {
@@ -1107,3 +1157,4 @@ export const Constants = {
     },
   },
 } as const
+

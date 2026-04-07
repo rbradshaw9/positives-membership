@@ -102,3 +102,59 @@ export async function getReferralByStripeCustomer(
 
   return result.data[0] ?? null;
 }
+
+/**
+ * Find an existing affiliate by email address.
+ * Returns null if not found (does not throw on 404).
+ */
+export async function getAffiliateByEmail(
+  email: string
+): Promise<RewardfulAffiliate | null> {
+  type ListResponse = { data: RewardfulAffiliate[] };
+  try {
+    const result = await rewardfulFetch<ListResponse>(
+      `/affiliates?email=${encodeURIComponent(email)}&expand[]=campaign`
+    );
+    return result.data[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Create a new affiliate account in Rewardful.
+ * Rewardful sends them a welcome email automatically.
+ */
+export async function createAffiliate(params: {
+  email: string;
+  first_name: string;
+  last_name: string;
+}): Promise<RewardfulAffiliate> {
+  const body = new URLSearchParams({
+    email: params.email,
+    first_name: params.first_name,
+    last_name: params.last_name || "—",
+  });
+
+  return rewardfulFetch<RewardfulAffiliate>("/affiliates", {
+    method: "POST",
+    body: body.toString(),
+  });
+}
+
+/**
+ * Idempotent: returns existing affiliate or creates a new one.
+ * Safe to call on every "Get my referral link" click.
+ *
+ * Returns the affiliate object with their referral_token,
+ * which maps to: positives.life/join?via={referral_token}
+ */
+export async function ensureAffiliate(params: {
+  email: string;
+  first_name: string;
+  last_name: string;
+}): Promise<RewardfulAffiliate> {
+  const existing = await getAffiliateByEmail(params.email);
+  if (existing) return existing;
+  return createAffiliate(params);
+}
