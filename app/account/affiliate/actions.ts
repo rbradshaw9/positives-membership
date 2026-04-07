@@ -97,7 +97,7 @@ export async function getReferralLinkAction(): Promise<
     .eq("id", user.id);
 
   // ── Sync to ActiveCampaign (applies 'affiliate' tag → triggers welcome email) ─
-  void syncAffiliate({
+  await syncAffiliate({
     email: user.email,
     referralToken: token,
     affiliateId,
