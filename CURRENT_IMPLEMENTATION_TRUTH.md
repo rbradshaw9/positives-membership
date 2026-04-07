@@ -1,7 +1,7 @@
 # CURRENT_IMPLEMENTATION_TRUTH.md
 
-*Verified against the linked Supabase project, current codebase, generated TypeScript types, and local migration history.*\
-*Last verified: 2026-04-07 — commit `19dc006`*
+*Verified against the linked Supabase project, current codebase, generated TypeScript types, local migration history, and launch audit output.*\
+*Last verified: 2026-04-07 — local working tree + linked project*
 
 ---
 
@@ -122,7 +122,7 @@ All prices are **founding member rates**. Retail pricing exists in the roadmap b
 
 ## Database Truth
 
-### Public tables in the live schema (17 total)
+### Public tables in the live schema (18 total)
 
 | Table | Status |
 |---|---|
@@ -140,6 +140,7 @@ All prices are **founding member rates**. Retail pricing exists in the roadmap b
 | `journal` | ✅ Active |
 | `member` | ✅ Active |
 | `monthly_practice` | ✅ Active |
+| `onboarding_sequence` | ✅ Active |
 | `progress` | ✅ Active |
 | `support_submissions` | ✅ Active |
 | `video_views` | ✅ Active |
@@ -154,18 +155,26 @@ All prices are **founding member rates**. Retail pricing exists in the roadmap b
 
 ### Published content snapshot (as of 2026-04-07)
 
-- `daily_audio`: 33 published
-- `weekly_principle`: 8 published
-- `monthly_theme`: 3 published
+- `daily_audio`: 89 published
+- `weekly_principle`: 17 published
+- `monthly_theme`: 5 published
 - `coaching_call`: 3 published
+
+### Monthly practice snapshot (as of 2026-04-07)
+
+- `2026-02`: published
+- `2026-03`: published
+- `2026-04`: published
+- `2026-05`: published
+- `2026-06`: published
 
 ---
 
 ## Migration Truth
 
-### Current migration inventory (29 files — verified aligned with Supabase)
+### Current migration inventory (33 files — verified aligned with Supabase)
 
-Migrations are timestamp-prefixed. The repo and remote are in sync as of `19dc006`.
+Migrations are timestamp-prefixed. The repo now includes the onboarding-sequence and Rewardful member-field migrations that had previously existed only in the remote project.
 
 ---
 
@@ -173,15 +182,15 @@ Migrations are timestamp-prefixed. The repo and remote are in sync as of `19dc00
 
 ### Engineering
 
-- Member E2E smoke coverage needed repair and should be rerun after each launch-critical change
+- Member E2E smoke coverage is green and should be rerun after each launch-critical change
 - ActiveCampaign lifecycle sequences not yet implemented — transactional email is live via Resend
 - Castos podcast feed integration not yet built
 - `support@positives.life` mailbox not yet set up (Google Workspace needed for reply-to to function)
 
 ### Content ops
 
-- The Level 1 launch still depends on filling the forward content runway through June 1, 2026
-- `monthly_practice` for `2026-05` is still `draft`
+- Forward launch runway is filled through June 1, 2026
+- `npm run audit:launch` is currently green and should be rerun after each publishing batch
 
 ### Product scope
 
@@ -208,13 +217,13 @@ Migrations are timestamp-prefixed. The repo and remote are in sync as of `19dc00
 
 ## Current Recommendation
 
-Treat the app as **ready for a controlled Level 1 soft launch** with founding member pricing.
+Treat the app as a **launch candidate for a controlled Level 1 soft launch** with founding member pricing.
 
 Gates before broad launch:
 
 1. ~~Select marketing automation platform and implement transactional email~~ ✅ Done — Resend live
 2. Set up `support@positives.life` mailbox (Google Workspace) so reply-to emails land somewhere
 3. Configure ActiveCampaign lifecycle sequences (onboarding, engagement, upgrade nurture)
-4. Verify forward content window through June 1
-5. Run Playwright E2E smoke test end-to-end
-6. Rehearse production signup → payment → success-page login → welcome email → playback flow
+4. ~~Verify forward content window through June 1~~ ✅ Done — launch audit green
+5. ~~Run Playwright E2E smoke test end-to-end~~ ✅ Done — member and admin smokes green
+6. Rehearse production signup → payment → success-page login → welcome email → receipt email → playback flow

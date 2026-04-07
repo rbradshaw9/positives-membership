@@ -502,8 +502,11 @@ export function AffiliatePortal({
   const [copiedLink, setCopiedLink]     = useState(false);
   const [error, setError]               = useState<string | null>(null);
 
+  void affiliateId;
+  void memberName;
+
   const referralLink = currentToken
-    ? `https://positives.life/join?via=${currentToken}`
+    ? `https://positives.life?via=${currentToken}`
     : null;
 
   // Enroll handler

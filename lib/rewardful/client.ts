@@ -49,7 +49,7 @@ async function rewardfulFetch<T>(
 export interface RewardfulAffiliateLink {
   id: string;
   url: string;
-  token: string;  // this is the referral token, e.g. "ryan" → positives.life/join?via=ryan
+  token: string;  // this is the referral token, e.g. "ryan" → positives.life?via=ryan
   visitors: number;
   leads: number;
   conversions: number;
@@ -170,7 +170,7 @@ export async function createAffiliate(params: {
  * Returns the affiliate object with their referral_token (for shareable links)
  * and id (for SSO calls). Both should be cached on the member row.
  *
- * positives.life/join?via={referral_token}
+ * positives.life?via={referral_token}
  */
 export async function ensureAffiliate(params: {
   email: string;

@@ -31,7 +31,7 @@ export function ReferralCard({ initialToken, initialAffiliateId }: ReferralCardP
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const referralLink = token ? `https://positives.life/join?via=${token}` : null;
+  const referralLink = token ? `https://positives.life?via=${token}` : null;
   const isAffiliate = Boolean(token && affiliateId);
 
   async function handleGetLink() {

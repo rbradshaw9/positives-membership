@@ -24,6 +24,7 @@ export function RewardfulTracker() {
   return (
     <>
       {/* Must be beforeInteractive so window.rewardful exists when SDK loads */}
+      {/* eslint-disable-next-line @next/next/no-before-interactive-script-outside-document -- Rewardful's App Router integration requires queue bootstrap before the SDK script */}
       <Script id="rewardful-queue" strategy="beforeInteractive">
         {`(function(w,r){w._rwq=r;w[r]=w[r]||function(){(w[r].q=w[r].q||[]).push(arguments)}})(window,'rewardful');`}
       </Script>

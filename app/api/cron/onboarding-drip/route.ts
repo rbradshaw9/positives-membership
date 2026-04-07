@@ -29,7 +29,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-const DASHBOARD_URL = "https://positives.life/dashboard";
+const MEMBER_HOME_URL = "https://positives.life/today";
 
 type PendingRow = {
   id: string;
@@ -44,34 +44,6 @@ type EmailPayload = {
   html: string;
   text: string;
 };
-
-function buildEmail(row: PendingRow): EmailPayload | null {
-  const firstName = row.email.split("@")[0]; // Fallback — real name not stored here
-  const data = { firstName, dashboardUrl: DASHBOARD_URL };
-
-  switch (row.day) {
-    case 3:
-      return {
-        subject: "How's the practice feeling?",
-        html: day3EmailHtml(data),
-        text: day3EmailText(data),
-      };
-    case 7:
-      return {
-        subject: "You've made it a week.",
-        html: day7EmailHtml(data),
-        text: day7EmailText(data),
-      };
-    case 14:
-      return {
-        subject: "Two weeks. That's a real habit.",
-        html: day14EmailHtml(data),
-        text: day14EmailText(data),
-      };
-    default:
-      return null;
-  }
-}
 
 export async function GET(req: NextRequest) {
   // Verify cron secret
@@ -117,7 +89,7 @@ export async function GET(req: NextRequest) {
 
   for (const row of pending as PendingRow[]) {
     const firstName = firstNameMap.get(row.member_id) ?? row.email.split("@")[0];
-    const data = { firstName, dashboardUrl: DASHBOARD_URL };
+    const data = { firstName, dashboardUrl: MEMBER_HOME_URL };
 
     let payload: EmailPayload | null = null;
     switch (row.day) {

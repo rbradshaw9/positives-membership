@@ -5,7 +5,7 @@
  * Triggered by: Stripe invoice.payment_succeeded → our webhook → Resend.
  */
 
-import { B, emailWrapper, emailHeader, emailFooter, ctaButton, divider } from "../brand";
+import { B, emailWrapper, emailHeader, emailFooter, ctaButton } from "../brand";
 
 export type ReceiptEmailData = {
   firstName: string;
@@ -84,7 +84,7 @@ export function receiptEmailHtml({
           Your next billing date is <strong style="color:${B.foreground};">${nextBillingDate}</strong>. You can manage or cancel your subscription any time from your account.
         </p>` : ""}
 
-        ${ctaButton("Open Positives →", "https://positives.life/dashboard")}
+        ${ctaButton("Open Positives →", "https://positives.life/today")}
         ${invoiceUrl ? `
         <p style="margin:20px 0 0;">
           <a href="${invoiceUrl}" style="font-family:${B.fontBody};font-size:13px;color:${B.primary};text-decoration:none;">Download invoice PDF ↗</a>
@@ -114,7 +114,7 @@ Description: ${description}
 Amount paid: ${amountPaid}
 ${nextBillingDate ? `\nNext billing date: ${nextBillingDate}` : ""}
 
-Open Positives: https://positives.life/dashboard
+Open Positives: https://positives.life/today
 ${invoiceUrl ? `\nDownload invoice: ${invoiceUrl}` : ""}
 
 Questions? Just reply to this email.
