@@ -280,7 +280,7 @@ async function handleGuestCheckout(
   // Non-fatal — a send failure should never block the webhook response.
   try {
     const firstName = session.customer_details?.name?.split(" ")[0] ?? "there";
-    const loginUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://positives.com"}/auth/login?token_hash=${tokenHash}&type=email`;
+    const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://positives.life"}/auth/login?token_hash=${tokenHash}&type=email`;
 
     await resend.emails.send({
       from: FROM_ADDRESS,
