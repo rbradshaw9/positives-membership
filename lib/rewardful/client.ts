@@ -242,3 +242,18 @@ export async function getAffiliateCommissions(
   }
 }
 
+/**
+ * Update the PayPal payout email for an affiliate.
+ * PUT /v1/affiliates/:id  →  paypal_email=…
+ */
+export async function updateAffiliatePayPal(
+  affiliateId: string,
+  paypalEmail: string
+): Promise<RewardfulAffiliate> {
+  const body = new URLSearchParams({ paypal_email: paypalEmail });
+  return rewardfulFetch<RewardfulAffiliate>(`/affiliates/${affiliateId}`, {
+    method: "PUT",
+    body: body.toString(),
+  });
+}
+

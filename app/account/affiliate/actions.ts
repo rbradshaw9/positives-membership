@@ -10,7 +10,7 @@
 
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { ensureAffiliate, getReferralToken } from "@/lib/rewardful/client";
+import { ensureAffiliate, getReferralToken, updateAffiliatePayPal } from "@/lib/rewardful/client";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { syncAffiliate } from "@/lib/activecampaign/sync";
 
@@ -108,4 +108,51 @@ export async function getReferralLinkAction(): Promise<
     token,
     affiliateId,
   };
+}
+
+// ── Save PayPal payout email ──────────────────────────────────────────────────
+
+export async function savePayPalEmailAction(
+  paypalEmail: string
+): Promise<{ success: true } | { error: string }> {
+  const trimmed = paypalEmail.trim().toLowerCase();
+  if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+    return { error: "Please enter a valid email address." };
+  }
+
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => cookieStore.getAll(),
+        setAll: () => {},
+      },
+    }
+  );
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "You must be signed in." };
+
+  const admin = getAdminClient();
+  const { data: member } = await admin
+    .from("member")
+    .select("rewardful_affiliate_id")
+    .eq("id", user.id)
+    .single();
+
+  if (!member?.rewardful_affiliate_id) {
+    return { error: "You need to enroll as an affiliate first." };
+  }
+
+  try {
+    await updateAffiliatePayPal(member.rewardful_affiliate_id, trimmed);
+    return { success: true };
+  } catch (err) {
+    console.error("[Affiliate] updateAffiliatePayPal failed:", err);
+    return { error: "Something went wrong. Please try again." };
+  }
 }

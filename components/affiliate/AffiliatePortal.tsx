@@ -13,7 +13,7 @@
  */
 
 import { useState, useCallback } from "react";
-import { getReferralLinkAction } from "@/app/account/affiliate/actions";
+import { getReferralLinkAction, savePayPalEmailAction } from "@/app/account/affiliate/actions";
 import type { RewardfulCommission } from "@/lib/rewardful/client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -105,6 +105,32 @@ Worth trying: ${link}`,
 It's not a podcast. It's a curated daily practice — stories, interviews, and perspectives that shift how you see the day.
 
 If you're building a more intentional morning, I'd recommend giving it a try: ${link}`,
+  },
+];
+
+const SMS_TEMPLATES = (link: string) => [
+  {
+    id: "sms-personal",
+    label: "Personal intro",
+    copy: `Hey! I've been using this daily audio practice called Positives and I really think you'd like it. 10 mins every morning — stories, interviews, real stuff that sticks with you. Check it out: ${link}`,
+  },
+  {
+    id: "sms-quick",
+    label: "Quick nudge",
+    copy: `Random rec — I started this morning audio thing called Positives and it's been great. Worth a look: ${link}`,
+  },
+];
+
+const DM_SCRIPTS = (link: string) => [
+  {
+    id: "dm-warm",
+    label: "Warm DM (friend or follower)",
+    copy: `Hey! Just wanted to share something I've been using — it's a 10-minute daily audio practice called Positives. Curated stories, interviews, perspectives that actually help you start the day right. Not a podcast, more like a daily ritual. Thought of you because [reason]. Here's my link if you want to try it: ${link}`,
+  },
+  {
+    id: "dm-reply",
+    label: "Reply to someone's post about routine/mindset",
+    copy: `Love this! I've been doing something similar — there's this daily audio practice called Positives that's been a game changer for my mornings. 10 minutes, no fluff. Might be up your alley: ${link}`,
   },
 ];
 
@@ -502,6 +528,12 @@ export function AffiliatePortal({
   const [copiedLink, setCopiedLink]     = useState(false);
   const [error, setError]               = useState<string | null>(null);
 
+  // PayPal payout state
+  const [paypalEmail, setPaypalEmail]       = useState("");
+  const [paypalSaving, setPaypalSaving]     = useState(false);
+  const [paypalSaved, setPaypalSaved]       = useState(false);
+  const [paypalError, setPaypalError]       = useState<string | null>(null);
+
   void affiliateId;
   void memberName;
 
@@ -533,6 +565,20 @@ export function AffiliatePortal({
   const totalPaid    = commissions.filter(c => c.status === "paid").reduce((s, c) => s + c.amount, 0);
   const totalPending = commissions.filter(c => c.status !== "paid").reduce((s, c) => s + c.amount, 0);
 
+  async function handleSavePayPal() {
+    setPaypalSaving(true);
+    setPaypalError(null);
+    setPaypalSaved(false);
+    const result = await savePayPalEmailAction(paypalEmail);
+    setPaypalSaving(false);
+    if ("error" in result) {
+      setPaypalError(result.error);
+      return;
+    }
+    setPaypalSaved(true);
+    setTimeout(() => setPaypalSaved(false), 4000);
+  }
+
   // ── Pre-enrollment ──
   if (!enrolled) {
     return (
@@ -546,6 +592,8 @@ export function AffiliatePortal({
 
   const swipes  = referralLink ? buildSwipes(referralLink) : [];
   const socials = referralLink ? SOCIAL_CAPTIONS(referralLink) : [];
+  const smsTemplates = referralLink ? SMS_TEMPLATES(referralLink) : [];
+  const dmScripts    = referralLink ? DM_SCRIPTS(referralLink) : [];
 
   // ── Full portal ──
   return (
@@ -915,6 +963,66 @@ export function AffiliatePortal({
             ))}
           </div>
 
+          {/* SMS Templates */}
+          <div
+            style={{
+              background: "#FFFFFF",
+              border: "1.5px solid #E4E4E7",
+              borderRadius: "1.25rem",
+              padding: "1.75rem",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+            }}
+          >
+            <h2
+              style={{
+                fontFamily: "var(--font-heading)",
+                fontSize: "0.95rem",
+                fontWeight: 700,
+                color: "#09090B",
+                marginBottom: "0.25rem",
+                letterSpacing: "-0.02em",
+              }}
+            >
+              💬 Text / SMS
+            </h2>
+            <p style={{ fontSize: "0.8rem", color: "#71717A", marginBottom: "1.25rem", lineHeight: 1.5 }}>
+              Copy, paste into a text to a friend. Personal texts convert the best.
+            </p>
+            {smsTemplates.map(s => (
+              <CopyBlock key={s.id} id={`copy-${s.id}`} label={s.label} content={s.copy} />
+            ))}
+          </div>
+
+          {/* DM Scripts */}
+          <div
+            style={{
+              background: "#FFFFFF",
+              border: "1.5px solid #E4E4E7",
+              borderRadius: "1.25rem",
+              padding: "1.75rem",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+            }}
+          >
+            <h2
+              style={{
+                fontFamily: "var(--font-heading)",
+                fontSize: "0.95rem",
+                fontWeight: 700,
+                color: "#09090B",
+                marginBottom: "0.25rem",
+                letterSpacing: "-0.02em",
+              }}
+            >
+              📩 DM Scripts
+            </h2>
+            <p style={{ fontSize: "0.8rem", color: "#71717A", marginBottom: "1.25rem", lineHeight: 1.5 }}>
+              For Instagram DMs, Facebook Messenger, or any direct message.
+            </p>
+            {dmScripts.map(s => (
+              <CopyBlock key={s.id} id={`copy-${s.id}`} label={s.label} content={s.copy} />
+            ))}
+          </div>
+
           {/* Social Captions */}
           <div
             style={{
@@ -1057,6 +1165,89 @@ export function AffiliatePortal({
             </div>
           </div>
 
+          {/* PayPal payout setup */}
+          <div
+            style={{
+              background: "#FFFFFF",
+              border: "1.5px solid #E4E4E7",
+              borderRadius: "1.25rem",
+              padding: "1.5rem",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+            }}
+          >
+            <h2
+              style={{
+                fontFamily: "var(--font-heading)",
+                fontSize: "0.9rem",
+                fontWeight: 700,
+                color: "#09090B",
+                marginBottom: "0.25rem",
+                letterSpacing: "-0.02em",
+              }}
+            >
+              💳 Payout Settings
+            </h2>
+            <p style={{ fontSize: "0.8rem", color: "#71717A", marginBottom: "1rem", lineHeight: 1.5 }}>
+              Enter your PayPal email to receive monthly commission payouts.
+            </p>
+            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+              <input
+                id="paypal-email-input"
+                type="email"
+                placeholder="your-paypal@email.com"
+                value={paypalEmail}
+                onChange={e => setPaypalEmail(e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: "0.75rem 1rem",
+                  fontSize: "0.875rem",
+                  border: "1.5px solid #E4E4E7",
+                  borderRadius: "0.875rem",
+                  outline: "none",
+                  fontFamily: "var(--font-sans)",
+                  color: "#09090B",
+                  background: "#FAFAFA",
+                  transition: "border-color 0.2s",
+                }}
+                onFocus={e => (e.currentTarget.style.borderColor = "#2EC4B6")}
+                onBlur={e => (e.currentTarget.style.borderColor = "#E4E4E7")}
+              />
+              <button
+                id="save-paypal-btn"
+                onClick={handleSavePayPal}
+                disabled={paypalSaving || !paypalEmail.trim()}
+                style={{
+                  padding: "0.75rem 1.25rem",
+                  fontSize: "0.83rem",
+                  fontWeight: 700,
+                  color: "#FFFFFF",
+                  background: paypalSaved
+                    ? "#16A34A"
+                    : paypalSaving
+                    ? "#A1A1AA"
+                    : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)",
+                  border: "none",
+                  borderRadius: "0.875rem",
+                  cursor: paypalSaving ? "wait" : "pointer",
+                  whiteSpace: "nowrap",
+                  transition: "all 0.2s",
+                }}
+              >
+                {paypalSaved ? "✓ Saved!" : paypalSaving ? "Saving…" : "Save"}
+              </button>
+            </div>
+            {paypalError && (
+              <p style={{ fontSize: "0.8rem", color: "#EF4444", marginTop: "0.5rem" }}>
+                {paypalError}
+              </p>
+            )}
+            {paypalSaved && (
+              <p style={{ fontSize: "0.8rem", color: "#16A34A", marginTop: "0.5rem" }}>
+                PayPal email saved. Commissions will be sent to this address.
+              </p>
+            )}
+          </div>
+
           {/* Commission history */}
           <div
             style={{
@@ -1092,6 +1283,20 @@ export function AffiliatePortal({
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Tax info note */}
+          <div
+            style={{
+              background: "#F4F4F5",
+              border: "1px solid #E4E4E7",
+              borderRadius: "1rem",
+              padding: "1rem 1.25rem",
+            }}
+          >
+            <p style={{ fontSize: "0.78rem", color: "#71717A", margin: 0, lineHeight: 1.55 }}>
+              <strong style={{ color: "#52525B" }}>Tax info:</strong> If your total commissions reach $600 in a calendar year, we&apos;ll reach out to collect a W-9 for 1099 reporting. No action needed until then.
+            </p>
           </div>
         </div>
       )}
