@@ -258,7 +258,7 @@ export async function handlePaymentFailed(invoice: Stripe.Invoice) {
       const amountDue = invoice.amount_due
         ? `$${(invoice.amount_due / 100).toFixed(2)}`
         : "your membership fee";
-      const updatePaymentUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://positives.life"}/account`;
+      const updatePaymentUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://positives.life"}/account/billing`;
       const nextRetryDate = invoice.next_payment_attempt
         ? new Date(invoice.next_payment_attempt * 1000).toLocaleDateString("en-US", {
             month: "long", day: "numeric", year: "numeric",

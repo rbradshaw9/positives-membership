@@ -144,11 +144,29 @@ export default async function AccountPage() {
             </section>
 
             <section aria-labelledby="section-referral">
-              <SectionLabel id="section-referral">Refer a Friend</SectionLabel>
-              <ReferralCard
-                initialToken={member?.rewardful_affiliate_token ?? null}
-                initialAffiliateId={member?.rewardful_affiliate_id ?? null}
-              />
+              <SectionLabel id="section-referral">Affiliate Program</SectionLabel>
+              {member?.rewardful_affiliate_id ? (
+                <SurfaceCard elevated className="surface-card--editorial">
+                  <p className="member-detail-kicker">You&apos;re an affiliate</p>
+                  <h2 className="mt-3 text-xl font-semibold tracking-[-0.02em] text-foreground">
+                    Earn 20% recurring
+                  </h2>
+                  <p className="mt-2 text-sm leading-body text-muted-foreground">
+                    View your referral link, track clicks and conversions, and download share
+                    resources — all in your affiliate portal.
+                  </p>
+                  <div className="mt-5">
+                    <Button href="/account/affiliate" variant="secondary" size="sm">
+                      Open Affiliate Portal →
+                    </Button>
+                  </div>
+                </SurfaceCard>
+              ) : (
+                <ReferralCard
+                  initialToken={member?.rewardful_affiliate_token ?? null}
+                  initialAffiliateId={member?.rewardful_affiliate_id ?? null}
+                />
+              )}
             </section>
           </div>
 

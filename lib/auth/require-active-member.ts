@@ -54,12 +54,10 @@ export async function requireActiveMember(): Promise<MemberProfile> {
   const member = data;
 
   if (member.subscription_status === "past_due") {
-    // Past due members must reach /account to fix their payment.
-    // Only redirect them if they're trying to access a content page —
-    // the layout will still render, keeping them in the shell.
-    // Individual content pages that require active status can add
-    // their own stricter check if needed.
-    redirect("/account");
+    // Past due members must reach /account/billing to fix their payment.
+    // That route creates a Stripe Billing Portal session and redirects
+    // them directly into Stripe — no additional steps.
+    redirect("/account/billing");
   }
 
   if (member.subscription_status !== "active") {

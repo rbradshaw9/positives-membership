@@ -203,3 +203,42 @@ export async function getAffiliateSSO(
   }>(`/affiliates/${affiliateId}/sso`);
   return res.sso;
 }
+
+// ── Commissions ─────────────────────────────────────────────────────────────
+
+export interface RewardfulCommission {
+  id: string;
+  amount: number;         // in cents
+  currency: string;
+  status: "pending" | "unpaid" | "paid";
+  due_at: string | null;
+  paid_at: string | null;
+  created_at: string;
+  referral: {
+    id: string;
+    conversion_state: "lead" | "conversion";
+    stripe_customer_id: string | null;
+  };
+}
+
+/**
+ * List commissions for a specific affiliate.
+ * Returns up to 100 most recent commissions.
+ */
+export async function getAffiliateCommissions(
+  affiliateId: string
+): Promise<RewardfulCommission[]> {
+  type Response = {
+    data: RewardfulCommission[];
+    pagination: { total_count: number };
+  };
+  try {
+    const result = await rewardfulFetch<Response>(
+      `/commissions?affiliate_id=${affiliateId}&limit=100&expand[]=referral`
+    );
+    return result.data ?? [];
+  } catch {
+    return [];
+  }
+}
+
