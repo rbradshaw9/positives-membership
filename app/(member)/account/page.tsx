@@ -37,7 +37,7 @@ export default async function AccountPage() {
   const { data: member } = await supabase
     .from("member")
     .select(
-      "email, name, password_set, subscription_tier, subscription_status, stripe_customer_id, timezone, rewardful_affiliate_token"
+      "email, name, password_set, subscription_tier, subscription_status, stripe_customer_id, timezone, rewardful_affiliate_token, rewardful_affiliate_id"
     )
     .eq("id", user!.id)
     .single();
@@ -145,7 +145,10 @@ export default async function AccountPage() {
 
             <section aria-labelledby="section-referral">
               <SectionLabel id="section-referral">Refer a Friend</SectionLabel>
-              <ReferralCard initialToken={member?.rewardful_affiliate_token ?? null} />
+              <ReferralCard
+                initialToken={member?.rewardful_affiliate_token ?? null}
+                initialAffiliateId={member?.rewardful_affiliate_id ?? null}
+              />
             </section>
           </div>
 

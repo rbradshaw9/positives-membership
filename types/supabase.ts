@@ -681,6 +681,7 @@ export type Database = {
           onboarding_token: string | null
           password_set: boolean
           practice_streak: number
+          rewardful_affiliate_id: string | null
           rewardful_affiliate_token: string | null
           rewardful_referral_id: string | null
           stripe_customer_id: string | null
@@ -701,6 +702,7 @@ export type Database = {
           onboarding_token?: string | null
           password_set?: boolean
           practice_streak?: number
+          rewardful_affiliate_id?: string | null
           rewardful_affiliate_token?: string | null
           rewardful_referral_id?: string | null
           stripe_customer_id?: string | null
@@ -721,6 +723,7 @@ export type Database = {
           onboarding_token?: string | null
           password_set?: boolean
           practice_streak?: number
+          rewardful_affiliate_id?: string | null
           rewardful_affiliate_token?: string | null
           rewardful_referral_id?: string | null
           stripe_customer_id?: string | null

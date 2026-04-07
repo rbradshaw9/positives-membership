@@ -146,8 +146,10 @@ export async function createAffiliate(params: {
  * Idempotent: returns existing affiliate or creates a new one.
  * Safe to call on every "Get my referral link" click.
  *
- * Returns the affiliate object with their referral_token,
- * which maps to: positives.life/join?via={referral_token}
+ * Returns the affiliate object with their referral_token (for shareable links)
+ * and id (for SSO calls). Both should be cached on the member row.
+ *
+ * positives.life/join?via={referral_token}
  */
 export async function ensureAffiliate(params: {
   email: string;
@@ -157,4 +159,22 @@ export async function ensureAffiliate(params: {
   const existing = await getAffiliateByEmail(params.email);
   if (existing) return existing;
   return createAffiliate(params);
+}
+
+/**
+ * Generate a one-time magic link (SSO) for an affiliate to auto-login
+ * to their Rewardful dashboard. Links expire in ~60 seconds.
+ *
+ * ⚠️  Never store or embed this URL — generate on-demand and redirect immediately.
+ *
+ * Requires Growth plan — the branded portal must be enabled for the link to work.
+ */
+export async function getAffiliateSSO(
+  affiliateId: string
+): Promise<{ url: string; expires: string }> {
+  const res = await rewardfulFetch<{
+    sso: { url: string; expires: string };
+    affiliate: { id: string; email: string };
+  }>(`/affiliates/${affiliateId}/sso`);
+  return res.sso;
 }

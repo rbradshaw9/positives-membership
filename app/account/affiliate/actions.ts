@@ -4,8 +4,8 @@
  * app/account/affiliate/actions.ts
  *
  * Server action: provision a Rewardful affiliate account for the
- * currently authenticated member, then cache their referral token
- * on the member row so we don't need to re-fetch on every page load.
+ * currently authenticated member, caching their id + token on the
+ * member row to avoid re-fetching on page load.
  */
 
 import { createServerClient } from "@supabase/ssr";
@@ -16,6 +16,7 @@ import { getAdminClient } from "@/lib/supabase/admin";
 export interface GetReferralLinkResult {
   referralLink: string;
   token: string;
+  affiliateId: string;
 }
 
 export async function getReferralLinkAction(): Promise<
@@ -34,24 +35,27 @@ export async function getReferralLinkAction(): Promise<
     }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user?.email) {
     return { error: "You must be signed in to get a referral link." };
   }
 
-  // ── Get member name ───────────────────────────────────────────────────────
+  // ── Get member row ────────────────────────────────────────────────────────
   const admin = getAdminClient();
   const { data: member } = await admin
     .from("member")
-    .select("name, rewardful_affiliate_token")
+    .select("name, rewardful_affiliate_token, rewardful_affiliate_id")
     .eq("id", user.id)
     .single();
 
-  // Return cached token if we already have one
-  if (member?.rewardful_affiliate_token) {
+  // Return cached data if already an affiliate
+  if (member?.rewardful_affiliate_token && member?.rewardful_affiliate_id) {
     return {
       referralLink: `https://positives.life/join?via=${member.rewardful_affiliate_token}`,
       token: member.rewardful_affiliate_token,
+      affiliateId: member.rewardful_affiliate_id,
     };
   }
 
@@ -69,19 +73,26 @@ export async function getReferralLinkAction(): Promise<
     });
   } catch (err) {
     console.error("[Affiliate] ensureAffiliate failed:", err);
-    return { error: "Something went wrong setting up your referral link. Please try again." };
+    return {
+      error: "Something went wrong setting up your referral link. Please try again.",
+    };
   }
 
   const token = affiliate.referral_token;
+  const affiliateId = affiliate.id;
 
-  // ── Cache token on member row ─────────────────────────────────────────────
+  // ── Cache both id + token on member row ───────────────────────────────────
   await admin
     .from("member")
-    .update({ rewardful_affiliate_token: token })
+    .update({
+      rewardful_affiliate_token: token,
+      rewardful_affiliate_id: affiliateId,
+    })
     .eq("id", user.id);
 
   return {
     referralLink: `https://positives.life/join?via=${token}`,
     token,
+    affiliateId,
   };
 }

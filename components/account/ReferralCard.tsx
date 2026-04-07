@@ -3,11 +3,15 @@
 /**
  * components/account/ReferralCard.tsx
  *
- * One-click affiliate enrollment for Positives members.
- * 
- * On first click: provisions a Rewardful affiliate account via server action,
- * caches the token, and shows the member's unique referral link.
- * On subsequent visits: shows the cached link instantly (no API call).
+ * Affiliate enrollment + portal access for Positives members.
+ *
+ * State 1 — Not yet an affiliate:
+ *   "Get my referral link" CTA → provisions Rewardful account, shows link.
+ *
+ * State 2 — Already an affiliate:
+ *   Shows referral link with copy button.
+ *   Shows "Open Affiliate Portal →" button → hits /account/affiliate/portal,
+ *   which generates a Rewardful SSO magic link and redirects (Growth plan).
  */
 
 import { useState } from "react";
@@ -16,15 +20,19 @@ import { getReferralLinkAction } from "@/app/account/affiliate/actions";
 interface ReferralCardProps {
   /** Pre-fetched token from server if member is already an affiliate */
   initialToken?: string | null;
+  /** Pre-fetched Rewardful affiliate ID — if set, show portal button */
+  initialAffiliateId?: string | null;
 }
 
-export function ReferralCard({ initialToken }: ReferralCardProps) {
+export function ReferralCard({ initialToken, initialAffiliateId }: ReferralCardProps) {
   const [token, setToken] = useState<string | null>(initialToken ?? null);
+  const [affiliateId, setAffiliateId] = useState<string | null>(initialAffiliateId ?? null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const referralLink = token ? `https://positives.life/join?via=${token}` : null;
+  const isAffiliate = Boolean(token && affiliateId);
 
   async function handleGetLink() {
     setLoading(true);
@@ -37,6 +45,7 @@ export function ReferralCard({ initialToken }: ReferralCardProps) {
       return;
     }
     setToken(result.token);
+    setAffiliateId(result.affiliateId);
   }
 
   async function handleCopy() {
@@ -97,58 +106,94 @@ export function ReferralCard({ initialToken }: ReferralCardProps) {
         </div>
       </div>
 
-      {/* Link display or CTA */}
-      {referralLink ? (
-        <div>
-          <p style={{ fontSize: "0.75rem", fontWeight: 600, color: "#9AA0A8", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "0.5rem" }}>
-            Your referral link
-          </p>
-          <div
-            style={{
-              display: "flex",
-              gap: "0.5rem",
-              alignItems: "center",
-              background: "#F9F7F4",
-              border: "1px solid rgba(221,215,207,0.7)",
-              borderRadius: "0.75rem",
-              padding: "0.625rem 0.75rem",
-            }}
-          >
-            <span
+      {/* State 2: Already an affiliate */}
+      {isAffiliate && referralLink ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
+          {/* Referral link row */}
+          <div>
+            <p style={{ fontSize: "0.75rem", fontWeight: 600, color: "#9AA0A8", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "0.5rem" }}>
+              Your referral link
+            </p>
+            <div
               style={{
-                flex: 1,
-                fontSize: "0.875rem",
-                color: "#121417",
-                fontFamily: "monospace",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
+                display: "flex",
+                gap: "0.5rem",
+                alignItems: "center",
+                background: "#F9F7F4",
+                border: "1px solid rgba(221,215,207,0.7)",
+                borderRadius: "0.75rem",
+                padding: "0.625rem 0.75rem",
               }}
             >
-              {referralLink}
-            </span>
-            <button
-              onClick={handleCopy}
-              style={{
-                flexShrink: 0,
-                fontSize: "0.8rem",
-                fontWeight: 600,
-                color: copied ? "#4E8C78" : "#2F6FED",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                padding: "0 0.25rem",
-                transition: "color 0.2s",
-              }}
-            >
-              {copied ? "Copied!" : "Copy"}
-            </button>
+              <span
+                style={{
+                  flex: 1,
+                  fontSize: "0.875rem",
+                  color: "#121417",
+                  fontFamily: "monospace",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {referralLink}
+              </span>
+              <button
+                onClick={handleCopy}
+                style={{
+                  flexShrink: 0,
+                  fontSize: "0.8rem",
+                  fontWeight: 600,
+                  color: copied ? "#4E8C78" : "#2F6FED",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: "0 0.25rem",
+                  transition: "color 0.2s",
+                }}
+              >
+                {copied ? "Copied!" : "Copy"}
+              </button>
+            </div>
           </div>
-          <p style={{ fontSize: "0.75rem", color: "#9AA0A8", marginTop: "0.625rem" }}>
-            Share this anywhere — email, social, or one-on-one. Payouts start at $50.
+
+          {/* Portal button */}
+          <a
+            href="/account/affiliate/portal"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "0.5rem",
+              background: "linear-gradient(135deg, #4E8C78 0%, #3D7262 100%)",
+              color: "#FFFFFF",
+              borderRadius: "99px",
+              padding: "0.75rem 1.5rem",
+              fontSize: "0.875rem",
+              fontWeight: 600,
+              textDecoration: "none",
+              transition: "opacity 0.2s",
+              boxShadow: "0 4px 16px rgba(78,140,120,0.25)",
+              letterSpacing: "-0.01em",
+            }}
+            onMouseEnter={e => (e.currentTarget.style.opacity = "0.88")}
+            onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+              <polyline points="15 3 21 3 21 9" />
+              <line x1="10" y1="14" x2="21" y2="3" />
+            </svg>
+            Open Affiliate Portal
+          </a>
+          <p style={{ fontSize: "0.75rem", color: "#9AA0A8", marginTop: "-0.25rem" }}>
+            View your earnings, payouts, and resources — opens securely in a new tab.
           </p>
         </div>
       ) : (
+        /* State 1: Not yet an affiliate */
         <div>
           {error && (
             <p style={{ fontSize: "0.8rem", color: "#C0392B", marginBottom: "0.75rem" }}>
