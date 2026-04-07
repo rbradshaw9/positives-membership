@@ -215,6 +215,10 @@ async function handleGuestCheckout(
   // ── Step 3: Activate the member row ─────────────────────────────────────
   // The trigger may not have run yet in a race condition edge case — use
   // upsert so the member row is guaranteed to exist and be active.
+  // Rewardful affiliate referral — client_reference_id holds the UUID when
+  // the member arrived via an affiliate link. Null for organic signups.
+  const rewardfulReferralId = session.client_reference_id ?? null;
+
   const { error: upsertError } = await supabase
     .from("member")
     .upsert(
@@ -223,6 +227,7 @@ async function handleGuestCheckout(
         email,
         stripe_customer_id: customerId,
         subscription_status: "active",
+        ...(rewardfulReferralId ? { rewardful_referral_id: rewardfulReferralId } : {}),
       },
       { onConflict: "id" }
     );
