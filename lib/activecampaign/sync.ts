@@ -43,6 +43,13 @@ const TAG = {
   onboarding_complete: 8,
 } as const;
 
+/** Custom field IDs (created 2026-04-07) */
+const FIELD = {
+  membershipTier:    2,
+  memberSince:       3,
+  stripeCustomerId:  4,
+} as const;
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type ContactSyncPayload = {
@@ -97,6 +104,13 @@ async function removeTagIfPresent(contactId: string, tagId: number): Promise<voi
   }
 }
 
+/** Set (create or overwrite) a custom field value on a contact. */
+async function setFieldValue(contactId: string, fieldId: number, value: string): Promise<void> {
+  await ac.post("/fieldValues", {
+    fieldValue: { contact: contactId, field: fieldId, value },
+  });
+}
+
 // ─── Public sync functions ────────────────────────────────────────────────────
 
 /**
@@ -109,6 +123,7 @@ export async function syncNewMember(params: {
   firstName?: string;
   lastName?: string;
   tier: SubscriptionTier;
+  stripeCustomerId?: string;
 }): Promise<void> {
   if (!acIsConfigured()) return;
 
@@ -122,6 +137,14 @@ export async function syncNewMember(params: {
     await subscribeToList(contactId);
     await addTag(contactId, TIER_TAG[params.tier]);
     await addTag(contactId, TAG.founding_member);
+
+    // Write searchable custom fields
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    await setFieldValue(contactId, FIELD.membershipTier, params.tier);
+    await setFieldValue(contactId, FIELD.memberSince, today);
+    if (params.stripeCustomerId) {
+      await setFieldValue(contactId, FIELD.stripeCustomerId, params.stripeCustomerId);
+    }
 
     console.log(`[AC] New member synced — ${params.email}, tier: ${params.tier}, id: ${contactId}`);
   } catch (err) {

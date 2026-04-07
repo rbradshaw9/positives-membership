@@ -5,7 +5,7 @@ import { config } from "@/lib/config";
 import { resend, FROM_ADDRESS, REPLY_TO } from "@/lib/email/resend";
 import { receiptEmailHtml, receiptEmailText } from "@/lib/email/templates/receipt";
 import { paymentFailedEmailHtml, paymentFailedEmailText } from "@/lib/email/templates/payment-failed";
-import { syncCancellation, syncPaymentFailed, syncPaymentRecovered } from "@/lib/activecampaign/sync";
+import { syncCancellation, syncPaymentFailed, syncPaymentRecovered, syncTierChange } from "@/lib/activecampaign/sync";
 
 type SubscriptionStatus = Enums<"subscription_status">;
 type SubscriptionTier = Enums<"subscription_tier">;
@@ -115,7 +115,7 @@ async function updateMemberSubscription(
   // First verify the member row exists — a zero-row update is otherwise silent.
   const { data: existing, error: lookupError } = await supabase
     .from("member")
-    .select("id")
+    .select("id, email, subscription_tier")
     .eq("stripe_customer_id", customerId)
     .maybeSingle();
 
@@ -158,6 +158,15 @@ async function updateMemberSubscription(
   console.log(
     `[Stripe] Member updated — customer: ${customerId}, memberId: ${existing.id}, status: ${status}, tier: ${tier}`
   );
+
+  // Non-fatal: sync tier change to ActiveCampaign
+  if (existing.email) {
+    await syncTierChange({
+      email:   existing.email,
+      oldTier: (existing.subscription_tier as SubscriptionTier) ?? null,
+      newTier: tier,
+    });
+  }
 }
 
 export async function handleSubscriptionCreated(

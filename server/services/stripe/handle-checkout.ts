@@ -308,5 +308,6 @@ async function handleGuestCheckout(
     firstName: session.customer_details?.name?.split(" ")[0],
     lastName:  session.customer_details?.name?.split(" ").slice(1).join(" ") || undefined,
     tier:      "level_1", // L1 is the only tier available at checkout today
+    stripeCustomerId: customerId,
   });
 }
