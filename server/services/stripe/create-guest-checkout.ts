@@ -61,6 +61,9 @@ export async function createGuestCheckoutSession(
     success_url: `${appUrl}/subscribe/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${appUrl}/join`,
 
+    // Collect phone number — passed to ActiveCampaign for SMS marketing
+    phone_number_collection: { enabled: true },
+
     // Allow Stripe to show a promotional code field
     allow_promotion_codes: true,
   });

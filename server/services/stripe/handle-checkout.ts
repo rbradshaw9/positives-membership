@@ -308,6 +308,7 @@ async function handleGuestCheckout(
     email,
     firstName: session.customer_details?.name?.split(" ")[0],
     lastName:  session.customer_details?.name?.split(" ").slice(1).join(" ") || undefined,
+    phone:     session.customer_details?.phone ?? undefined,
     tier:      "level_1",
     stripeCustomerId: customerId,
   });

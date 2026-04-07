@@ -56,6 +56,7 @@ type ContactSyncPayload = {
   email: string;
   firstName?: string;
   lastName?: string;
+  phone?: string;
 };
 
 type ContactSyncResponse = {
@@ -71,6 +72,7 @@ async function syncContact(payload: ContactSyncPayload): Promise<string> {
       email:     payload.email,
       firstName: payload.firstName ?? "",
       lastName:  payload.lastName ?? "",
+      ...(payload.phone ? { phone: payload.phone } : {}),
     },
   });
   return res.contact.id;
@@ -122,6 +124,7 @@ export async function syncNewMember(params: {
   email: string;
   firstName?: string;
   lastName?: string;
+  phone?: string;
   tier: SubscriptionTier;
   stripeCustomerId?: string;
 }): Promise<void> {
@@ -132,6 +135,7 @@ export async function syncNewMember(params: {
       email:     params.email,
       firstName: params.firstName,
       lastName:  params.lastName,
+      phone:     params.phone,
     });
 
     await subscribeToList(contactId);
