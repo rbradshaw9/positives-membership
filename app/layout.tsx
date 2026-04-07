@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Montserrat, Poppins } from "next/font/google";
+import { RewardfulTracker } from "@/components/RewardfulTracker";
 import "./globals.css";
 
 const montserrat = Montserrat({
@@ -37,6 +38,7 @@ export default function RootLayout({
       className={`${montserrat.variable} ${poppins.variable} h-full`}
     >
       <body className="h-full antialiased bg-background text-foreground">
+        <RewardfulTracker />
         {children}
       </body>
     </html>

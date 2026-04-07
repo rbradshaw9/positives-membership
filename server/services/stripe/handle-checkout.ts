@@ -46,14 +46,20 @@ export async function handleCheckoutSessionCompleted(
   const customerId =
     typeof session.customer === "string" ? session.customer : null;
 
-  const userId =
-    session.client_reference_id ??
-    session.metadata?.userId ??
-    null;
+  // userId comes from metadata.userId (Path A) only.
+  // client_reference_id is now reserved for Rewardful affiliate tokens.
+  const userId = session.metadata?.userId ?? null;
+
+  // Guest checkout is signalled by metadata.guest=true OR absence of userId.
+  // (When a Rewardful referral is present, client_reference_id holds the
+  // affiliate token — it is NOT a Supabase userId.)
+  const isGuestCheckout =
+    session.metadata?.guest === "true" || !userId;
 
   console.log(
     `[Stripe] checkout.session.completed — session: ${session.id}, ` +
-    `customer: ${customerId ?? "none"}, userId: ${userId ?? "none (guest)"}`
+    `customer: ${customerId ?? "none"}, userId: ${userId ?? "none"}, ` +
+    `guest: ${isGuestCheckout}, referral: ${session.client_reference_id ?? "none"}`
   );
 
   if (!customerId) {
@@ -64,13 +70,13 @@ export async function handleCheckoutSessionCompleted(
     return;
   }
 
-  // ── PATH A: Auth-first checkout (client_reference_id present) ────────────
-  if (userId) {
+  // ── PATH A: Auth-first checkout (metadata.userId present) ────────────────
+  if (userId && !isGuestCheckout) {
     await handleAuthFirstCheckout(session, userId, customerId);
     return;
   }
 
-  // ── PATH B: Guest checkout (no client_reference_id) ──────────────────────
+  // ── PATH B: Guest checkout ────────────────────────────────────────────────
   console.log(
     `[Stripe] Guest checkout detected — session: ${session.id}. ` +
     `Proceeding with email-based account creation.`

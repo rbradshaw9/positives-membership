@@ -17,8 +17,9 @@ import { config } from "@/lib/config";
  *   - No Stripe customer pre-created — customer_creation: "always" tells
  *     Stripe to create the customer during checkout so session.customer is
  *     always a valid customer ID in the webhook
- *   - No client_reference_id — the absence of this field is how the webhook
- *     detects it's a guest checkout and routes to the new signup path
+ *   - client_reference_id is ONLY set when a Rewardful referral token is
+ *     present. Its absence (without a referral) still routes to the guest
+ *     checkout path in the webhook via the metadata.guest flag.
  *   - cancel_url goes to /join (not /subscribe) so the visitor can re-select
  *
  * Called from: app/join/actions.ts → startGuestCheckout
@@ -26,7 +27,8 @@ import { config } from "@/lib/config";
  */
 
 export async function createGuestCheckoutSession(
-  priceId: string
+  priceId: string,
+  referralId?: string | null
 ): Promise<{ url: string }> {
   const stripe = getStripe();
 
@@ -42,7 +44,7 @@ export async function createGuestCheckoutSession(
   const appUrl = config.app.url;
 
   console.log(
-    `[Stripe] Creating guest checkout session — priceId: ${priceId}`
+    `[Stripe] Creating guest checkout session — priceId: ${priceId}${referralId ? ` referralId: ${referralId}` : ""}`
   );
 
   const session = await stripe.checkout.sessions.create({
@@ -50,13 +52,21 @@ export async function createGuestCheckoutSession(
 
     // For subscription mode, Stripe always creates a customer automatically.
     // session.customer is guaranteed to be populated in the webhook.
-    // (customer_creation: "always" is only valid in payment mode — not here.)
 
     line_items: [{ price: priceId, quantity: 1 }],
 
-    // IMPORTANT: Do NOT set client_reference_id.
-    // Its absence is the signal in handle-checkout.ts that this is a guest
-    // checkout and account creation must happen from email, not userId.
+    // Rewardful affiliate attribution:
+    // When a visitor arrives via an affiliate link, Rewardful JS sets a
+    // cookie containing their referral token. The join page reads the cookie
+    // client-side and passes it here via formData. Setting it as
+    // client_reference_id lets Rewardful auto-detect the conversion via
+    // their Stripe webhook listener — no explicit API call needed.
+    //
+    // When there's no referral, we omit client_reference_id and use the
+    // metadata.guest flag to signal guest checkout to the webhook handler.
+    ...(referralId
+      ? { client_reference_id: referralId }
+      : { metadata: { guest: "true" } }),
 
     success_url: `${appUrl}/subscribe/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${appUrl}/join`,
