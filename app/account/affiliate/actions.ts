@@ -10,7 +10,7 @@
 
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { ensureAffiliate } from "@/lib/rewardful/client";
+import { ensureAffiliate, getReferralToken } from "@/lib/rewardful/client";
 import { getAdminClient } from "@/lib/supabase/admin";
 
 export interface GetReferralLinkResult {
@@ -78,8 +78,13 @@ export async function getReferralLinkAction(): Promise<
     };
   }
 
-  const token = affiliate.referral_token;
+  const token = getReferralToken(affiliate);
   const affiliateId = affiliate.id;
+
+  if (!token) {
+    console.error("[Affiliate] No referral token found on affiliate links:", affiliate);
+    return { error: "Your referral link couldn't be retrieved. Please try again." };
+  }
 
   // ── Cache both id + token on member row ───────────────────────────────────
   await admin

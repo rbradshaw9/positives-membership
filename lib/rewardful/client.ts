@@ -46,14 +46,35 @@ async function rewardfulFetch<T>(
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
+export interface RewardfulAffiliateLink {
+  id: string;
+  url: string;
+  token: string;  // this is the referral token, e.g. "ryan" → positives.life/join?via=ryan
+  visitors: number;
+  leads: number;
+  conversions: number;
+}
+
 export interface RewardfulAffiliate {
   id: string;
   email: string;
   first_name: string;
   last_name: string;
   state: "active" | "inactive";
-  referral_token: string;
+  /**
+   * Rewardful stores the token under links[0].token, NOT referral_token.
+   * Use getReferralToken(affiliate) to safely extract it.
+   */
+  links: RewardfulAffiliateLink[];
   created_at: string;
+}
+
+/**
+ * Safely extract the primary referral token from an affiliate.
+ * Rewardful puts it at links[0].token, not at the top level.
+ */
+export function getReferralToken(affiliate: RewardfulAffiliate): string {
+  return affiliate.links?.[0]?.token ?? "";
 }
 
 export interface RewardfulReferral {
