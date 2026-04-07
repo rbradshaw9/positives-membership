@@ -2,6 +2,9 @@ import type Stripe from "stripe";
 import { getAdminClient } from "@/lib/supabase/admin";
 import type { Enums } from "@/types/supabase";
 import { config } from "@/lib/config";
+import { resend, FROM_ADDRESS, REPLY_TO } from "@/lib/email/resend";
+import { receiptEmailHtml, receiptEmailText } from "@/lib/email/templates/receipt";
+import { paymentFailedEmailHtml, paymentFailedEmailText } from "@/lib/email/templates/payment-failed";
 
 type SubscriptionStatus = Enums<"subscription_status">;
 type SubscriptionTier = Enums<"subscription_tier">;
@@ -197,9 +200,21 @@ export async function handleSubscriptionDeleted(
   console.log(`[Stripe] Subscription canceled — customer: ${customerId}`);
 }
 
+/** Fetch member email + name from Supabase by Stripe customer ID. */
+async function getMemberByCustomerId(
+  customerId: string
+): Promise<{ email: string; name: string | null } | null> {
+  const supabase = getAdminClient();
+  const { data } = await supabase
+    .from("member")
+    .select("email, name")
+    .eq("stripe_customer_id", customerId)
+    .maybeSingle();
+  return data ?? null;
+}
+
 export async function handlePaymentFailed(invoice: Stripe.Invoice) {
   const supabase = getAdminClient();
-  // invoice.customer is string | Stripe.Customer | Stripe.DeletedCustomer | null
   const customerId =
     typeof invoice.customer === "string" ? invoice.customer : null;
 
@@ -220,4 +235,82 @@ export async function handlePaymentFailed(invoice: Stripe.Invoice) {
   }
 
   console.log(`[Stripe] Payment failed — customer marked past_due: ${customerId}`);
+
+  // Non-fatal: send payment-failed email
+  try {
+    const member = await getMemberByCustomerId(customerId);
+    if (member?.email) {
+      const firstName = member.name?.split(" ")[0] ?? "there";
+      const amountDue = invoice.amount_due
+        ? `$${(invoice.amount_due / 100).toFixed(2)}`
+        : "your membership fee";
+      const updatePaymentUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://positives.life"}/account`;
+      const nextRetryDate = invoice.next_payment_attempt
+        ? new Date(invoice.next_payment_attempt * 1000).toLocaleDateString("en-US", {
+            month: "long", day: "numeric", year: "numeric",
+          })
+        : undefined;
+
+      await resend.emails.send({
+        from: FROM_ADDRESS,
+        replyTo: REPLY_TO,
+        to: member.email,
+        subject: "Action needed — your Positives payment didn't go through",
+        html: paymentFailedEmailHtml({ firstName, amountDue, updatePaymentUrl, nextRetryDate }),
+        text: paymentFailedEmailText({ firstName, amountDue, updatePaymentUrl, nextRetryDate }),
+      });
+      console.log(`[Stripe] Payment-failed email sent to ${member.email}`);
+    }
+  } catch (emailErr) {
+    console.error("[Stripe] Failed to send payment-failed email (non-fatal):", emailErr);
+  }
+}
+
+export async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
+  const customerId =
+    typeof invoice.customer === "string" ? invoice.customer : null;
+
+  if (!customerId) {
+    console.warn("[Stripe] invoice.payment_succeeded — no customer ID found.");
+    return;
+  }
+
+  // Non-fatal: send receipt email
+  try {
+    const member = await getMemberByCustomerId(customerId);
+    if (member?.email && invoice.amount_paid > 0) {
+      const firstName = member.name?.split(" ")[0] ?? "there";
+      const amountPaid = `$${(invoice.amount_paid / 100).toFixed(2)}`;
+      const billingDate = new Date(invoice.created * 1000).toLocaleDateString("en-US", {
+        month: "long", day: "numeric", year: "numeric",
+      });
+      const description =
+        invoice.lines.data[0]?.description ?? "Positives Membership";
+      const invoiceNumber = invoice.number ?? invoice.id;
+      const nextBillingDate = invoice.lines.data[0]?.period?.end
+        ? new Date(invoice.lines.data[0].period.end * 1000).toLocaleDateString("en-US", {
+            month: "long", day: "numeric", year: "numeric",
+          })
+        : undefined;
+      const invoiceUrl = invoice.invoice_pdf ?? undefined;
+
+      await resend.emails.send({
+        from: FROM_ADDRESS,
+        replyTo: REPLY_TO,
+        to: member.email,
+        subject: `Positives receipt — ${amountPaid}`,
+        html: receiptEmailHtml({
+          firstName, invoiceNumber, amountPaid, billingDate,
+          description, nextBillingDate, invoiceUrl,
+        }),
+        text: receiptEmailText({
+          firstName, invoiceNumber, amountPaid, billingDate,
+          description, nextBillingDate, invoiceUrl,
+        }),
+      });
+      console.log(`[Stripe] Receipt email sent to ${member.email} for invoice ${invoiceNumber}`);
+    }
+  } catch (emailErr) {
+    console.error("[Stripe] Failed to send receipt email (non-fatal):", emailErr);
+  }
 }

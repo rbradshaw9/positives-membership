@@ -7,6 +7,7 @@ import {
   handleSubscriptionUpdated,
   handleSubscriptionDeleted,
   handlePaymentFailed,
+  handlePaymentSucceeded,
 } from "@/server/services/stripe/handle-subscription";
 import { handleCheckoutSessionCompleted } from "@/server/services/stripe/handle-checkout";
 
@@ -23,16 +24,18 @@ import { handleCheckoutSessionCompleted } from "@/server/services/stripe/handle-
  *   customer.subscription.created   → set status + tier from subscription
  *   customer.subscription.updated   → update status + tier
  *   customer.subscription.deleted   → mark canceled
- *   invoice.payment_failed          → mark past_due
+ *   invoice.payment_succeeded       → send receipt email
+ *   invoice.payment_failed          → mark past_due + send payment-failed email
  *
  * Configure your Stripe webhook to point to:
- *   https://your-domain.com/api/webhooks/stripe
+ *   https://positives.life/api/webhooks/stripe
  *
  * Required Stripe event subscriptions:
  *   checkout.session.completed
  *   customer.subscription.created
  *   customer.subscription.updated
  *   customer.subscription.deleted
+ *   invoice.payment_succeeded
  *   invoice.payment_failed
  */
 export async function POST(request: Request) {
@@ -93,6 +96,10 @@ export async function POST(request: Request) {
 
       case "customer.subscription.deleted":
         await handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
+        break;
+
+      case "invoice.payment_succeeded":
+        await handlePaymentSucceeded(event.data.object as Stripe.Invoice);
         break;
 
       case "invoice.payment_failed":
