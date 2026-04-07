@@ -281,7 +281,11 @@ export async function syncAffiliate(params: {
   try {
     const contactId = await syncContact({ email: params.email });
     const referralLink = `https://positives.life?via=${params.referralToken}`;
-    const portalUrl = `https://positives.getrewardful.com`;
+    const portalUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://positives.life"}/account/affiliate/portal`;
+
+    // Ensure the contact is on the Positives Members list — required for
+    // merge tags to resolve correctly in AC email templates.
+    await subscribeToList(contactId);
 
     // Set Rewardful custom fields so they are available in AC email templates
     await setFieldValue(contactId, FIELD.rewardfulLink,   referralLink);
