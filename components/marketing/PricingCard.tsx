@@ -12,8 +12,14 @@
  * Pricing for L2/L3/L4:
  *   - When no priceId is set, shows a tasteful TBD block
  *   - When priceId is set, pricing data is read from PRICING constant
+ *
+ * Rewardful affiliate tracking:
+ *   When a visitor arrives via an affiliate link, Rewardful JS sets Rewardful.referral
+ *   (a UUID). We read it via the JS API and inject it as a hidden form input so
+ *   the server action can pass it to Stripe as client_reference_id.
  */
 
+import { useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { startGuestCheckoutFormAction } from "@/app/join/actions";
 
@@ -217,6 +223,19 @@ export function PricingCard({ level, billing, priceId }: PricingCardProps) {
 
   const pricingData = PRICING[level as keyof typeof PRICING];
 
+  // Rewardful affiliate referral — read via JS API on mount.
+  // When a visitor arrives via an affiliate link, Rewardful.referral contains
+  // a UUID that we pass to Stripe as client_reference_id for conversion tracking.
+  const [referral, setReferral] = useState<string | null>(null);
+  useEffect(() => {
+    if (typeof window !== "undefined" && typeof window.rewardful === "function") {
+      window.rewardful("ready", () => {
+        const r = (window as { Rewardful?: { referral?: string } }).Rewardful?.referral;
+        if (r) setReferral(r);
+      });
+    }
+  }, []);
+
   return (
     <div
       className="relative flex flex-col rounded-3xl"
@@ -290,6 +309,8 @@ export function PricingCard({ level, billing, priceId }: PricingCardProps) {
       {isLive ? (
         <form action={startGuestCheckoutFormAction}>
           <input type="hidden" name="priceId" value={priceId} />
+          {/* Rewardful affiliate token — injected when visitor arrived via affiliate link */}
+          {referral && <input type="hidden" name="referral" value={referral} />}
           <CheckoutButton />
         </form>
       ) : (

@@ -1,7 +1,6 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
 import { createGuestCheckoutSession } from "@/server/services/stripe/create-guest-checkout";
 
 /**
@@ -60,15 +59,9 @@ async function _startGuestCheckoutCore(
     return { error: "No plan selected. Please choose a plan and try again." };
   }
 
-  // Read Rewardful affiliate referral cookie (set by their JS snippet).
-  // Rewardful uses the cookie name "_rwrd" to store the referral token.
-  // We pass it as client_reference_id on the Stripe session — Rewardful
-  // matches it and attributes the conversion to the referring affiliate.
-  const cookieStore = await cookies();
-  const referralId =
-    cookieStore.get("_rwrd")?.value ??
-    cookieStore.get("rewardful_referral")?.value ??
-    null;
+  // Rewardful referral UUID — submitted as hidden input by PricingCard.
+  // Populated only when visitor arrived via an affiliate link.
+  const referralId = (formData.get("referral") as string | null)?.trim() || null;
 
   if (referralId) {
     console.log(`[Join] Rewardful referral detected — referralId: ${referralId}`);
