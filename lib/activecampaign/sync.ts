@@ -41,6 +41,7 @@ const TAG = {
   canceled:            6,
   founding_member:     7,
   onboarding_complete: 8,
+  affiliate:           9,
 } as const;
 
 /** Custom field IDs (created 2026-04-07) */
@@ -48,6 +49,9 @@ const FIELD = {
   membershipTier:    2,
   memberSince:       3,
   stripeCustomerId:  4,
+  rewardfulLink:     5,
+  rewardfulToken:    6,
+  rewardfulPortal:   7,
 } as const;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -255,5 +259,40 @@ export async function syncOnboardingComplete(params: { email: string }): Promise
     console.log(`[AC] Onboarding complete — tag applied for ${params.email}`);
   } catch (err) {
     console.error("[AC] syncOnboardingComplete failed (non-fatal):", err);
+  }
+}
+
+/**
+ * Called when a member is enrolled as a Rewardful affiliate.
+ * Applies the affiliate tag (triggers the welcome email automation in AC)
+ * and populates Rewardful custom fields for use in email templates.
+ *
+ * @param params.email          Member's email address
+ * @param params.referralToken  Rewardful referral token (e.g. "abc123")
+ * @param params.affiliateId    Rewardful affiliate UUID
+ */
+export async function syncAffiliate(params: {
+  email: string;
+  referralToken: string;
+  affiliateId: string;
+}): Promise<void> {
+  if (!acIsConfigured()) return;
+
+  try {
+    const contactId = await syncContact({ email: params.email });
+    const referralLink = `https://positives.life?via=${params.referralToken}`;
+    const portalUrl = `https://positives.getrewardful.com`;
+
+    // Set Rewardful custom fields so they are available in AC email templates
+    await setFieldValue(contactId, FIELD.rewardfulLink,   referralLink);
+    await setFieldValue(contactId, FIELD.rewardfulToken,  params.referralToken);
+    await setFieldValue(contactId, FIELD.rewardfulPortal, portalUrl);
+
+    // Apply affiliate tag — this is the trigger for the welcome email automation
+    await addTag(contactId, TAG.affiliate);
+
+    console.log(`[AC] Affiliate synced — ${params.email}, token: ${params.referralToken}`);
+  } catch (err) {
+    console.error("[AC] syncAffiliate failed (non-fatal):", err);
   }
 }

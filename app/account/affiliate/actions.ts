@@ -12,6 +12,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { ensureAffiliate, getReferralToken } from "@/lib/rewardful/client";
 import { getAdminClient } from "@/lib/supabase/admin";
+import { syncAffiliate } from "@/lib/activecampaign/sync";
 
 export interface GetReferralLinkResult {
   referralLink: string;
@@ -53,7 +54,7 @@ export async function getReferralLinkAction(): Promise<
   // Return cached data if already an affiliate
   if (member?.rewardful_affiliate_token && member?.rewardful_affiliate_id) {
     return {
-      referralLink: `https://positives.life/join?via=${member.rewardful_affiliate_token}`,
+      referralLink: `https://positives.life?via=${member.rewardful_affiliate_token}`,
       token: member.rewardful_affiliate_token,
       affiliateId: member.rewardful_affiliate_id,
     };
@@ -95,8 +96,15 @@ export async function getReferralLinkAction(): Promise<
     })
     .eq("id", user.id);
 
+  // ── Sync to ActiveCampaign (applies 'affiliate' tag → triggers welcome email) ─
+  void syncAffiliate({
+    email: user.email,
+    referralToken: token,
+    affiliateId,
+  });
+
   return {
-    referralLink: `https://positives.life/join?via=${token}`,
+    referralLink: `https://positives.life?via=${token}`,
     token,
     affiliateId,
   };
