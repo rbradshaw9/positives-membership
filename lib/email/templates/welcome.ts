@@ -91,7 +91,7 @@ export function welcomeEmailHtml({ firstName, loginUrl }: WelcomeEmailData): str
               <p style="margin:0;font-size:12px;color:#B0A89E;line-height:1.6;">
                 You're receiving this because you joined Positives.<br />
                 Questions? Reply to this email — a real human will respond.<br />
-                <a href="https://positives.com/account" style="color:#B0A89E;">Manage your account</a>
+                <a href="https://positives.life/account" style="color:#B0A89E;">Manage your account</a>
               </p>
             </td>
           </tr>

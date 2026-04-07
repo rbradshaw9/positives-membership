@@ -17,7 +17,7 @@ if (!process.env.RESEND_API_KEY) {
 export const resend = new Resend(process.env.RESEND_API_KEY);
 
 /** Verified sending domain — all transactional email sends from this address. */
-export const FROM_ADDRESS = "Positives <hello@positives.com>";
+export const FROM_ADDRESS = "Positives <hello@positives.life>";
 
 /** Reply-to for member replies — routes to support inbox, not the sending domain. */
-export const REPLY_TO = "support@positives.com";
+export const REPLY_TO = "support@positives.life";
