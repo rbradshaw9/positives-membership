@@ -1899,3 +1899,9 @@ select.admin-select:focus,
   padding-bottom: 0.375rem;
 }
 
+/* ─── Utility Keyframes ──────────────────────────────────────────────────── */
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
