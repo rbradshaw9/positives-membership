@@ -1,33 +1,56 @@
 # CURRENT_IMPLEMENTATION_TRUTH.md
 
 *Verified against the linked Supabase project, current codebase, generated TypeScript types, and local migration history.*\
-*Last verified: 2026-04-07*
+*Last verified: 2026-04-07 — commit `68d7dd0`*
 
 ---
 
 ## Launch Decision
 
-Positives is preparing for a **Level 1 public launch only**.
+Positives is preparing for a **Level 1 public launch** (founding member pricing). Levels 2–3 self-serve upgrades are built and ready to enable. Level 4 is admin-assigned only.
 
 ### In launch scope now
 
 - Level 1 daily practice experience
 - Library, journal, and account
-- Stripe checkout for Level 1
+- Stripe checkout for Level 1 (founding member $37/mo, $370/yr)
 - Payment-first onboarding and success-page login
 - Admin content, month, and member tooling
+- `/upgrade` self-serve upgrade path for L2 and L3 (ready, not yet promoted)
 
 ### Explicitly out of launch scope
 
-- Live Level 2-4 commerce
 - Community launch
 - Events
-- Automated email systems
+- Automated email / marketing automation (platform selection in progress — see evaluation)
 - Google Drive ingestion
 - Castos automation
 - AI embeddings / semantic search population
 
-Production launch copy and docs should describe higher tiers as preview / notify-me only.
+---
+
+## Stripe Pricing — Canonical Record
+
+All prices are **founding member rates**. Retail pricing exists in the roadmap but no retail Stripe prices have been created.
+
+| Tier | Monthly Price ID | Monthly Rate | Annual Price ID | Annual Rate |
+|------|-----------------|-------------|-----------------|------------|
+| L1 | `STRIPE_PRICE_LEVEL_1_MONTHLY` | $37/mo | `STRIPE_PRICE_LEVEL_1_ANNUAL` | $370/yr |
+| L2 | `STRIPE_PRICE_LEVEL_2_MONTHLY` | $97/mo | `STRIPE_PRICE_LEVEL_2_ANNUAL` | $970/yr |
+| L3 | `STRIPE_PRICE_LEVEL_3_MONTHLY` | $297/mo | `STRIPE_PRICE_LEVEL_3_ANNUAL` | $2,970/yr |
+| L4 | `STRIPE_PRICE_LEVEL_4_THREE_PAY` | $1,500/mo × 3 | — | — |
+
+**L4 additional notes:**
+- Pay-in-full: $4,500 — created as a Stripe invoice (not a subscription)
+- 3-pay plan: $1,500/month × 3, subscription auto-cancels at 90 days via `cancel_at`
+- Custom packages: created as named Stripe Prices on product `STRIPE_PRODUCT_LEVEL_4` via the admin tool — they appear as one-click presets on future Assign L4 calls
+- Annual rule across L1–L3: 10 × monthly rate (2 months free)
+- L4 is never self-serve — assigned by admin after a Breakthrough Session call
+
+**Archived Stripe prices (do not use):**
+- Legacy L1 $49/mo, $490/yr
+- Legacy L2 $79/mo, $790/yr
+- Legacy L4 $15,000/yr (incorrect structure)
 
 ---
 
@@ -35,12 +58,13 @@ Production launch copy and docs should describe higher tiers as preview / notify
 
 ### Member experience
 
-- `/today` with daily audio, weekly principle, monthly theme, archive rail, and integrated note entry
-- `/library` with courses and monthly archive
-- `/practice` with streaks, heatmap, continue listening, and tabbed practice sections
-- `/journal` note archive
-- `/account` with billing portal, password management, and timezone settings
-- `/coaching` route with tier gating and replay support
+- `/today` — daily audio, weekly principle, monthly theme, archive rail, integrated note entry
+- `/library` — courses and monthly archive
+- `/practice` — streaks, heatmap, continue listening, tabbed practice sections
+- `/journal` — note archive
+- `/account` — billing portal, password management, timezone settings
+- `/coaching` — tier-gated, replay support
+- `/upgrade` — self-serve upgrade to L2 or L3; L4 books a Breakthrough Session call
 
 ### Billing and auth
 
@@ -49,13 +73,14 @@ Production launch copy and docs should describe higher tiers as preview / notify
 - Post-checkout onboarding token flow
 - `requireActiveMember()` guards on member routes
 - `requireAdmin()` email-allowlist guard on admin routes
+- Stripe webhook tier map supports L1–L4 including custom L4 subscriptions via `metadata.assigned_tier`
 
 ### Admin system
 
 - `/admin/content`, `/admin/months`, `/admin/members`, `/admin/content/calendar`, `/admin/courses`, `/admin/ingestion`
+- `/admin/members/[id]/assign-l4` — L4 package assignment tool (4 modes: pay-in-full, 3-pay, saved preset, custom builder)
 - Month workspace and content calendar
-- Mux video upload / replace / remove flow
-- Auto-linking from `content.month_year` to `monthly_practice`
+- Vimeo video upload / replace / remove flow
 - Course authoring and LearnDash import support
 
 ### Media and progress
@@ -92,75 +117,28 @@ Production launch copy and docs should describe higher tiers as preview / notify
 | `support_submissions` | ✅ Active |
 | `video_views` | ✅ Active |
 
-### Live production shape verified on 2026-04-07
+*Note: `l4_package_preset` table was created and dropped in the same session — Stripe Prices are the canonical preset store.*
 
-- `member`: 4 rows
-- `content`: 47 rows
-- `monthly_practice`: 4 rows
-- `course`: 1 row
-- `course_module`: 1 row
-- `course_lesson`: 6 rows
-- `course_session`: 0 rows
-- `course_progress`: 1 row
-- `support_submissions`: 0 rows
-- `community_post`: 0 rows
-- `community_post_like`: 0 rows
-- `video_views`: 5 rows
+### Member snapshot (as of 2026-04-07)
 
-### Published content snapshot
+- `active level_1`: 2
+- `active level_3`: 1
+- `canceled`: 1
+
+### Published content snapshot (as of 2026-04-07)
 
 - `daily_audio`: 33 published
 - `weekly_principle`: 8 published
 - `monthly_theme`: 3 published
 - `coaching_call`: 3 published
 
-### Member snapshot
-
-- `active level_1`: 2
-- `active level_3`: 1
-- `canceled`: 1
-
 ---
 
 ## Migration Truth
 
-The repo migration history is now aligned with the linked Supabase project.
+### Current migration inventory (29 files — verified aligned with Supabase)
 
-### Status
-
-- `npx supabase migration list` matches local and remote for all applied versions
-- `types/supabase.ts` was regenerated from the linked project on 2026-04-07
-- The previous schema drift around `monthly_practice`, `support_submissions`, and the course tables is resolved in version control
-
-### Current migration inventory (27 files)
-
-- `20260331132817_0001_initial_schema.sql`
-- `20260331132834_0002_rls_policies.sql`
-- `20260331132835_0003_member_bootstrap_trigger.sql`
-- `20260331133333_0004_fix_updated_at_search_path.sql`
-- `20260331211634_add_onboarding_columns.sql`
-- `20260401143734_0006_sprint1_today_foundation.sql`
-- `20260401144136_0007_activity_event_rls.sql`
-- `20260401145032_0008_journal_rls_and_index.sql`
-- `20260401154153_sprint5_rich_content_search_vector.sql`
-- `20260401154217_sprint5_rls_vector_tables.sql`
-- `20260401180959_0011a_enums.sql`
-- `20260401181006_0011b_columns_and_index.sql`
-- `20260402141653_community_qa_schema.sql`
-- `20260402155635_backfill_weekly_month_year.sql`
-- `20260402155636_seed_progress_for_l1_user.sql`
-- `20260402185018_add_mux_playback_id_to_content.sql`
-- `20260402190555_add_mux_columns_to_content.sql`
-- `20260402195055_add_video_views.sql`
-- `20260402195227_video_views_add_resume_at_seconds.sql`
-- `20260402213544_create_monthly_practice_table.sql`
-- `20260406154256_mux_video_tracking.sql`
-- `20260406164309_support_submissions.sql`
-- `20260406185227_create_courses_schema.sql`
-- `20260406193302_add_resources_to_course_session.sql`
-- `20260406193615_add_four_level_course_hierarchy.sql`
-- `20260406203825_add_course_progress_and_sales_columns.sql`
-- `20260406214012_add_course_lesson_id_to_video_views.sql`
+Migrations are timestamp-prefixed. The repo and remote are in sync as of `68d7dd0`.
 
 ---
 
@@ -169,19 +147,19 @@ The repo migration history is now aligned with the linked Supabase project.
 ### Engineering
 
 - Member E2E smoke coverage needed repair and should be rerun after each launch-critical change
-- Production release confidence still depends on passing build, lint, audit, and Playwright gates together
+- Marketing automation platform not yet selected — transactional and lifecycle email are manual until resolved
+- Castos podcast feed integration not yet built
 
 ### Content ops
 
 - The Level 1 launch still depends on filling the forward content runway through June 1, 2026
-- Weekly items missing audio sources still need to be resolved in the live dataset
 - `monthly_practice` for `2026-05` is still `draft`
 
 ### Product scope
 
 - Community must remain behind `ENABLE_COMMUNITY_PREVIEW=false`
-- Level 2-4 Stripe prices should remain unset until those tiers are intentionally launched
-- Marketing copy must not imply that coaching, events, or higher tiers are live
+- `/upgrade` is built but not yet linked from marketing materials — enable intentionally at L1 launch
+- Marketing copy must not imply events or live coaching are currently available at L2
 
 ---
 
@@ -189,23 +167,25 @@ The repo migration history is now aligned with the linked Supabase project.
 
 | Feature | Status |
 |---|---|
-| Transactional email | ⚠️ No launch-ready implementation |
-| Lifecycle email / CRM | ⚠️ No launch-ready implementation |
+| Transactional email | ⚠️ No implementation — pending MA platform selection |
+| Lifecycle email / CRM | ⚠️ No implementation — pending MA platform selection |
+| Post-L4 expiry automation | ⚠️ Documented in roadmap — pending MA platform + webhook handler |
 | Google Drive ingestion | ⚠️ Not implemented |
 | Castos automation | ⚠️ Not implemented |
 | AI embeddings backfill | ⚠️ Schema only |
 | Event system | ⚠️ Not implemented |
 | Role-based admin auth | ⚠️ Deferred until after L1 launch |
+| Marketing automation platform | ⚠️ Evaluation in progress — see `/docs/marketing-automation-evaluation.md` |
 
 ---
 
 ## Current Recommendation
 
-Treat the app as **close to a controlled Level 1 soft launch**, not a broad multi-tier launch.
+Treat the app as **ready for a controlled Level 1 soft launch** with founding member pricing.
 
-The required launch gates remain:
+Gates before broad launch:
 
-1. Keep docs and copy aligned with the L1-only promise.
-2. Keep build, lint, audit, and Playwright green together.
-3. Fill and verify the forward content window.
-4. Rehearse the production signup, payment, success-page login, and playback flow end to end.
+1. Select marketing automation platform and implement transactional email (welcome, payment receipt, password reset)
+2. Verify forward content window through June 1
+3. Run Playwright E2E smoke test end-to-end
+4. Rehearse production signup → payment → success-page login → playback flow

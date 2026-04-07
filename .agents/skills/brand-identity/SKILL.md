@@ -298,7 +298,9 @@ Introduces live interaction and structured Q&A.
 - Replay access to those events
 - Access to the annual Positives event (format TBD)
 
-**Price: $97–$127/month (specific launch price TBD) · Annual: 2 months free**
+**Price: $97/month (founding member rate) · Annual: $970/yr (2 months free)**
+
+> Retail price to be raised after founding member window closes.
 
 ### Level 3 — Coaching Circle ✅ Live (coaching_call type)
 Adds consistent live coaching and accountability.
@@ -309,7 +311,9 @@ Adds consistent live coaching and accountability.
 - Coaches are certified by Dr. Paul — not licensed therapists
 - Format TBD: cohort groups or one large weekly session
 
-**Price: $297–$397/month (specific launch price TBD) · Annual: 2 months free**
+**Price: $297/month (founding member rate) · Annual: $2,970/yr (2 months free)**
+
+> Retail price to be raised after founding member window closes.
 
 ### Level 4 — Executive Coaching (Price not publicly listed)
 Highest-touch experience. Not publicly priced — members book a Breakthrough Session to determine fit.
@@ -317,7 +321,12 @@ Highest-touch experience. Not publicly priced — members book a Breakthrough Se
 - Bi-weekly 1:1 coaching calls
 - Personalized support tailored to their situation
 
-**Price: $4,500 minimum / 90 days · Not publicly listed**
+**Price: Not publicly listed. Admin-assigned after a Breakthrough Session call.**
+- Pay in Full: $4,500 for 90 days
+- 3-Pay Plan: $1,500/month × 3 months (auto-cancels)
+- Custom: admin builds a bespoke package during the call; saved to Stripe for future reuse
+
+L4 renewal is always manual (human touchpoint). After expiry: upsell to another L4 package, then downsell to L3 if declined (see roadmap for automation sequence).
 
 ## Pricing Presentation Rules
 
