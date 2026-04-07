@@ -239,3 +239,21 @@ export async function syncPaymentRecovered(params: { email: string }): Promise<v
     console.error("[AC] syncPaymentRecovered failed (non-fatal):", err);
   }
 }
+
+/**
+ * Called after the Day 14 onboarding drip email is sent successfully.
+ * Applies the onboarding_complete tag, which triggers the L1 → L2
+ * upsell automation in ActiveCampaign.
+ */
+export async function syncOnboardingComplete(params: { email: string }): Promise<void> {
+  if (!acIsConfigured()) return;
+
+  try {
+    const contactId = await syncContact({ email: params.email });
+    await addTag(contactId, TAG.onboarding_complete);
+
+    console.log(`[AC] Onboarding complete — tag applied for ${params.email}`);
+  } catch (err) {
+    console.error("[AC] syncOnboardingComplete failed (non-fatal):", err);
+  }
+}

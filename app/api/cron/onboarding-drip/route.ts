@@ -22,6 +22,7 @@ import { resend, FROM_ADDRESS, REPLY_TO } from "@/lib/email/resend";
 import { day3EmailHtml, day3EmailText } from "@/lib/email/templates/onboarding-day3";
 import { day7EmailHtml, day7EmailText } from "@/lib/email/templates/onboarding-day7";
 import { day14EmailHtml, day14EmailText } from "@/lib/email/templates/onboarding-day14";
+import { syncOnboardingComplete } from "@/lib/activecampaign/sync";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -103,12 +104,12 @@ export async function GET(req: NextRequest) {
   const memberIds = [...new Set((pending as PendingRow[]).map((r) => r.member_id))];
   const { data: members } = await supabase
     .from("member")
-    .select("id, first_name")
+    .select("id, name")
     .in("id", memberIds);
 
   const firstNameMap = new Map<string, string>();
-  (members ?? []).forEach((m: { id: string; first_name: string | null }) => {
-    if (m.first_name) firstNameMap.set(m.id, m.first_name);
+  (members ?? []).forEach((m: { id: string; name: string | null }) => {
+    if (m.name) firstNameMap.set(m.id, m.name.split(" ")[0]);
   });
 
   let sent = 0;
@@ -164,6 +165,11 @@ export async function GET(req: NextRequest) {
         .from("onboarding_sequence")
         .update({ sent_at: new Date().toISOString() })
         .eq("id", row.id);
+
+      // Day 14 = onboarding complete → trigger AC upsell automation
+      if (row.day === 14) {
+        await syncOnboardingComplete({ email: row.email });
+      }
 
       sent++;
       console.log(`[Cron] Sent day-${row.day} email to ${row.email}`);
