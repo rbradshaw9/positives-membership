@@ -178,7 +178,11 @@ export async function ensureAffiliate(params: {
   last_name: string;
 }): Promise<RewardfulAffiliate> {
   const existing = await getAffiliateByEmail(params.email);
-  if (existing) return existing;
+  if (existing) {
+    // The list endpoint omits links[] — fetch by ID to get the full object
+    // including links[0].token which we need for the referral URL.
+    return getAffiliate(existing.id);
+  }
   return createAffiliate(params);
 }
 
