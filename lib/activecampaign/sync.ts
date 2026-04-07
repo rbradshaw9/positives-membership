@@ -52,6 +52,7 @@ const FIELD = {
   rewardfulLink:     5,
   rewardfulToken:    6,
   rewardfulPortal:   7,
+  billingLink:       9, // Signed billing recovery URL for payment-failed emails
 } as const;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -212,13 +213,25 @@ export async function syncCancellation(params: { email: string; tier: Subscripti
 
 /**
  * Called on invoice.payment_failed.
- * Applies the past_due tag.
+ * Sets BILLING_LINK field (signed 7-day token URL) then applies past_due tag.
+ * The billing link is used as the CTA button in the Past Due Recovery emails,
+ * allowing 1-click access to the Stripe billing portal without requiring login.
  */
-export async function syncPaymentFailed(params: { email: string }): Promise<void> {
+export async function syncPaymentFailed(params: {
+  email: string;
+  billingLink?: string;
+}): Promise<void> {
   if (!acIsConfigured()) return;
 
   try {
     const contactId = await syncContact({ email: params.email });
+
+    // Set the billing link field before applying the tag so the
+    // merge tag resolves correctly when the automation email fires.
+    if (params.billingLink) {
+      await setFieldValue(contactId, FIELD.billingLink, params.billingLink);
+    }
+
     await addTag(contactId, TAG.past_due);
 
     console.log(`[AC] Payment failed synced — ${params.email}`);

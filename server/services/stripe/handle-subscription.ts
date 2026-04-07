@@ -6,6 +6,7 @@ import { resend, FROM_ADDRESS, REPLY_TO } from "@/lib/email/resend";
 import { receiptEmailHtml, receiptEmailText } from "@/lib/email/templates/receipt";
 import { paymentFailedEmailHtml, paymentFailedEmailText } from "@/lib/email/templates/payment-failed";
 import { syncCancellation, syncPaymentFailed, syncPaymentRecovered, syncTierChange } from "@/lib/activecampaign/sync";
+import { generateBillingToken } from "@/lib/auth/billing-token";
 
 type SubscriptionStatus = Enums<"subscription_status">;
 type SubscriptionTier = Enums<"subscription_tier">;
@@ -278,10 +279,20 @@ export async function handlePaymentFailed(invoice: Stripe.Invoice) {
     console.error("[Stripe] Failed to send payment-failed email (non-fatal):", emailErr);
   }
 
-  // Non-fatal: sync past_due state to ActiveCampaign
+  // Non-fatal: sync past_due state + billing link to ActiveCampaign
   const failedMember = await getMemberByCustomerId(customerId);
   if (failedMember?.email) {
-    await syncPaymentFailed({ email: failedMember.email });
+    let billingLink: string | undefined;
+    try {
+      const token = generateBillingToken({
+        stripeCustomerId: customerId,
+        email: failedMember.email,
+      });
+      billingLink = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://positives.life"}/account/billing?token=${token}`;
+    } catch (tokenErr) {
+      console.error("[Stripe] Failed to generate billing token (non-fatal):", tokenErr);
+    }
+    await syncPaymentFailed({ email: failedMember.email, billingLink });
   }
 }
 
