@@ -1,7 +1,7 @@
 # CURRENT_IMPLEMENTATION_TRUTH.md
 
 *Verified against the linked Supabase project, current codebase, generated TypeScript types, and local migration history.*\
-*Last verified: 2026-04-07 — commit `68d7dd0`*
+*Last verified: 2026-04-07 — commit `19dc006`*
 
 ---
 
@@ -17,15 +17,28 @@ Positives is preparing for a **Level 1 public launch** (founding member pricing)
 - Payment-first onboarding and success-page login
 - Admin content, month, and member tooling
 - `/upgrade` self-serve upgrade path for L2 and L3 (ready, not yet promoted)
+- Transactional email via Resend (welcome, receipt, payment-failed) ✅
 
 ### Explicitly out of launch scope
 
 - Community launch
 - Events
-- Automated email / marketing automation (platform selection in progress — see evaluation)
+- Marketing automation lifecycle sequences (ActiveCampaign — setup in progress)
 - Google Drive ingestion
 - Castos automation
 - AI embeddings / semantic search population
+
+---
+
+## Domain
+
+**Live domain:** `https://positives.life`
+
+- Vercel: `positives.life` configured as primary domain ✅
+- Supabase auth site URL: `https://positives.life` ✅
+- Supabase redirect allowlist: `https://positives.life/**`, `https://positives-membership.vercel.app/**`, `http://localhost:3000/**` ✅
+- Stripe webhook: `https://positives.life/api/webhooks/stripe` ✅
+- Resend sending domain: `positives.life` — verified ✅
 
 ---
 
@@ -74,6 +87,20 @@ All prices are **founding member rates**. Retail pricing exists in the roadmap b
 - `requireActiveMember()` guards on member routes
 - `requireAdmin()` email-allowlist guard on admin routes
 - Stripe webhook tier map supports L1–L4 including custom L4 subscriptions via `metadata.assigned_tier`
+
+### Email — Resend ✅ Live
+
+- **Sending domain:** `positives.life` (verified in Resend)
+- **From:** `Positives <hello@positives.life>`
+- **Reply-to:** `support@positives.life`
+- **Client:** `lib/email/resend.ts` — singleton with `FROM_ADDRESS` + `REPLY_TO` constants
+- **Brand system:** `lib/email/brand.ts` — inline tokens (teal gradient, Montserrat/Poppins, design-token colors)
+- **Templates:**
+  - `lib/email/templates/welcome.ts` — fires on `checkout.session.completed`
+  - `lib/email/templates/receipt.ts` — fires on `invoice.payment_succeeded`
+  - `lib/email/templates/payment-failed.ts` — fires on `invoice.payment_failed`
+- All email sends are **non-fatal** — failures are logged but never block webhook acknowledgment
+- **Agent skills installed:** `resend`, `email-best-practices`, `agent-email-inbox` in `.agents/skills/`
 
 ### Admin system
 
@@ -138,7 +165,7 @@ All prices are **founding member rates**. Retail pricing exists in the roadmap b
 
 ### Current migration inventory (29 files — verified aligned with Supabase)
 
-Migrations are timestamp-prefixed. The repo and remote are in sync as of `68d7dd0`.
+Migrations are timestamp-prefixed. The repo and remote are in sync as of `19dc006`.
 
 ---
 
@@ -147,8 +174,9 @@ Migrations are timestamp-prefixed. The repo and remote are in sync as of `68d7dd
 ### Engineering
 
 - Member E2E smoke coverage needed repair and should be rerun after each launch-critical change
-- Marketing automation platform not yet selected — transactional and lifecycle email are manual until resolved
+- ActiveCampaign lifecycle sequences not yet implemented — transactional email is live via Resend
 - Castos podcast feed integration not yet built
+- `support@positives.life` mailbox not yet set up (Google Workspace needed for reply-to to function)
 
 ### Content ops
 
@@ -167,15 +195,14 @@ Migrations are timestamp-prefixed. The repo and remote are in sync as of `68d7dd
 
 | Feature | Status |
 |---|---|
-| Transactional email | ⚠️ No implementation — pending MA platform selection |
-| Lifecycle email / CRM | ⚠️ No implementation — pending MA platform selection |
-| Post-L4 expiry automation | ⚠️ Documented in roadmap — pending MA platform + webhook handler |
+| Lifecycle email / CRM | ⚠️ ActiveCampaign setup in progress (brand guide being configured) |
+| Post-L4 expiry automation | ⚠️ Documented in roadmap — pending ActiveCampaign + webhook handler |
 | Google Drive ingestion | ⚠️ Not implemented |
 | Castos automation | ⚠️ Not implemented |
 | AI embeddings backfill | ⚠️ Schema only |
 | Event system | ⚠️ Not implemented |
 | Role-based admin auth | ⚠️ Deferred until after L1 launch |
-| Marketing automation platform | ⚠️ Evaluation in progress — see `/docs/marketing-automation-evaluation.md` |
+| `support@positives.life` mailbox | ⚠️ Google Workspace needed |
 
 ---
 
@@ -185,7 +212,9 @@ Treat the app as **ready for a controlled Level 1 soft launch** with founding me
 
 Gates before broad launch:
 
-1. Select marketing automation platform and implement transactional email (welcome, payment receipt, password reset)
-2. Verify forward content window through June 1
-3. Run Playwright E2E smoke test end-to-end
-4. Rehearse production signup → payment → success-page login → playback flow
+1. ~~Select marketing automation platform and implement transactional email~~ ✅ Done — Resend live
+2. Set up `support@positives.life` mailbox (Google Workspace) so reply-to emails land somewhere
+3. Configure ActiveCampaign lifecycle sequences (onboarding, engagement, upgrade nurture)
+4. Verify forward content window through June 1
+5. Run Playwright E2E smoke test end-to-end
+6. Rehearse production signup → payment → success-page login → welcome email → playback flow

@@ -19,8 +19,9 @@ Verify all required vars are set in Vercel:
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | ✅ | `pk_live_...` |
 | `STRIPE_WEBHOOK_SECRET` | ✅ | `whsec_...` from Stripe webhook dashboard |
 | `STRIPE_PRICE_LEVEL_1_MONTHLY` | ✅ | `price_1TH2w4KStVEuswF7Fy1gEQeb` |
-| `NEXT_PUBLIC_APP_URL` | ✅ | `https://positives-membership.vercel.app` |
+| `NEXT_PUBLIC_APP_URL` | ✅ | `https://positives.life` |
 | `ADMIN_EMAILS` | ✅ | `ryan@drpauljenkins.com` |
+| `RESEND_API_KEY` | ✅ | `re_...` — Resend API key, marked sensitive |
 
 Keep these intentionally unset for an L1-only launch unless the broader rollout is approved:
 
@@ -35,7 +36,7 @@ Keep these intentionally unset for an L1-only launch unless the broader rollout 
 
 ## 2. Supabase connection
 
-- [ ] Visit `https://positives-membership.vercel.app/login`
+- [ ] Visit `https://positives.life/login`
 - [ ] Page loads without 500 error
 - [ ] Magic link form renders correctly
 - [ ] Send a magic link to your email — it should arrive
@@ -46,9 +47,9 @@ Keep these intentionally unset for an L1-only launch unless the broader rollout 
 
 ## 3. Auth flow — unauthenticated
 
-- [ ] Visit `https://positives-membership.vercel.app/` and verify the expected marketing route behavior
-- [ ] Visit `https://positives-membership.vercel.app/today` → redirects to `/login`
-- [ ] Visit `https://positives-membership.vercel.app/admin` as a signed-out visitor → redirects to `/login`
+- [ ] Visit `https://positives.life/` and verify the expected marketing route behavior
+- [ ] Visit `https://positives.life/today` → redirects to `/login`
+- [ ] Visit `https://positives.life/admin` as a signed-out visitor → redirects to `/login`
 
 **What this confirms:** Proxy middleware is running and protecting routes.
 
@@ -70,7 +71,7 @@ Keep these intentionally unset for an L1-only launch unless the broader rollout 
 - [ ] On `/subscribe`, click **"Start membership →"**
 - [ ] Browser redirects to Stripe-hosted Checkout page
 - [ ] The product shown is "Positives Level 1 Membership" at $29/month
-- [ ] Success URL and cancel URL are `positives-membership.vercel.app` (not `localhost`)
+- [ ] Success URL and cancel URL are `positives.life` (not `localhost`)
 
 **What this confirms:** `STRIPE_SECRET_KEY`, `STRIPE_PRICE_LEVEL_1_MONTHLY`, and `NEXT_PUBLIC_APP_URL` are all correctly set.
 
@@ -99,7 +100,7 @@ Check Stripe Dashboard → Developers → Webhooks → Recent deliveries for `20
 
 ## 7. Active member can reach `/today`
 
-- [ ] After webhook fires, navigate to `https://positives-membership.vercel.app/today`
+- [ ] After webhook fires, navigate to `https://positives.life/today`
 - [ ] Page loads — daily practice content renders (or empty state if no content yet)
 - [ ] Bottom nav renders correctly
 - [ ] No redirect to `/login` or `/subscribe`
@@ -111,7 +112,7 @@ Check Stripe Dashboard → Developers → Webhooks → Recent deliveries for `20
 
 ## 8. Admin access
 
-- [ ] Navigate to `https://positives-membership.vercel.app/admin`
+- [ ] Navigate to `https://positives.life/admin`
 - [ ] Signed in as `ryan@drpauljenkins.com` → admin panel renders
 - [ ] Any other account → redirected to `/today`
 
@@ -123,7 +124,7 @@ Check Stripe Dashboard → Developers → Webhooks → Recent deliveries for `20
 
 | Field | Value |
 |---|---|
-| Endpoint | `https://positives-membership.vercel.app/api/webhooks/stripe` |
+| Endpoint | `https://positives.life/api/webhooks/stripe` |
 | Webhook ID | `we_1TH2waKStVEuswF7Z1V5ODVn` |
 | Status | `enabled` |
 

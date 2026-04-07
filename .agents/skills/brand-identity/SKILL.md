@@ -228,8 +228,8 @@ The following are planned but NOT yet live:
 
 - **Audio Ingestion:** Google Drive → S3 (the full ingestion pipeline — transcription, AI tagging, admin review). The `/admin/ingestion` page is a placeholder.
 - **Private Podcast Delivery:** Castos
-- **Email Automation:** ActiveCampaign
-- **Transactional Messaging:** Twilio or similar
+- **Email Automation:** ActiveCampaign ⏳ Setup in progress (Plus plan)
+- **Transactional Messaging:** Resend (live) / Twilio (future SMS)
 
 When making product or implementation decisions, do not assume these future integrations are already live unless the current codebase confirms they are.
 
