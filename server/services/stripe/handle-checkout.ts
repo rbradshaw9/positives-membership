@@ -3,6 +3,7 @@ import { getAdminClient } from "@/lib/supabase/admin";
 import { resend, FROM_ADDRESS, REPLY_TO } from "@/lib/email/resend";
 import { welcomeEmailHtml, welcomeEmailText } from "@/lib/email/templates/welcome";
 import { syncNewMember } from "@/lib/activecampaign/sync";
+import { enrollInOnboardingSequence } from "@/lib/onboarding/enroll";
 
 /**
  * server/services/stripe/handle-checkout.ts
@@ -307,7 +308,10 @@ async function handleGuestCheckout(
     email,
     firstName: session.customer_details?.name?.split(" ")[0],
     lastName:  session.customer_details?.name?.split(" ").slice(1).join(" ") || undefined,
-    tier:      "level_1", // L1 is the only tier available at checkout today
+    tier:      "level_1",
     stripeCustomerId: customerId,
   });
+
+  // Queue drip emails for days 3, 7, 14
+  await enrollInOnboardingSequence(userId, email);
 }

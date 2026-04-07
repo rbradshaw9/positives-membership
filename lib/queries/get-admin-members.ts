@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getAdminClient } from "@/lib/supabase/admin";
 import type { Tables } from "@/types/supabase";
 
 /**
@@ -77,7 +77,7 @@ export async function getMemberList(filters: MemberListFilters = {}): Promise<{
   members: AdminMemberRow[];
   total: number;
 }> {
-  const supabase = await createClient();
+  const supabase = getAdminClient();
 
   const page = Math.max(1, filters.page ?? 1);
   const from = (page - 1) * PAGE_SIZE;
@@ -132,7 +132,7 @@ export async function getMemberList(filters: MemberListFilters = {}): Promise<{
 export async function getMemberDetail(
   memberId: string
 ): Promise<AdminMemberDetail | null> {
-  const supabase = await createClient();
+  const supabase = getAdminClient();
 
   const { data, error } = await supabase
     .from("member")
@@ -160,7 +160,7 @@ export async function getMemberRecentActivity(
   memberId: string,
   limit = 20
 ): Promise<AdminActivityEvent[]> {
-  const supabase = await createClient();
+  const supabase = getAdminClient();
 
   const { data, error } = await supabase
     .from("activity_event")
@@ -190,7 +190,7 @@ export async function getMemberStats(memberId: string): Promise<{
   journalCount: number;
   listenCount: number;
 }> {
-  const supabase = await createClient();
+  const supabase = getAdminClient();
 
   const [journalResult, progressResult] = await Promise.all([
     supabase
@@ -229,7 +229,7 @@ export async function getContentTitleMap(
 
   if (ids.length === 0) return new Map();
 
-  const supabase = await createClient();
+  const supabase = getAdminClient();
 
   const { data, error } = await supabase
     .from("content")
