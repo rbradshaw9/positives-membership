@@ -1447,7 +1447,7 @@ export function AffiliatePortal({
             <div style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: "1rem", padding: "1rem 1.25rem" }}>
               <span style={{ fontSize: "1.1rem", lineHeight: 1, flexShrink: 0 }}>⚠️</span>
               <div style={{ flex: 1 }}>
-                <p style={{ margin: "0 0 0.625rem", fontSize: "0.85rem", fontWeight: 700, color: "#92400E", lineHeight: 1.4 }}>Add a payout email to receive your commissions</p>
+                <p style={{ margin: "0 0 0.625rem", fontSize: "0.85rem", fontWeight: 700, color: "#92400E", lineHeight: 1.4 }}>Add a PayPal email to receive your commissions</p>
                 <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
                   <input id="earnings-paypal-input" type="email" placeholder="your-paypal@email.com" value={paypalEmail} onChange={e => setPaypalEmail(e.target.value)}
                     style={{ flex: 1, padding: "0.625rem 0.875rem", fontSize: "0.83rem", border: "1.5px solid rgba(245,158,11,0.35)", borderRadius: "0.75rem", outline: "none", fontFamily: "var(--font-sans)", color: "#09090B", background: "rgba(255,255,255,0.8)", transition: "border-color 0.2s" }}
