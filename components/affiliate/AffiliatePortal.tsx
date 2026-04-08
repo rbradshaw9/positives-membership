@@ -1033,8 +1033,16 @@ export function AffiliatePortal({
                 Open Rewardful Dashboard ↗
               </a>
               {memberEmail && (
-                <p style={{ margin: 0, fontSize: "0.72rem", color: "#A1A1AA" }}>
-                  Login with <strong style={{ color: "#71717A" }}>{memberEmail}</strong>
+                <p style={{ margin: 0, fontSize: "0.72rem", color: "#A1A1AA", lineHeight: 1.5 }}>
+                  Use <strong style={{ color: "#71717A" }}>{memberEmail}</strong> — first time?{" "}
+                  <a
+                    href="https://app.getrewardful.com/affiliates/password/new"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: "#44A8D8", textDecoration: "none" }}
+                  >
+                    Click here to set your password.
+                  </a>
                 </p>
               )}
             </div>
