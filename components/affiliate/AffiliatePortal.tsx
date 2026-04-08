@@ -1004,11 +1004,26 @@ export function AffiliatePortal({
               </p>
             </div>
 
-            {/* Rewardful dashboard link */}
-            <a
-              href="/account/affiliate/portal"
-              target="_blank"
-              rel="noopener noreferrer"
+            {/* Rewardful dashboard link — same-tab navigation so Cloudflare sees full browser context (referrer + cookies) */}
+            <button
+              onClick={async (e) => {
+                const btn = e.currentTarget;
+                btn.textContent = "Opening…";
+                btn.style.opacity = "0.6";
+                btn.style.pointerEvents = "none";
+                try {
+                  const res = await fetch("/account/affiliate/portal");
+                  const { url } = await res.json() as { url?: string };
+                  if (url) window.location.href = url;
+                } catch {
+                  // fallback
+                  window.location.href = "https://app.getrewardful.com/login";
+                } finally {
+                  btn.textContent = "Open Rewardful Dashboard ↗";
+                  btn.style.opacity = "1";
+                  btn.style.pointerEvents = "auto";
+                }
+              }}
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -1016,7 +1031,10 @@ export function AffiliatePortal({
                 fontSize: "0.83rem",
                 fontWeight: 600,
                 color: "#44A8D8",
-                textDecoration: "none",
+                background: "none",
+                border: "none",
+                padding: 0,
+                cursor: "pointer",
                 transition: "opacity 0.15s",
               }}
               onMouseEnter={e => (e.currentTarget.style.opacity = "0.75")}
@@ -1027,8 +1045,8 @@ export function AffiliatePortal({
                 <polyline points="15 3 21 3 21 9" />
                 <line x1="10" y1="14" x2="21" y2="3" />
               </svg>
-              Open Rewardful Dashboard
-            </a>
+              Open Rewardful Dashboard ↗
+            </button>
           </div>
 
           {/* Link Builder */}

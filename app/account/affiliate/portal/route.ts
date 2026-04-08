@@ -3,16 +3,21 @@
  *
  * GET /account/affiliate/portal
  *
- * One-click SSO redirect to the member's Rewardful affiliate dashboard.
+ * Returns a one-time SSO URL for the member's Rewardful affiliate dashboard.
  *
- * Flow:
- *  1. Verify the member is authenticated
- *  2. Look up their cached rewardful_affiliate_id
- *  3. Call GET /v1/affiliates/:id/sso → returns a one-time URL (60s expiry)
- *  4. Immediately redirect to that URL
+ * Returns JSON { url } instead of a server-side redirect.
  *
- * ⚠️  The magic link expires in 60 seconds — we NEVER store or embed it.
- *     This route must be the direct click target; open in new tab is fine.
+ * WHY: Rewardful's portal (positives.getrewardful.com) sits behind Cloudflare
+ * bot protection. Opening the SSO URL via window.open() with "noopener,noreferrer"
+ * strips the Referer header and detaches the browsing context — both signals
+ * Cloudflare uses to flag traffic as automated. The Cloudflare challenge then
+ * loops indefinitely because it can never fully trust the session.
+ *
+ * The client receives the URL and navigates via window.location.href (same tab).
+ * This carries the full browser session: cookies, referrer, and browsing history —
+ * all signals Cloudflare uses to confirm a real user, bypassing the challenge.
+ *
+ * ⚠️  The magic link expires in 60 seconds — never persist or log it.
  */
 
 import { NextResponse } from "next/server";
@@ -41,7 +46,7 @@ export async function GET() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.redirect(new URL("/login", process.env.NEXT_PUBLIC_APP_URL));
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   // ── Get affiliate ID from member row ──────────────────────────────────────
@@ -53,19 +58,17 @@ export async function GET() {
     .single();
 
   if (!member?.rewardful_affiliate_id) {
-    // Not yet an affiliate — redirect back to account with a prompt
-    return NextResponse.redirect(
-      new URL("/account?affiliate=setup", process.env.NEXT_PUBLIC_APP_URL)
-    );
+    return NextResponse.json({ error: "Not an affiliate" }, { status: 404 });
   }
 
-  // ── Generate magic link and redirect ─────────────────────────────────────
+  // ── Generate magic link and return as JSON ────────────────────────────────
   try {
     const sso = await getAffiliateSSO(member.rewardful_affiliate_id);
-    return NextResponse.redirect(sso.url);
+    return NextResponse.json({ url: sso.url });
   } catch (err) {
     console.error("[Affiliate SSO] Failed to generate magic link:", err);
-    // Fallback: send them to the generic Rewardful login
-    return NextResponse.redirect("https://app.getrewardful.com/login");
+    // Fallback URL — let client open generic login instead
+    return NextResponse.json({ url: "https://app.getrewardful.com/login" });
   }
 }
+
