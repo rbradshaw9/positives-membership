@@ -39,6 +39,7 @@ interface Props {
   stats: Stats | null;
   commissions: RewardfulCommission[];
   memberName: string;
+  memberEmail: string;
   paypalEmail: string;
   initialLinks?: AffiliateLink[];
 }
@@ -690,6 +691,7 @@ export function AffiliatePortal({
   stats,
   commissions,
   memberName,
+  memberEmail,
   paypalEmail: initialPaypalEmail,
   initialLinks = [],
 }: Props) {
@@ -1004,49 +1006,38 @@ export function AffiliatePortal({
               </p>
             </div>
 
-            {/* Rewardful dashboard link — same-tab navigation so Cloudflare sees full browser context (referrer + cookies) */}
-            <button
-              onClick={async (e) => {
-                const btn = e.currentTarget;
-                btn.textContent = "Opening…";
-                btn.style.opacity = "0.6";
-                btn.style.pointerEvents = "none";
-                try {
-                  const res = await fetch("/account/affiliate/portal");
-                  const { url } = await res.json() as { url?: string };
-                  if (url) window.location.href = url;
-                } catch {
-                  // fallback
-                  window.location.href = "https://app.getrewardful.com/login";
-                } finally {
-                  btn.textContent = "Open Rewardful Dashboard ↗";
-                  btn.style.opacity = "1";
-                  btn.style.pointerEvents = "auto";
-                }
-              }}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.4rem",
-                fontSize: "0.83rem",
-                fontWeight: 600,
-                color: "#44A8D8",
-                background: "none",
-                border: "none",
-                padding: 0,
-                cursor: "pointer",
-                transition: "opacity 0.15s",
-              }}
-              onMouseEnter={e => (e.currentTarget.style.opacity = "0.75")}
-              onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                <polyline points="15 3 21 3 21 9" />
-                <line x1="10" y1="14" x2="21" y2="3" />
-              </svg>
-              Open Rewardful Dashboard ↗
-            </button>
+            {/* Rewardful dashboard — direct link to main app (avoids Cloudflare bot loop on branded portal) */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
+              <a
+                href="https://app.getrewardful.com/affiliates/sign_in"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.4rem",
+                  fontSize: "0.83rem",
+                  fontWeight: 600,
+                  color: "#44A8D8",
+                  textDecoration: "none",
+                  transition: "opacity 0.15s",
+                }}
+                onMouseEnter={e => (e.currentTarget.style.opacity = "0.75")}
+                onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                  <polyline points="15 3 21 3 21 9" />
+                  <line x1="10" y1="14" x2="21" y2="3" />
+                </svg>
+                Open Rewardful Dashboard ↗
+              </a>
+              {memberEmail && (
+                <p style={{ margin: 0, fontSize: "0.72rem", color: "#A1A1AA" }}>
+                  Login with <strong style={{ color: "#71717A" }}>{memberEmail}</strong>
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Link Builder */}

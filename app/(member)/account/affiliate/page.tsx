@@ -19,7 +19,7 @@ export default async function AffiliatePage() {
   const supabase = await createClient();
   const { data: row } = await supabase
     .from("member")
-    .select("rewardful_affiliate_id, rewardful_affiliate_token")
+    .select("rewardful_affiliate_id, rewardful_affiliate_token, email")
     .eq("id", member.id)
     .single();
 
@@ -65,6 +65,7 @@ export default async function AffiliatePage() {
       }
       commissions={commissions}
       memberName={member.name ?? ""}
+      memberEmail={row?.email ?? member.email ?? ""}
       paypalEmail={affiliate?.paypal_email ?? ""}
       initialLinks={affiliateLinks ?? []}
     />
