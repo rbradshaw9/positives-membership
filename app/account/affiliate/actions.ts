@@ -185,14 +185,35 @@ export async function createAffiliateLinkAction(input: {
   const label = input.label.trim();
   if (!label) return { error: "Please enter a name for this link." };
 
-  // Normalize destination URL: bare domains like "google.com" → "https://google.com"
-  let destination = input.destination;
-  if (destination) {
-    const d = destination.trim();
-    if (d && !d.startsWith("http://") && !d.startsWith("https://") && !d.startsWith("/")) {
-      destination = `https://${d}`;
-    } else {
-      destination = d || null;
+  // Validate and normalize the destination URL
+  let destination: string | null = null;
+  if (input.destination) {
+    let raw = input.destination.trim();
+    if (raw) {
+      // Prepend https:// if no protocol given
+      if (!raw.startsWith("http://") && !raw.startsWith("https://") && !raw.startsWith("/")) {
+        raw = `https://${raw}`;
+      }
+      // Validate it's a parseable URL
+      try {
+        const parsed = new URL(raw);
+        // Only allow http/https
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+          return { error: "Only http:// and https:// URLs are allowed." };
+        }
+        // Reject localhost and private IPs
+        const host = parsed.hostname.toLowerCase();
+        if (host === "localhost" || host === "127.0.0.1" || host.startsWith("192.168.") || host.startsWith("10.")) {
+          return { error: "That destination URL isn't publicly accessible." };
+        }
+        // Must have a real-looking hostname (at least one dot or is positives.life)
+        if (!host.includes(".") && host !== "localhost") {
+          return { error: "Please enter a valid website URL (e.g. https://yourblog.com)." };
+        }
+        destination = parsed.toString();
+      } catch {
+        return { error: "That doesn't look like a valid URL. Try something like https://yourblog.com/post." };
+      }
     }
   }
 

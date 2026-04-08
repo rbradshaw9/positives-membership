@@ -11,15 +11,14 @@ interface Props {
  * Flow:
  *   1. Look up the code in affiliate_link
  *   2. Increment click counter (best-effort)
- *   3a. Internal positives.life destination → redirect with ?via=TOKEN
- *   3b. External destination → redirect to /c?via=TOKEN&_r=ENCODED_DEST
- *       /c is a blank cookie-setter page that fires Rewardful, then redirects
+ *   3a. Internal positives.life destination → redirect with ?via=TOKEN directly
+ *   3b. External destination → redirect to /c/[code] (blank cookie-setter page)
+ *       /c/[code] looks up the destination itself, fires Rewardful, then redirects.
+ *       This avoids passing encoded URLs in redirect headers (Next.js rejects them).
  *   3c. No destination → redirect to homepage with ?via=TOKEN
  */
 export default async function GoPage({ params }: Props) {
   const { code } = await params;
-
-  // Use admin client so we can read + write without auth (this is a public redirect)
   const supabase = getAdminClient();
 
   const { data: link } = await supabase
@@ -32,46 +31,39 @@ export default async function GoPage({ params }: Props) {
     redirect("/");
   }
 
-  // Increment click counter (fire and forget — non-blocking)
+  // Increment click counter (fire and forget)
   void supabase
     .from("affiliate_link")
     .update({ clicks: (link.clicks ?? 0) + 1 })
     .eq("code", code);
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://positives.life";
-  const destination = link.destination;
   const via = link.token;
+  const destination = link.destination;
 
-  // No destination → homepage
+  // No destination → homepage with via cookie
   if (!destination) {
     redirect(`${appUrl}?via=${via}`);
   }
 
-  // Normalize destination — ensure it has a protocol
-  let normalizedDest = destination;
-  if (!destination.startsWith("http://") && !destination.startsWith("https://") && !destination.startsWith("/")) {
-    // Bare domain like "google.com" — prepend https://
-    normalizedDest = `https://${destination}`;
-  }
-
-  // Determine if external
+  // Determine if this is an external URL
   let isExternal = false;
   try {
-    const destUrl = new URL(normalizedDest);
+    const destUrl = new URL(destination);
     isExternal = !destUrl.hostname.endsWith("positives.life");
   } catch {
-    // Couldn't parse — treat as external to be safe
+    // Not a valid absolute URL — treat as external (safe default)
     isExternal = true;
   }
 
   if (isExternal) {
-    // Bounce through /c to set cookie before leaving positives.life
-    const encoded = encodeURIComponent(normalizedDest);
-    redirect(`${appUrl}/c?via=${via}&_r=${encoded}`);
+    // Redirect to /c/[code] — a blank page that sets the Rewardful cookie
+    // then redirects client-side. Clean path, no encoded URLs in the header.
+    redirect(`${appUrl}/c/${code}`);
   }
 
-  // Internal positives.life page
-  const path = normalizedDest.startsWith("/") ? normalizedDest : `/${normalizedDest}`;
+  // Internal positives.life path — redirect directly with ?via=
+  const path = destination.startsWith("/") ? destination : `/${destination}`;
   const url = new URL(`${appUrl}${path}`);
   url.searchParams.set("via", via);
   redirect(url.toString());
