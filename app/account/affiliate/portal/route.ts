@@ -41,7 +41,7 @@ export async function GET() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.redirect(new URL("/login", process.env.NEXT_PUBLIC_SITE_URL));
+    return NextResponse.redirect(new URL("/login", process.env.NEXT_PUBLIC_APP_URL));
   }
 
   // ── Get affiliate ID from member row ──────────────────────────────────────
@@ -55,7 +55,7 @@ export async function GET() {
   if (!member?.rewardful_affiliate_id) {
     // Not yet an affiliate — redirect back to account with a prompt
     return NextResponse.redirect(
-      new URL("/account?affiliate=setup", process.env.NEXT_PUBLIC_SITE_URL)
+      new URL("/account?affiliate=setup", process.env.NEXT_PUBLIC_APP_URL)
     );
   }
 

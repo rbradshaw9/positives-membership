@@ -13,7 +13,7 @@
  */
 
 import { useState, useCallback } from "react";
-import { getReferralLinkAction, savePayPalEmailAction } from "@/app/account/affiliate/actions";
+import { getReferralLinkAction, savePayPalEmailAction, createAffiliateLinkAction, deleteAffiliateLinkAction } from "@/app/account/affiliate/actions";
 import type { RewardfulCommission } from "@/lib/rewardful/client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -24,6 +24,14 @@ interface Stats {
   conversions: number;
 }
 
+interface AffiliateLink {
+  id: string;
+  code: string;
+  label: string;
+  destination: string | null;
+  clicks: number;
+}
+
 interface Props {
   isAffiliate: boolean;
   affiliateId: string | null;
@@ -32,6 +40,7 @@ interface Props {
   commissions: RewardfulCommission[];
   memberName: string;
   paypalEmail: string;
+  initialLinks?: AffiliateLink[];
 }
 
 type Tab = "link" | "stats" | "share" | "earnings";
@@ -298,6 +307,108 @@ function CommissionRow({ c }: { c: RewardfulCommission }) {
   );
 }
 
+// ─── Link Builder ─────────────────────────────────────────────────────────────
+
+function LinkBuilder({ token, initialLinks }: { token: string; initialLinks: AffiliateLink[] }) {
+  const appUrl = "https://positives.life";
+  const [links, setLinks]             = useState<AffiliateLink[]>(initialLinks);
+  const [label, setLabel]             = useState("");
+  const [destination, setDestination] = useState("");
+  const [saving, setSaving]           = useState(false);
+  const [error, setError]             = useState<string | null>(null);
+  const [copiedId, setCopiedId]       = useState<string | null>(null);
+
+  const shortUrl = (code: string) => `${appUrl}/go/${code}`;
+
+  const handleCopy = (code: string) => {
+    navigator.clipboard.writeText(shortUrl(code)).catch(() => {});
+    setCopiedId(code);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleCreate = async () => {
+    const trimLabel = label.trim();
+    const trimDest  = destination.trim();
+    if (!trimLabel) { setError("Please enter a name for this link."); return; }
+    setSaving(true);
+    setError(null);
+    const result = await createAffiliateLinkAction({ label: trimLabel, destination: trimDest || null });
+    setSaving(false);
+    if ("error" in result) {
+      setError(result.error);
+    } else {
+      setLinks(prev => [result.link, ...prev]);
+      setLabel("");
+      setDestination("");
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    const result = await deleteAffiliateLinkAction(id);
+    if (!("error" in result)) setLinks(prev => prev.filter(l => l.id !== id));
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "0.75rem 1rem",
+    fontSize: "0.875rem",
+    borderRadius: "0.75rem",
+    border: "1.5px solid #E4E4E7",
+    outline: "none",
+    fontFamily: "var(--font-sans)",
+    color: "#09090B",
+    background: "#FAFAFA",
+    boxSizing: "border-box",
+  };
+
+  void token; // token used server-side for code generation
+
+  return (
+    <div style={{ background: "#FFFFFF", border: "1.5px solid #E4E4E7", borderRadius: "1.25rem", padding: "1.75rem", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
+      <p style={{ fontSize: "0.68rem", fontWeight: 700, color: "#71717A", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "0.75rem" }}>
+        🔗 Link Builder
+      </p>
+      <p style={{ fontSize: "0.83rem", color: "#52525B", marginBottom: "1.25rem", lineHeight: 1.5 }}>
+        Create short tracked links to any page — your blog, Instagram bio, emails, or any Positives page.
+        Anyone who clicks gets your referral cookie set automatically.
+      </p>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem", marginBottom: "1.25rem" }}>
+        <input style={inputStyle} placeholder="Link name (e.g. My blog post, IG bio)" value={label} onChange={e => setLabel(e.target.value)} maxLength={60} />
+        <input style={inputStyle} placeholder="Destination URL — any site (blank = positives.life homepage)" value={destination} onChange={e => setDestination(e.target.value)} />
+        {error && <p style={{ fontSize: "0.78rem", color: "#DC2626", margin: 0 }}>{error}</p>}
+        <button
+          onClick={handleCreate}
+          disabled={saving || !label.trim()}
+          style={{ alignSelf: "flex-start", padding: "0.625rem 1.25rem", fontSize: "0.83rem", fontWeight: 700, color: "#FFFFFF", background: saving || !label.trim() ? "#A1A1AA" : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)", border: "none", borderRadius: "9999px", cursor: saving || !label.trim() ? "not-allowed" : "pointer" }}
+        >
+          {saving ? "Creating…" : "Create link"}
+        </button>
+      </div>
+
+      {links.length > 0 ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          {links.map(link => (
+            <div key={link.id} style={{ display: "flex", alignItems: "center", gap: "0.625rem", background: "#F8FBFC", border: "1px solid rgba(46,196,182,0.15)", borderRadius: "0.875rem", padding: "0.75rem 1rem" }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: "0.8rem", fontWeight: 600, color: "#09090B", margin: "0 0 0.1rem" }}>{link.label}</p>
+                <p style={{ fontSize: "0.73rem", color: "#2EC4B6", margin: 0, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{shortUrl(link.code)}</p>
+              </div>
+              <span style={{ fontSize: "0.7rem", color: "#71717A", flexShrink: 0 }}>{link.clicks} clicks</span>
+              <button onClick={() => handleCopy(link.code)} style={{ flexShrink: 0, fontSize: "0.75rem", fontWeight: 700, color: copiedId === link.code ? "#2EC4B6" : "#44A8D8", background: "transparent", border: "none", cursor: "pointer", padding: "0.25rem 0.5rem" }}>
+                {copiedId === link.code ? "Copied!" : "Copy"}
+              </button>
+              <button onClick={() => handleDelete(link.id)} style={{ flexShrink: 0, fontSize: "0.75rem", color: "#A1A1AA", background: "transparent", border: "none", cursor: "pointer", padding: "0.25rem" }} aria-label="Delete link">✕</button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p style={{ fontSize: "0.78rem", color: "#A1A1AA", textAlign: "center", margin: "0.5rem 0 0" }}>No custom links yet — create one above.</p>
+      )}
+    </div>
+  );
+}
+
 // ─── Pre-enrollment screen ────────────────────────────────────────────────────
 
 function EnrollScreen({
@@ -522,6 +633,7 @@ export function AffiliatePortal({
   commissions,
   memberName,
   paypalEmail: initialPaypalEmail,
+  initialLinks = [],
 }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("link");
   const [loading, setLoading]     = useState(false);
@@ -860,6 +972,9 @@ export function AffiliatePortal({
               Open Rewardful Dashboard
             </a>
           </div>
+
+          {/* Link Builder */}
+          {currentToken && <LinkBuilder token={currentToken} initialLinks={initialLinks ?? []} />}
 
           {/* Quick-stats peek (if any data) */}
           {stats && (stats.visitors > 0 || stats.conversions > 0) && (

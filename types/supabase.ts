@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      affiliate_link: {
+        Row: {
+          id: string
+          member_id: string
+          code: string
+          label: string
+          destination: string | null
+          token: string
+          clicks: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          member_id: string
+          code: string
+          label: string
+          destination?: string | null
+          token: string
+          clicks?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          member_id?: string
+          code?: string
+          label?: string
+          destination?: string | null
+          token?: string
+          clicks?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_link_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "member"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       activity_event: {
         Row: {
           content_id: string | null

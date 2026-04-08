@@ -156,3 +156,80 @@ export async function savePayPalEmailAction(
     return { error: "Something went wrong. Please try again." };
   }
 }
+
+// ── Create affiliate short link ────────────────────────────────────────────────
+
+export async function createAffiliateLinkAction(input: {
+  label: string;
+  destination: string | null;
+}): Promise<{ link: { id: string; code: string; label: string; destination: string | null; clicks: number } } | { error: string }> {
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
+  );
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated." };
+
+  const { data: member } = await supabase
+    .from("member")
+    .select("rewardful_affiliate_token")
+    .eq("id", user.id)
+    .single();
+
+  const token = member?.rewardful_affiliate_token;
+  if (!token) return { error: "No affiliate account found. Enroll first." };
+
+  const label = input.label.trim();
+  if (!label) return { error: "Please enter a name for this link." };
+
+  // Generate code: TOKEN-slugified-label (e.g. "ryan-my-blog-post")
+  const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
+  const code = `${token}-${slug}`;
+
+  const admin = getAdminClient();
+  const { data: link, error } = await admin
+    .from("affiliate_link")
+    .insert({ member_id: user.id, code, label, destination: input.destination, token })
+    .select("id, code, label, destination, clicks")
+    .single();
+
+  if (error) {
+    if (error.code === "23505") return { error: `The code "${code}" is already taken. Try a different name.` };
+    console.error("[Affiliate] createAffiliateLink failed:", error);
+    return { error: "Failed to create link. Please try again." };
+  }
+
+  return { link: link! };
+}
+
+// ── Delete affiliate short link ────────────────────────────────────────────────
+
+export async function deleteAffiliateLinkAction(
+  id: string
+): Promise<{ success: true } | { error: string }> {
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
+  );
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated." };
+
+  const { error } = await supabase
+    .from("affiliate_link")
+    .delete()
+    .eq("id", id)
+    .eq("member_id", user.id); // RLS double-check
+
+  if (error) {
+    console.error("[Affiliate] deleteAffiliateLink failed:", error);
+    return { error: "Failed to delete link." };
+  }
+
+  return { success: true };
+}

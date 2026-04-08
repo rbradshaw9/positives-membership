@@ -294,7 +294,7 @@ export async function syncAffiliate(params: {
   try {
     const contactId = await syncContact({ email: params.email });
     const referralLink = `https://positives.life?via=${params.referralToken}`;
-    const portalUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://positives.life"}/account/affiliate/portal`;
+    const portalUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://positives.life"}/account/affiliate/portal`;
 
     // Ensure the contact is on the Positives Members list — required for
     // merge tags to resolve correctly in AC email templates.

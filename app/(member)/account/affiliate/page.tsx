@@ -40,6 +40,13 @@ export default async function AffiliatePage() {
     }
   }
 
+  // Fetch existing custom affiliate links
+  const { data: affiliateLinks } = await supabase
+    .from("affiliate_link")
+    .select("id, code, label, destination, clicks")
+    .eq("member_id", member.id)
+    .order("created_at", { ascending: false });
+
   const link = affiliate?.links?.[0] ?? null;
 
   return (
@@ -59,6 +66,7 @@ export default async function AffiliatePage() {
       commissions={commissions}
       memberName={member.name ?? ""}
       paypalEmail={affiliate?.paypal_email ?? ""}
+      initialLinks={affiliateLinks ?? []}
     />
   );
 }
