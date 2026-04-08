@@ -350,7 +350,7 @@ export function EmailTemplateEditor({
               {sendingTest ? "Sending…" : "Send →"}
             </button>
           </div>
-          <p style={hintStyle}>Uses example values for all {{tokens}}.</p>
+          <p style={hintStyle}>{"Uses example values for all {{tokens}}."}</p>
         </div>
       </div>
 
