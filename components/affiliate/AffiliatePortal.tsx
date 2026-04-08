@@ -13,7 +13,7 @@
  */
 
 import { useState, useCallback } from "react";
-import { getReferralLinkAction, savePayPalEmailAction, createAffiliateLinkAction, deleteAffiliateLinkAction } from "@/app/account/affiliate/actions";
+import { getReferralLinkAction, savePayPalEmailAction, createAffiliateLinkAction, deleteAffiliateLinkAction, updateAffiliateLinkAction } from "@/app/account/affiliate/actions";
 import type { RewardfulCommission } from "@/lib/rewardful/client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -317,6 +317,11 @@ function LinkBuilder({ token, initialLinks }: { token: string; initialLinks: Aff
   const [saving, setSaving]           = useState(false);
   const [error, setError]             = useState<string | null>(null);
   const [copiedId, setCopiedId]       = useState<string | null>(null);
+  // Edit state: maps link id → draft destination string (falsy = not editing)
+  const [editingId, setEditingId]     = useState<string | null>(null);
+  const [editDraft, setEditDraft]     = useState("");
+  const [editSaving, setEditSaving]   = useState(false);
+  const [editError, setEditError]     = useState<string | null>(null);
 
   const shortUrl = (code: string) => `${appUrl}/go/${code}`;
 
@@ -348,6 +353,27 @@ function LinkBuilder({ token, initialLinks }: { token: string; initialLinks: Aff
     if (!("error" in result)) setLinks(prev => prev.filter(l => l.id !== id));
   };
 
+  const startEdit = (link: AffiliateLink) => {
+    setEditingId(link.id);
+    setEditDraft(link.destination ?? "");
+    setEditError(null);
+  };
+
+  const cancelEdit = () => { setEditingId(null); setEditError(null); };
+
+  const handleSaveEdit = async (id: string) => {
+    setEditSaving(true);
+    setEditError(null);
+    const result = await updateAffiliateLinkAction(id, editDraft.trim() || null);
+    setEditSaving(false);
+    if ("error" in result) {
+      setEditError(result.error);
+    } else {
+      setLinks(prev => prev.map(l => l.id === id ? { ...l, destination: editDraft.trim() || null } : l));
+      setEditingId(null);
+    }
+  };
+
   const inputStyle: React.CSSProperties = {
     width: "100%",
     padding: "0.75rem 1rem",
@@ -361,7 +387,7 @@ function LinkBuilder({ token, initialLinks }: { token: string; initialLinks: Aff
     boxSizing: "border-box",
   };
 
-  void token; // token used server-side for code generation
+  void token;
 
   return (
     <div style={{ background: "#FFFFFF", border: "1.5px solid #E4E4E7", borderRadius: "1.25rem", padding: "1.75rem", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
@@ -373,6 +399,7 @@ function LinkBuilder({ token, initialLinks }: { token: string; initialLinks: Aff
         Anyone who clicks gets your referral cookie set automatically.
       </p>
 
+      {/* Create form */}
       <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem", marginBottom: "1.25rem" }}>
         <input style={inputStyle} placeholder="Link name (e.g. My blog post, IG bio)" value={label} onChange={e => setLabel(e.target.value)} maxLength={60} />
         <input style={inputStyle} placeholder="Destination URL — any site (blank = positives.life homepage)" value={destination} onChange={e => setDestination(e.target.value)} />
@@ -386,19 +413,50 @@ function LinkBuilder({ token, initialLinks }: { token: string; initialLinks: Aff
         </button>
       </div>
 
+      {/* Existing links */}
       {links.length > 0 ? (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
           {links.map(link => (
-            <div key={link.id} style={{ display: "flex", alignItems: "center", gap: "0.625rem", background: "#F8FBFC", border: "1px solid rgba(46,196,182,0.15)", borderRadius: "0.875rem", padding: "0.75rem 1rem" }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: "0.8rem", fontWeight: 600, color: "#09090B", margin: "0 0 0.1rem" }}>{link.label}</p>
-                <p style={{ fontSize: "0.73rem", color: "#2EC4B6", margin: 0, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{shortUrl(link.code)}</p>
+            <div key={link.id} style={{ background: "#F8FBFC", border: "1px solid rgba(46,196,182,0.15)", borderRadius: "0.875rem", padding: "0.75rem 1rem" }}>
+              {/* Top row: label + short URL + actions */}
+              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: "0.8rem", fontWeight: 600, color: "#09090B", margin: "0 0 0.1rem" }}>{link.label}</p>
+                  <p style={{ fontSize: "0.73rem", color: "#2EC4B6", margin: 0, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{shortUrl(link.code)}</p>
+                </div>
+                <span style={{ fontSize: "0.7rem", color: "#71717A", flexShrink: 0 }}>{link.clicks} clicks</span>
+                <button onClick={() => handleCopy(link.code)} style={{ flexShrink: 0, fontSize: "0.75rem", fontWeight: 700, color: copiedId === link.code ? "#2EC4B6" : "#44A8D8", background: "transparent", border: "none", cursor: "pointer", padding: "0.25rem 0.5rem" }}>
+                  {copiedId === link.code ? "Copied!" : "Copy"}
+                </button>
+                {editingId !== link.id && (
+                  <button onClick={() => startEdit(link)} style={{ flexShrink: 0, fontSize: "0.7rem", color: "#71717A", background: "transparent", border: "none", cursor: "pointer", padding: "0.25rem" }} aria-label="Edit destination">✏️</button>
+                )}
+                <button onClick={() => handleDelete(link.id)} style={{ flexShrink: 0, fontSize: "0.75rem", color: "#A1A1AA", background: "transparent", border: "none", cursor: "pointer", padding: "0.25rem" }} aria-label="Delete link">✕</button>
               </div>
-              <span style={{ fontSize: "0.7rem", color: "#71717A", flexShrink: 0 }}>{link.clicks} clicks</span>
-              <button onClick={() => handleCopy(link.code)} style={{ flexShrink: 0, fontSize: "0.75rem", fontWeight: 700, color: copiedId === link.code ? "#2EC4B6" : "#44A8D8", background: "transparent", border: "none", cursor: "pointer", padding: "0.25rem 0.5rem" }}>
-                {copiedId === link.code ? "Copied!" : "Copy"}
-              </button>
-              <button onClick={() => handleDelete(link.id)} style={{ flexShrink: 0, fontSize: "0.75rem", color: "#A1A1AA", background: "transparent", border: "none", cursor: "pointer", padding: "0.25rem" }} aria-label="Delete link">✕</button>
+
+              {/* Inline edit row */}
+              {editingId === link.id && (
+                <div style={{ marginTop: "0.625rem", display: "flex", flexDirection: "column", gap: "0.375rem" }}>
+                  <input
+                    style={{ ...inputStyle, fontSize: "0.8rem", padding: "0.5rem 0.75rem" }}
+                    placeholder="New destination URL"
+                    value={editDraft}
+                    onChange={e => setEditDraft(e.target.value)}
+                    autoFocus
+                  />
+                  {editError && <p style={{ fontSize: "0.75rem", color: "#DC2626", margin: 0 }}>{editError}</p>}
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <button
+                      onClick={() => handleSaveEdit(link.id)}
+                      disabled={editSaving}
+                      style={{ fontSize: "0.75rem", fontWeight: 700, color: "#FFFFFF", background: editSaving ? "#A1A1AA" : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)", border: "none", borderRadius: "9999px", padding: "0.375rem 0.875rem", cursor: editSaving ? "not-allowed" : "pointer" }}
+                    >
+                      {editSaving ? "Saving…" : "Save"}
+                    </button>
+                    <button onClick={cancelEdit} style={{ fontSize: "0.75rem", color: "#71717A", background: "transparent", border: "none", cursor: "pointer", padding: "0.375rem 0.5rem" }}>Cancel</button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>

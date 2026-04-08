@@ -217,9 +217,9 @@ export async function createAffiliateLinkAction(input: {
     }
   }
 
-  // Generate code: TOKEN-slugified-label (e.g. "ryan-my-blog-post")
-  const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
-  const code = `${token}-${slug}`;
+  // Generate code from label only — short and clean (e.g. "my-blog-post")
+  const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 50);
+  const code = slug;
 
   const admin = getAdminClient();
   const { data: link, error } = await admin
@@ -229,7 +229,7 @@ export async function createAffiliateLinkAction(input: {
     .single();
 
   if (error) {
-    if (error.code === "23505") return { error: `The code "${code}" is already taken. Try a different name.` };
+    if (error.code === "23505") return { error: `A link named "${label}" already exists. Try a different name.` };
     console.error("[Affiliate] createAffiliateLink failed:", error);
     return { error: "Failed to create link. Please try again." };
   }
@@ -261,6 +261,63 @@ export async function deleteAffiliateLinkAction(
   if (error) {
     console.error("[Affiliate] deleteAffiliateLink failed:", error);
     return { error: "Failed to delete link." };
+  }
+
+  return { success: true };
+}
+
+// ── Update affiliate short link destination ────────────────────────────────────
+
+export async function updateAffiliateLinkAction(
+  id: string,
+  newDestination: string | null
+): Promise<{ success: true } | { error: string }> {
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
+  );
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated." };
+
+  // Validate and normalize destination URL
+  let destination: string | null = null;
+  if (newDestination) {
+    let raw = newDestination.trim();
+    if (raw) {
+      if (!raw.startsWith("http://") && !raw.startsWith("https://") && !raw.startsWith("/")) {
+        raw = `https://${raw}`;
+      }
+      try {
+        const parsed = new URL(raw);
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+          return { error: "Only http:// and https:// URLs are allowed." };
+        }
+        const host = parsed.hostname.toLowerCase();
+        if (host === "localhost" || host === "127.0.0.1" || host.startsWith("192.168.") || host.startsWith("10.")) {
+          return { error: "That destination URL isn't publicly accessible." };
+        }
+        if (!host.includes(".")) {
+          return { error: "Please enter a valid website URL (e.g. https://yourblog.com)." };
+        }
+        destination = parsed.toString();
+      } catch {
+        return { error: "That doesn't look like a valid URL." };
+      }
+    }
+  }
+
+  const { error } = await supabase
+    .from("affiliate_link")
+    .update({ destination })
+    .eq("id", id)
+    .eq("member_id", user.id);
+
+  if (error) {
+    console.error("[Affiliate] updateAffiliateLink failed:", error);
+    return { error: "Failed to update link." };
   }
 
   return { success: true };
