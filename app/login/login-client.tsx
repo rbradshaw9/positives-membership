@@ -231,6 +231,9 @@ function LoginForm() {
                 autoComplete="current-password"
                 placeholder="Your password"
                 className={inputClassName}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") e.currentTarget.form?.requestSubmit();
+                }}
               />
             </div>
             <button
@@ -263,6 +266,9 @@ function LoginForm() {
                 autoComplete="email"
                 placeholder="you@example.com"
                 className={inputClassName}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") e.currentTarget.form?.requestSubmit();
+                }}
               />
             </div>
             <button
