@@ -47,24 +47,31 @@ export default async function GoPage({ params }: Props) {
     redirect(`${appUrl}?via=${via}`);
   }
 
+  // Normalize destination — ensure it has a protocol
+  let normalizedDest = destination;
+  if (!destination.startsWith("http://") && !destination.startsWith("https://") && !destination.startsWith("/")) {
+    // Bare domain like "google.com" — prepend https://
+    normalizedDest = `https://${destination}`;
+  }
+
   // Determine if external
   let isExternal = false;
   try {
-    const destUrl = new URL(destination);
+    const destUrl = new URL(normalizedDest);
     isExternal = !destUrl.hostname.endsWith("positives.life");
   } catch {
-    // Relative path — treat as internal
-    isExternal = false;
+    // Couldn't parse — treat as external to be safe
+    isExternal = true;
   }
 
   if (isExternal) {
     // Bounce through /c to set cookie before leaving positives.life
-    const encoded = encodeURIComponent(destination);
+    const encoded = encodeURIComponent(normalizedDest);
     redirect(`${appUrl}/c?via=${via}&_r=${encoded}`);
   }
 
   // Internal positives.life page
-  const path = destination.startsWith("/") ? destination : `/${destination}`;
+  const path = normalizedDest.startsWith("/") ? normalizedDest : `/${normalizedDest}`;
   const url = new URL(`${appUrl}${path}`);
   url.searchParams.set("via", via);
   redirect(url.toString());

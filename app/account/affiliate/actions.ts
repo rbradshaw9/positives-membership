@@ -185,6 +185,17 @@ export async function createAffiliateLinkAction(input: {
   const label = input.label.trim();
   if (!label) return { error: "Please enter a name for this link." };
 
+  // Normalize destination URL: bare domains like "google.com" → "https://google.com"
+  let destination = input.destination;
+  if (destination) {
+    const d = destination.trim();
+    if (d && !d.startsWith("http://") && !d.startsWith("https://") && !d.startsWith("/")) {
+      destination = `https://${d}`;
+    } else {
+      destination = d || null;
+    }
+  }
+
   // Generate code: TOKEN-slugified-label (e.g. "ryan-my-blog-post")
   const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
   const code = `${token}-${slug}`;
@@ -192,7 +203,7 @@ export async function createAffiliateLinkAction(input: {
   const admin = getAdminClient();
   const { data: link, error } = await admin
     .from("affiliate_link")
-    .insert({ member_id: user.id, code, label, destination: input.destination, token })
+    .insert({ member_id: user.id, code, label, destination, token })
     .select("id, code, label, destination, clicks")
     .single();
 
