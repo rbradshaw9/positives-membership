@@ -31,6 +31,7 @@ interface Props {
   stats: Stats | null;
   commissions: RewardfulCommission[];
   memberName: string;
+  paypalEmail: string;
 }
 
 type Tab = "link" | "stats" | "share" | "earnings";
@@ -520,6 +521,7 @@ export function AffiliatePortal({
   stats,
   commissions,
   memberName,
+  paypalEmail: initialPaypalEmail,
 }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("link");
   const [loading, setLoading]     = useState(false);
@@ -529,7 +531,7 @@ export function AffiliatePortal({
   const [error, setError]               = useState<string | null>(null);
 
   // PayPal payout state
-  const [paypalEmail, setPaypalEmail]       = useState("");
+  const [paypalEmail, setPaypalEmail]       = useState(initialPaypalEmail);
   const [paypalSaving, setPaypalSaving]     = useState(false);
   const [paypalSaved, setPaypalSaved]       = useState(false);
   const [paypalError, setPaypalError]       = useState<string | null>(null);

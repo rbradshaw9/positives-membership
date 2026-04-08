@@ -58,6 +58,7 @@ export default async function AffiliatePage() {
       }
       commissions={commissions}
       memberName={member.name ?? ""}
+      paypalEmail={affiliate?.paypal_email ?? ""}
     />
   );
 }

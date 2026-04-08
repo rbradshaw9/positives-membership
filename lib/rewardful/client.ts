@@ -60,6 +60,7 @@ export interface RewardfulAffiliate {
   email: string;
   first_name: string;
   last_name: string;
+  paypal_email: string | null;
   state: "active" | "inactive";
   /**
    * Rewardful stores the token under links[0].token, NOT referral_token.
