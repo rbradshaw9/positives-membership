@@ -681,6 +681,94 @@ function EnrollScreen({
   );
 }
 
+// ─── Payout setup step (shown after enrollment if no PayPal email) ────────────
+
+function PayoutSetupStep({
+  paypalEmail,
+  onPaypalChange,
+  onSave,
+  onSkip,
+  saving,
+  error,
+}: {
+  paypalEmail: string;
+  onPaypalChange: (v: string) => void;
+  onSave: () => void;
+  onSkip: () => void;
+  saving: boolean;
+  error: string | null;
+}) {
+  return (
+    <div style={{ maxWidth: 480, margin: "3rem auto", padding: "0 1rem" }}>
+      <div
+        style={{
+          background: "#FFFFFF",
+          border: "1.5px solid #E4E4E7",
+          borderRadius: "1.5rem",
+          padding: "2.5rem 2rem",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
+          textAlign: "center",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        <div aria-hidden="true" style={{ position: "absolute", top: 0, left: 0, right: 0, height: 4, background: "linear-gradient(90deg, #2EC4B6 0%, #44A8D8 100%)" }} />
+
+        <div style={{ width: 60, height: 60, borderRadius: "1.125rem", background: "linear-gradient(135deg, rgba(46,196,182,0.12) 0%, rgba(68,168,216,0.08) 100%)", border: "1px solid rgba(46,196,182,0.2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0.75rem auto 1.75rem", fontSize: "1.75rem", lineHeight: 1 }}>
+          💳
+        </div>
+
+        <h1 style={{ fontFamily: "var(--font-heading)", fontSize: "1.3rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.03em", lineHeight: 1.2, marginBottom: "0.625rem", textWrap: "balance" }}>
+          Your link is ready — where should we send your commissions?
+        </h1>
+
+        <p style={{ fontSize: "0.875rem", color: "#52525B", lineHeight: 1.65, marginBottom: "1.75rem" }}>
+          You earn 20% recurring. Enter your PayPal email so we know where to send it.
+        </p>
+
+        <div style={{ textAlign: "left", marginBottom: "1rem" }}>
+          <input
+            id="payout-paypal-input"
+            type="email"
+            placeholder="your-paypal@email.com"
+            value={paypalEmail}
+            onChange={e => onPaypalChange(e.target.value)}
+            style={{ width: "100%", padding: "0.875rem 1rem", fontSize: "0.9rem", border: "1.5px solid #E4E4E7", borderRadius: "0.875rem", outline: "none", fontFamily: "var(--font-sans)", color: "#09090B", background: "#FAFAFA", boxSizing: "border-box", transition: "border-color 0.2s" }}
+            onFocus={e => (e.currentTarget.style.borderColor = "#2EC4B6")}
+            onBlur={e => (e.currentTarget.style.borderColor = "#E4E4E7")}
+            autoFocus
+          />
+          {error && <p style={{ fontSize: "0.8rem", color: "#EF4444", marginTop: "0.5rem" }}>{error}</p>}
+        </div>
+
+        <button
+          id="payout-save-btn"
+          onClick={onSave}
+          disabled={saving || !paypalEmail.trim()}
+          style={{ width: "100%", padding: "0.875rem", fontSize: "0.9rem", fontWeight: 700, color: "#FFFFFF", background: saving || !paypalEmail.trim() ? "#A1A1AA" : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)", border: "none", borderRadius: "9999px", cursor: saving || !paypalEmail.trim() ? "not-allowed" : "pointer", marginBottom: "0.875rem", transition: "all 0.2s" }}
+        >
+          {saving ? "Saving…" : "Save & view my link →"}
+        </button>
+
+        <button
+          id="payout-skip-btn"
+          onClick={onSkip}
+          style={{ background: "none", border: "none", fontSize: "0.83rem", color: "#A1A1AA", cursor: "pointer", padding: "0.25rem", display: "block", margin: "0 auto 1rem" }}
+        >
+          Skip for now →
+        </button>
+
+        <p style={{ fontSize: "0.75rem", color: "#A1A1AA", margin: 0 }}>
+          Don&apos;t have PayPal?{" "}
+          <a href="https://www.paypal.com/us/webapps/mpp/account-selection" target="_blank" rel="noopener noreferrer" style={{ color: "#44A8D8", textDecoration: "none" }}>
+            Create a free account →
+          </a>
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main portal ──────────────────────────────────────────────────────────────
 
 export function AffiliatePortal({
@@ -696,6 +784,7 @@ export function AffiliatePortal({
   const [activeTab, setActiveTab] = useState<Tab>("link");
   const [loading, setLoading]     = useState(false);
   const [enrolled, setEnrolled]   = useState(isAffiliate);
+  const [payoutStep, setPayoutStep] = useState(false); // true after enroll when no PayPal yet
   const [currentToken, setCurrentToken] = useState(token);
   const [copiedLink, setCopiedLink]     = useState(false);
   const [error, setError]               = useState<string | null>(null);
@@ -725,6 +814,8 @@ export function AffiliatePortal({
     }
     setCurrentToken(result.token);
     setEnrolled(true);
+    // Show PayPal setup step if they haven't set one yet
+    if (!paypalEmail.trim()) setPayoutStep(true);
   }
 
   async function handleCopyLink() {
@@ -749,6 +840,23 @@ export function AffiliatePortal({
     }
     setPaypalSaved(true);
     setTimeout(() => setPaypalSaved(false), 4000);
+  }
+
+  // ── Payout setup step (after enrollment, no PayPal set) ──
+  if (enrolled && payoutStep) {
+    return (
+      <PayoutSetupStep
+        paypalEmail={paypalEmail}
+        onPaypalChange={setPaypalEmail}
+        onSave={async () => {
+          await handleSavePayPal();
+          setPayoutStep(false);
+        }}
+        onSkip={() => setPayoutStep(false)}
+        saving={paypalSaving}
+        error={paypalError}
+      />
+    );
   }
 
   // ── Pre-enrollment ──
@@ -1316,87 +1424,50 @@ export function AffiliatePortal({
           </div>
 
           {/* PayPal payout setup */}
-          <div
-            style={{
-              background: "#FFFFFF",
-              border: "1.5px solid #E4E4E7",
-              borderRadius: "1.25rem",
-              padding: "1.5rem",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-            }}
-          >
-            <h2
-              style={{
-                fontFamily: "var(--font-heading)",
-                fontSize: "0.9rem",
-                fontWeight: 700,
-                color: "#09090B",
-                marginBottom: "0.25rem",
-                letterSpacing: "-0.02em",
-              }}
-            >
-              💳 Payout Settings
-            </h2>
-            <p style={{ fontSize: "0.8rem", color: "#71717A", marginBottom: "1rem", lineHeight: 1.5 }}>
-              Enter your PayPal email to receive monthly commission payouts.
-            </p>
-            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-              <input
-                id="paypal-email-input"
-                type="email"
-                placeholder="your-paypal@email.com"
-                value={paypalEmail}
-                onChange={e => setPaypalEmail(e.target.value)}
-                style={{
-                  flex: 1,
-                  padding: "0.75rem 1rem",
-                  fontSize: "0.875rem",
-                  border: "1.5px solid #E4E4E7",
-                  borderRadius: "0.875rem",
-                  outline: "none",
-                  fontFamily: "var(--font-sans)",
-                  color: "#09090B",
-                  background: "#FAFAFA",
-                  transition: "border-color 0.2s",
-                }}
-                onFocus={e => (e.currentTarget.style.borderColor = "#2EC4B6")}
-                onBlur={e => (e.currentTarget.style.borderColor = "#E4E4E7")}
-              />
-              <button
-                id="save-paypal-btn"
-                onClick={handleSavePayPal}
-                disabled={paypalSaving || !paypalEmail.trim()}
-                style={{
-                  padding: "0.75rem 1.25rem",
-                  fontSize: "0.83rem",
-                  fontWeight: 700,
-                  color: "#FFFFFF",
-                  background: paypalSaved
-                    ? "#16A34A"
-                    : paypalSaving
-                    ? "#A1A1AA"
-                    : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)",
-                  border: "none",
-                  borderRadius: "0.875rem",
-                  cursor: paypalSaving ? "wait" : "pointer",
-                  whiteSpace: "nowrap",
-                  transition: "all 0.2s",
-                }}
-              >
-                {paypalSaved ? "✓ Saved!" : paypalSaving ? "Saving…" : "Save"}
-              </button>
+          {paypalEmail.trim() ? (
+            <div style={{ background: "#FFFFFF", border: "1.5px solid #E4E4E7", borderRadius: "1.25rem", padding: "1.5rem", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
+              <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "0.9rem", fontWeight: 700, color: "#09090B", marginBottom: "0.25rem", letterSpacing: "-0.02em" }}>💳 Payout Settings</h2>
+              <p style={{ fontSize: "0.8rem", color: "#71717A", marginBottom: "1rem", lineHeight: 1.5 }}>Update your PayPal email to change where commissions are sent.</p>
+              <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                <input id="paypal-email-input" type="email" placeholder="your-paypal@email.com" value={paypalEmail} onChange={e => setPaypalEmail(e.target.value)}
+                  style={{ flex: 1, padding: "0.75rem 1rem", fontSize: "0.875rem", border: "1.5px solid #E4E4E7", borderRadius: "0.875rem", outline: "none", fontFamily: "var(--font-sans)", color: "#09090B", background: "#FAFAFA", transition: "border-color 0.2s" }}
+                  onFocus={e => (e.currentTarget.style.borderColor = "#2EC4B6")}
+                  onBlur={e => (e.currentTarget.style.borderColor = "#E4E4E7")}
+                />
+                <button id="save-paypal-btn" onClick={handleSavePayPal} disabled={paypalSaving || !paypalEmail.trim()}
+                  style={{ padding: "0.75rem 1.25rem", fontSize: "0.83rem", fontWeight: 700, color: "#FFFFFF", background: paypalSaved ? "#16A34A" : paypalSaving ? "#A1A1AA" : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)", border: "none", borderRadius: "0.875rem", cursor: paypalSaving ? "wait" : "pointer", whiteSpace: "nowrap", transition: "all 0.2s" }}
+                >
+                  {paypalSaved ? "✓ Saved!" : paypalSaving ? "Saving…" : "Save"}
+                </button>
+              </div>
+              {paypalError && <p style={{ fontSize: "0.8rem", color: "#EF4444", marginTop: "0.5rem" }}>{paypalError}</p>}
+              {paypalSaved && <p style={{ fontSize: "0.8rem", color: "#16A34A", marginTop: "0.5rem" }}>PayPal email saved. Commissions will be sent to this address.</p>}
             </div>
-            {paypalError && (
-              <p style={{ fontSize: "0.8rem", color: "#EF4444", marginTop: "0.5rem" }}>
-                {paypalError}
-              </p>
-            )}
-            {paypalSaved && (
-              <p style={{ fontSize: "0.8rem", color: "#16A34A", marginTop: "0.5rem" }}>
-                PayPal email saved. Commissions will be sent to this address.
-              </p>
-            )}
-          </div>
+          ) : (
+            <div style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: "1rem", padding: "1rem 1.25rem" }}>
+              <span style={{ fontSize: "1.1rem", lineHeight: 1, flexShrink: 0 }}>⚠️</span>
+              <div style={{ flex: 1 }}>
+                <p style={{ margin: "0 0 0.625rem", fontSize: "0.85rem", fontWeight: 700, color: "#92400E", lineHeight: 1.4 }}>Add a payout email to receive your commissions</p>
+                <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                  <input id="earnings-paypal-input" type="email" placeholder="your-paypal@email.com" value={paypalEmail} onChange={e => setPaypalEmail(e.target.value)}
+                    style={{ flex: 1, padding: "0.625rem 0.875rem", fontSize: "0.83rem", border: "1.5px solid rgba(245,158,11,0.35)", borderRadius: "0.75rem", outline: "none", fontFamily: "var(--font-sans)", color: "#09090B", background: "rgba(255,255,255,0.8)", transition: "border-color 0.2s" }}
+                    onFocus={e => (e.currentTarget.style.borderColor = "#F59E0B")}
+                    onBlur={e => (e.currentTarget.style.borderColor = "rgba(245,158,11,0.35)")}
+                  />
+                  <button id="earnings-save-paypal-btn" onClick={handleSavePayPal} disabled={paypalSaving || !paypalEmail.trim()}
+                    style={{ padding: "0.625rem 1rem", fontSize: "0.8rem", fontWeight: 700, color: "#FFFFFF", background: paypalSaved ? "#16A34A" : "#F59E0B", border: "none", borderRadius: "0.75rem", cursor: paypalSaving || !paypalEmail.trim() ? "not-allowed" : "pointer", whiteSpace: "nowrap", transition: "all 0.2s", flexShrink: 0 }}
+                  >
+                    {paypalSaved ? "✓ Saved!" : paypalSaving ? "Saving…" : "Save"}
+                  </button>
+                </div>
+                {paypalError && <p style={{ fontSize: "0.8rem", color: "#EF4444", marginTop: "0.5rem" }}>{paypalError}</p>}
+                <p style={{ margin: "0.5rem 0 0", fontSize: "0.72rem", color: "#92400E" }}>
+                  Don&apos;t have PayPal?{" "}
+                  <a href="https://www.paypal.com/us/webapps/mpp/account-selection" target="_blank" rel="noopener noreferrer" style={{ color: "#D97706", textDecoration: "underline" }}>Create a free account →</a>
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Commission history */}
           <div
