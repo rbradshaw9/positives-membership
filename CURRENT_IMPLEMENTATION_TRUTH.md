@@ -278,9 +278,8 @@ Migrations are timestamp-prefixed. The repo now includes the onboarding-sequence
 | Role-based admin auth | ⚠️ Deferred until after L1 launch |
 | `support@positives.life` mailbox | ⚠️ Email routing needed (Cloudflare or Zoho) |
 | 2-tier affiliate commissions | ⚠️ Rewardful is single-tier — defer or build custom |
-| VIP affiliate tier | 💡 Future — create a second Rewardful campaign (e.g., 30% rate) for affiliates who hit 10+ conversions. Promote top performers manually or via automation. |
-| Affiliate tracking URL redirect | 💡 Future — `/go/TOKEN?to=URL` route that sets Rewardful cookie then 302-redirects to any destination. Lets affiliates link to their own blog/content while still getting credit. |
-| Affiliate sub-ID tracking | 💡 Future — `?sid=` parameter on referral links for tracking ads, emails, channels. Store in cookie, pass to checkout metadata, show breakdowns in portal. |
+| VIP affiliate tier | 💡 Future — create a second Rewardful campaign (e.g., 30% rate) for affiliates who hit 10+ conversions. |
+| Affiliate sub-ID tracking | 💡 Future — `?sid=` parameter on referral links for tracking ads, emails, channels. |
 
 ---
 

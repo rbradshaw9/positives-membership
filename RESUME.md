@@ -1,85 +1,121 @@
-# Resume Brief — 2026-04-07
+# Resume — Positives Membership Platform
 
-> Read this at the start of the next session before doing anything else.
-
----
-
-## Where we left off
-
-Building the **native affiliate portal** at `/account/affiliate`. Files are written but **not yet committed or pushed**.
+**Last updated:** 2026-04-07 @ ~9pm ET  
+**Branch:** `main` — all work committed and pushed  
+**Dev server:** `PORT=3015 npm run dev`  
+**Production:** https://positives.life
 
 ---
 
-## Uncommitted files (finish and commit these first)
+## ✅ What Was Completed Tonight
 
-| File | Status | Notes |
-|---|---|---|
-| `app/(member)/account/affiliate/page.tsx` | New, not committed | Server component — fetches affiliate + commissions from Rewardful, passes to AffiliatePortal |
-| `components/affiliate/AffiliatePortal.tsx` | New, not committed | Client component — 4 tabs: My Link, Stats, Resources, Earnings |
-| `lib/rewardful/client.ts` | Modified, not committed | Added `RewardfulCommission` type + `getAffiliateCommissions()` |
+### Affiliate Short Link System (100% done)
+- **`/go/[code]`** — Route Handler (`route.ts`) using `NextResponse.redirect()`. Looks up code in `affiliate_link` table, increments click counter, redirects to `/c/[code]` for external URLs or directly with `?via=TOKEN` for internal.
+- **`/c/[code]`** — Server component fetches destination from DB, passes to `CookieSetter` client component which waits 1.2s for Rewardful cookie, then redirects via `window.location.href`.
+- **`affiliate_link` DB table** — `id, member_id, code (UNIQUE), label, destination, token, clicks, created_at`
+- **Link Builder UI** — In the "My Link" tab of the Affiliate Portal. Create (name + URL), Copy, Edit destination (✏️ inline), Delete.
+- **URL generation** — Code is now `label-slug` only (e.g. `positives.life/go/my-blog`), no token prefix.
+- **URL validation** — Server-side: normalizes bare domains, rejects non-http/https, localhost, private IPs.
+- **Server actions** — `createAffiliateLinkAction`, `updateAffiliateLinkAction`, `deleteAffiliateLinkAction`
+- **Verified working** — Redirect tested live: `/go/ryan-level-3-test-test-link` → Google ✅
 
 ---
 
-## Remaining tasks (in order)
+## 🔴 Next Priority — ActiveCampaign Lifecycle Automations
 
-### 1. Fix unused import in affiliate page
-Remove `getReferralLinkAction` from `app/(member)/account/affiliate/page.tsx` — it's imported but not used there (client component handles it).
+This is the **#1 blocking item** for launch. Members aren't getting:
+- Onboarding drip after signup
+- Affiliate welcome after enrollment
+- Past-due recovery emails (tokens are implemented, AC automation is not)
+- Canceled win-back sequence
 
-### 2. Update account page
-`app/(member)/account/page.tsx` — for members who are already affiliates, add a link/button to `/account/affiliate` instead of just showing the inline ReferralCard. The ReferralCard can stay for non-affiliates.
+### Context
+- Billing recovery signing tokens: **implemented** in `server/services/stripe/handle-subscription.ts` and `app/api/billing-portal/route.ts`
+- AC sync: `lib/activecampaign/sync.ts` — fires on subscription events
+- Past due hook: sends `status=past_due` to AC. The automation needs to send the 1-click billing link.
+- Playbook for all automations: was written in a prior session — check the conversation logs for `9f01dc9a` (Finalizing Positives Membership Automation)
 
-### 3. Check member nav
-Check `MemberShellClient` or equivalent nav component to see if an Affiliate nav item is needed/appropriate.
+### Automations to build in AC
+1. **Member Onboarding** (trigger: added to list → tag `member-active`)  
+   - Day 0: Welcome + what to expect  
+   - Day 2: Your first 10-minute practice  
+   - Day 7: Check-in + quick win  
 
-### 4. Commit and push
-All three affiliate portal files above.
+2. **Affiliate Welcome** (trigger: tag `affiliate-enrolled`)  
+   - Day 0: Your link + link builder intro  
+   - Day 3: Swipe copy + share tips  
 
-### 5. Add BILLING_TOKEN_SECRET to Vercel ⚠️ CRITICAL
-Without this, Campaign 2 billing recovery emails produce broken links.
+3. **Past Due Recovery** (trigger: tag `billing-past-due`)  
+   - Immediately: "Update your payment" with 1-click billing portal link  
+   - Day 3: Second attempt  
+   - Day 7: Final warning  
+   - Day 10: Cancel + win-back sequence begins  
+
+4. **Canceled Win-Back** (trigger: tag `member-canceled`)  
+   - Day 0: "We're sorry to see you go" + soft re-engagement  
+   - Day 14: Value reminder  
+   - Day 30: Special offer  
+
+---
+
+## 🟡 Also Needed Before Launch
+
+### `support@positives.life` Mailbox
+- Needed as reply-to on all transactional emails
+- Options: Cloudflare Email Routing → forward to Gmail, or Zoho Mail free tier
+- Currently emails go out with a no-reply setup — bounces have no support path
+
+### Verify Rewardful Cookie Flow End-to-End
+- Test that visiting `positives.life/go/[code]` (external) → `/c/[code]` → destination actually sets the `via` cookie that Rewardful sees at checkout
+- Check Rewardful dashboard after a test conversion to confirm attribution
+
+---
+
+## 🟢 Deferred / Post-Launch
+
+| Item | Notes |
+|---|---|
+| VIP affiliate tier | Second Rewardful campaign at 30% for top performers |
+| Affiliate sub-ID tracking | `?sid=` on links for ad/email channel breakdowns |
+| Google Drive ingestion | Content pipeline |
+| Castos automation | Podcast episode sync |
+| AI embeddings | Schema exists, not populated |
+| Role-based admin auth | After L1 launch |
+
+---
+
+## Key Files
+
+| File | Purpose |
+|---|---|
+| `app/go/[code]/route.ts` | Affiliate redirect Route Handler |
+| `app/c/[code]/page.tsx` | Cookie-setter server component |
+| `app/c/[code]/CookieSetter.tsx` | Client redirect after Rewardful fires |
+| `components/affiliate/AffiliatePortal.tsx` | Full affiliate portal UI |
+| `app/account/affiliate/actions.ts` | All affiliate server actions |
+| `app/(member)/account/affiliate/page.tsx` | Page that fetches + renders portal |
+| `proxy.ts` | Auth middleware (this version of Next.js uses proxy.ts, NOT middleware.ts) |
+| `lib/activecampaign/sync.ts` | AC contact sync on lifecycle events |
+| `server/services/stripe/handle-subscription.ts` | Stripe webhook → billing state |
+| `CURRENT_IMPLEMENTATION_TRUTH.md` | Full system source of truth |
+
+---
+
+## Quick Commands
 
 ```bash
-openssl rand -hex 32
-# Paste output into:
-# Vercel → Settings → Environment Variables
-# Name: BILLING_TOKEN_SECRET
-# Environments: Production + Preview
+# Dev server
+PORT=3015 npm run dev
+
+# Type check
+npx tsc --noEmit
+
+# Push
+git add -A && git commit -m "..." && git push
 ```
 
----
-
-## What was shipped today (deployed, no action needed)
-
-- `lib/auth/billing-token.ts` — HMAC-SHA256 signed billing recovery tokens
-- `app/account/billing/route.ts` — 1-click email → Stripe portal (token-based, no login)
-- `lib/auth/require-active-member.ts` — past_due → `/account/billing` redirect
-- `server/services/stripe/handle-subscription.ts` — generates token at payment_failed, sets BILLING_LINK in AC
-- `lib/activecampaign/sync.ts` — syncPaymentFailed sets AC field 9 (BILLING_LINK) before past_due tag
-- AC custom field `BILLING_LINK` (field ID 9) created and linked to list 3
-
-## AC work in progress (user is building in ActiveCampaign)
-
-- Campaign 2 prompt: `campaign2-past-due-prompt.md` (in artifacts)
-- Campaign 3 prompt: `campaign3-canceled-winback-prompt.md` (in artifacts)
-
----
-
-## Key field/ID reference
-
-| Thing | ID / Value |
-|---|---|
-| AC List — Positives Members | 3 |
-| AC Field — BILLING_LINK | 9 |
-| AC Field — REWARDFUL_LINK | 5 |
-| AC Field — REWARDFUL_TOKEN | 6 |
-| AC Field — REWARDFUL_PORTAL | 7 |
-| AC Tag — past_due | `past_due` |
-| AC Tag — canceled | `canceled` |
-| AC Tag — affiliate | `affiliate` |
-
----
-
-## Supabase column names (use these exactly)
-
-- `rewardful_affiliate_id` — Rewardful affiliate UUID
-- `rewardful_affiliate_token` — the `via=` token for referral links
-- `stripe_customer_id` — Stripe customer ID
+## Important: Next.js Version Note
+This project uses **Next.js 16+** which has breaking changes:
+- Middleware is **`proxy.ts`** (not `middleware.ts`)
+- Always use **Route Handlers** (`route.ts`) for redirect-only endpoints, not Server Components with `redirect()`
+- Read `node_modules/next/dist/docs/` before using unfamiliar APIs
