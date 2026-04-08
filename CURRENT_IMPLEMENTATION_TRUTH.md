@@ -18,6 +18,8 @@ Positives is preparing for a **Level 1 public launch** (founding member pricing)
 - Admin content, month, and member tooling
 - `/upgrade` self-serve upgrade path for L2 and L3 (ready, not yet promoted)
 - Transactional email via Resend (welcome, receipt, payment-failed) ✅
+- Affiliate referral program via Rewardful ✅
+- 1-click billing recovery for past-due members ✅
 
 ### Explicitly out of launch scope
 
@@ -27,6 +29,7 @@ Positives is preparing for a **Level 1 public launch** (founding member pricing)
 - Google Drive ingestion
 - Castos automation
 - AI embeddings / semantic search population
+- 2-tier affiliate commissions (Rewardful is single-tier only)
 
 ---
 
@@ -39,6 +42,7 @@ Positives is preparing for a **Level 1 public launch** (founding member pricing)
 - Supabase redirect allowlist: `https://positives.life/**`, `https://positives-membership.vercel.app/**`, `http://localhost:3000/**` ✅
 - Stripe webhook: `https://positives.life/api/webhooks/stripe` ✅
 - Resend sending domain: `positives.life` — verified ✅
+- Rewardful campaign URL: `https://positives.life` ✅
 
 ---
 
@@ -76,6 +80,7 @@ All prices are **founding member rates**. Retail pricing exists in the roadmap b
 - `/practice` — streaks, heatmap, continue listening, tabbed practice sections
 - `/journal` — note archive
 - `/account` — billing portal, password management, timezone settings
+- `/account/affiliate` — full affiliate portal (see Affiliate section below)
 - `/coaching` — tier-gated, replay support
 - `/upgrade` — self-serve upgrade to L2 or L3; L4 books a Breakthrough Session call
 
@@ -84,9 +89,27 @@ All prices are **founding member rates**. Retail pricing exists in the roadmap b
 - Supabase auth with magic-link and password flows
 - Stripe checkout, webhook handling, and customer portal
 - Post-checkout onboarding token flow
-- `requireActiveMember()` guards on member routes
+- `requireActiveMember()` guards on member routes (allows `past_due` → billing portal)
 - `requireAdmin()` email-allowlist guard on admin routes
 - Stripe webhook tier map supports L1–L4 including custom L4 subscriptions via `metadata.assigned_tier`
+- 1-click billing recovery: HMAC-signed tokens (`lib/auth/billing-token.ts`) with 7-day expiry, allows past-due members to access Stripe billing portal without login
+
+### Affiliate Program — Rewardful ✅ Live
+
+- **Platform:** Rewardful (single-tier, 20% recurring commission)
+- **Tracking:** `RewardfulTracker` component in root `layout.tsx` captures referral cookies on every page
+- **Checkout integration:** `app/join/actions.ts` reads the Rewardful cookie client-side and passes it to Stripe as `client_reference_id` — Rewardful auto-detects conversions via Stripe webhooks
+- **Portal:** `/account/affiliate` — native 4-tab portal (My Link, Stats, Share Kit, Earnings)
+  - **My Link** — referral link display + copy, commission callout, Rewardful SSO link
+  - **Stats** — clicks, leads, conversions from Rewardful API
+  - **Share Kit** — email swipes (2), SMS templates (2), DM scripts (2), social captions (3 platforms), key talking points
+  - **Earnings** — total paid/pending, PayPal payout setup (saves to Rewardful API), commission history, W-9 tax info note
+- **Enrollment:** `ensureAffiliate()` (idempotent create-or-fetch) + cache affiliate ID/token on `member` row
+- **AC sync:** `syncAffiliate()` applies `affiliate` tag and stores referral token in custom field → triggers welcome automation
+- **Referral link format:** `https://positives.life?via={token}` (homepage landing)
+- **API client:** `lib/rewardful/client.ts` — getAffiliate, getAffiliateByEmail, createAffiliate, ensureAffiliate, getAffiliateSSO, getAffiliateCommissions, updateAffiliatePayPal
+- **Server actions:** `app/account/affiliate/actions.ts` — getReferralLinkAction, savePayPalEmailAction
+- **SSO route:** `app/account/affiliate/portal/route.ts` — generates a magic login link to Rewardful branded portal
 
 ### Email — Resend ✅ Live
 
@@ -101,6 +124,14 @@ All prices are **founding member rates**. Retail pricing exists in the roadmap b
   - `lib/email/templates/payment-failed.ts` — fires on `invoice.payment_failed`
 - All email sends are **non-fatal** — failures are logged but never block webhook acknowledgment
 - **Agent skills installed:** `resend`, `email-best-practices`, `agent-email-inbox` in `.agents/skills/`
+
+### ActiveCampaign Integration — In Progress
+
+- **Sync module:** `lib/activecampaign/sync.ts` — `syncMemberToAC()`, `syncAffiliate()`
+- **Guard:** All AC calls gated by `acIsConfigured()` — gracefully no-ops if API keys aren't set
+- **Custom fields:** membership_tier, stripe_customer_id, rewardful_referral_token
+- **Tags:** affiliate, level_1, level_2, level_3, level_4, past_due, canceled
+- **Automations pending:** Past Due Recovery, Canceled Win-Back, Affiliate Welcome
 
 ### Admin system
 
@@ -117,6 +148,30 @@ All prices are **founding member rates**. Retail pricing exists in the roadmap b
 - `VideoEmbed` with Mux, Vimeo, and YouTube support
 - Resume tracking via `video_views`
 - Practice completion and engagement tracking via `progress` and `activity_event`
+
+---
+
+## Environment Variables
+
+All production-required secrets are documented in `.env.example`. Key variables:
+
+| Variable | Purpose |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase API URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase public key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase admin operations |
+| `NEXT_PUBLIC_APP_URL` | Canonical site URL (`https://positives.life`) |
+| `STRIPE_SECRET_KEY` | Stripe API |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signature verification |
+| `RESEND_API_KEY` | Transactional email |
+| `CRON_SECRET` | Protects `/api/cron/*` endpoints |
+| `BILLING_TOKEN_SECRET` | HMAC-SHA256 for 1-click billing recovery tokens |
+| `REWARDFUL_API_KEY` | Rewardful public key (client-side tracking) |
+| `REWARDFUL_API_SECRET` | Rewardful server-side API auth |
+| `ACTIVECAMPAIGN_API_URL` | AC API base URL |
+| `ACTIVECAMPAIGN_API_KEY` | AC API key |
+
+**Important:** Always use `NEXT_PUBLIC_APP_URL` (not `NEXT_PUBLIC_SITE_URL`) for absolute URLs.
 
 ---
 
@@ -146,6 +201,14 @@ All prices are **founding member rates**. Retail pricing exists in the roadmap b
 | `video_views` | ✅ Active |
 
 *Note: `l4_package_preset` table was created and dropped in the same session — Stripe Prices are the canonical preset store.*
+
+### Member table — affiliate columns
+
+| Column | Type | Purpose |
+|---|---|---|
+| `rewardful_referral_id` | text | The referral ID from Rewardful (set at checkout) |
+| `rewardful_affiliate_token` | text | Affiliate's referral token (e.g., "ryan") |
+| `rewardful_affiliate_id` | text | Affiliate's Rewardful UUID |
 
 ### Member snapshot (as of 2026-04-07)
 
@@ -185,7 +248,7 @@ Migrations are timestamp-prefixed. The repo now includes the onboarding-sequence
 - Member E2E smoke coverage is green and should be rerun after each launch-critical change
 - ActiveCampaign lifecycle sequences not yet implemented — transactional email is live via Resend
 - Castos podcast feed integration not yet built
-- `support@positives.life` mailbox not yet set up (Google Workspace needed for reply-to to function)
+- `support@positives.life` mailbox not yet set up (Cloudflare Email Routing or Zoho Mail recommended)
 
 ### Content ops
 
@@ -204,14 +267,18 @@ Migrations are timestamp-prefixed. The repo now includes the onboarding-sequence
 
 | Feature | Status |
 |---|---|
-| Lifecycle email / CRM | ⚠️ ActiveCampaign setup in progress (brand guide being configured) |
-| Post-L4 expiry automation | ⚠️ Documented in roadmap — pending ActiveCampaign + webhook handler |
+| Lifecycle email / CRM | ⚠️ ActiveCampaign setup in progress |
+| Past Due Recovery automation | ⚠️ AC automation pending — billing recovery tokens are implemented |
+| Canceled Win-Back automation | ⚠️ AC automation pending |
+| Post-L4 expiry automation | ⚠️ Documented in roadmap — pending AC + webhook handler |
 | Google Drive ingestion | ⚠️ Not implemented |
 | Castos automation | ⚠️ Not implemented |
 | AI embeddings backfill | ⚠️ Schema only |
 | Event system | ⚠️ Not implemented |
 | Role-based admin auth | ⚠️ Deferred until after L1 launch |
-| `support@positives.life` mailbox | ⚠️ Google Workspace needed |
+| `support@positives.life` mailbox | ⚠️ Email routing needed (Cloudflare or Zoho) |
+| 2-tier affiliate commissions | ⚠️ Rewardful is single-tier — defer or build custom |
+| VIP affiliate tier | 💡 Future — create a second Rewardful campaign (e.g., 30% rate) for affiliates who hit 10+ conversions. Promote top performers manually or via automation. |
 
 ---
 
@@ -222,8 +289,9 @@ Treat the app as a **launch candidate for a controlled Level 1 soft launch** wit
 Gates before broad launch:
 
 1. ~~Select marketing automation platform and implement transactional email~~ ✅ Done — Resend live
-2. Set up `support@positives.life` mailbox (Google Workspace) so reply-to emails land somewhere
+2. Set up `support@positives.life` mailbox (Cloudflare Email Routing recommended — free)
 3. Configure ActiveCampaign lifecycle sequences (onboarding, engagement, upgrade nurture)
 4. ~~Verify forward content window through June 1~~ ✅ Done — launch audit green
 5. ~~Run Playwright E2E smoke test end-to-end~~ ✅ Done — member and admin smokes green
-6. Rehearse production signup → payment → success-page login → welcome email → receipt email → playback flow
+6. ~~Build affiliate referral program~~ ✅ Done — Rewardful + native portal live
+7. Rehearse production signup → payment → success-page login → welcome email → receipt email → playback flow
