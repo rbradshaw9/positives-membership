@@ -7,6 +7,8 @@ import { receiptEmailHtml, receiptEmailText } from "@/lib/email/templates/receip
 import { paymentFailedEmailHtml, paymentFailedEmailText } from "@/lib/email/templates/payment-failed";
 import { syncCancellation, syncPaymentFailed, syncPaymentRecovered, syncTierChange } from "@/lib/activecampaign/sync";
 import { generateBillingToken } from "@/lib/auth/billing-token";
+import { enrollInWinbackSequence } from "@/lib/winback/enroll";
+import { enrollInPaymentRecoverySequence, cancelPaymentRecoverySequence } from "@/lib/payment-recovery/enroll";
 
 type SubscriptionStatus = Enums<"subscription_status">;
 type SubscriptionTier = Enums<"subscription_tier">;
@@ -190,6 +192,12 @@ export async function handleSubscriptionDeleted(
   const supabase = getAdminClient();
   const customerId = subscription.customer as string;
 
+  const { data: canceledMember } = await supabase
+    .from("member")
+    .select("id, email")
+    .eq("stripe_customer_id", customerId)
+    .maybeSingle();
+
   const { error } = await supabase
     .from("member")
     .update({
@@ -207,10 +215,11 @@ export async function handleSubscriptionDeleted(
 
   console.log(`[Stripe] Subscription canceled — customer: ${customerId}`);
 
-  // Non-fatal: sync cancellation to ActiveCampaign
-  const canceledMember = await getMemberByCustomerId(customerId);
   if (canceledMember?.email) {
+    // Non-fatal: sync cancellation tag to ActiveCampaign
     await syncCancellation({ email: canceledMember.email, tier: null });
+    // Non-fatal: enroll in win-back email sequence (Day 1, 14, 30)
+    await enrollInWinbackSequence(canceledMember.id, canceledMember.email);
   }
 }
 
@@ -225,6 +234,17 @@ async function getMemberByCustomerId(
     .eq("stripe_customer_id", customerId)
     .maybeSingle();
   return data ?? null;
+}
+
+/** Fetch just the member UUID by Stripe customer ID. */
+async function getMemberIdByCustomerId(customerId: string): Promise<string | null> {
+  const supabase = getAdminClient();
+  const { data } = await supabase
+    .from("member")
+    .select("id")
+    .eq("stripe_customer_id", customerId)
+    .maybeSingle();
+  return (data as { id: string } | null)?.id ?? null;
 }
 
 export async function handlePaymentFailed(invoice: Stripe.Invoice) {
@@ -250,7 +270,7 @@ export async function handlePaymentFailed(invoice: Stripe.Invoice) {
 
   console.log(`[Stripe] Payment failed — customer marked past_due: ${customerId}`);
 
-  // Non-fatal: send payment-failed email
+  // Non-fatal: send payment-failed email (with signed 1-click billing link)
   try {
     const member = await getMemberByCustomerId(customerId);
     if (member?.email) {
@@ -258,41 +278,48 @@ export async function handlePaymentFailed(invoice: Stripe.Invoice) {
       const amountDue = invoice.amount_due
         ? `$${(invoice.amount_due / 100).toFixed(2)}`
         : "your membership fee";
-      const updatePaymentUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://positives.life"}/account/billing`;
       const nextRetryDate = invoice.next_payment_attempt
         ? new Date(invoice.next_payment_attempt * 1000).toLocaleDateString("en-US", {
             month: "long", day: "numeric", year: "numeric",
           })
         : undefined;
 
-      await resend.emails.send({
-        from: FROM_ADDRESS,
-        replyTo: REPLY_TO,
-        to: member.email,
-        subject: "Action needed — your Positives payment didn't go through",
-        html: paymentFailedEmailHtml({ firstName, amountDue, updatePaymentUrl, nextRetryDate }),
-        text: paymentFailedEmailText({ firstName, amountDue, updatePaymentUrl, nextRetryDate }),
-      });
+      // Generate signed billing token for 1-click access (no login required)
+      let updatePaymentUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://positives.life"}/account/billing`;
+      let billingLink: string | undefined;
+      try {
+        const token = generateBillingToken({ stripeCustomerId: customerId, email: member.email });
+        const tokenUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://positives.life"}/account/billing?token=${token}`;
+        updatePaymentUrl = tokenUrl;
+        billingLink = tokenUrl;
+      } catch (tokenErr) {
+        console.error("[Stripe] Failed to generate billing token (using fallback URL):", tokenErr);
+      }
+
+      await resend.emails.send(
+        {
+          from: FROM_ADDRESS,
+          replyTo: REPLY_TO,
+          to: member.email,
+          subject: "Action needed — your Positives payment didn't go through",
+          html: paymentFailedEmailHtml({ firstName, amountDue, updatePaymentUrl, nextRetryDate }),
+          text: paymentFailedEmailText({ firstName, amountDue, updatePaymentUrl, nextRetryDate }),
+        },
+        { idempotencyKey: `payment-failed/${invoice.id}` },
+      );
       console.log(`[Stripe] Payment-failed email sent to ${member.email}`);
+
+      // Sync past_due tag + billing link to ActiveCampaign (CRM only — no AC emails)
+      await syncPaymentFailed({ email: member.email, billingLink });
+
+      // Enroll in Day 3 + Day 7 follow-up recovery sequence
+      const memberId = await getMemberIdByCustomerId(customerId);
+      if (memberId) {
+        await enrollInPaymentRecoverySequence(memberId, member.email);
+      }
     }
   } catch (emailErr) {
     console.error("[Stripe] Failed to send payment-failed email (non-fatal):", emailErr);
-  }
-
-  // Non-fatal: sync past_due state + billing link to ActiveCampaign
-  const failedMember = await getMemberByCustomerId(customerId);
-  if (failedMember?.email) {
-    let billingLink: string | undefined;
-    try {
-      const token = generateBillingToken({
-        stripeCustomerId: customerId,
-        email: failedMember.email,
-      });
-      billingLink = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://positives.life"}/account/billing?token=${token}`;
-    } catch (tokenErr) {
-      console.error("[Stripe] Failed to generate billing token (non-fatal):", tokenErr);
-    }
-    await syncPaymentFailed({ email: failedMember.email, billingLink });
   }
 }
 
@@ -344,9 +371,13 @@ export async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
     console.error("[Stripe] Failed to send receipt email (non-fatal):", emailErr);
   }
 
-  // Non-fatal: remove past_due tag in AC if this was a recovery payment
+  // Non-fatal: remove past_due tag in AC + cancel pending recovery emails
   const recoveredMember = await getMemberByCustomerId(customerId);
   if (recoveredMember?.email) {
     await syncPaymentRecovered({ email: recoveredMember.email });
+  }
+  const recoveredMemberId = await getMemberIdByCustomerId(customerId);
+  if (recoveredMemberId) {
+    await cancelPaymentRecoverySequence(recoveredMemberId);
   }
 }
