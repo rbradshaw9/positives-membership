@@ -44,12 +44,22 @@ export async function GET() {
   const admin = getAdminClient();
   const { data: member } = await admin
     .from("member")
-    .select("fp_promoter_id")
+    .select("fp_promoter_id, paypal_email")
     .eq("id", user.id)
     .single();
 
   if (!member?.fp_promoter_id) {
     return NextResponse.json({ error: "Not an affiliate" }, { status: 404 });
+  }
+
+  if (!member.paypal_email?.trim()) {
+    return NextResponse.json(
+      {
+        error:
+          "Add your payout email in the Positives affiliate portal before opening the FirstPromoter dashboard.",
+      },
+      { status: 403 }
+    );
   }
 
   // ── Return the affiliate dashboard URL ───────────────────────────────────
