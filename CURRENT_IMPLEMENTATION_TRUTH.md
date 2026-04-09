@@ -99,17 +99,19 @@ All prices are **founding member rates**. Retail pricing exists in the roadmap b
 - **Platform:** FirstPromoter (20% recurring commission)
 - **Tracking:** FirstPromoter is initialized in `app/layout.tsx`; marketing checkout reads the `_fprom_track` cookie and submits `fpr` into Stripe metadata
 - **Checkout integration:** `app/join/actions.ts` forwards `metadata.fpr`; `server/services/stripe/handle-checkout.ts` stores `member.referred_by_fpr` and calls `trackFpSale()`
-- **Portal:** `/account/affiliate` — native 4-tab portal (My Link, Stats, Share Kit, Earnings)
-  - **My Link** — primary `https://positives.life?fpr={ref_id}` share link, slug customizer, and app-managed short links from `affiliate_link`
-  - **Stats** — all-time visitors, leads, and member conversions from FirstPromoter
+- **Portal:** `/account/affiliate` — native 4-tab portal (My Link, Performance, Share Kit, Earnings)
+  - **Access gate** — affiliates must save `member.paypal_email` before the in-app portal opens
+  - **My Link** — primary `https://positives.life?fpr={ref_id}` share link, slug customizer, internal-only tracked link builder for approved Positives pages, plus legacy `/go/...` redirects
+  - **Performance** — all-time visitors, leads, and member conversions from FirstPromoter
   - **Share Kit** — email swipes (2), SMS templates (2), DM scripts (2), social captions (3 platforms), key talking points
-  - **Earnings** — FirstPromoter commission + payout history, PayPal payout details stored on `member.paypal_email`, W-9 support
+  - **Earnings** — FirstPromoter commission + payout history, with PayPal payout details stored on `member.paypal_email`
 - **Enrollment:** `ensureFpPromoter()` (idempotent create-or-fetch) + caches `fp_promoter_id` and `fp_ref_id` on `member`
 - **Genealogy:** `member.referred_by_fpr` is stored at checkout and used as the parent promoter when a referred member later enrolls as an affiliate
 - **AC sync:** `syncAffiliate()` applies the `affiliate` tag and stores `affiliate_link`, `affiliate_token`, and `affiliate_portal` custom fields
 - **Referral link format:** `https://positives.life?fpr={token}`
 - **API client:** `lib/firstpromoter/client.ts` — `ensureFpPromoter`, `findPromoterByRefId`, `getPromoterStats`, `getPromoterCommissions`, `getPromoterPayouts`, `trackFpSale`
 - **Portal route:** `app/account/affiliate/portal/route.ts` returns the branded FirstPromoter portal URL for the current affiliate
+- **W-9:** no longer part of the active affiliate product flow; legacy `member_w9` data may still exist in Supabase but is dormant
 
 ### Email — Resend ✅ Live
 

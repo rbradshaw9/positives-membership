@@ -6,14 +6,6 @@ import type {
   PromoterUrlReport,
 } from "@/lib/firstpromoter/client";
 
-export interface LegacyAffiliateLinkSummary {
-  id: string;
-  code: string;
-  label: string;
-  destination: string | null;
-  clicks: number;
-}
-
 export interface AffiliatePortalTrendPoint {
   label: string;
   value: number;
@@ -135,7 +127,6 @@ function parseUrlSource(urlString: string) {
 
 function buildTopSources(input: {
   urlReports: PromoterUrlReport[];
-  legacyLinks: LegacyAffiliateLinkSummary[];
 }): AffiliatePortalSource[] {
   const sourceMap = new Map<string, AffiliatePortalSource>();
 
@@ -157,20 +148,6 @@ function buildTopSources(input: {
     current.members += report.conversions;
     current.earnings += report.earnings;
     sourceMap.set(parsed.key, current);
-  }
-
-  for (const link of input.legacyLinks) {
-    const key = `legacy:${link.id}`;
-    const existing = sourceMap.get(key);
-    sourceMap.set(key, {
-      id: key,
-      label: link.label,
-      detail: `/go/${link.code} · Legacy Positives redirect`,
-      clicks: (existing?.clicks ?? 0) + link.clicks,
-      leads: existing?.leads ?? 0,
-      members: existing?.members ?? 0,
-      earnings: existing?.earnings ?? 0,
-    });
   }
 
   return [...sourceMap.values()]
@@ -275,9 +252,7 @@ export function buildAffiliatePortalViewModel(input: {
   payouts: AffiliatePayout[];
   trendReport: PromoterTrendPoint[];
   urlReports: PromoterUrlReport[];
-  legacyLinks: LegacyAffiliateLinkSummary[];
   paypalEmail: string;
-  hasW9: boolean;
 }): AffiliatePortalViewModel {
   const visitors = input.stats?.visitors ?? 0;
   const leads = input.stats?.leads ?? 0;
@@ -302,7 +277,6 @@ export function buildAffiliatePortalViewModel(input: {
 
   const topSources = buildTopSources({
     urlReports: input.urlReports,
-    legacyLinks: input.legacyLinks,
   });
   const milestone = getNextMilestone(members);
   const momentum = getMomentumCopy({
@@ -328,7 +302,7 @@ export function buildAffiliatePortalViewModel(input: {
     totalPending,
     totalEarned,
     lastPayoutDate,
-    payoutReady: Boolean(input.paypalEmail.trim()) && (totalEarned < 60000 || input.hasW9),
+    payoutReady: Boolean(input.paypalEmail.trim()),
     momentumTitle: momentum.title,
     momentumBody: momentum.body,
     milestoneLabel: milestone.label,

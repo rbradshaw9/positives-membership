@@ -1,14 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  createAffiliateLinkAction,
   deleteAffiliateLinkAction,
   getReferralLinkAction,
   savePayPalEmailAction,
-  saveW9Action,
   updateReferralSlugAction,
 } from "@/app/account/affiliate/actions";
-import type { W9FormData } from "@/app/account/affiliate/actions";
+import {
+  AFFILIATE_DESTINATIONS,
+  buildTrackedAffiliateUrl,
+  type AffiliateDestinationKey,
+} from "@/lib/affiliate/destinations";
 import type {
   AffiliateCommission,
   AffiliatePayout,
@@ -26,19 +30,6 @@ interface AffiliateLink {
   clicks: number;
 }
 
-interface ExistingW9 {
-  legal_name: string;
-  business_name: string | null;
-  tax_classification: string;
-  tax_id: string;
-  address: string;
-  city: string;
-  state_code: string;
-  zip: string;
-  signature_name: string;
-  signed_at: string;
-}
-
 interface Props {
   isAffiliate: boolean;
   affiliateId: string | null;
@@ -51,39 +42,17 @@ interface Props {
   memberName: string;
   paypalEmail: string;
   initialLinks?: AffiliateLink[];
-  existingW9?: ExistingW9 | null;
-  w9Preview?: "off" | "soft" | "hard";
   autoEnroll?: boolean;
   performance: AffiliatePortalViewModel;
 }
 
 type Tab = "link" | "performance" | "share" | "earnings";
 
-const FIRST_PROMOTER_CUSTOM_LINKS_URL = "https://positives.firstpromoter.com/integration/custom";
-
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "link", label: "My Link", icon: "🔗" },
   { id: "performance", label: "Performance", icon: "📈" },
   { id: "share", label: "Share Kit", icon: "✉️" },
   { id: "earnings", label: "Earnings", icon: "💸" },
-];
-
-const TAX_CLASSIFICATIONS = [
-  { value: "individual", label: "Individual / Sole proprietor" },
-  { value: "s_corp", label: "S Corporation" },
-  { value: "c_corp", label: "C Corporation" },
-  { value: "partnership", label: "Partnership" },
-  { value: "llc_single", label: "LLC — Single member" },
-  { value: "llc_multi", label: "LLC — Multi member" },
-  { value: "other", label: "Other" },
-];
-
-const US_STATES = [
-  "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA",
-  "HI","ID","IL","IN","IA","KS","KY","LA","ME","MD",
-  "MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ",
-  "NM","NY","NC","ND","OH","OK","OR","PA","RI","SC",
-  "SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC",
 ];
 
 function formatMoney(cents: number) {
@@ -503,225 +472,6 @@ function PayoutRow({ payout }: { payout: AffiliatePayout }) {
   );
 }
 
-function W9Form({
-  existingW9,
-  onSaved,
-}: {
-  existingW9: ExistingW9 | null;
-  onSaved: () => void;
-}) {
-  const isEdit = Boolean(existingW9);
-  const [open, setOpen] = useState(!isEdit);
-  const [form, setForm] = useState<W9FormData>({
-    legal_name: existingW9?.legal_name ?? "",
-    business_name: existingW9?.business_name ?? "",
-    tax_classification: existingW9?.tax_classification ?? "individual",
-    tax_id: existingW9?.tax_id ?? "",
-    address: existingW9?.address ?? "",
-    city: existingW9?.city ?? "",
-    state_code: existingW9?.state_code ?? "",
-    zip: existingW9?.zip ?? "",
-    signature_name: existingW9?.signature_name ?? "",
-  });
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const setField = (field: keyof W9FormData, value: string) =>
-    setForm((current) => ({ ...current, [field]: value }));
-
-  const inputStyle: CSSProperties = {
-    width: "100%",
-    padding: "0.75rem 1rem",
-    fontSize: "0.875rem",
-    border: "1.5px solid #E4E4E7",
-    borderRadius: "0.75rem",
-    outline: "none",
-    fontFamily: "var(--font-sans)",
-    color: "#09090B",
-    background: "#FAFAFA",
-    boxSizing: "border-box",
-  };
-
-  const labelStyle: CSSProperties = {
-    fontSize: "0.72rem",
-    fontWeight: 700,
-    color: "#71717A",
-    textTransform: "uppercase",
-    letterSpacing: "0.07em",
-    display: "block",
-    marginBottom: "0.375rem",
-  };
-
-  async function handleSubmit() {
-    setSaving(true);
-    setError(null);
-    const result = await saveW9Action(form);
-    setSaving(false);
-    if ("error" in result) {
-      setError(result.error);
-      return;
-    }
-    setSaved(true);
-    setOpen(false);
-    onSaved();
-  }
-
-  if (saved || (isEdit && !open)) {
-    const signedDate = existingW9?.signed_at
-      ? new Date(existingW9.signed_at).toLocaleDateString("en-US", {
-          month: "long",
-          day: "numeric",
-          year: "numeric",
-        })
-      : null;
-
-    return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "flex-start",
-          gap: "0.875rem",
-          background: "rgba(22,163,74,0.06)",
-          border: "1px solid rgba(22,163,74,0.18)",
-          borderRadius: "1rem",
-          padding: "1rem 1.25rem",
-        }}
-      >
-        <span style={{ fontSize: "1.1rem", flexShrink: 0 }}>✅</span>
-        <div style={{ flex: 1 }}>
-          <p style={{ margin: "0 0 0.2rem", fontSize: "0.88rem", fontWeight: 700, color: "#15803D" }}>
-            W-9 on file
-          </p>
-          <p style={{ margin: 0, fontSize: "0.8rem", color: "#4B5563", lineHeight: 1.55 }}>
-            {existingW9?.legal_name ?? form.legal_name}
-            {signedDate ? ` · Signed ${signedDate}` : ""}
-          </p>
-        </div>
-        <button
-          onClick={() => setOpen(true)}
-          style={{ border: "none", background: "transparent", color: "#44A8D8", fontWeight: 700, cursor: "pointer" }}
-        >
-          Update
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700, color: "#09090B" }}>W-9 Tax Form</h3>
-          <p style={{ margin: "0.25rem 0 0", fontSize: "0.8rem", color: "#71717A", lineHeight: 1.55 }}>
-            Required for US persons earning $600+ in commissions annually.
-          </p>
-        </div>
-        {isEdit ? (
-          <button onClick={() => setOpen(false)} style={{ border: "none", background: "transparent", color: "#A1A1AA", cursor: "pointer" }}>
-            Cancel
-          </button>
-        ) : null}
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-2">
-        <div>
-          <label style={labelStyle}>Legal name *</label>
-          <input style={inputStyle} value={form.legal_name} onChange={(event) => setField("legal_name", event.target.value)} />
-        </div>
-        <div>
-          <label style={labelStyle}>Business name</label>
-          <input style={inputStyle} value={form.business_name} onChange={(event) => setField("business_name", event.target.value)} />
-        </div>
-      </div>
-
-      <div>
-        <label style={labelStyle}>Tax classification *</label>
-        <select
-          style={inputStyle}
-          value={form.tax_classification}
-          onChange={(event) => setField("tax_classification", event.target.value)}
-        >
-          {TAX_CLASSIFICATIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label style={labelStyle}>SSN or EIN *</label>
-        <input style={inputStyle} value={form.tax_id} onChange={(event) => setField("tax_id", event.target.value)} />
-        <p style={{ margin: "0.35rem 0 0", fontSize: "0.72rem", color: "#A1A1AA" }}>
-          Stored securely and used only for 1099 reporting if you reach the $600 threshold.
-        </p>
-      </div>
-
-      <div>
-        <label style={labelStyle}>Street address *</label>
-        <input style={inputStyle} value={form.address} onChange={(event) => setField("address", event.target.value)} />
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-[2fr_1fr_1fr]">
-        <div>
-          <label style={labelStyle}>City *</label>
-          <input style={inputStyle} value={form.city} onChange={(event) => setField("city", event.target.value)} />
-        </div>
-        <div>
-          <label style={labelStyle}>State *</label>
-          <select style={inputStyle} value={form.state_code} onChange={(event) => setField("state_code", event.target.value)}>
-            <option value="">—</option>
-            {US_STATES.map((stateCode) => (
-              <option key={stateCode} value={stateCode}>
-                {stateCode}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label style={labelStyle}>ZIP *</label>
-          <input style={inputStyle} value={form.zip} onChange={(event) => setField("zip", event.target.value)} />
-        </div>
-      </div>
-
-      <div style={{ background: "#F8F8F8", border: "1px solid #E4E4E7", borderRadius: "0.875rem", padding: "1rem 1.125rem" }}>
-        <label style={{ ...labelStyle, color: "#52525B" }}>Electronic signature *</label>
-        <p style={{ margin: "0 0 0.75rem", fontSize: "0.78rem", color: "#71717A", lineHeight: 1.55 }}>
-          By typing your name below, you certify under penalty of perjury that the information provided is correct and complete.
-        </p>
-        <input
-          style={{ ...inputStyle, fontStyle: "italic", fontSize: "1rem" }}
-          value={form.signature_name}
-          onChange={(event) => setField("signature_name", event.target.value)}
-          placeholder="Your legal name"
-        />
-      </div>
-
-      {error ? <p style={{ margin: 0, fontSize: "0.8rem", color: "#DC2626" }}>{error}</p> : null}
-
-      <button
-        onClick={handleSubmit}
-        disabled={saving || !form.legal_name.trim() || !form.tax_id.trim() || !form.signature_name.trim()}
-        style={{
-          alignSelf: "flex-start",
-          border: "none",
-          borderRadius: "9999px",
-          padding: "0.8rem 1.5rem",
-          background: saving || !form.legal_name.trim() || !form.tax_id.trim() || !form.signature_name.trim()
-            ? "#A1A1AA"
-            : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)",
-          color: "#FFFFFF",
-          fontWeight: 700,
-          cursor: saving ? "wait" : "pointer",
-        }}
-      >
-        {saving ? "Submitting…" : isEdit ? "Update W-9" : "Submit W-9"}
-      </button>
-    </div>
-  );
-}
-
 function EnrollScreen({
   onEnroll,
   loading,
@@ -839,14 +589,12 @@ function PayoutSetupStep({
   paypalEmail,
   onPaypalChange,
   onSave,
-  onSkip,
   saving,
   error,
 }: {
   paypalEmail: string;
   onPaypalChange: (value: string) => void;
   onSave: () => void;
-  onSkip: () => void;
   saving: boolean;
   error: string | null;
 }) {
@@ -882,11 +630,28 @@ function PayoutSetupStep({
         </div>
 
         <h1 style={{ margin: 0, fontSize: "clamp(1.4rem, 3.5vw, 1.85rem)", fontWeight: 700, color: "#09090B", lineHeight: 1.1, textWrap: "balance", letterSpacing: "-0.04em" }}>
-          Your link is ready. Where should we send commissions?
+          One more step before your affiliate portal opens
         </h1>
         <p style={{ margin: "0.8rem auto 0", maxWidth: 440, fontSize: "0.9rem", color: "#52525B", lineHeight: 1.65 }}>
-          Add your PayPal email now so payout coordination stays smooth. You can always update it later in earnings settings.
+          Add your PayPal email now so your commissions are payout-ready from day one. We require this before opening the affiliate dashboard, and you can update it later anytime.
         </p>
+
+        <div style={{ marginTop: "1rem", textAlign: "left", border: "1px solid rgba(68,168,216,0.16)", background: "rgba(68,168,216,0.06)", borderRadius: "0.95rem", padding: "0.95rem 1rem" }}>
+          <p style={{ margin: 0, fontSize: "0.8rem", fontWeight: 700, color: "#2563EB", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+            No PayPal yet?
+          </p>
+          <p style={{ margin: "0.4rem 0 0", fontSize: "0.84rem", lineHeight: 1.6, color: "#52525B" }}>
+            That&apos;s okay. You can create a PayPal account first, then come right back here and finish setup. We ask for this up front so we can pay affiliates smoothly without cleanup later.
+          </p>
+          <a
+            href="https://www.paypal.com/us/webapps/mpp/account-selection"
+            target="_blank"
+            rel="noreferrer"
+            style={{ display: "inline-block", marginTop: "0.75rem", color: "#0F766E", fontWeight: 700, textDecoration: "none" }}
+          >
+            Create a PayPal account
+          </a>
+        </div>
 
         <div style={{ marginTop: "1.5rem", textAlign: "left" }}>
           <input
@@ -928,15 +693,7 @@ function PayoutSetupStep({
             cursor: saving || !paypalEmail.trim() ? "not-allowed" : "pointer",
           }}
         >
-          {saving ? "Saving…" : "Save & view portal"}
-        </button>
-
-        <button
-          id="payout-skip-btn"
-          onClick={onSkip}
-          style={{ marginTop: "0.85rem", border: "none", background: "transparent", color: "#A1A1AA", cursor: "pointer" }}
-        >
-          Skip for now
+          {saving ? "Saving…" : "Save payout email & open portal"}
         </button>
       </SurfaceCard>
     </div>
@@ -981,6 +738,29 @@ function LinkTab({
   onLinksChange: (links: AffiliateLink[]) => void;
 }) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [destinationKey, setDestinationKey] = useState<AffiliateDestinationKey>("home");
+  const [subId, setSubId] = useState("");
+  const [builderSaving, setBuilderSaving] = useState(false);
+  const [builderError, setBuilderError] = useState<string | null>(null);
+  const [generatedLink, setGeneratedLink] = useState<string | null>(null);
+  const [generatedCopied, setGeneratedCopied] = useState(false);
+
+  const selectedDestination = useMemo(
+    () =>
+      AFFILIATE_DESTINATIONS.find((destination) => destination.key === destinationKey) ??
+      AFFILIATE_DESTINATIONS[0],
+    [destinationKey]
+  );
+
+  const previewLink = useMemo(() => {
+    if (!currentToken) return null;
+
+    return buildTrackedAffiliateUrl({
+      token: currentToken,
+      destinationKey,
+      subId: subId.trim() || null,
+    });
+  }, [currentToken, destinationKey, subId]);
 
   const handleCopyManagedLink = useCallback(async (link: AffiliateLink) => {
     await navigator.clipboard.writeText(shortUrl(link.code));
@@ -992,6 +772,41 @@ function LinkTab({
     setCopiedId(link.id);
     window.setTimeout(() => setCopiedId(null), 2200);
   }, []);
+
+  const handleGenerateTrackedLink = useCallback(async () => {
+    setBuilderSaving(true);
+    setBuilderError(null);
+    const result = await createAffiliateLinkAction({
+      destinationKey,
+      subId: subId.trim() || null,
+    });
+    setBuilderSaving(false);
+
+    if ("error" in result) {
+      setBuilderError(result.error);
+      return;
+    }
+
+    setGeneratedLink(result.link.url);
+    track("affiliate_custom_link_created", {
+      source_path: "/account/affiliate",
+      destination_key: result.link.destinationKey,
+      has_sub_id: Boolean(result.link.subId),
+    });
+  }, [destinationKey, subId]);
+
+  const handleCopyGeneratedLink = useCallback(async () => {
+    const linkToCopy = generatedLink ?? previewLink;
+    if (!linkToCopy) return;
+    await navigator.clipboard.writeText(linkToCopy);
+    track("affiliate_custom_link_copied", {
+      source_path: "/account/affiliate",
+      destination_key: destinationKey,
+      sub_id: subId.trim() || undefined,
+    });
+    setGeneratedCopied(true);
+    window.setTimeout(() => setGeneratedCopied(false), 2200);
+  }, [destinationKey, generatedLink, previewLink, subId]);
 
   const handleDelete = useCallback(async (id: string) => {
     const result = await deleteAffiliateLinkAction(id);
@@ -1139,42 +954,115 @@ function LinkTab({
               textTransform: "uppercase",
             }}
           >
-            FirstPromoter custom links
+            Tracked custom links
           </p>
           <h2 style={{ margin: "0.65rem 0 0.25rem", fontSize: "1.1rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.03em", textWrap: "balance" }}>
-            Use FirstPromoter for tracked destination links
+            Build internal Positives links that stay trackable
           </h2>
           <p style={{ margin: 0, fontSize: "0.84rem", lineHeight: 1.6, color: "#71717A" }}>
-            FirstPromoter should stay the source of truth for affiliate attribution. If you want tracked custom links for your blog, bio, or a campaign page, create them in FirstPromoter so the click and attribution logic stays consistent in one place.
+            These links are designed to land on Positives pages where FirstPromoter tracking exists. Choose the destination you want, add an optional source tag, and use the generated link anywhere you share.
           </p>
 
           <div className="mt-4 flex flex-col gap-4">
-            <div style={{ border: "1px solid rgba(68,168,216,0.16)", background: "rgba(68,168,216,0.06)", borderRadius: "1rem", padding: "1rem 1.05rem" }}>
-              <p style={{ margin: 0, fontSize: "0.76rem", fontWeight: 700, color: "#2563EB", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                Important
+            <div className="grid gap-3">
+              <div>
+                <label
+                  htmlFor="affiliate-destination"
+                  style={{ display: "block", marginBottom: "0.45rem", fontSize: "0.72rem", fontWeight: 700, color: "#71717A", letterSpacing: "0.07em", textTransform: "uppercase" }}
+                >
+                  Destination
+                </label>
+                <select
+                  id="affiliate-destination"
+                  value={destinationKey}
+                  onChange={(event) => {
+                    setDestinationKey(event.target.value as AffiliateDestinationKey);
+                    setGeneratedLink(null);
+                    setBuilderError(null);
+                  }}
+                  style={{ width: "100%", padding: "0.85rem 0.95rem", borderRadius: "0.8rem", border: "1.5px solid #E4E4E7", fontSize: "0.88rem" }}
+                >
+                  {AFFILIATE_DESTINATIONS.map((destination) => (
+                    <option key={destination.key} value={destination.key}>
+                      {destination.label}
+                    </option>
+                  ))}
+                </select>
+                <p style={{ margin: "0.45rem 0 0", fontSize: "0.76rem", color: "#71717A", lineHeight: 1.55 }}>
+                  {selectedDestination.detail}
+                </p>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="affiliate-subid"
+                  style={{ display: "block", marginBottom: "0.45rem", fontSize: "0.72rem", fontWeight: 700, color: "#71717A", letterSpacing: "0.07em", textTransform: "uppercase" }}
+                >
+                  Optional source tag
+                </label>
+                <input
+                  id="affiliate-subid"
+                  value={subId}
+                  onChange={(event) => {
+                    setSubId(event.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""));
+                    setGeneratedLink(null);
+                    setBuilderError(null);
+                  }}
+                  placeholder="blog, april-email, ig-bio"
+                  style={{ width: "100%", padding: "0.85rem 0.95rem", borderRadius: "0.8rem", border: "1.5px solid #E4E4E7", fontSize: "0.88rem" }}
+                />
+                <p style={{ margin: "0.45rem 0 0", fontSize: "0.76rem", color: "#A1A1AA", lineHeight: 1.55 }}>
+                  Use this to compare where your traffic is coming from inside FirstPromoter.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ border: "1px solid rgba(68,168,216,0.16)", background: "rgba(68,168,216,0.06)", borderRadius: "1rem", padding: "0.95rem 1rem" }}>
+              <p style={{ margin: 0, fontSize: "0.72rem", fontWeight: 700, color: "#2563EB", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                Final tracked link
               </p>
-              <p style={{ margin: "0.45rem 0 0", fontSize: "0.84rem", lineHeight: 1.6, color: "#52525B" }}>
-                External destinations only show up in FirstPromoter when their tracking is supported on the landing page and the referral path stays intact. A plain redirect by itself is not the same thing as FirstPromoter attribution.
+              <p style={{ margin: "0.45rem 0 0", fontSize: "0.88rem", lineHeight: 1.6, color: "#0F766E", wordBreak: "break-word", fontFamily: "monospace" }}>
+                {generatedLink ?? previewLink}
               </p>
             </div>
-            <a
-              href={FIRST_PROMOTER_CUSTOM_LINKS_URL}
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                alignSelf: "flex-start",
-                borderRadius: "9999px",
-                padding: "0.8rem 1.25rem",
-                background: "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)",
-                color: "#FFFFFF",
-                fontWeight: 700,
-                textDecoration: "none",
-              }}
-            >
-              Open FirstPromoter custom links
-            </a>
+
+            {builderError ? <p style={{ margin: 0, fontSize: "0.8rem", color: "#DC2626" }}>{builderError}</p> : null}
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => void handleGenerateTrackedLink()}
+                disabled={builderSaving}
+                style={{
+                  border: "none",
+                  borderRadius: "9999px",
+                  padding: "0.8rem 1.25rem",
+                  background: builderSaving ? "#A1A1AA" : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)",
+                  color: "#FFFFFF",
+                  fontWeight: 700,
+                  cursor: builderSaving ? "wait" : "pointer",
+                }}
+              >
+                {builderSaving ? "Generating…" : "Generate tracked link"}
+              </button>
+              <button
+                onClick={() => void handleCopyGeneratedLink()}
+                disabled={!previewLink}
+                style={{
+                  border: "1px solid #E4E4E7",
+                  borderRadius: "9999px",
+                  padding: "0.8rem 1.1rem",
+                  background: "#FFFFFF",
+                  color: generatedCopied ? "#15803D" : "#52525B",
+                  fontWeight: 700,
+                  cursor: previewLink ? "pointer" : "not-allowed",
+                }}
+              >
+                {generatedCopied ? "Copied!" : "Copy link"}
+              </button>
+            </div>
+
             <p style={{ margin: 0, fontSize: "0.75rem", color: "#A1A1AA", lineHeight: 1.55 }}>
-              Use this for real tracked campaign links. Your main Positives referral link above remains the simplest default share link.
+              Need to send people somewhere outside Positives? Use your main referral link and point them back into Positives when you want affiliate attribution to hold up cleanly.
             </p>
           </div>
         </SurfaceCard>
@@ -1206,7 +1094,7 @@ function LinkTab({
 
         {links.length === 0 ? (
           <p style={{ margin: "1rem 0 0", fontSize: "0.84rem", color: "#A1A1AA" }}>
-            No custom campaign links yet. Start with one for your blog, newsletter, or bio link.
+            No legacy redirects on file.
           </p>
         ) : (
           <div className="mt-4 flex flex-col gap-3">
@@ -1445,7 +1333,7 @@ function ShareTab({
           Choose which link you want to share
         </h2>
         <p style={{ margin: 0, fontSize: "0.84rem", lineHeight: 1.6, color: "#71717A" }}>
-          Use your primary link for general sharing, or select one of your source-tagged campaign links before copying any templates below.
+          Use your primary referral link for general sharing. If you generate a destination-specific tracked link in My Link, paste that version into these templates before sending.
         </p>
 
         <div className="mt-4 grid gap-3 md:grid-cols-[1.2fr_1fr]">
@@ -1564,10 +1452,6 @@ function EarningsTab({
   paypalSaving,
   paypalSaved,
   paypalError,
-  existingW9,
-  w9Filed,
-  onW9Saved,
-  w9Preview,
 }: {
   performance: AffiliatePortalViewModel;
   commissions: AffiliateCommission[];
@@ -1578,15 +1462,7 @@ function EarningsTab({
   paypalSaving: boolean;
   paypalSaved: boolean;
   paypalError: string | null;
-  existingW9: ExistingW9 | null;
-  w9Filed: boolean;
-  onW9Saved: () => void;
-  w9Preview: "off" | "soft" | "hard";
 }) {
-  const totalEarned = w9Preview === "hard" ? 65000 : w9Preview === "soft" ? 55000 : performance.totalEarned;
-  const needsW9 = !w9Filed && totalEarned >= 60000;
-  const shouldWarnW9 = !w9Filed && totalEarned >= 50000 && totalEarned < 60000;
-
   return (
     <div className="flex flex-col gap-4">
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -1610,7 +1486,7 @@ function EarningsTab({
             {[
               { label: "Affiliate account is active", complete: true },
               { label: "PayPal email is saved", complete: Boolean(paypalEmail.trim()) },
-              { label: "W-9 is on file if required", complete: performance.totalEarned < 60000 || w9Filed },
+              { label: "Payout details are ready", complete: Boolean(paypalEmail.trim()) },
             ].map((item) => (
               <div key={item.label} className="flex items-center justify-between gap-4 rounded-2xl border border-border px-4 py-3">
                 <span style={{ fontSize: "0.88rem", color: "#09090B", fontWeight: 600 }}>{item.label}</span>
@@ -1630,7 +1506,7 @@ function EarningsTab({
             PayPal email
           </h2>
           <p style={{ margin: 0, fontSize: "0.84rem", lineHeight: 1.6, color: "#71717A" }}>
-            This is the email Positives should use when coordinating your affiliate payouts.
+            This is the email Positives should use when coordinating your affiliate payouts. If PayPal needs any tax or verification details later, they will handle that in their own flow.
           </p>
 
           <div className="mt-4 flex flex-col gap-3">
@@ -1662,30 +1538,6 @@ function EarningsTab({
           </div>
         </SurfaceCard>
       </div>
-
-      {w9Preview !== "off" ? (
-        <div style={{ display: "inline-flex", alignItems: "center", gap: "0.375rem", background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.25)", borderRadius: "9999px", padding: "0.25rem 0.75rem", fontSize: "0.72rem", fontWeight: 700, color: "#6366F1" }}>
-          DEV PREVIEW — {w9Preview === "hard" ? "$650 earned" : "$550 earned"}
-        </div>
-      ) : null}
-
-      <SurfaceCard elevated className="surface-card--editorial">
-        {needsW9 ? (
-          <div style={{ marginBottom: "1rem", background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "0.875rem", padding: "0.875rem 1rem" }}>
-            <p style={{ margin: 0, fontSize: "0.83rem", color: "#B91C1C", lineHeight: 1.55 }}>
-              Action required: you&apos;ve earned {formatMoney(totalEarned)} in commissions. We need a W-9 before issuing further payouts.
-            </p>
-          </div>
-        ) : shouldWarnW9 ? (
-          <div style={{ marginBottom: "1rem", background: "rgba(245,158,11,0.07)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: "0.875rem", padding: "0.875rem 1rem" }}>
-            <p style={{ margin: 0, fontSize: "0.83rem", color: "#92400E", lineHeight: 1.55 }}>
-              Heads up: you&apos;ve earned {formatMoney(totalEarned)} so far. Once you hit $600, we&apos;ll need a W-9 for 1099 reporting.
-            </p>
-          </div>
-        ) : null}
-
-        <W9Form existingW9={w9Filed ? existingW9 : null} onSaved={onW9Saved} />
-      </SurfaceCard>
 
       <div className="grid gap-4 xl:grid-cols-2">
         <SurfaceCard elevated className="surface-card--editorial">
@@ -1734,15 +1586,12 @@ export function AffiliatePortal({
   memberName,
   paypalEmail: initialPaypalEmail,
   initialLinks = [],
-  existingW9 = null,
-  w9Preview = "off",
   autoEnroll = false,
   performance,
 }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("link");
   const [loading, setLoading] = useState(false);
   const [enrolled, setEnrolled] = useState(isAffiliate);
-  const [payoutStep, setPayoutStep] = useState(false);
   const [currentToken, setCurrentToken] = useState(token);
   const [copiedLink, setCopiedLink] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1756,7 +1605,6 @@ export function AffiliatePortal({
   const [slugError, setSlugError] = useState<string | null>(null);
   const [slugSaved, setSlugSaved] = useState(false);
   const [slugConfirmed, setSlugConfirmed] = useState(false);
-  const [w9Filed, setW9Filed] = useState(Boolean(existingW9));
   const [managedLinks, setManagedLinks] = useState<AffiliateLink[]>(initialLinks);
   const autoEnrollStartedRef = useRef(false);
 
@@ -1790,10 +1638,7 @@ export function AffiliatePortal({
       source_path: "/account/affiliate",
       affiliate_token_present: Boolean(result.token),
     });
-    if (!paypalEmail.trim()) {
-      setPayoutStep(true);
-    }
-  }, [paypalEmail]);
+  }, []);
 
   useEffect(() => {
     if (!autoEnroll || enrolled || loading || autoEnrollStartedRef.current) return;
@@ -1841,16 +1686,14 @@ export function AffiliatePortal({
     window.setTimeout(() => setSlugSaved(false), 3000);
   }, [slugDraft]);
 
-  if (enrolled && payoutStep) {
+  if (enrolled && !paypalEmail.trim()) {
     return (
       <PayoutSetupStep
         paypalEmail={paypalEmail}
         onPaypalChange={setPaypalEmail}
         onSave={async () => {
           await handleSavePayPal();
-          setPayoutStep(false);
         }}
-        onSkip={() => setPayoutStep(false)}
         saving={paypalSaving}
         error={paypalError}
       />
@@ -1986,10 +1829,6 @@ export function AffiliatePortal({
           paypalSaving={paypalSaving}
           paypalSaved={paypalSaved}
           paypalError={paypalError}
-          existingW9={existingW9}
-          w9Filed={w9Filed}
-          onW9Saved={() => setW9Filed(true)}
-          w9Preview={w9Preview}
         />
       ) : null}
     </div>

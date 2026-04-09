@@ -21,6 +21,11 @@ import { cookies } from "next/headers";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { syncAffiliate } from "@/lib/activecampaign/sync";
 import {
+  buildTrackedAffiliateUrl,
+  getAffiliateDestination,
+  type AffiliateDestinationKey,
+} from "@/lib/affiliate/destinations";
+import {
   ensureFpPromoter,
   isFirstPromoterAuthError,
   updatePromoterRefId,
@@ -192,10 +197,19 @@ export async function savePayPalEmailAction(
 // ── Create affiliate short link ────────────────────────────────────────────────
 
 export async function createAffiliateLinkAction(input: {
-  label: string;
-  destination: string | null;
+  destinationKey: AffiliateDestinationKey;
   subId?: string | null;
-}): Promise<{ link: { id: string; code: string; label: string; destination: string | null; clicks: number } } | { error: string }> {
+}): Promise<
+  | {
+      link: {
+        url: string;
+        destinationKey: AffiliateDestinationKey;
+        destinationLabel: string;
+        subId: string | null;
+      };
+    }
+  | { error: string }
+> {
   const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -215,75 +229,33 @@ export async function createAffiliateLinkAction(input: {
 
   const token = member?.fp_ref_id;
   if (!token) return { error: "No affiliate account found. Enroll first." };
+  const destination = getAffiliateDestination(input.destinationKey);
+  if (!destination) {
+    return { error: "Please choose a valid Positives destination." };
+  }
 
-  const label = input.label.trim();
-  if (!label) return { error: "Please enter a name for this link." };
-
-  // Validate and normalize the destination URL
-  let destination: string | null = null;
   const subId = (input.subId ?? "").trim().toLowerCase();
   if (subId && !/^[a-z0-9]+(?:[-_][a-z0-9]+)*$/.test(subId)) {
     return { error: "Use letters, numbers, hyphens, or underscores for the source tag." };
   }
-  if (input.destination) {
-    let raw = input.destination.trim();
-    if (raw) {
-      // Prepend https:// if no protocol given
-      if (!raw.startsWith("http://") && !raw.startsWith("https://") && !raw.startsWith("/")) {
-        raw = `https://${raw}`;
-      }
-      // Validate it's a parseable URL
-      try {
-        const parsed = new URL(raw);
-        // Only allow http/https
-        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-          return { error: "Only http:// and https:// URLs are allowed." };
-        }
-        // Reject localhost and private IPs
-        const host = parsed.hostname.toLowerCase();
-        if (host === "localhost" || host === "127.0.0.1" || host.startsWith("192.168.") || host.startsWith("10.")) {
-          return { error: "That destination URL isn't publicly accessible." };
-        }
-        // Must have a real-looking hostname (at least one dot or is positives.life)
-        if (!host.includes(".") && host !== "localhost") {
-          return { error: "Please enter a valid website URL (e.g. https://yourblog.com)." };
-        }
-        if (subId) {
-          parsed.searchParams.set("sub_id", subId);
-        }
-        destination = parsed.toString();
-      } catch {
-        return { error: "That doesn't look like a valid URL. Try something like https://yourblog.com/post." };
-      }
-    }
-  }
 
-  if (!destination && subId) {
-    const fallback = new URL("/", "https://positives.life");
-    fallback.searchParams.set("sub_id", subId);
-    destination = fallback.toString();
-  }
+  const url = buildTrackedAffiliateUrl({
+    token,
+    destinationKey: destination.key,
+    subId: subId || null,
+  });
 
-  // Generate code from label only — short and clean (e.g. "my-blog-post")
-  const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 50);
-  const code = slug;
-
-  const { data: link, error } = await admin
-    .from("affiliate_link")
-    .insert({ member_id: user.id, code, label, destination, token })
-    .select("id, code, label, destination, clicks")
-    .single();
-
-  if (error) {
-    if (error.code === "23505") return { error: `A link named "${label}" already exists. Try a different name.` };
-    console.error("[Affiliate] createAffiliateLink failed:", error);
-    return { error: "Failed to create link. Please try again." };
-  }
-
-  return { link: link! };
+  return {
+    link: {
+      url,
+      destinationKey: destination.key,
+      destinationLabel: destination.label,
+      subId: subId || null,
+    },
+  };
 }
 
-// ── Delete affiliate short link ────────────────────────────────────────────────
+// ── Delete legacy affiliate short link ───────────────────────────────────────
 
 export async function deleteAffiliateLinkAction(
   id: string
@@ -295,75 +267,20 @@ export async function deleteAffiliateLinkAction(
     { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated." };
 
   const { error } = await supabase
     .from("affiliate_link")
     .delete()
     .eq("id", id)
-    .eq("member_id", user.id); // RLS double-check
+    .eq("member_id", user.id);
 
   if (error) {
     console.error("[Affiliate] deleteAffiliateLink failed:", error);
     return { error: "Failed to delete link." };
-  }
-
-  return { success: true };
-}
-
-// ── Update affiliate short link destination ────────────────────────────────────
-
-export async function updateAffiliateLinkAction(
-  id: string,
-  newDestination: string | null
-): Promise<{ success: true } | { error: string }> {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
-  );
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated." };
-
-  // Validate and normalize destination URL
-  let destination: string | null = null;
-  if (newDestination) {
-    let raw = newDestination.trim();
-    if (raw) {
-      if (!raw.startsWith("http://") && !raw.startsWith("https://") && !raw.startsWith("/")) {
-        raw = `https://${raw}`;
-      }
-      try {
-        const parsed = new URL(raw);
-        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-          return { error: "Only http:// and https:// URLs are allowed." };
-        }
-        const host = parsed.hostname.toLowerCase();
-        if (host === "localhost" || host === "127.0.0.1" || host.startsWith("192.168.") || host.startsWith("10.")) {
-          return { error: "That destination URL isn't publicly accessible." };
-        }
-        if (!host.includes(".")) {
-          return { error: "Please enter a valid website URL (e.g. https://yourblog.com)." };
-        }
-        destination = parsed.toString();
-      } catch {
-        return { error: "That doesn't look like a valid URL." };
-      }
-    }
-  }
-
-  const { error } = await supabase
-    .from("affiliate_link")
-    .update({ destination })
-    .eq("id", id)
-    .eq("member_id", user.id);
-
-  if (error) {
-    console.error("[Affiliate] updateAffiliateLink failed:", error);
-    return { error: "Failed to update link." };
   }
 
   return { success: true };
@@ -432,70 +349,4 @@ export async function updateReferralSlugAction(
     .eq("member_id", user.id);
 
   return { success: true, newToken: slug };
-}
-
-
-// ── Save W9 form data ──────────────────────────────────────────────────────────
-
-export interface W9FormData {
-  legal_name: string;
-  business_name: string;
-  tax_classification: string;
-  tax_id: string;
-  address: string;
-  city: string;
-  state_code: string;
-  zip: string;
-  signature_name: string;
-}
-
-export async function saveW9Action(
-  data: W9FormData
-): Promise<{ success: true } | { error: string }> {
-  // Basic field validation
-  if (!data.legal_name?.trim()) return { error: "Legal name is required." };
-  if (!data.tax_classification?.trim()) return { error: "Tax classification is required." };
-  if (!data.tax_id?.trim()) return { error: "SSN or EIN is required." };
-  if (!data.address?.trim()) return { error: "Address is required." };
-  if (!data.city?.trim()) return { error: "City is required." };
-  if (!data.state_code?.trim() || data.state_code.trim().length > 2) return { error: "State is required." };
-  if (!data.zip?.trim()) return { error: "ZIP code is required." };
-  if (!data.signature_name?.trim()) return { error: "Electronic signature is required." };
-
-  const cookieStore = await cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
-  );
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated." };
-
-  const admin = getAdminClient();
-  const { error } = await admin
-    .from("member_w9")
-    .upsert(
-      {
-        member_id: user.id,
-        legal_name: data.legal_name.trim(),
-        business_name: data.business_name?.trim() || null,
-        tax_classification: data.tax_classification.trim(),
-        tax_id: data.tax_id.trim(),
-        address: data.address.trim(),
-        city: data.city.trim(),
-        state_code: data.state_code.trim().toUpperCase(),
-        zip: data.zip.trim(),
-        signature_name: data.signature_name.trim(),
-        signed_at: new Date().toISOString(),
-      },
-      { onConflict: "member_id" }
-    );
-
-  if (error) {
-    console.error("[W9] saveW9 failed:", error);
-    return { error: "Failed to save W9. Please try again." };
-  }
-
-  return { success: true };
 }

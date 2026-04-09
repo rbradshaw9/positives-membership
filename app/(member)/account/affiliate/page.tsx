@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { getAdminClient } from "@/lib/supabase/admin";
 import { requireActiveMember } from "@/lib/auth/require-active-member";
 import {
   getPromoterStats,
@@ -29,10 +28,6 @@ export default async function AffiliatePage({
   const member = await requireActiveMember();
   const params = await searchParams;
   const autoEnroll = ["1", "true", "yes"].includes(String(params.auto_enroll ?? "").toLowerCase());
-  // w9_preview is only honoured outside of production
-  const w9Preview = process.env.NODE_ENV !== "production"
-    ? (["soft", "hard"].includes(String(params.w9_preview)) ? (params.w9_preview as "soft" | "hard") : "off")
-    : "off";
 
   const supabase = await createClient();
   const { data: row } = await supabase
@@ -89,23 +84,13 @@ export default async function AffiliatePage({
     .eq("member_id", member.id)
     .order("created_at", { ascending: false });
 
-  // Fetch existing W9 (admin client needed since supabase user context may not match service role)
-  const admin = getAdminClient();
-  const { data: w9 } = await admin
-    .from("member_w9")
-    .select("legal_name, business_name, tax_classification, tax_id, address, city, state_code, zip, signature_name, signed_at")
-    .eq("member_id", member.id)
-    .maybeSingle();
-
   const performance = buildAffiliatePortalViewModel({
     stats,
     commissions,
     payouts,
     trendReport,
     urlReports,
-    legacyLinks: affiliateLinks ?? [],
     paypalEmail,
-    hasW9: Boolean(w9),
   });
 
   return (
@@ -121,8 +106,6 @@ export default async function AffiliatePage({
       memberName={member.name ?? ""}
       paypalEmail={paypalEmail}
       initialLinks={affiliateLinks ?? []}
-      existingW9={w9 ?? null}
-      w9Preview={w9Preview}
       autoEnroll={autoEnroll}
       performance={performance}
     />

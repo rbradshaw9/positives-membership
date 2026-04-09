@@ -1,50 +1,37 @@
 # Session Resume — Positives Membership
 
-> Last updated: 2026-04-09 · after FirstPromoter cleanup on `main`
+> Last updated: 2026-04-09 · after affiliate portal reset work on `main`
 
 ---
 
-## What was shipped this session
+## What shipped this session
 
-### 1. Affiliate Portal (feature-complete)
-**Files:** `components/affiliate/AffiliatePortal.tsx`, `app/(member)/account/affiliate/page.tsx`, `app/account/affiliate/actions.ts`
+### Affiliate portal reset
+**Files:** `components/affiliate/AffiliatePortal.tsx`, `app/(member)/account/affiliate/page.tsx`, `app/account/affiliate/actions.ts`, `lib/affiliate/destinations.ts`, `lib/affiliate/portal.ts`
 
-- **Slug Customizer** — inline editor in the "My Link" tab, calls `updateReferralSlugAction`, warns that old links stop tracking on save, shows "✓ Updated!" flash + "Affiliate since [Month Year]" footer
-- **Payout History** — `PayoutRow` component in the "Earnings" tab (paid/processing/due/pending states), only renders if payouts exist
-- **W9 Collection Form** — full IRS-compliant W9: legal name, business name, 7-option tax classification, SSN/EIN, address, city/state (all 50 + DC)/ZIP, e-signature block
-  - Soft amber warning at ≥ $500 earned (unfiled)
-  - Hard red gate at ≥ $600 earned (unfiled) — blocks payout narrative
-  - Pre-fills from `existingW9` if already on file; collapses to "W-9 on file ✅" with "Update" button
-- **W9 DEV preview** — `?w9_preview=soft` or `?w9_preview=hard` on `/account/affiliate` simulates the threshold states **in non-production only**. A purple `🧪 DEV PREVIEW` pill appears above the W9 card.
-
-**Database:** Migration `supabase/migrations/20260408190000_create_member_w9.sql` is already pushed to remote.
-
----
-
-### 2. Real-time Streak Badge on `/today`
-**Files:** `components/today/StreakBadge.tsx` (new), `app/(member)/today/actions.ts`, `app/(member)/today/page.tsx`, `components/member/audio/MemberAudioProvider.tsx`
-
-- `markListened` now returns `{ newStreak: number }` instead of `void`
-- `MemberAudioProvider` dispatches `window.CustomEvent("positives:streak-updated", { detail: { newStreak } })` after resolution
-- `StreakBadge` is a client component that reads `initialStreak` (SSR) and subscribes to the event — badge updates + 3-second teal glow pulse on increment, no page reload
+- **Payout gating** — affiliates must save a PayPal payout email before the in-app affiliate portal opens
+- **PayPal-first onboarding** — the payout setup screen is now mandatory, with supportive copy for members who still need to create a PayPal account
+- **Internal-only tracked links** — new tracked links are generated for approved Positives destinations only:
+  - homepage
+  - join
+  - about
+  - faq
+  - support
+- **Link format** — generated tracked links stay in the canonical FirstPromoter path:
+  - `https://positives.life/<path>?fpr=<token>&sub_id=<source>`
+- **Legacy redirects** — old `/go/[code]` links still work, but are now treated as legacy convenience links rather than the canonical tracking system
+- **Performance truth** — the Performance tab stays FirstPromoter-only
+- **W-9 removed from product flow** — no active W-9 UI, page query, or runtime dependency remains in the affiliate experience
 
 ---
 
-### 3. `/today` — Monthly Audio Archive Fix
-**File:** `lib/queries/get-monthly-daily-audios.ts`
+## Current affiliate product rules
 
-- The query was filtering `publish_date < today` which excluded any audios where `publish_date = NULL` (older admin-published content only has `published_at`)
-- Now uses `.or()` to match both: rows with `publish_date` in range, AND rows where `publish_date IS NULL` but `published_at` falls in range
-- Backfills `publish_date` from `published_at` date portion for display consistency
-- No data changes needed — content shows up automatically
-
----
-
-### 4. Account Page — Dark-on-Dark Name Fix
-**File:** `app/globals.css`
-
-- The global `h2 { color: var(--color-foreground) }` rule (dark text) was overriding Tailwind's `text-white` inside `.surface-card--dark` (the member profile hero card on `/account`)
-- Fixed by adding `--color-foreground: #ffffff` and `--color-muted-fg: rgba(255,255,255,0.55)` as CSS variable overrides on `.surface-card--dark` — all headings inside any dark card now inherit white automatically
+- **FirstPromoter** is the source of truth for affiliate attribution and reporting
+- **PayPal** is required before affiliate portal access
+- **W-9 is not collected in-app**
+- **New custom tracked links are internal-only**
+- **External destination redirects are no longer the recommended tracked-link model**
 
 ---
 
@@ -52,55 +39,31 @@
 
 | Item | Status | Notes |
 |---|---|---|
-| W9 form E2E test | ⬜ Pending | Test submission flow with a real account via `?w9_preview=hard`, verify Supabase row is created |
-| Slug customizer E2E | ⬜ Pending | Confirm FirstPromoter updates the slug correctly and old links behave as expected |
-| Streak real-time | ⬜ Pending | Play today's audio to 80% and confirm badge updates without reload |
-| Archive fix | ⬜ Pending | Verify all April audios now appear in the bottom playlist on `/today` |
-| `member_w9` RLS | ✅ Done | Policies applied via migration — members can only read/write their own row |
+| Affiliate payout gate live check | ⬜ Pending | Verify an enrolled affiliate without `paypal_email` is forced into payout setup on production |
+| Internal tracked link smoke test | ⬜ Pending | Generate a join/about/faq/support link with `sub_id`, copy it, open it, and confirm FP attribution still behaves correctly |
+| Legacy redirect compatibility | ⬜ Pending | Confirm older `/go/[code]` links still resolve as expected |
+| Affiliate mobile pass | ⬜ Pending | Verify the payout setup screen and My Link builder feel clean on phone widths |
 
 ---
 
 ## Key file map
 
 ```
-app/(member)/today/
-  page.tsx                     # Server page — fetches streak, passes to <StreakBadge>
-  actions.ts                   # markListened (returns newStreak), syncListeningProgress, markTrackCompleted
+app/(member)/account/affiliate/
+  page.tsx                     # Fetches FirstPromoter data + legacy redirect rows; no active W-9 query
 
-app/(member)/account/
-  page.tsx                     # Account settings page — uses SurfaceCard tone="dark"
-  affiliate/
-    page.tsx                   # Reads ?w9_preview param, fetches FirstPromoter + W9 data
-    actions.ts  (→ app/account/affiliate/actions.ts)   # saveW9Action, updateReferralSlugAction
+app/account/affiliate/
+  actions.ts                   # Enroll affiliate, save PayPal email, generate internal tracked links, update slug
+  portal/route.ts              # Blocks external FP dashboard access until payout email is saved
 
-components/
-  today/
-    StreakBadge.tsx             # NEW — client component, subscribes to positives:streak-updated
-    DailyPracticeCard.tsx       # Primary audio card on /today
-    MonthlyAudioArchive.tsx     # Bottom playlist section — month-grouped audio rows
-  member/audio/
-    MemberAudioProvider.tsx     # Dispatches positives:streak-updated after markListened
-  affiliate/
-    AffiliatePortal.tsx         # Full affiliate portal UI (1900+ lines)
+components/affiliate/
+  AffiliatePortal.tsx          # Payout-gated portal UI, slug customizer, internal tracked link builder, earnings/history
 
-lib/
-  queries/get-monthly-daily-audios.ts   # Fixed — falls back to published_at
-  streak/compute-streak.ts              # computeNewStreak, isStreakActive
-  firstpromoter/client.ts               # FirstPromoter API wrapper
-  affiliate/links.ts                    # Canonical ?fpr= redirect helper for /go and legacy /c
+lib/affiliate/
+  destinations.ts              # Approved internal affiliate destinations + URL builder
+  links.ts                     # Legacy redirect helper for /go and /c compatibility
+  portal.ts                    # FirstPromoter-only performance view model
 
 supabase/migrations/
-  20260408190000_create_member_w9.sql   # member_w9 table + RLS
-
-app/globals.css                # .surface-card--dark now has --color-foreground: #ffffff
+  20260408190000_create_member_w9.sql   # Dormant legacy table, no longer part of the active affiliate product flow
 ```
-
----
-
-## Design tokens (quick ref)
-- Teal (primary): `#2EC4B6`
-- Sky Blue (secondary): `#44A8D8`
-- Amber (accent / warning): `#F59E0B`
-- Dark surface: `#0A0A0A`
-- Font heading: Montserrat
-- Font body: Poppins
