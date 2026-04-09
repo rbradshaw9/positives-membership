@@ -21,11 +21,6 @@ import { cookies } from "next/headers";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { syncAffiliate } from "@/lib/activecampaign/sync";
 import {
-  buildTrackedAffiliateUrl,
-  getAffiliateDestination,
-  type AffiliateDestinationKey,
-} from "@/lib/affiliate/destinations";
-import {
   ensureFpPromoter,
   isFirstPromoterAuthError,
   updatePromoterRefId,
@@ -192,67 +187,6 @@ export async function savePayPalEmailAction(
   }
 
   return { success: true };
-}
-
-// ── Create affiliate short link ────────────────────────────────────────────────
-
-export async function createAffiliateLinkAction(input: {
-  destinationKey: AffiliateDestinationKey;
-  subId?: string | null;
-}): Promise<
-  | {
-      link: {
-        url: string;
-        destinationKey: AffiliateDestinationKey;
-        destinationLabel: string;
-        subId: string | null;
-      };
-    }
-  | { error: string }
-> {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
-  );
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated." };
-
-  const admin = getAdminClient();
-  const { data: member } = await admin
-    .from("member")
-    .select("fp_ref_id")
-    .eq("id", user.id)
-    .single();
-
-  const token = member?.fp_ref_id;
-  if (!token) return { error: "No affiliate account found. Enroll first." };
-  const destination = getAffiliateDestination(input.destinationKey);
-  if (!destination) {
-    return { error: "Please choose a valid Positives destination." };
-  }
-
-  const subId = (input.subId ?? "").trim().toLowerCase();
-  if (subId && !/^[a-z0-9]+(?:[-_][a-z0-9]+)*$/.test(subId)) {
-    return { error: "Use letters, numbers, hyphens, or underscores for the source tag." };
-  }
-
-  const url = buildTrackedAffiliateUrl({
-    token,
-    destinationKey: destination.key,
-    subId: subId || null,
-  });
-
-  return {
-    link: {
-      url,
-      destinationKey: destination.key,
-      destinationLabel: destination.label,
-      subId: subId || null,
-    },
-  };
 }
 
 // ── Delete legacy affiliate short link ───────────────────────────────────────

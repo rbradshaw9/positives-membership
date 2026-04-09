@@ -10,6 +10,8 @@
  *   - Account-ID: <FIRSTPROMOTER_ACCOUNT_ID>
  */
 
+import type { AffiliateTrackedLink } from "@/lib/affiliate/portal";
+
 const FP_BASE = "https://api.firstpromoter.com/api/v2";
 
 type Primitive = string | number | boolean | null | undefined;
@@ -242,6 +244,23 @@ interface FpUrlReportRow {
   } | null;
 }
 
+interface FpReferralLinkResponse {
+  id?: string | number | null;
+  name?: string | null;
+  label?: string | null;
+  title?: string | null;
+  url?: string | null;
+  link?: string | null;
+  ref_link?: string | null;
+  referral_link?: string | null;
+  destination_url?: string | null;
+  target_url?: string | null;
+  path?: string | null;
+  slug?: string | null;
+  is_default?: boolean | null;
+  default?: boolean | null;
+}
+
 function primaryCampaign(
   promoter: FpPromoterResponse,
   campaignId?: number | null
@@ -294,6 +313,43 @@ function normalizePayoutState(state: string | undefined): AffiliatePayout["state
     default:
       return state ?? "pending";
   }
+}
+
+function extractReferralLinkUrl(raw: FpReferralLinkResponse): string | null {
+  return raw.url ?? raw.link ?? raw.ref_link ?? raw.referral_link ?? null;
+}
+
+function describeReferralDestination(raw: FpReferralLinkResponse, linkUrl: string): string {
+  const explicitDestination = raw.destination_url ?? raw.target_url ?? raw.path ?? raw.slug ?? null;
+  if (explicitDestination) return explicitDestination;
+
+  try {
+    const url = new URL(linkUrl);
+    url.searchParams.delete("fpr");
+    url.searchParams.delete("sub_id");
+    const query = url.searchParams.toString();
+    return `${url.pathname}${query ? `?${query}` : ""}`;
+  } catch {
+    return linkUrl;
+  }
+}
+
+function normalizeReferralLink(raw: FpReferralLinkResponse): AffiliateTrackedLink | null {
+  const url = extractReferralLinkUrl(raw);
+  if (!url) return null;
+
+  const defaultLike = Boolean(raw.is_default ?? raw.default);
+  return {
+    id: String(raw.id ?? url),
+    name:
+      raw.name?.trim() ||
+      raw.label?.trim() ||
+      raw.title?.trim() ||
+      (defaultLike ? "Default referral link" : "Tracked link"),
+    url,
+    destinationPath: describeReferralDestination(raw, url),
+    kind: defaultLike ? "primary" : "campaign",
+  };
 }
 
 export function isFirstPromoterAuthError(error: unknown): boolean {
@@ -534,6 +590,41 @@ export async function getPromoterPayouts(promoterId: number): Promise<AffiliateP
     }));
   } catch {
     return [];
+  }
+}
+
+export async function getPromoterTrackedLinks(
+  promoterId: number
+): Promise<AffiliateTrackedLink[]> {
+  const promoter = await getPromoterDetailsByIdentifier(promoterId);
+  const campaign = primaryCampaign(promoter);
+
+  if (!campaign?.id) return [];
+
+  try {
+    const response = await fpFetch<
+      FpReferralLinkResponse[] | { data?: FpReferralLinkResponse[] | null }
+    >(`/company/promoter_campaigns/${campaign.id}/referral_links`);
+
+    const rows = Array.isArray(response) ? response : response.data ?? [];
+    const links = rows
+      .map(normalizeReferralLink)
+      .filter((link): link is AffiliateTrackedLink => Boolean(link));
+
+    const deduped = new Map<string, AffiliateTrackedLink>();
+    for (const link of links) {
+      deduped.set(link.url, link);
+    }
+
+    return [...deduped.values()].sort((a, b) => {
+      if (a.kind === b.kind) return a.name.localeCompare(b.name);
+      return a.kind === "primary" ? -1 : 1;
+    });
+  } catch (error) {
+    if (error instanceof FirstPromoterApiError && error.status === 404) {
+      return [];
+    }
+    throw error;
   }
 }
 

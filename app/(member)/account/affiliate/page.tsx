@@ -4,6 +4,7 @@ import {
   getPromoterStats,
   getPromoterCommissions,
   getPromoterPayouts,
+  getPromoterTrackedLinks,
   getPromoterTrendReport,
   getPromoterUrlReports,
   type PromoterStats,
@@ -13,7 +14,10 @@ import {
   type PromoterUrlReport,
 } from "@/lib/firstpromoter/client";
 import { AffiliatePortal } from "@/components/affiliate/AffiliatePortal";
-import { buildAffiliatePortalViewModel } from "@/lib/affiliate/portal";
+import {
+  buildAffiliatePortalViewModel,
+  type AffiliateTrackedLink,
+} from "@/lib/affiliate/portal";
 
 export const metadata = {
   title: "Affiliate Portal — Positives",
@@ -45,6 +49,8 @@ export default async function AffiliatePage({
   let payouts: AffiliatePayout[] = [];
   let trendReport: PromoterTrendPoint[] = [];
   let urlReports: PromoterUrlReport[] = [];
+  let trackedLinks: AffiliateTrackedLink[] = [];
+  let trackedLinksError: string | null = null;
 
   if (promoterId) {
     try {
@@ -72,6 +78,12 @@ export default async function AffiliatePage({
             }).catch(() => [])
           : Promise.resolve([]),
       ]);
+
+      trackedLinks = await getPromoterTrackedLinks(promoterId).catch(() => {
+        trackedLinksError =
+          "We couldn't load your extra FirstPromoter links right now. Your main referral link still works.";
+        return [];
+      });
     } catch {
       // Non-fatal — render with partial data
     }
@@ -106,6 +118,8 @@ export default async function AffiliatePage({
       memberName={member.name ?? ""}
       paypalEmail={paypalEmail}
       initialLinks={affiliateLinks ?? []}
+      trackedLinks={trackedLinks}
+      trackedLinksError={trackedLinksError}
       autoEnroll={autoEnroll}
       performance={performance}
     />

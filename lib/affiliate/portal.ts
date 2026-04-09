@@ -6,6 +6,16 @@ import type {
   PromoterUrlReport,
 } from "@/lib/firstpromoter/client";
 
+export type AffiliateTrackedLinkKind = "primary" | "campaign" | "legacy";
+
+export interface AffiliateTrackedLink {
+  id: string;
+  name: string;
+  url: string;
+  destinationPath: string;
+  kind: AffiliateTrackedLinkKind;
+}
+
 export interface AffiliatePortalTrendPoint {
   label: string;
   value: number;
