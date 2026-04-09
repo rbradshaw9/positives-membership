@@ -50,7 +50,7 @@ export async function handleCheckoutSessionCompleted(
     typeof session.customer === "string" ? session.customer : null;
 
   // userId comes from metadata.userId (Path A) only.
-  // client_reference_id is now reserved for Rewardful affiliate tokens.
+  // Referral attribution is carried in metadata.fpr.
   const userId = session.metadata?.userId ?? null;
 
   // Guest checkout is signalled by metadata.guest=true OR absence of userId.
@@ -222,8 +222,8 @@ async function handleGuestCheckout(
   // ── Step 3: Activate the member row ─────────────────────────────────────
   // The trigger may not have run yet in a race condition edge case — use
   // upsert so the member row is guaranteed to exist and be active.
-  // Rewardful referral is no longer used. fprRefId from metadata is
-  // the canonical referral tracked server-side — immune to cookie expiry.
+  // fprRefId from metadata is the canonical referral tracked server-side —
+  // immune to cookie expiry and consistent across guest checkout replays.
 
   const { error: upsertError } = await supabase
     .from("member")

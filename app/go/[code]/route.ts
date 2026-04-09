@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getAdminClient } from "@/lib/supabase/admin";
+import { buildAffiliateRedirectUrl } from "@/lib/affiliate/links";
 
 /**
  * /go/[code] — Affiliate short-link redirect.
@@ -10,9 +11,8 @@ import { getAdminClient } from "@/lib/supabase/admin";
  * Flow:
  *   1. Look up the code in affiliate_link
  *   2. Increment click counter (best-effort, fire-and-forget)
- *   3a. Internal positives.life destination → 307 with ?via=TOKEN
- *   3b. External destination → 307 to /c/[code] (blank cookie-setter page)
- *   3c. No destination → 307 to homepage with ?via=TOKEN
+ *   3. Redirect to the stored destination with the canonical ?fpr=TOKEN
+ *      query param so attribution stays in the FirstPromoter path.
  */
 export async function GET(
   _request: NextRequest,
@@ -38,32 +38,11 @@ export async function GET(
     .update({ clicks: (link.clicks ?? 0) + 1 })
     .eq("code", code);
 
-  const via = link.token;
-  const destination = link.destination;
+  const redirectUrl = buildAffiliateRedirectUrl({
+    destination: link.destination,
+    token: link.token,
+    appUrl,
+  });
 
-  // No destination → homepage with via cookie
-  if (!destination) {
-    return NextResponse.redirect(new URL(`/?via=${via}`, appUrl));
-  }
-
-  // Determine if external
-  let isExternal = false;
-  try {
-    const destUrl = new URL(destination);
-    isExternal = !destUrl.hostname.endsWith("positives.life");
-  } catch {
-    isExternal = true;
-  }
-
-  if (isExternal) {
-    // Redirect to /c/[code] — blank page that waits for Rewardful cookie,
-    // then sends visitor to the external destination.
-    return NextResponse.redirect(new URL(`/c/${code}`, appUrl));
-  }
-
-  // Internal positives.life page
-  const path = destination.startsWith("/") ? destination : `/${destination}`;
-  const internalUrl = new URL(path, appUrl);
-  internalUrl.searchParams.set("via", via);
-  return NextResponse.redirect(internalUrl);
+  return NextResponse.redirect(redirectUrl);
 }

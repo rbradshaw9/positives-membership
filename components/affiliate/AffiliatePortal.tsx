@@ -861,7 +861,7 @@ function EnrollScreen({
         >
           {[
             ["🔗", "Unique referral link — generated instantly"],
-            ["💰", "20% recurring — paid monthly via Rewardful"],
+            ["💰", "20% recurring — paid monthly to your PayPal email"],
             ["📊", "Real-time stats, earnings, and share resources"],
           ].map(([icon, text]) => (
             <li
@@ -1100,7 +1100,7 @@ export function AffiliatePortal({
   void memberName;
 
   const referralLink = currentToken
-    ? `https://positives.life?via=${currentToken}`
+    ? `https://positives.life?fpr=${currentToken}`
     : null;
 
   useEffect(() => {
@@ -1438,7 +1438,7 @@ export function AffiliatePortal({
                   </div>
                   {/* Input row */}
                   <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                    <span style={{ fontSize: "0.83rem", color: "#71717A", flexShrink: 0, whiteSpace: "nowrap" }}>positives.life?via=</span>
+                    <span style={{ fontSize: "0.83rem", color: "#71717A", flexShrink: 0, whiteSpace: "nowrap" }}>positives.life?fpr=</span>
                     <input
                       id="slug-input"
                       type="text"
@@ -1900,7 +1900,7 @@ export function AffiliatePortal({
           {payouts.length > 0 && (
             <div style={{ background: "#FFFFFF", border: "1.5px solid #E4E4E7", borderRadius: "1.25rem", padding: "1.5rem", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
               <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "0.9rem", fontWeight: 700, color: "#09090B", marginBottom: "0.125rem", letterSpacing: "-0.02em" }}>Payout History</h2>
-              <p style={{ fontSize: "0.75rem", color: "#71717A", margin: "0 0 0.875rem", lineHeight: 1.5 }}>Payments sent to your PayPal account by Rewardful.</p>
+              <p style={{ fontSize: "0.75rem", color: "#71717A", margin: "0 0 0.875rem", lineHeight: 1.5 }}>Payouts are sent to the PayPal email saved on your account.</p>
               <div>
                 {payouts.map(p => <PayoutRow key={p.id} p={p} />)}
               </div>

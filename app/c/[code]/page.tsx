@@ -1,16 +1,17 @@
+import { redirect } from "next/navigation";
 import { getAdminClient } from "@/lib/supabase/admin";
-import CookieSetter from "./CookieSetter";
+import { buildAffiliateRedirectUrl } from "@/lib/affiliate/links";
 
 interface Props {
   params: Promise<{ code: string }>;
 }
 
 /**
- * /c/[code] — Blank affiliate cookie-setter page.
+ * /c/[code] — Legacy affiliate redirect compatibility page.
  *
- * Fetches the destination URL from the DB server-side (no URL in query params,
- * no encoding issues). Renders an invisible client component that waits for the
- * Rewardful script to set the tracking cookie, then redirects to the destination.
+ * Older shared links may still point here from the Rewardful era. We now
+ * resolve the stored destination server-side and redirect immediately with the
+ * canonical FirstPromoter query parameter (`?fpr=`).
  */
 export default async function CookiePage({ params }: Props) {
   const { code } = await params;
@@ -23,7 +24,11 @@ export default async function CookiePage({ params }: Props) {
     .maybeSingle();
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://positives.life";
-  const destination = link?.destination ?? appUrl;
+  const redirectUrl = buildAffiliateRedirectUrl({
+    destination: link?.destination,
+    token: link?.token ?? code,
+    appUrl,
+  });
 
-  return <CookieSetter destination={destination} />;
+  redirect(redirectUrl.toString());
 }

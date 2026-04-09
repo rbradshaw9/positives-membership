@@ -17,9 +17,8 @@ import { config } from "@/lib/config";
  *   - No Stripe customer pre-created — customer_creation: "always" tells
  *     Stripe to create the customer during checkout so session.customer is
  *     always a valid customer ID in the webhook
- *   - client_reference_id is ONLY set when a Rewardful referral token is
- *     present. Its absence (without a referral) still routes to the guest
- *     checkout path in the webhook via the metadata.guest flag.
+ *   - client_reference_id is intentionally left unused in this path so the
+ *     guest flow stays clean and the webhook can rely on metadata.guest.
  *   - cancel_url goes to /join (not /subscribe) so the visitor can re-select
  *
  * Called from: app/join/actions.ts → startGuestCheckout
@@ -77,8 +76,8 @@ export async function createGuestCheckoutSession(
     //   2. Later use it to link the member as a child promoter in FP when
     //      they join the affiliate program (enables override commission)
     //
-    // NOTE: We use metadata.fpr (not client_reference_id) so client_reference_id
-    // remains available for Supabase userId in the auth-first path (Path A).
+    // NOTE: We use metadata.fpr (not client_reference_id) so the auth-first
+    // path can keep using metadata.userId without overloading referral logic.
     metadata: {
       guest: "true",
       priceId,

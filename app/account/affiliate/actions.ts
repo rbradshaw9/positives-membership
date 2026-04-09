@@ -195,13 +195,14 @@ export async function createAffiliateLinkAction(input: {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated." };
 
-  const { data: member } = await supabase
+  const admin = getAdminClient();
+  const { data: member } = await admin
     .from("member")
-    .select("rewardful_affiliate_token")
+    .select("fp_ref_id")
     .eq("id", user.id)
     .single();
 
-  const token = member?.rewardful_affiliate_token;
+  const token = member?.fp_ref_id;
   if (!token) return { error: "No affiliate account found. Enroll first." };
 
   const label = input.label.trim();
@@ -243,7 +244,6 @@ export async function createAffiliateLinkAction(input: {
   const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 50);
   const code = slug;
 
-  const admin = getAdminClient();
   const { data: link, error } = await admin
     .from("affiliate_link")
     .insert({ member_id: user.id, code, label, destination, token })
