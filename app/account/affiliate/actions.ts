@@ -3,16 +3,24 @@
 /**
  * app/account/affiliate/actions.ts
  *
- * Server action: provision a Rewardful affiliate account for the
- * currently authenticated member, caching their id + token on the
- * member row to avoid re-fetching on page load.
+ * Server action: provision a FirstPromoter affiliate account for the
+ * currently authenticated member, caching their FP promoter id + ref_id
+ * on the member row to avoid re-fetching on page load.
+ *
+ * The FP genealogy chain:
+ *   - member.referred_by_fpr is set at checkout time when they arrived via
+ *     an affiliate link (stored permanently — never expires).
+ *   - When they enroll as an affiliate, that ref_id is looked up in FP and
+ *     passed as parent_promoter_id, establishing the override commission chain.
+ *   - This chain persists regardless of how much time has passed since they
+ *     originally joined (6 months, 1 year, etc.)
  */
 
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { ensureAffiliate, getReferralToken, updateAffiliatePayPal, updateAffiliateLinkToken } from "@/lib/rewardful/client";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { syncAffiliate } from "@/lib/activecampaign/sync";
+import { ensureFpPromoter } from "@/lib/firstpromoter/client";
 
 export interface GetReferralLinkResult {
   referralLink: string;
@@ -47,66 +55,73 @@ export async function getReferralLinkAction(): Promise<
   const admin = getAdminClient();
   const { data: member } = await admin
     .from("member")
-    .select("name, rewardful_affiliate_token, rewardful_affiliate_id")
+    .select("name, fp_promoter_id, fp_ref_id, referred_by_fpr")
     .eq("id", user.id)
     .single();
 
-  // Return cached data if already an affiliate
-  if (member?.rewardful_affiliate_token && member?.rewardful_affiliate_id) {
+  // Return cached data if already enrolled as FP promoter
+  if (member?.fp_promoter_id && member?.fp_ref_id) {
     return {
-      referralLink: `https://positives.life?via=${member.rewardful_affiliate_token}`,
-      token: member.rewardful_affiliate_token,
-      affiliateId: member.rewardful_affiliate_id,
+      referralLink: `https://positives.life?fpr=${member.fp_ref_id}`,
+      token: member.fp_ref_id,
+      affiliateId: String(member.fp_promoter_id),
     };
   }
 
-  // ── Create / fetch Rewardful affiliate ────────────────────────────────────
+  // ── Create / fetch FirstPromoter promoter ────────────────────────────────────
   const nameParts = (member?.name ?? "").trim().split(/\s+/);
   const firstName = nameParts[0] ?? user.email.split("@")[0];
   const lastName = nameParts.slice(1).join(" ") || "Member";
 
-  let affiliate;
+  // The member's referred_by_fpr is set permanently at checkout time.
+  // Passing it here links this new promoter as a "child" under their referrer
+  // in FP — enabling the override commission chain.
+  // This works regardless of how long ago they originally joined.
+  const parentRefId = member?.referred_by_fpr ?? null;
+
+  let promoter;
   try {
-    affiliate = await ensureAffiliate({
+    promoter = await ensureFpPromoter({
       email: user.email,
-      first_name: firstName,
-      last_name: lastName,
+      firstName,
+      lastName,
+      parentRefId,
     });
   } catch (err) {
-    console.error("[Affiliate] ensureAffiliate failed:", err);
+    console.error("[Affiliate] ensureFpPromoter failed:", err);
     return {
       error: "Something went wrong setting up your referral link. Please try again.",
     };
   }
 
-  const token = getReferralToken(affiliate);
-  const affiliateId = affiliate.id;
+  const refId = promoter.ref_id;
+  const promoterId = promoter.id;
 
-  if (!token) {
-    console.error("[Affiliate] No referral token found on affiliate links:", affiliate);
+  if (!refId) {
+    console.error("[Affiliate] No ref_id found on FP promoter:", promoter);
     return { error: "Your referral link couldn't be retrieved. Please try again." };
   }
 
-  // ── Cache both id + token on member row ───────────────────────────────────
+  // ── Cache FP promoter id + ref_id on member row ───────────────────────────
   await admin
     .from("member")
     .update({
-      rewardful_affiliate_token: token,
-      rewardful_affiliate_id: affiliateId,
+      fp_promoter_id: promoterId,
+      fp_ref_id: refId,
     })
     .eq("id", user.id);
 
   // ── Sync to ActiveCampaign (applies 'affiliate' tag → triggers welcome email) ─
   await syncAffiliate({
     email: user.email,
-    referralToken: token,
-    affiliateId,
+    referralToken: refId,
+    affiliateId: String(promoterId),
   });
 
   return {
-    referralLink: `https://positives.life?via=${token}`,
-    token,
-    affiliateId,
+    referralLink: `https://positives.life?fpr=${refId}`,
+    token: refId,
+    affiliateId: String(promoterId),
   };
 }
 
@@ -140,21 +155,28 @@ export async function savePayPalEmailAction(
   const admin = getAdminClient();
   const { data: member } = await admin
     .from("member")
-    .select("rewardful_affiliate_id")
+    .select("fp_promoter_id")
     .eq("id", user.id)
     .single();
 
-  if (!member?.rewardful_affiliate_id) {
+  if (!member?.fp_promoter_id) {
     return { error: "You need to enroll as an affiliate first." };
   }
 
-  try {
-    await updateAffiliatePayPal(member.rewardful_affiliate_id, trimmed);
-    return { success: true };
-  } catch (err) {
-    console.error("[Affiliate] updateAffiliatePayPal failed:", err);
+  // Store PayPal email in the member table for our records.
+  // FP does not have a native PayPal field — payouts are handled via
+  // FP's payout settings or manual ACH/PayPal from the FP dashboard.
+  const { error: updateError } = await admin
+    .from("member")
+    .update({ paypal_email: trimmed })
+    .eq("id", user.id);
+
+  if (updateError) {
+    console.error("[Affiliate] savePayPalEmail DB update failed:", updateError);
     return { error: "Something went wrong. Please try again." };
   }
+
+  return { success: true };
 }
 
 // ── Create affiliate short link ────────────────────────────────────────────────
@@ -323,7 +345,7 @@ export async function updateAffiliateLinkAction(
   return { success: true };
 }
 
-// ── Update referral slug (Rewardful link token) ───────────────────────────────────
+// ── Update referral slug (FP ref_id / link tracking code) ────────────────────
 
 export async function updateReferralSlugAction(
   slugInput: string
@@ -349,44 +371,54 @@ export async function updateReferralSlugAction(
   const admin = getAdminClient();
   const { data: member } = await admin
     .from("member")
-    .select("rewardful_affiliate_id, rewardful_affiliate_token")
+    .select("fp_promoter_id, fp_ref_id")
     .eq("id", user.id)
     .single();
 
-  if (!member?.rewardful_affiliate_id) return { error: "No affiliate account found." };
-  if (member.rewardful_affiliate_token === slug) return { success: true, newToken: slug };
+  if (!member?.fp_promoter_id) return { error: "No affiliate account found." };
+  if (member.fp_ref_id === slug) return { success: true, newToken: slug };
 
-  // Fetch the affiliate to get the link ID
-  const { getAffiliate } = await import("@/lib/rewardful/client");
-  let linkId: string;
-  try {
-    const affiliate = await getAffiliate(member.rewardful_affiliate_id);
-    linkId = affiliate.links?.[0]?.id;
-    if (!linkId) return { error: "Could not find your referral link to update." };
-  } catch (err) {
-    console.error("[Affiliate] getAffiliate failed:", err);
-    return { error: "Could not fetch affiliate data. Please try again." };
-  }
+  // Update ref_id in FirstPromoter via PATCH /promoters/:id
+  const fpKey = process.env.FIRSTPROMOTER_API_KEY;
+  if (!fpKey) return { error: "Affiliate system configuration error. Please contact support." };
 
-  // Update token in Rewardful
   try {
-    await updateAffiliateLinkToken(linkId, slug);
+    const res = await fetch(
+      `https://firstpromoter.com/api/v1/promoters/${member.fp_promoter_id}`,
+      {
+        method: "PATCH",
+        headers: {
+          "x-api-key": fpKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ref_id: slug }),
+      }
+    );
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      if (res.status === 422 || text.includes("taken") || text.includes("already")) {
+        return { error: "That slug is already taken. Try a different one." };
+      }
+      throw new Error(`FP PATCH /promoters → ${res.status}: ${text}`);
+    }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "";
     if (msg.includes("taken") || msg.includes("422") || msg.includes("already"))
       return { error: "That slug is already taken. Try a different one." };
-    console.error("[Affiliate] updateAffiliateLinkToken failed:", err);
+    console.error("[Affiliate] FP slug update failed:", err);
     return { error: "Failed to update your referral link. Please try again." };
   }
 
-  // Cache updated token on the member row
+  // Cache updated ref_id on the member row
   await admin
     .from("member")
-    .update({ rewardful_affiliate_token: slug })
+    .update({ fp_ref_id: slug })
     .eq("id", user.id);
 
   return { success: true, newToken: slug };
 }
+
 
 // ── Save W9 form data ──────────────────────────────────────────────────────────
 

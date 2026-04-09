@@ -37,7 +37,7 @@ export default async function AccountPage() {
   const { data: member } = await supabase
     .from("member")
     .select(
-      "email, name, password_set, subscription_tier, subscription_status, stripe_customer_id, timezone, rewardful_affiliate_token, rewardful_affiliate_id"
+      "email, name, password_set, subscription_tier, subscription_status, stripe_customer_id, timezone, fp_ref_id, fp_promoter_id"
     )
     .eq("id", user!.id)
     .single();
@@ -145,7 +145,7 @@ export default async function AccountPage() {
 
             <section aria-labelledby="section-referral">
               <SectionLabel id="section-referral">Affiliate Program</SectionLabel>
-              {member?.rewardful_affiliate_id ? (
+              {member?.fp_promoter_id ? (
                 <SurfaceCard elevated className="surface-card--editorial">
                   <div className="flex items-center justify-between gap-4">
                     <div>

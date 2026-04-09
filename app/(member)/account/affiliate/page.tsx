@@ -2,13 +2,12 @@ import { createClient } from "@/lib/supabase/server";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { requireActiveMember } from "@/lib/auth/require-active-member";
 import {
-  getAffiliate,
-  getAffiliateCommissions,
-  getAffiliatePayouts,
-  type RewardfulAffiliate,
-  type RewardfulCommission,
-  type RewardfulPayout,
-} from "@/lib/rewardful/client";
+  getPromoterStats,
+  getPromoterCommissions,
+  getPromoterPayouts,
+  type AffiliateCommission,
+  type AffiliatePayout,
+} from "@/lib/firstpromoter/client";
 import { AffiliatePortal } from "@/components/affiliate/AffiliatePortal";
 
 export const metadata = {
@@ -31,23 +30,24 @@ export default async function AffiliatePage({
   const supabase = await createClient();
   const { data: row } = await supabase
     .from("member")
-    .select("rewardful_affiliate_id, rewardful_affiliate_token")
+    .select("fp_promoter_id, fp_ref_id, paypal_email")
     .eq("id", member.id)
     .single();
 
-  const affiliateId = row?.rewardful_affiliate_id ?? null;
-  const token = row?.rewardful_affiliate_token ?? null;
+  const promoterId  = row?.fp_promoter_id ?? null;
+  const token       = row?.fp_ref_id ?? null;
+  const paypalEmail = row?.paypal_email ?? "";
 
-  let affiliate: RewardfulAffiliate | null = null;
-  let commissions: RewardfulCommission[] = [];
-  let payouts: RewardfulPayout[] = [];
+  let stats: { visitors: number; leads: number; conversions: number } | null = null;
+  let commissions: AffiliateCommission[] = [];
+  let payouts: AffiliatePayout[] = [];
 
-  if (affiliateId) {
+  if (promoterId) {
     try {
-      [affiliate, commissions, payouts] = await Promise.all([
-        getAffiliate(affiliateId),
-        getAffiliateCommissions(affiliateId),
-        getAffiliatePayouts(affiliateId),
+      [stats, commissions, payouts] = await Promise.all([
+        getPromoterStats(promoterId),
+        getPromoterCommissions(promoterId),
+        getPromoterPayouts(promoterId),
       ]);
     } catch {
       // Non-fatal — render with partial data
@@ -69,30 +69,18 @@ export default async function AffiliatePage({
     .eq("member_id", member.id)
     .maybeSingle();
 
-  const link = affiliate?.links?.[0] ?? null;
-  const affiliateLinkId = link?.id ?? null;
-  const affiliateCreatedAt = affiliate?.created_at ?? null;
-
   return (
     <AffiliatePortal
-      isAffiliate={Boolean(affiliateId)}
-      affiliateId={affiliateId}
-      affiliateLinkId={affiliateLinkId}
-      affiliateCreatedAt={affiliateCreatedAt}
+      isAffiliate={Boolean(promoterId)}
+      affiliateId={promoterId ? String(promoterId) : null}
+      affiliateLinkId={null}
+      affiliateCreatedAt={null}
       token={token}
-      stats={
-        link
-          ? {
-              visitors: link.visitors,
-              leads: link.leads,
-              conversions: link.conversions,
-            }
-          : null
-      }
+      stats={stats}
       commissions={commissions}
       payouts={payouts}
       memberName={member.name ?? ""}
-      paypalEmail={affiliate?.paypal_email ?? ""}
+      paypalEmail={paypalEmail}
       initialLinks={affiliateLinks ?? []}
       existingW9={w9 ?? null}
       w9Preview={w9Preview}

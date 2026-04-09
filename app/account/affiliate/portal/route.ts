@@ -3,27 +3,18 @@
  *
  * GET /account/affiliate/portal
  *
- * Returns a one-time SSO URL for the member's Rewardful affiliate dashboard.
+ * Returns the affiliate dashboard URL for the current member.
  *
- * Returns JSON { url } instead of a server-side redirect.
- *
- * WHY: Rewardful's portal (positives.getrewardful.com) sits behind Cloudflare
- * bot protection. Opening the SSO URL via window.open() with "noopener,noreferrer"
- * strips the Referer header and detaches the browsing context — both signals
- * Cloudflare uses to flag traffic as automated. The Cloudflare challenge then
- * loops indefinitely because it can never fully trust the session.
- *
- * The client receives the URL and navigates via window.location.href (same tab).
- * This carries the full browser session: cookies, referrer, and browsing history —
- * all signals Cloudflare uses to confirm a real user, bypassing the challenge.
- *
- * ⚠️  The magic link expires in 60 seconds — never persist or log it.
+ * FirstPromoter does not have a server-side SSO API like Rewardful did.
+ * Affiliates log in directly at positives.firstpromoter.com using the email
+ * address they registered with. This route returns the portal URL as JSON
+ * so the client can navigate there via window.location.href (same-tab navigation
+ * carries cookies and browsing context through Cloudflare bot checks).
  */
 
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { getAffiliateSSO } from "@/lib/rewardful/client";
 import { getAdminClient } from "@/lib/supabase/admin";
 
 export async function GET() {
@@ -49,26 +40,20 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // ── Get affiliate ID from member row ──────────────────────────────────────
+  // ── Verify member is an affiliate ─────────────────────────────────────────
   const admin = getAdminClient();
   const { data: member } = await admin
     .from("member")
-    .select("rewardful_affiliate_id")
+    .select("fp_promoter_id")
     .eq("id", user.id)
     .single();
 
-  if (!member?.rewardful_affiliate_id) {
+  if (!member?.fp_promoter_id) {
     return NextResponse.json({ error: "Not an affiliate" }, { status: 404 });
   }
 
-  // ── Generate magic link and return as JSON ────────────────────────────────
-  try {
-    const sso = await getAffiliateSSO(member.rewardful_affiliate_id);
-    return NextResponse.json({ url: sso.url });
-  } catch (err) {
-    console.error("[Affiliate SSO] Failed to generate magic link:", err);
-    // Fallback URL — let client open generic login instead
-    return NextResponse.json({ url: "https://app.getrewardful.com/login" });
-  }
+  // ── Return the affiliate dashboard URL ───────────────────────────────────
+  // FP affiliates log in at the subdomain configured for the brand.
+  const portalUrl = "https://positives.firstpromoter.com";
+  return NextResponse.json({ url: portalUrl });
 }
-

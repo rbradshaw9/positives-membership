@@ -1,121 +1,105 @@
-# Resume — Positives Membership Platform
+# Session Resume — Positives Membership
 
-**Last updated:** 2026-04-07 @ ~9pm ET  
-**Branch:** `main` — all work committed and pushed  
-**Dev server:** `PORT=3015 npm run dev`  
-**Production:** https://positives.life
+> Last updated: 2026-04-09 · commit `97c8ebe` on `main`
 
 ---
 
-## ✅ What Was Completed Tonight
+## What was shipped this session
 
-### Affiliate Short Link System (100% done)
-- **`/go/[code]`** — Route Handler (`route.ts`) using `NextResponse.redirect()`. Looks up code in `affiliate_link` table, increments click counter, redirects to `/c/[code]` for external URLs or directly with `?via=TOKEN` for internal.
-- **`/c/[code]`** — Server component fetches destination from DB, passes to `CookieSetter` client component which waits 1.2s for Rewardful cookie, then redirects via `window.location.href`.
-- **`affiliate_link` DB table** — `id, member_id, code (UNIQUE), label, destination, token, clicks, created_at`
-- **Link Builder UI** — In the "My Link" tab of the Affiliate Portal. Create (name + URL), Copy, Edit destination (✏️ inline), Delete.
-- **URL generation** — Code is now `label-slug` only (e.g. `positives.life/go/my-blog`), no token prefix.
-- **URL validation** — Server-side: normalizes bare domains, rejects non-http/https, localhost, private IPs.
-- **Server actions** — `createAffiliateLinkAction`, `updateAffiliateLinkAction`, `deleteAffiliateLinkAction`
-- **Verified working** — Redirect tested live: `/go/ryan-level-3-test-test-link` → Google ✅
+### 1. Affiliate Portal (feature-complete)
+**Files:** `components/affiliate/AffiliatePortal.tsx`, `app/(member)/account/affiliate/page.tsx`, `app/account/affiliate/actions.ts`
 
----
+- **Slug Customizer** — inline editor in the "My Link" tab, calls `updateReferralSlugAction`, warns that old links stop tracking on save, shows "✓ Updated!" flash + "Affiliate since [Month Year]" footer
+- **Payout History** — `PayoutRow` component in the "Earnings" tab (paid/processing/due/pending states), only renders if payouts exist
+- **W9 Collection Form** — full IRS-compliant W9: legal name, business name, 7-option tax classification, SSN/EIN, address, city/state (all 50 + DC)/ZIP, e-signature block
+  - Soft amber warning at ≥ $500 earned (unfiled)
+  - Hard red gate at ≥ $600 earned (unfiled) — blocks payout narrative
+  - Pre-fills from `existingW9` if already on file; collapses to "W-9 on file ✅" with "Update" button
+- **W9 DEV preview** — `?w9_preview=soft` or `?w9_preview=hard` on `/account/affiliate` simulates the threshold states **in non-production only**. A purple `🧪 DEV PREVIEW` pill appears above the W9 card.
 
-## 🔴 Next Priority — ActiveCampaign Lifecycle Automations
-
-This is the **#1 blocking item** for launch. Members aren't getting:
-- Onboarding drip after signup
-- Affiliate welcome after enrollment
-- Past-due recovery emails (tokens are implemented, AC automation is not)
-- Canceled win-back sequence
-
-### Context
-- Billing recovery signing tokens: **implemented** in `server/services/stripe/handle-subscription.ts` and `app/api/billing-portal/route.ts`
-- AC sync: `lib/activecampaign/sync.ts` — fires on subscription events
-- Past due hook: sends `status=past_due` to AC. The automation needs to send the 1-click billing link.
-- Playbook for all automations: was written in a prior session — check the conversation logs for `9f01dc9a` (Finalizing Positives Membership Automation)
-
-### Automations to build in AC
-1. **Member Onboarding** (trigger: added to list → tag `member-active`)  
-   - Day 0: Welcome + what to expect  
-   - Day 2: Your first 10-minute practice  
-   - Day 7: Check-in + quick win  
-
-2. **Affiliate Welcome** (trigger: tag `affiliate-enrolled`)  
-   - Day 0: Your link + link builder intro  
-   - Day 3: Swipe copy + share tips  
-
-3. **Past Due Recovery** (trigger: tag `billing-past-due`)  
-   - Immediately: "Update your payment" with 1-click billing portal link  
-   - Day 3: Second attempt  
-   - Day 7: Final warning  
-   - Day 10: Cancel + win-back sequence begins  
-
-4. **Canceled Win-Back** (trigger: tag `member-canceled`)  
-   - Day 0: "We're sorry to see you go" + soft re-engagement  
-   - Day 14: Value reminder  
-   - Day 30: Special offer  
+**Database:** Migration `supabase/migrations/20260408190000_create_member_w9.sql` is already pushed to remote.
 
 ---
 
-## 🟡 Also Needed Before Launch
+### 2. Real-time Streak Badge on `/today`
+**Files:** `components/today/StreakBadge.tsx` (new), `app/(member)/today/actions.ts`, `app/(member)/today/page.tsx`, `components/member/audio/MemberAudioProvider.tsx`
 
-### `support@positives.life` Mailbox
-- Needed as reply-to on all transactional emails
-- Options: Cloudflare Email Routing → forward to Gmail, or Zoho Mail free tier
-- Currently emails go out with a no-reply setup — bounces have no support path
-
-### Verify Rewardful Cookie Flow End-to-End
-- Test that visiting `positives.life/go/[code]` (external) → `/c/[code]` → destination actually sets the `via` cookie that Rewardful sees at checkout
-- Check Rewardful dashboard after a test conversion to confirm attribution
+- `markListened` now returns `{ newStreak: number }` instead of `void`
+- `MemberAudioProvider` dispatches `window.CustomEvent("positives:streak-updated", { detail: { newStreak } })` after resolution
+- `StreakBadge` is a client component that reads `initialStreak` (SSR) and subscribes to the event — badge updates + 3-second teal glow pulse on increment, no page reload
 
 ---
 
-## 🟢 Deferred / Post-Launch
+### 3. `/today` — Monthly Audio Archive Fix
+**File:** `lib/queries/get-monthly-daily-audios.ts`
 
-| Item | Notes |
-|---|---|
-| VIP affiliate tier | Second Rewardful campaign at 30% for top performers |
-| Affiliate sub-ID tracking | `?sid=` on links for ad/email channel breakdowns |
-| Google Drive ingestion | Content pipeline |
-| Castos automation | Podcast episode sync |
-| AI embeddings | Schema exists, not populated |
-| Role-based admin auth | After L1 launch |
+- The query was filtering `publish_date < today` which excluded any audios where `publish_date = NULL` (older admin-published content only has `published_at`)
+- Now uses `.or()` to match both: rows with `publish_date` in range, AND rows where `publish_date IS NULL` but `published_at` falls in range
+- Backfills `publish_date` from `published_at` date portion for display consistency
+- No data changes needed — content shows up automatically
 
 ---
 
-## Key Files
+### 4. Account Page — Dark-on-Dark Name Fix
+**File:** `app/globals.css`
 
-| File | Purpose |
-|---|---|
-| `app/go/[code]/route.ts` | Affiliate redirect Route Handler |
-| `app/c/[code]/page.tsx` | Cookie-setter server component |
-| `app/c/[code]/CookieSetter.tsx` | Client redirect after Rewardful fires |
-| `components/affiliate/AffiliatePortal.tsx` | Full affiliate portal UI |
-| `app/account/affiliate/actions.ts` | All affiliate server actions |
-| `app/(member)/account/affiliate/page.tsx` | Page that fetches + renders portal |
-| `proxy.ts` | Auth middleware (this version of Next.js uses proxy.ts, NOT middleware.ts) |
-| `lib/activecampaign/sync.ts` | AC contact sync on lifecycle events |
-| `server/services/stripe/handle-subscription.ts` | Stripe webhook → billing state |
-| `CURRENT_IMPLEMENTATION_TRUTH.md` | Full system source of truth |
+- The global `h2 { color: var(--color-foreground) }` rule (dark text) was overriding Tailwind's `text-white` inside `.surface-card--dark` (the member profile hero card on `/account`)
+- Fixed by adding `--color-foreground: #ffffff` and `--color-muted-fg: rgba(255,255,255,0.55)` as CSS variable overrides on `.surface-card--dark` — all headings inside any dark card now inherit white automatically
 
 ---
 
-## Quick Commands
+## Known next steps / things to verify
 
-```bash
-# Dev server
-PORT=3015 npm run dev
+| Item | Status | Notes |
+|---|---|---|
+| W9 form E2E test | ⬜ Pending | Test submission flow with a real account via `?w9_preview=hard`, verify Supabase row is created |
+| Slug customizer E2E | ⬜ Pending | Confirm Rewardful updates the token correctly and old link stops redirecting |
+| Streak real-time | ⬜ Pending | Play today's audio to 80% and confirm badge updates without reload |
+| Archive fix | ⬜ Pending | Verify all April audios now appear in the bottom playlist on `/today` |
+| `member_w9` RLS | ✅ Done | Policies applied via migration — members can only read/write their own row |
 
-# Type check
-npx tsc --noEmit
+---
 
-# Push
-git add -A && git commit -m "..." && git push
+## Key file map
+
+```
+app/(member)/today/
+  page.tsx                     # Server page — fetches streak, passes to <StreakBadge>
+  actions.ts                   # markListened (returns newStreak), syncListeningProgress, markTrackCompleted
+
+app/(member)/account/
+  page.tsx                     # Account settings page — uses SurfaceCard tone="dark"
+  affiliate/
+    page.tsx                   # Reads ?w9_preview param, fetches Rewardful + W9 data
+    actions.ts  (→ app/account/affiliate/actions.ts)   # saveW9Action, updateReferralSlugAction
+
+components/
+  today/
+    StreakBadge.tsx             # NEW — client component, subscribes to positives:streak-updated
+    DailyPracticeCard.tsx       # Primary audio card on /today
+    MonthlyAudioArchive.tsx     # Bottom playlist section — month-grouped audio rows
+  member/audio/
+    MemberAudioProvider.tsx     # Dispatches positives:streak-updated after markListened
+  affiliate/
+    AffiliatePortal.tsx         # Full affiliate portal UI (1900+ lines)
+
+lib/
+  queries/get-monthly-daily-audios.ts   # Fixed — falls back to published_at
+  streak/compute-streak.ts              # computeNewStreak, isStreakActive
+  rewardful/client.ts                   # Rewardful API wrapper
+
+supabase/migrations/
+  20260408190000_create_member_w9.sql   # member_w9 table + RLS
+
+app/globals.css                # .surface-card--dark now has --color-foreground: #ffffff
 ```
 
-## Important: Next.js Version Note
-This project uses **Next.js 16+** which has breaking changes:
-- Middleware is **`proxy.ts`** (not `middleware.ts`)
-- Always use **Route Handlers** (`route.ts`) for redirect-only endpoints, not Server Components with `redirect()`
-- Read `node_modules/next/dist/docs/` before using unfamiliar APIs
+---
+
+## Design tokens (quick ref)
+- Teal (primary): `#2EC4B6`
+- Sky Blue (secondary): `#44A8D8`
+- Amber (accent / warning): `#F59E0B`
+- Dark surface: `#0A0A0A`
+- Font heading: Montserrat
+- Font body: Poppins
