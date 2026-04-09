@@ -1,7 +1,7 @@
 # CURRENT_IMPLEMENTATION_TRUTH.md
 
 *Verified against the linked Supabase project, current codebase, generated TypeScript types, local migration history, and launch audit output.*\
-*Last verified: 2026-04-07 — local working tree + linked project*
+*Last verified: 2026-04-09 — local working tree + linked project*
 
 ---
 
@@ -18,7 +18,7 @@ Positives is preparing for a **Level 1 public launch** (founding member pricing)
 - Admin content, month, and member tooling
 - `/upgrade` self-serve upgrade path for L2 and L3 (ready, not yet promoted)
 - Transactional email via Resend (welcome, receipt, payment-failed) ✅
-- Affiliate referral program via Rewardful ✅
+- Affiliate referral program via FirstPromoter ✅
 - 1-click billing recovery for past-due members ✅
 
 ### Explicitly out of launch scope
@@ -29,7 +29,7 @@ Positives is preparing for a **Level 1 public launch** (founding member pricing)
 - Google Drive ingestion
 - Castos automation
 - AI embeddings / semantic search population
-- 2-tier affiliate commissions (Rewardful is single-tier only)
+- Advanced multi-tier affiliate reporting beyond the current FirstPromoter portal
 
 ---
 
@@ -42,7 +42,7 @@ Positives is preparing for a **Level 1 public launch** (founding member pricing)
 - Supabase redirect allowlist: `https://positives.life/**`, `https://positives-membership.vercel.app/**`, `http://localhost:3000/**` ✅
 - Stripe webhook: `https://positives.life/api/webhooks/stripe` ✅
 - Resend sending domain: `positives.life` — verified ✅
-- Rewardful campaign URL: `https://positives.life` ✅
+- FirstPromoter branded portal: `https://positives.firstpromoter.com` ✅
 
 ---
 
@@ -94,22 +94,22 @@ All prices are **founding member rates**. Retail pricing exists in the roadmap b
 - Stripe webhook tier map supports L1–L4 including custom L4 subscriptions via `metadata.assigned_tier`
 - 1-click billing recovery: HMAC-signed tokens (`lib/auth/billing-token.ts`) with 7-day expiry, allows past-due members to access Stripe billing portal without login
 
-### Affiliate Program — Rewardful ✅ Live
+### Affiliate Program — FirstPromoter ✅ Live
 
-- **Platform:** Rewardful (single-tier, 20% recurring commission)
-- **Tracking:** `RewardfulTracker` component in root `layout.tsx` captures referral cookies on every page
-- **Checkout integration:** `app/join/actions.ts` reads the Rewardful cookie client-side and passes it to Stripe as `client_reference_id` — Rewardful auto-detects conversions via Stripe webhooks
+- **Platform:** FirstPromoter (20% recurring commission)
+- **Tracking:** FirstPromoter is initialized in `app/layout.tsx`; marketing checkout reads the `_fprom_track` cookie and submits `fpr` into Stripe metadata
+- **Checkout integration:** `app/join/actions.ts` forwards `metadata.fpr`; `server/services/stripe/handle-checkout.ts` stores `member.referred_by_fpr` and calls `trackFpSale()`
 - **Portal:** `/account/affiliate` — native 4-tab portal (My Link, Stats, Share Kit, Earnings)
-  - **My Link** — referral link display + copy, commission callout, Rewardful SSO link
-  - **Stats** — clicks, leads, conversions from Rewardful API
+  - **My Link** — primary `https://positives.life?fpr={ref_id}` share link, slug customizer, and app-managed short links from `affiliate_link`
+  - **Stats** — all-time visitors, leads, and member conversions from FirstPromoter
   - **Share Kit** — email swipes (2), SMS templates (2), DM scripts (2), social captions (3 platforms), key talking points
-  - **Earnings** — total paid/pending, PayPal payout setup (saves to Rewardful API), commission history, W-9 tax info note
-- **Enrollment:** `ensureAffiliate()` (idempotent create-or-fetch) + cache affiliate ID/token on `member` row
-- **AC sync:** `syncAffiliate()` applies `affiliate` tag and stores referral token in custom field → triggers welcome automation
-- **Referral link format:** `https://positives.life?via={token}` (homepage landing)
-- **API client:** `lib/rewardful/client.ts` — getAffiliate, getAffiliateByEmail, createAffiliate, ensureAffiliate, getAffiliateSSO, getAffiliateCommissions, updateAffiliatePayPal
-- **Server actions:** `app/account/affiliate/actions.ts` — getReferralLinkAction, savePayPalEmailAction
-- **SSO route:** `app/account/affiliate/portal/route.ts` — generates a magic login link to Rewardful branded portal
+  - **Earnings** — FirstPromoter commission + payout history, PayPal payout details stored on `member.paypal_email`, W-9 support
+- **Enrollment:** `ensureFpPromoter()` (idempotent create-or-fetch) + caches `fp_promoter_id` and `fp_ref_id` on `member`
+- **Genealogy:** `member.referred_by_fpr` is stored at checkout and used as the parent promoter when a referred member later enrolls as an affiliate
+- **AC sync:** `syncAffiliate()` applies the `affiliate` tag and stores `affiliate_link`, `affiliate_token`, and `affiliate_portal` custom fields
+- **Referral link format:** `https://positives.life?fpr={token}`
+- **API client:** `lib/firstpromoter/client.ts` — `ensureFpPromoter`, `findPromoterByRefId`, `getPromoterStats`, `getPromoterCommissions`, `getPromoterPayouts`, `trackFpSale`
+- **Portal route:** `app/account/affiliate/portal/route.ts` returns the branded FirstPromoter portal URL for the current affiliate
 
 ### Email — Resend ✅ Live
 
@@ -129,7 +129,7 @@ All prices are **founding member rates**. Retail pricing exists in the roadmap b
 
 - **Sync module:** `lib/activecampaign/sync.ts` — `syncMemberToAC()`, `syncAffiliate()`
 - **Guard:** All AC calls gated by `acIsConfigured()` — gracefully no-ops if API keys aren't set
-- **Custom fields:** membership_tier, stripe_customer_id, rewardful_referral_token
+- **Custom fields:** membership_tier, stripe_customer_id, affiliate_link, affiliate_token, affiliate_portal
 - **Tags:** affiliate, level_1, level_2, level_3, level_4, past_due, canceled
 - **Automations pending:** Past Due Recovery, Canceled Win-Back, Affiliate Welcome
 
@@ -166,8 +166,9 @@ All production-required secrets are documented in `.env.example`. Key variables:
 | `RESEND_API_KEY` | Transactional email |
 | `CRON_SECRET` | Protects `/api/cron/*` endpoints |
 | `BILLING_TOKEN_SECRET` | HMAC-SHA256 for 1-click billing recovery tokens |
-| `REWARDFUL_API_KEY` | Rewardful public key (client-side tracking) |
-| `REWARDFUL_API_SECRET` | Rewardful server-side API auth |
+| `FIRSTPROMOTER_API_KEY` | FirstPromoter private API key |
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | GA4 client measurement ID |
+| `GA_MEASUREMENT_PROTOCOL_API_SECRET` | GA4 server-side Measurement Protocol secret |
 | `ACTIVECAMPAIGN_API_URL` | AC API base URL |
 | `ACTIVECAMPAIGN_API_KEY` | AC API key |
 
@@ -206,9 +207,13 @@ All production-required secrets are documented in `.env.example`. Key variables:
 
 | Column | Type | Purpose |
 |---|---|---|
-| `rewardful_referral_id` | text | The referral ID from Rewardful (set at checkout) |
-| `rewardful_affiliate_token` | text | Affiliate's referral token (e.g., "ryan") |
-| `rewardful_affiliate_id` | text | Affiliate's Rewardful UUID |
+| `referred_by_fpr` | text | Permanent FirstPromoter referrer code captured at checkout |
+| `fp_promoter_id` | bigint | Cached FirstPromoter promoter ID for the affiliate |
+| `fp_ref_id` | text | Affiliate referral slug used in `?fpr=` links |
+| `paypal_email` | text | Payout coordination email saved in the Positives app |
+| `affiliate_id` | text | Legacy/alias affiliate identifier still present in remote schema |
+| `affiliate_token` | text | Legacy/alias referral token still present in remote schema |
+| `referral_id` | text | Legacy/alias referral identifier still present in remote schema |
 
 ### Member snapshot (as of 2026-04-07)
 
@@ -235,9 +240,9 @@ All production-required secrets are documented in `.env.example`. Key variables:
 
 ## Migration Truth
 
-### Current migration inventory (33 files — verified aligned with Supabase)
+### Current migration inventory
 
-Migrations are timestamp-prefixed. The repo now includes the onboarding-sequence and Rewardful member-field migrations that had previously existed only in the remote project.
+Migrations are timestamp-prefixed. As of 2026-04-09, the linked project still has four remote-only migrations not yet represented locally: `20260409142221`, `20260409142608`, `20260409142848`, and `20260409143604`.
 
 ---
 
@@ -277,8 +282,8 @@ Migrations are timestamp-prefixed. The repo now includes the onboarding-sequence
 | Event system | ⚠️ Not implemented |
 | Role-based admin auth | ⚠️ Deferred until after L1 launch |
 | `support@positives.life` mailbox | ⚠️ Email routing needed (Cloudflare or Zoho) |
-| 2-tier affiliate commissions | ⚠️ Rewardful is single-tier — defer or build custom |
-| VIP affiliate tier | 💡 Future — create a second Rewardful campaign (e.g., 30% rate) for affiliates who hit 10+ conversions. |
+| Advanced multi-tier affiliate reporting | ⚠️ Not yet built on top of the current FirstPromoter setup |
+| VIP affiliate tier | 💡 Future — model a higher-commission program intentionally in FirstPromoter |
 | Affiliate sub-ID tracking | 💡 Future — `?sid=` parameter on referral links for tracking ads, emails, channels. |
 
 ---
@@ -294,5 +299,5 @@ Gates before broad launch:
 3. Configure ActiveCampaign lifecycle sequences (onboarding, engagement, upgrade nurture)
 4. ~~Verify forward content window through June 1~~ ✅ Done — launch audit green
 5. ~~Run Playwright E2E smoke test end-to-end~~ ✅ Done — member and admin smokes green
-6. ~~Build affiliate referral program~~ ✅ Done — Rewardful + native portal live
+6. ~~Build affiliate referral program~~ ✅ Done — FirstPromoter + native portal live
 7. Rehearse production signup → payment → success-page login → welcome email → receipt email → playback flow

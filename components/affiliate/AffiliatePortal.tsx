@@ -14,17 +14,15 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { getReferralLinkAction, savePayPalEmailAction, createAffiliateLinkAction, deleteAffiliateLinkAction, updateAffiliateLinkAction, updateReferralSlugAction, saveW9Action } from "@/app/account/affiliate/actions";
-import type { AffiliateCommission, AffiliatePayout } from "@/lib/firstpromoter/client";
+import type {
+  AffiliateCommission,
+  AffiliatePayout,
+  PromoterStats,
+} from "@/lib/firstpromoter/client";
 import type { W9FormData } from "@/app/account/affiliate/actions";
 import { track } from "@/lib/analytics/ga";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-interface Stats {
-  visitors: number;
-  leads: number;
-  conversions: number;
-}
 
 interface AffiliateLink {
   id: string;
@@ -53,7 +51,7 @@ interface Props {
   affiliateLinkId: string | null;
   affiliateCreatedAt: string | null;
   token: string | null;
-  stats: Stats | null;
+  stats: PromoterStats | null;
   commissions: AffiliateCommission[];
   payouts: AffiliatePayout[];
   memberName: string;
@@ -169,7 +167,7 @@ const TALKING_POINTS = [
   "20% recurring commission — for as long as each member stays active",
   "Positives members listen daily — this is a high-retention product",
   "No approval needed — your link is live the moment you enroll",
-  "Commissions are paid monthly via direct deposit or PayPal",
+  "Payouts are coordinated monthly using the payment details on your account",
   "Authentic recommendation only — share with people who would genuinely love it",
 ];
 
@@ -1507,10 +1505,10 @@ export function AffiliatePortal({
           {/* Link Builder */}
           {currentToken && <LinkBuilder token={currentToken} initialLinks={initialLinks ?? []} />}
 
-          {/* Quick-stats peek (if any data) */}
+            {/* Quick-stats peek (if any data) */}
           {stats && (stats.visitors > 0 || stats.conversions > 0) && (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
-              <StatChip label="Clicks" value={stats.visitors} />
+              <StatChip label="Visitors" value={stats.visitors} />
               <StatChip label="Leads"  value={stats.leads}    />
               <StatChip label="Members" value={stats.conversions} />
             </div>
@@ -1528,7 +1526,7 @@ export function AffiliatePortal({
           {stats ? (
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.875rem" }}>
-                <StatChip label="Clicks"  value={stats.visitors}    />
+                <StatChip label="Visitors" value={stats.visitors}   />
                 <StatChip label="Leads"   value={stats.leads}       />
                 <StatChip label="Members" value={stats.conversions} />
               </div>
@@ -1541,7 +1539,7 @@ export function AffiliatePortal({
                 }}
               >
                 <p style={{ fontSize: "0.8rem", color: "#71717A", margin: 0, lineHeight: 1.55 }}>
-                  Stats reflect all-time activity on your referral link. Updates may take up to 24 hours to appear.
+                  These totals come from FirstPromoter and reflect all-time visitors, leads, and member conversions attributed to your referral code. Updates may take up to 24 hours to appear.
                 </p>
               </div>
             </div>
@@ -1817,7 +1815,7 @@ export function AffiliatePortal({
           {paypalEmail.trim() ? (
             <div style={{ background: "#FFFFFF", border: "1.5px solid #E4E4E7", borderRadius: "1.25rem", padding: "1.5rem", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
               <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "0.9rem", fontWeight: 700, color: "#09090B", marginBottom: "0.25rem", letterSpacing: "-0.02em" }}>💳 Payout Settings</h2>
-              <p style={{ fontSize: "0.8rem", color: "#71717A", marginBottom: "1rem", lineHeight: 1.5 }}>Update your PayPal email to change where commissions are sent.</p>
+              <p style={{ fontSize: "0.8rem", color: "#71717A", marginBottom: "1rem", lineHeight: 1.5 }}>Save the PayPal email Positives should use when coordinating your affiliate payouts.</p>
               <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
                 <input id="paypal-email-input" type="email" placeholder="your-paypal@email.com" value={paypalEmail} onChange={e => setPaypalEmail(e.target.value)}
                   style={{ flex: 1, padding: "0.75rem 1rem", fontSize: "0.875rem", border: "1.5px solid #E4E4E7", borderRadius: "0.875rem", outline: "none", fontFamily: "var(--font-sans)", color: "#09090B", background: "#FAFAFA", transition: "border-color 0.2s" }}
@@ -1831,13 +1829,13 @@ export function AffiliatePortal({
                 </button>
               </div>
               {paypalError && <p style={{ fontSize: "0.8rem", color: "#EF4444", marginTop: "0.5rem" }}>{paypalError}</p>}
-              {paypalSaved && <p style={{ fontSize: "0.8rem", color: "#16A34A", marginTop: "0.5rem" }}>PayPal email saved. Commissions will be sent to this address.</p>}
+              {paypalSaved && <p style={{ fontSize: "0.8rem", color: "#16A34A", marginTop: "0.5rem" }}>PayPal email saved. We&apos;ll use this address for affiliate payout coordination.</p>}
             </div>
           ) : (
             <div style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: "1rem", padding: "1rem 1.25rem" }}>
               <span style={{ fontSize: "1.1rem", lineHeight: 1, flexShrink: 0 }}>⚠️</span>
               <div style={{ flex: 1 }}>
-                <p style={{ margin: "0 0 0.625rem", fontSize: "0.85rem", fontWeight: 700, color: "#92400E", lineHeight: 1.4 }}>Add a PayPal email to receive your commissions</p>
+                <p style={{ margin: "0 0 0.625rem", fontSize: "0.85rem", fontWeight: 700, color: "#92400E", lineHeight: 1.4 }}>Add a PayPal email so we can coordinate your affiliate payouts</p>
                 <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
                   <input id="earnings-paypal-input" type="email" placeholder="your-paypal@email.com" value={paypalEmail} onChange={e => setPaypalEmail(e.target.value)}
                     style={{ flex: 1, padding: "0.625rem 0.875rem", fontSize: "0.83rem", border: "1.5px solid rgba(245,158,11,0.35)", borderRadius: "0.75rem", outline: "none", fontFamily: "var(--font-sans)", color: "#09090B", background: "rgba(255,255,255,0.8)", transition: "border-color 0.2s" }}
@@ -1900,7 +1898,7 @@ export function AffiliatePortal({
           {payouts.length > 0 && (
             <div style={{ background: "#FFFFFF", border: "1.5px solid #E4E4E7", borderRadius: "1.25rem", padding: "1.5rem", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
               <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "0.9rem", fontWeight: 700, color: "#09090B", marginBottom: "0.125rem", letterSpacing: "-0.02em" }}>Payout History</h2>
-              <p style={{ fontSize: "0.75rem", color: "#71717A", margin: "0 0 0.875rem", lineHeight: 1.5 }}>Payouts are sent to the PayPal email saved on your account.</p>
+              <p style={{ fontSize: "0.75rem", color: "#71717A", margin: "0 0 0.875rem", lineHeight: 1.5 }}>This history reflects payouts recorded in FirstPromoter. Keep your PayPal email current so payout coordination stays smooth.</p>
               <div>
                 {payouts.map(p => <PayoutRow key={p.id} p={p} />)}
               </div>

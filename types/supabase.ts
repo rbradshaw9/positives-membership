@@ -789,23 +789,23 @@ export type Database = {
       }
       member: {
         Row: {
+          affiliate_id: string | null
+          affiliate_token: string | null
           avatar_url: string | null
           created_at: string
           email: string
           email_unsubscribed: boolean
-          id: string
-          last_practiced_at: string | null
           fp_promoter_id: number | null
           fp_ref_id: string | null
+          id: string
+          last_practiced_at: string | null
           name: string | null
           onboarding_token: string | null
           password_set: boolean
           paypal_email: string | null
           practice_streak: number
-          referred_by_fpr: string | null
-          affiliate_id: string | null
-          affiliate_token: string | null
           referral_id: string | null
+          referred_by_fpr: string | null
           stripe_customer_id: string | null
           subscription_end_date: string | null
           subscription_status: Database["public"]["Enums"]["subscription_status"]
@@ -815,6 +815,8 @@ export type Database = {
           timezone: string
         }
         Insert: {
+          affiliate_id?: string | null
+          affiliate_token?: string | null
           avatar_url?: string | null
           created_at?: string
           email: string
@@ -828,10 +830,8 @@ export type Database = {
           password_set?: boolean
           paypal_email?: string | null
           practice_streak?: number
-          referred_by_fpr?: string | null
-          affiliate_id?: string | null
-          affiliate_token?: string | null
           referral_id?: string | null
+          referred_by_fpr?: string | null
           stripe_customer_id?: string | null
           subscription_end_date?: string | null
           subscription_status?: Database["public"]["Enums"]["subscription_status"]
@@ -841,6 +841,8 @@ export type Database = {
           timezone?: string
         }
         Update: {
+          affiliate_id?: string | null
+          affiliate_token?: string | null
           avatar_url?: string | null
           created_at?: string
           email?: string
@@ -854,10 +856,8 @@ export type Database = {
           password_set?: boolean
           paypal_email?: string | null
           practice_streak?: number
-          referred_by_fpr?: string | null
-          affiliate_id?: string | null
-          affiliate_token?: string | null
           referral_id?: string | null
+          referred_by_fpr?: string | null
           stripe_customer_id?: string | null
           subscription_end_date?: string | null
           subscription_status?: Database["public"]["Enums"]["subscription_status"]

@@ -1,6 +1,6 @@
 # Session Resume — Positives Membership
 
-> Last updated: 2026-04-09 · commit `97c8ebe` on `main`
+> Last updated: 2026-04-09 · after FirstPromoter cleanup on `main`
 
 ---
 
@@ -53,7 +53,7 @@
 | Item | Status | Notes |
 |---|---|---|
 | W9 form E2E test | ⬜ Pending | Test submission flow with a real account via `?w9_preview=hard`, verify Supabase row is created |
-| Slug customizer E2E | ⬜ Pending | Confirm Rewardful updates the token correctly and old link stops redirecting |
+| Slug customizer E2E | ⬜ Pending | Confirm FirstPromoter updates the slug correctly and old links behave as expected |
 | Streak real-time | ⬜ Pending | Play today's audio to 80% and confirm badge updates without reload |
 | Archive fix | ⬜ Pending | Verify all April audios now appear in the bottom playlist on `/today` |
 | `member_w9` RLS | ✅ Done | Policies applied via migration — members can only read/write their own row |
@@ -70,7 +70,7 @@ app/(member)/today/
 app/(member)/account/
   page.tsx                     # Account settings page — uses SurfaceCard tone="dark"
   affiliate/
-    page.tsx                   # Reads ?w9_preview param, fetches Rewardful + W9 data
+    page.tsx                   # Reads ?w9_preview param, fetches FirstPromoter + W9 data
     actions.ts  (→ app/account/affiliate/actions.ts)   # saveW9Action, updateReferralSlugAction
 
 components/
@@ -86,7 +86,8 @@ components/
 lib/
   queries/get-monthly-daily-audios.ts   # Fixed — falls back to published_at
   streak/compute-streak.ts              # computeNewStreak, isStreakActive
-  rewardful/client.ts                   # Rewardful API wrapper
+  firstpromoter/client.ts               # FirstPromoter API wrapper
+  affiliate/links.ts                    # Canonical ?fpr= redirect helper for /go and legacy /c
 
 supabase/migrations/
   20260408190000_create_member_w9.sql   # member_w9 table + RLS

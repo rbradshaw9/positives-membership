@@ -5,6 +5,7 @@ import {
   getPromoterStats,
   getPromoterCommissions,
   getPromoterPayouts,
+  type PromoterStats,
   type AffiliateCommission,
   type AffiliatePayout,
 } from "@/lib/firstpromoter/client";
@@ -38,7 +39,7 @@ export default async function AffiliatePage({
   const token       = row?.fp_ref_id ?? null;
   const paypalEmail = row?.paypal_email ?? "";
 
-  let stats: { visitors: number; leads: number; conversions: number } | null = null;
+  let stats: PromoterStats | null = null;
   let commissions: AffiliateCommission[] = [];
   let payouts: AffiliatePayout[] = [];
 
