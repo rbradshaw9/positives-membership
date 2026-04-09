@@ -23,8 +23,8 @@ export const metadata: Metadata = {
   description:
     "Positives is a practice-based membership platform for daily grounding, emotional resilience, and personal growth. Members return to it — they don't complete it.",
   icons: {
-    icon: "/logos/png/positives-logos_positives-icon.png",
-    shortcut: "/logos/png/positives-logos_positives-icon.png",
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
     apple: "/logos/png/positives-logos_positives-icon.png",
   },
 };
