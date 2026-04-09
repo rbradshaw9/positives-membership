@@ -16,6 +16,7 @@ import { MonthlyThemeCard } from "@/components/today/MonthlyThemeCard";
 import { MonthlyAudioArchive } from "@/components/today/MonthlyAudioArchive";
 import { WeeklyArchive } from "@/components/today/WeeklyArchive";
 import { StreakBadge } from "@/components/today/StreakBadge";
+import { TodayListenStatusBadge } from "@/components/today/TodayListenStatusBadge";
 
 
 /**
@@ -140,7 +141,13 @@ export default async function TodayPage() {
               )}
             </div>
 
-            <StreakBadge initialStreak={streak} />
+            <div className="flex shrink-0 flex-col items-end gap-2">
+              <StreakBadge initialStreak={streak} />
+              <TodayListenStatusBadge
+                initialHasListened={listenedToday}
+                contentId={todayContent?.id ?? null}
+              />
+            </div>
           </div>
         </div>
       </section>

@@ -277,6 +277,11 @@ export function MemberAudioProvider({
       // Fire-and-forget but capture the new streak to push to the UI in real time
       markListened(track.onCompleteAction.contentId).then(({ newStreak }) => {
         window.dispatchEvent(
+          new CustomEvent("positives:today-listened", {
+            detail: { contentId: track.onCompleteAction?.contentId },
+          })
+        );
+        window.dispatchEvent(
           new CustomEvent("positives:streak-updated", { detail: { newStreak } })
         );
       }).catch(() => {

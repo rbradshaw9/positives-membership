@@ -105,21 +105,47 @@ export function DailyPracticeCard({
             </span>
 
             {listened ? (
-              <span className="inline-flex items-center gap-1.5 text-xs font-medium"
-                style={{ color: "rgba(255,255,255,0.65)" }}>
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
+                style={{
+                  color: "#D1FAE5",
+                  background: "rgba(22,163,74,0.16)",
+                  border: "1px solid rgba(74,222,128,0.28)",
+                }}
+              >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" strokeWidth="2.5"
                   strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
-                Listened today
+                Today&apos;s audio complete
               </span>
             ) : (
-              <span className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
-                {todayLabel}
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
+                style={{
+                  color: "rgba(255,255,255,0.7)",
+                  background: "rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                }}
+              >
+                ○ Not listened yet
               </span>
             )}
           </div>
+
+          {!listened ? (
+            <p
+              style={{
+                margin: "-0.25rem 0 1rem",
+                fontSize: "0.78rem",
+                lineHeight: 1.5,
+                color: "rgba(255,255,255,0.48)",
+              }}
+            >
+              {todayLabel}
+            </p>
+          ) : null}
 
           {!hasContent ? (
             <>
