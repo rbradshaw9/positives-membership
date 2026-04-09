@@ -13,15 +13,19 @@
  *   - When no priceId is set, shows a tasteful TBD block
  *   - When priceId is set, pricing data is read from PRICING constant
  *
- * Rewardful affiliate tracking:
- *   When a visitor arrives via an affiliate link, Rewardful JS sets Rewardful.referral
- *   (a UUID). We read it via the JS API and inject it as a hidden form input so
- *   the server action can pass it to Stripe as client_reference_id.
+ * FirstPromoter affiliate tracking:
+ *   When a visitor arrives via an affiliate link (?fpr=code), FP JS sets a
+ *   cookie (_fprom_track) with their referral code. We read it client-side
+ *   and inject it as a hidden form input so the server action can embed it
+ *   in Stripe checkout metadata. The webhook then stores it permanently on
+ *   the member row for lifetime affiliate genealogy linking.
+ *
+ *   Fallback: also read the ?fpr= URL query param directly for cases where
+ *   the cookie hasn't been set yet (e.g. same-tab navigation).
  */
 
-import { useEffect, useState } from "react";
-import { useFormStatus } from "react-dom";
-import { startGuestCheckoutFormAction } from "@/app/join/actions";
+import { useEffect, useState, useTransition } from "react";
+import { getGuestCheckoutUrl } from "@/app/join/actions";
 
 type Billing = "monthly" | "annual";
 type Level = 1 | 2 | 3 | 4;
@@ -170,8 +174,7 @@ function PricingTbd() {
   );
 }
 
-function CheckoutButton() {
-  const { pending } = useFormStatus();
+function CheckoutButton({ pending }: { pending: boolean }) {
   return (
     <button
       type="submit"
@@ -223,18 +226,46 @@ export function PricingCard({ level, billing, priceId }: PricingCardProps) {
 
   const pricingData = PRICING[level as keyof typeof PRICING];
 
-  // Rewardful affiliate referral — read via JS API on mount.
-  // When a visitor arrives via an affiliate link, Rewardful.referral contains
-  // a UUID that we pass to Stripe as client_reference_id for conversion tracking.
-  const [referral, setReferral] = useState<string | null>(null);
+  // FirstPromoter affiliate tracking — read on mount.
+  // Priority: URL ?fpr= param → _fprom_track cookie → null
+  // Stored permanently on the member row for lifetime genealogy linking.
+  const [fpr, setFpr] = useState<string | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
   useEffect(() => {
-    if (typeof window !== "undefined" && typeof window.rewardful === "function") {
-      window.rewardful("ready", () => {
-        const r = (window as { Rewardful?: { referral?: string } }).Rewardful?.referral;
-        if (r) setReferral(r);
-      });
+    if (typeof window === "undefined") return;
+
+    // 1. Check URL param first (handles same-tab navigation before cookie is set)
+    const urlParam = new URLSearchParams(window.location.search).get("fpr");
+    if (urlParam) {
+      setFpr(urlParam);
+      return;
     }
+
+    // 2. Read FirstPromoter cookie (_fprom_track stores the ref_id)
+    const fpCookie = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("_fprom_track="))
+      ?.split("=")[1];
+    if (fpCookie) setFpr(decodeURIComponent(fpCookie));
   }, []);
+
+  const handleCheckout = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setCheckoutError(null);
+    const formData = new FormData(e.currentTarget);
+    startTransition(async () => {
+      const result = await getGuestCheckoutUrl(formData);
+      if (result.url) {
+        // Full browser navigation — bypasses Next.js router for reliable
+        // external URL redirect to checkout.stripe.com
+        window.location.href = result.url;
+      } else {
+        setCheckoutError(result.error ?? "Something went wrong. Please try again.");
+      }
+    });
+  };
 
   return (
     <div
@@ -307,11 +338,20 @@ export function PricingCard({ level, billing, priceId }: PricingCardProps) {
 
       {/* ── CTA ─────────────────────────────────────────────── */}
       {isLive ? (
-        <form action={startGuestCheckoutFormAction}>
+        <form onSubmit={handleCheckout}>
           <input type="hidden" name="priceId" value={priceId} />
-          {/* Rewardful affiliate token — injected when visitor arrived via affiliate link */}
-          {referral && <input type="hidden" name="referral" value={referral} />}
-          <CheckoutButton />
+          {/* FirstPromoter ref_id — injected when visitor arrived via affiliate link */}
+          {fpr && <input type="hidden" name="fpr" value={fpr} />}
+          <CheckoutButton pending={isPending} />
+          {checkoutError && (
+            <p
+              role="alert"
+              className="text-xs mt-3 text-center"
+              style={{ color: "#C0392B" }}
+            >
+              {checkoutError}
+            </p>
+          )}
         </form>
       ) : (
         <button

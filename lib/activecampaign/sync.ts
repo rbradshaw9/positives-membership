@@ -49,9 +49,9 @@ const FIELD = {
   membershipTier:    2,
   memberSince:       3,
   stripeCustomerId:  4,
-  rewardfulLink:     5,
-  rewardfulToken:    6,
-  rewardfulPortal:   7,
+  affiliateLink:     5,  // previously rewardfulLink
+  affiliateToken:    6,  // previously rewardfulToken
+  affiliatePortal:   7,  // previously rewardfulPortal
   billingLink:       9, // Signed billing recovery URL for payment-failed emails
 } as const;
 
@@ -276,13 +276,13 @@ export async function syncOnboardingComplete(params: { email: string }): Promise
 }
 
 /**
- * Called when a member is enrolled as a Rewardful affiliate.
+ * Called when a member is enrolled in the affiliate program.
  * Applies the affiliate tag (triggers the welcome email automation in AC)
- * and populates Rewardful custom fields for use in email templates.
+ * and populates affiliate custom fields for use in email templates.
  *
  * @param params.email          Member's email address
- * @param params.referralToken  Rewardful referral token (e.g. "abc123")
- * @param params.affiliateId    Rewardful affiliate UUID
+ * @param params.referralToken  Affiliate referral tracking code / slug
+ * @param params.affiliateId    Affiliate program ID
  */
 export async function syncAffiliate(params: {
   email: string;
@@ -293,17 +293,17 @@ export async function syncAffiliate(params: {
 
   try {
     const contactId = await syncContact({ email: params.email });
-    const referralLink = `https://positives.life?via=${params.referralToken}`;
+    const referralLink = `https://positives.life?fpr=${params.referralToken}`;
     const portalUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://positives.life"}/account/affiliate/portal`;
 
     // Ensure the contact is on the Positives Members list — required for
     // merge tags to resolve correctly in AC email templates.
     await subscribeToList(contactId);
 
-    // Set Rewardful custom fields so they are available in AC email templates
-    await setFieldValue(contactId, FIELD.rewardfulLink,   referralLink);
-    await setFieldValue(contactId, FIELD.rewardfulToken,  params.referralToken);
-    await setFieldValue(contactId, FIELD.rewardfulPortal, portalUrl);
+    // Set affiliate custom fields so they are available in AC email templates
+    await setFieldValue(contactId, FIELD.affiliateLink,   referralLink);
+    await setFieldValue(contactId, FIELD.affiliateToken,  params.referralToken);
+    await setFieldValue(contactId, FIELD.affiliatePortal, portalUrl);
 
     // Apply affiliate tag — this is the trigger for the welcome email automation
     await addTag(contactId, TAG.affiliate);

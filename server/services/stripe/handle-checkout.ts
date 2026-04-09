@@ -4,6 +4,7 @@ import { resend, FROM_ADDRESS, REPLY_TO } from "@/lib/email/resend";
 import { welcomeEmailHtml, welcomeEmailText } from "@/lib/email/templates/welcome";
 import { syncNewMember } from "@/lib/activecampaign/sync";
 import { enrollInOnboardingSequence } from "@/lib/onboarding/enroll";
+import { trackFpSale } from "@/lib/firstpromoter/client";
 
 /**
  * server/services/stripe/handle-checkout.ts
@@ -51,15 +52,18 @@ export async function handleCheckoutSessionCompleted(
   const userId = session.metadata?.userId ?? null;
 
   // Guest checkout is signalled by metadata.guest=true OR absence of userId.
-  // (When a Rewardful referral is present, client_reference_id holds the
-  // affiliate token — it is NOT a Supabase userId.)
+  // (client_reference_id is now only set in the legacy auth-first path.)
   const isGuestCheckout =
     session.metadata?.guest === "true" || !userId;
+
+  // FirstPromoter ref_id — set in metadata.fpr at checkout creation time.
+  // This is the permanent referral attribution (no cookie expiry).
+  const fprRefId = session.metadata?.fpr ?? null;
 
   console.log(
     `[Stripe] checkout.session.completed — session: ${session.id}, ` +
     `customer: ${customerId ?? "none"}, userId: ${userId ?? "none"}, ` +
-    `guest: ${isGuestCheckout}, referral: ${session.client_reference_id ?? "none"}`
+    `guest: ${isGuestCheckout}, fpr: ${fprRefId ?? "none"}`
   );
 
   if (!customerId) {
@@ -81,7 +85,7 @@ export async function handleCheckoutSessionCompleted(
     `[Stripe] Guest checkout detected — session: ${session.id}. ` +
     `Proceeding with email-based account creation.`
   );
-  await handleGuestCheckout(session, customerId);
+  await handleGuestCheckout(session, customerId, fprRefId);
 }
 
 // ─── PATH A: Auth-first (legacy — preserved for webhook replay safety) ────────
@@ -138,7 +142,8 @@ async function handleAuthFirstCheckout(
 
 async function handleGuestCheckout(
   session: Stripe.Checkout.Session,
-  customerId: string
+  customerId: string,
+  fprRefId: string | null
 ): Promise<void> {
   const supabase = getAdminClient();
 
@@ -215,9 +220,8 @@ async function handleGuestCheckout(
   // ── Step 3: Activate the member row ─────────────────────────────────────
   // The trigger may not have run yet in a race condition edge case — use
   // upsert so the member row is guaranteed to exist and be active.
-  // Rewardful affiliate referral — client_reference_id holds the UUID when
-  // the member arrived via an affiliate link. Null for organic signups.
-  const rewardfulReferralId = session.client_reference_id ?? null;
+  // Rewardful referral is no longer used. fprRefId from metadata is
+  // the canonical referral tracked server-side — immune to cookie expiry.
 
   const { error: upsertError } = await supabase
     .from("member")
@@ -227,7 +231,8 @@ async function handleGuestCheckout(
         email,
         stripe_customer_id: customerId,
         subscription_status: "active",
-        ...(rewardfulReferralId ? { rewardful_referral_id: rewardfulReferralId } : {}),
+        // Store FP referrer permanently — first referrer wins (never overwritten)
+        ...(fprRefId ? { referred_by_fpr: fprRefId } : {}),
       },
       { onConflict: "id" }
     );
@@ -326,4 +331,25 @@ async function handleGuestCheckout(
 
   // Queue drip emails for days 3, 7, 14
   await enrollInOnboardingSequence(userId, email);
+
+  // ── Step 8: Track FP sale (credit the referrer) ──────────────────────────
+  // Non-fatal — only fires when the member arrived via an affiliate link.
+  if (fprRefId) {
+    const amountDollars = (session.amount_total ?? 0) / 100;
+    try {
+      await trackFpSale({
+        email,
+        amount: amountDollars,
+        planId: session.metadata?.priceId ?? undefined,
+        refId: fprRefId,
+      });
+    } catch (fpErr) {
+      // Non-fatal: member is active and referred_by_fpr is stored.
+      // FP sale can be manually reconciled if needed.
+      console.error(
+        `[FP] trackFpSale failed for ${email} (fpr: ${fprRefId}): ` +
+          `${fpErr instanceof Error ? fpErr.message : String(fpErr)}`
+      );
+    }
+  }
 }

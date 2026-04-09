@@ -39,6 +39,19 @@ const POLL_INTERVAL_MS = 2000;
 // 60 seconds — gives the webhook plenty of time even under load
 const POLL_TIMEOUT_MS = 60_000;
 
+/** Fire FP referral tracking if the SDK is loaded. Non-fatal. */
+function fpReferral(email: string) {
+  try {
+    const w = window as unknown as { fpr?: (...a: unknown[]) => void };
+    if (typeof w.fpr === "function") {
+      w.fpr("referral", { email });
+      console.log(`[FP] referral fired — ${email}`);
+    }
+  } catch {
+    // Non-fatal — FP SDK may not be loaded yet in some edge cases
+  }
+}
+
 interface SuccessClientProps {
   sessionId: string | null;
 }
@@ -179,6 +192,8 @@ export function SuccessClient({ sessionId }: SuccessClientProps) {
       if (data.status === "ready" && data.token_hash) {
         completedRef.current = true;
         stopPolling();
+        // Fire FP referral tracking as soon as we have the email confirmed
+        if (data.email) fpReferral(data.email);
         await exchangeToken(data.token_hash);
         return;
       }

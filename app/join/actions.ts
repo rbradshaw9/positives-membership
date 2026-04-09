@@ -1,6 +1,5 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { createGuestCheckoutSession } from "@/server/services/stripe/create-guest-checkout";
 
 /**
@@ -11,76 +10,79 @@ import { createGuestCheckoutSession } from "@/server/services/stripe/create-gues
  * remains since payment-first onboarding is now the only supported entry.
  *
  * The full flow:
- *   visitor selects plan → startGuestCheckoutFormAction → Stripe Checkout
+ *   visitor selects plan → getGuestCheckoutUrl → Stripe Checkout
  *   → payment succeeds → webhook creates account + login token
  *   → /subscribe/success polls /api/auth/exchange → verifyOtp → /today
  *
- * Rewardful affiliate tracking:
- *   Rewardful JS sets a cookie (_rwrd or rewardful_referral) when a visitor
- *   arrives via an affiliate link. We read that cookie server-side and pass
- *   it to Stripe checkout as client_reference_id. Rewardful then auto-detects
- *   the conversion via their Stripe webhook integration — no API call needed.
+ * NOTE on redirect() vs URL return:
+ *   We intentionally return the Stripe URL from the server action and let
+ *   the client navigate via window.location.href rather than calling
+ *   redirect() server-side. Next.js 16's RSC redirect mechanism is designed
+ *   for internal route navigation; redirecting to external domains (e.g.
+ *   checkout.stripe.com) is unreliable in this path. Returning the URL and
+ *   doing a full browser navigation avoids the issue entirely.
+ *
+ * FirstPromoter affiliate tracking:
+ *   The FP JS snippet sets a cookie (_fprom_track) when a visitor arrives
+ *   via an affiliate link (?fpr=code). PricingCard reads this client-side
+ *   and submits it as a hidden 'fpr' field. We embed it in Stripe checkout
+ *   metadata so the webhook can permanently store it on the member row for
+ *   lifetime affiliate genealogy linking (not cookie/time dependent).
  */
 
-type ActionResult = { error?: string };
-
-// ── Guest checkout: payment-first, no prior auth required ─────────────────
+export type CheckoutResult =
+  | { url: string; error?: never }
+  | { url?: never; error: string };
 
 /**
- * useActionState-compatible variant (two-arg).
- * Used when you need to thread state through useActionState.
+ * Returns the Stripe Checkout URL (or an error string).
+ * The caller (PricingCard) does the navigation via window.location.href.
+ * This avoids Next.js 16's RSC redirect unreliability for external URLs.
  */
-export async function startGuestCheckout(
-  _prev: ActionResult,
+export async function getGuestCheckoutUrl(
   formData: FormData
-): Promise<ActionResult> {
-  return _startGuestCheckoutCore(formData);
-}
-
-/**
- * Single-arg form action variant — compatible with <form action={...}>.
- * Use this when no state threading is needed (e.g. PricingCard).
- * Redirects on success; throws on unrecoverable error.
- */
-export async function startGuestCheckoutFormAction(
-  formData: FormData
-): Promise<void> {
-  await _startGuestCheckoutCore(formData);
-}
-
-// ── Shared implementation ──────────────────────────────────────────────────
-
-async function _startGuestCheckoutCore(
-  formData: FormData
-): Promise<ActionResult> {
+): Promise<CheckoutResult> {
   const priceId = (formData.get("priceId") as string | null)?.trim();
 
   if (!priceId) {
     return { error: "No plan selected. Please choose a plan and try again." };
   }
 
-  // Rewardful referral UUID — submitted as hidden input by PricingCard.
-  // Populated only when visitor arrived via an affiliate link.
-  const referralId = (formData.get("referral") as string | null)?.trim() || null;
+  // FirstPromoter ref_id — submitted as hidden 'fpr' input by PricingCard.
+  // Set when visitor arrived via an affiliate link (?fpr=code).
+  // Stored permanently on member row for lifetime affiliate genealogy.
+  const fprRefId = (formData.get("fpr") as string | null)?.trim() || null;
 
-  if (referralId) {
-    console.log(`[Join] Rewardful referral detected — referralId: ${referralId}`);
+  if (fprRefId) {
+    console.log(`[Join] FirstPromoter referral detected — fpr: ${fprRefId}`);
   }
 
   console.log(`[Join] Guest checkout initiated — priceId: ${priceId}`);
 
-  // IMPORTANT: Next.js redirect() works by throwing a special NEXT_REDIRECT
-  // error internally. It MUST NOT be inside a try/catch that catches all errors,
-  // or the catch block will swallow the redirect and nothing happens.
-  let checkoutUrl: string;
   try {
-    const { url } = await createGuestCheckoutSession(priceId, referralId);
-    checkoutUrl = url;
+    const { url } = await createGuestCheckoutSession(priceId, fprRefId);
+    console.log(`[Join] Stripe session created — redirecting to checkout`);
+    return { url };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("[Join] Guest checkout creation failed:", message);
     return { error: "Could not start checkout. Please try again." };
   }
+}
 
-  redirect(checkoutUrl);
+// ── Legacy aliases — kept so any other callers don't break ────────────────
+
+/** @deprecated Use getGuestCheckoutUrl instead */
+export async function startGuestCheckout(
+  _prev: { error?: string },
+  formData: FormData
+): Promise<{ error?: string }> {
+  return getGuestCheckoutUrl(formData);
+}
+
+/** @deprecated Use getGuestCheckoutUrl instead */
+export async function startGuestCheckoutFormAction(
+  formData: FormData
+): Promise<void> {
+  await getGuestCheckoutUrl(formData);
 }

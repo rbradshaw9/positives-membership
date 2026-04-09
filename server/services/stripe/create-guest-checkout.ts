@@ -28,7 +28,7 @@ import { config } from "@/lib/config";
 
 export async function createGuestCheckoutSession(
   priceId: string,
-  referralId?: string | null
+  fprRefId?: string | null
 ): Promise<{ url: string }> {
   const stripe = getStripe();
 
@@ -44,7 +44,7 @@ export async function createGuestCheckoutSession(
   const appUrl = config.app.url;
 
   console.log(
-    `[Stripe] Creating guest checkout session — priceId: ${priceId}${referralId ? ` referralId: ${referralId}` : ""}`
+    `[Stripe] Creating guest checkout session — priceId: ${priceId}${fprRefId ? ` fpr: ${fprRefId}` : ""}`
   );
 
   const session = await stripe.checkout.sessions.create({
@@ -55,18 +55,20 @@ export async function createGuestCheckoutSession(
 
     line_items: [{ price: priceId, quantity: 1 }],
 
-    // Rewardful affiliate attribution:
-    // When a visitor arrives via an affiliate link, Rewardful JS sets a
-    // cookie containing their referral token. The join page reads the cookie
-    // client-side and passes it here via formData. Setting it as
-    // client_reference_id lets Rewardful auto-detect the conversion via
-    // their Stripe webhook listener — no explicit API call needed.
+    // FirstPromoter affiliate attribution:
+    // When a visitor arrives via an affiliate link (?fpr=code), PricingCard
+    // reads the _fprom_track cookie and submits it as the 'fpr' form field.
+    // We embed it in Stripe metadata so the webhook can:
+    //   1. Store it permanently on member.referred_by_fpr (never expires)
+    //   2. Later use it to link the member as a child promoter in FP when
+    //      they join the affiliate program (enables override commission)
     //
-    // When there's no referral, we omit client_reference_id and use the
-    // metadata.guest flag to signal guest checkout to the webhook handler.
-    ...(referralId
-      ? { client_reference_id: referralId }
-      : { metadata: { guest: "true" } }),
+    // NOTE: We use metadata.fpr (not client_reference_id) so client_reference_id
+    // remains available for Supabase userId in the auth-first path (Path A).
+    metadata: {
+      guest: "true",
+      ...(fprRefId ? { fpr: fprRefId } : {}),
+    },
 
     success_url: `${appUrl}/subscribe/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${appUrl}/join`,

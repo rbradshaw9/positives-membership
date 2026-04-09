@@ -5,7 +5,7 @@
  *
  * Full affiliate portal for Positives members.
  *
- * Pre-enrollment: single card CTA to provision a Rewardful account.
+ * Pre-enrollment: single card CTA to provision an affiliate account.
  * Post-enrollment: 4-tab experience — My Link | Stats | Share Kit | Earnings
  *
  * Design tokens: brand teal (#2EC4B6), sky blue (#44A8D8), amber (#F59E0B),
@@ -14,7 +14,7 @@
 
 import { useState, useCallback } from "react";
 import { getReferralLinkAction, savePayPalEmailAction, createAffiliateLinkAction, deleteAffiliateLinkAction, updateAffiliateLinkAction, updateReferralSlugAction, saveW9Action } from "@/app/account/affiliate/actions";
-import type { RewardfulCommission, RewardfulPayout } from "@/lib/rewardful/client";
+import type { AffiliateCommission, AffiliatePayout } from "@/lib/firstpromoter/client";
 import type { W9FormData } from "@/app/account/affiliate/actions";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -53,8 +53,8 @@ interface Props {
   affiliateCreatedAt: string | null;
   token: string | null;
   stats: Stats | null;
-  commissions: RewardfulCommission[];
-  payouts: RewardfulPayout[];
+  commissions: AffiliateCommission[];
+  payouts: AffiliatePayout[];
   memberName: string;
   paypalEmail: string;
   initialLinks?: AffiliateLink[];
@@ -168,7 +168,7 @@ const TALKING_POINTS = [
   "20% recurring commission — for as long as each member stays active",
   "Positives members listen daily — this is a high-retention product",
   "No approval needed — your link is live the moment you enroll",
-  "Commissions are paid monthly via Rewardful directly to you",
+  "Commissions are paid monthly via direct deposit or PayPal",
   "Authentic recommendation only — share with people who would genuinely love it",
 ];
 
@@ -281,7 +281,7 @@ function CopyBlock({ id, label, content }: { id: string; label: string; content:
   );
 }
 
-function CommissionRow({ c }: { c: RewardfulCommission }) {
+function CommissionRow({ c }: { c: AffiliateCommission }) {
   const amount = `$${(c.amount / 100).toFixed(2)}`;
   const date = new Date(c.created_at).toLocaleDateString("en-US", {
     month: "short",
@@ -327,7 +327,7 @@ function CommissionRow({ c }: { c: RewardfulCommission }) {
   );
 }
 
-function PayoutRow({ p }: { p: RewardfulPayout }) {
+function PayoutRow({ p }: { p: AffiliatePayout }) {
   const amount = `$${(p.amount / 100).toFixed(2)}`;
   const date = new Date(p.created_at).toLocaleDateString("en-US", {
     month: "short",

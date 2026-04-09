@@ -795,13 +795,17 @@ export type Database = {
           email_unsubscribed: boolean
           id: string
           last_practiced_at: string | null
+          fp_promoter_id: number | null
+          fp_ref_id: string | null
           name: string | null
           onboarding_token: string | null
           password_set: boolean
+          paypal_email: string | null
           practice_streak: number
-          rewardful_affiliate_id: string | null
-          rewardful_affiliate_token: string | null
-          rewardful_referral_id: string | null
+          referred_by_fpr: string | null
+          affiliate_id: string | null
+          affiliate_token: string | null
+          referral_id: string | null
           stripe_customer_id: string | null
           subscription_end_date: string | null
           subscription_status: Database["public"]["Enums"]["subscription_status"]
@@ -815,15 +819,19 @@ export type Database = {
           created_at?: string
           email: string
           email_unsubscribed?: boolean
+          fp_promoter_id?: number | null
+          fp_ref_id?: string | null
           id: string
           last_practiced_at?: string | null
           name?: string | null
           onboarding_token?: string | null
           password_set?: boolean
+          paypal_email?: string | null
           practice_streak?: number
-          rewardful_affiliate_id?: string | null
-          rewardful_affiliate_token?: string | null
-          rewardful_referral_id?: string | null
+          referred_by_fpr?: string | null
+          affiliate_id?: string | null
+          affiliate_token?: string | null
+          referral_id?: string | null
           stripe_customer_id?: string | null
           subscription_end_date?: string | null
           subscription_status?: Database["public"]["Enums"]["subscription_status"]
@@ -837,15 +845,19 @@ export type Database = {
           created_at?: string
           email?: string
           email_unsubscribed?: boolean
+          fp_promoter_id?: number | null
+          fp_ref_id?: string | null
           id?: string
           last_practiced_at?: string | null
           name?: string | null
           onboarding_token?: string | null
           password_set?: boolean
+          paypal_email?: string | null
           practice_streak?: number
-          rewardful_affiliate_id?: string | null
-          rewardful_affiliate_token?: string | null
-          rewardful_referral_id?: string | null
+          referred_by_fpr?: string | null
+          affiliate_id?: string | null
+          affiliate_token?: string | null
+          referral_id?: string | null
           stripe_customer_id?: string | null
           subscription_end_date?: string | null
           subscription_status?: Database["public"]["Enums"]["subscription_status"]
