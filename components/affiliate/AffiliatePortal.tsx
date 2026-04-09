@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
-  createAffiliateLinkAction,
   deleteAffiliateLinkAction,
   getReferralLinkAction,
   savePayPalEmailAction,
@@ -59,6 +58,8 @@ interface Props {
 }
 
 type Tab = "link" | "performance" | "share" | "earnings";
+
+const FIRST_PROMOTER_CUSTOM_LINKS_URL = "https://positives.firstpromoter.com/integration/custom";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "link", label: "My Link", icon: "🔗" },
@@ -979,11 +980,6 @@ function LinkTab({
   links: AffiliateLink[];
   onLinksChange: (links: AffiliateLink[]) => void;
 }) {
-  const [label, setLabel] = useState("");
-  const [destination, setDestination] = useState("");
-  const [subId, setSubId] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const handleCopyManagedLink = useCallback(async (link: AffiliateLink) => {
@@ -996,32 +992,6 @@ function LinkTab({
     setCopiedId(link.id);
     window.setTimeout(() => setCopiedId(null), 2200);
   }, []);
-
-  const handleCreate = useCallback(async () => {
-    const result = await createAffiliateLinkAction({
-      label: label.trim(),
-      destination: destination.trim() || null,
-      subId: subId.trim() || null,
-    });
-
-    setSaving(false);
-    if ("error" in result) {
-      setError(result.error);
-      return;
-    }
-
-    const nextLinks = [result.link, ...links];
-    onLinksChange(nextLinks);
-    track("affiliate_custom_link_created", {
-      source_path: "/account/affiliate",
-      has_destination: Boolean(destination.trim()),
-      has_sub_id: Boolean(subId.trim()),
-    });
-    setLabel("");
-    setDestination("");
-    setSubId("");
-    setError(null);
-  }, [destination, label, links, onLinksChange, subId]);
 
   const handleDelete = useCallback(async (id: string) => {
     const result = await deleteAffiliateLinkAction(id);
@@ -1169,61 +1139,43 @@ function LinkTab({
               textTransform: "uppercase",
             }}
           >
-            Campaign links
+            FirstPromoter custom links
           </p>
           <h2 style={{ margin: "0.65rem 0 0.25rem", fontSize: "1.1rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.03em", textWrap: "balance" }}>
-            Create a source-tagged link
+            Use FirstPromoter for tracked destination links
           </h2>
           <p style={{ margin: 0, fontSize: "0.84rem", lineHeight: 1.6, color: "#71717A" }}>
-            Use these for things like your blog, newsletter, bio link, or a specific post. They stay simple for the person clicking, but give you better source visibility.
+            FirstPromoter should stay the source of truth for affiliate attribution. If you want tracked custom links for your blog, bio, or a campaign page, create them in FirstPromoter so the click and attribution logic stays consistent in one place.
           </p>
 
-          <div className="mt-4 flex flex-col gap-3">
-            <input
-              value={label}
-              onChange={(event) => setLabel(event.target.value)}
-              placeholder="Link name, like Blog CTA or April newsletter"
-              style={{ padding: "0.8rem 0.95rem", borderRadius: "0.8rem", border: "1.5px solid #E4E4E7", fontSize: "0.88rem" }}
-            />
-            <input
-              value={destination}
-              onChange={(event) => setDestination(event.target.value)}
-              placeholder="Destination URL, or leave blank for the homepage"
-              style={{ padding: "0.8rem 0.95rem", borderRadius: "0.8rem", border: "1.5px solid #E4E4E7", fontSize: "0.88rem" }}
-            />
-            <input
-              value={subId}
-              onChange={(event) => setSubId(event.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
-              placeholder="Optional source tag, like blog or april-email"
-              style={{ padding: "0.8rem 0.95rem", borderRadius: "0.8rem", border: "1.5px solid #E4E4E7", fontSize: "0.88rem" }}
-            />
-            <p style={{ margin: 0, fontSize: "0.75rem", color: "#A1A1AA", lineHeight: 1.55 }}>
-              Source tags are for your internal tracking. Use simple labels like <code>blog</code>, <code>email</code>, or <code>ig-bio</code>.
-            </p>
-            {error ? <p style={{ margin: 0, fontSize: "0.8rem", color: "#DC2626" }}>{error}</p> : null}
-            <button
-              onClick={async () => {
-                if (!label.trim()) {
-                  setError("Please enter a name for this link.");
-                  return;
-                }
-                setSaving(true);
-                await handleCreate();
-              }}
-              disabled={saving || !label.trim()}
+          <div className="mt-4 flex flex-col gap-4">
+            <div style={{ border: "1px solid rgba(68,168,216,0.16)", background: "rgba(68,168,216,0.06)", borderRadius: "1rem", padding: "1rem 1.05rem" }}>
+              <p style={{ margin: 0, fontSize: "0.76rem", fontWeight: 700, color: "#2563EB", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                Important
+              </p>
+              <p style={{ margin: "0.45rem 0 0", fontSize: "0.84rem", lineHeight: 1.6, color: "#52525B" }}>
+                External destinations only show up in FirstPromoter when their tracking is supported on the landing page and the referral path stays intact. A plain redirect by itself is not the same thing as FirstPromoter attribution.
+              </p>
+            </div>
+            <a
+              href={FIRST_PROMOTER_CUSTOM_LINKS_URL}
+              target="_blank"
+              rel="noreferrer"
               style={{
                 alignSelf: "flex-start",
-                border: "none",
                 borderRadius: "9999px",
-                padding: "0.75rem 1.25rem",
-                background: saving || !label.trim() ? "#A1A1AA" : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)",
+                padding: "0.8rem 1.25rem",
+                background: "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)",
                 color: "#FFFFFF",
                 fontWeight: 700,
-                cursor: saving ? "wait" : "pointer",
+                textDecoration: "none",
               }}
             >
-              {saving ? "Creating…" : "Create campaign link"}
-            </button>
+              Open FirstPromoter custom links
+            </a>
+            <p style={{ margin: 0, fontSize: "0.75rem", color: "#A1A1AA", lineHeight: 1.55 }}>
+              Use this for real tracked campaign links. Your main Positives referral link above remains the simplest default share link.
+            </p>
           </div>
         </SurfaceCard>
       </div>
@@ -1241,13 +1193,13 @@ function LinkTab({
                 textTransform: "uppercase",
               }}
             >
-              Existing short links
+              Legacy Positives redirects
             </p>
             <h2 style={{ margin: "0.6rem 0 0.2rem", fontSize: "1.1rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.03em" }}>
-              Your managed share links
+              Older convenience links you can still manage
             </h2>
             <p style={{ margin: 0, fontSize: "0.84rem", lineHeight: 1.6, color: "#71717A" }}>
-              These are still fully supported. Use them when you want a cleaner share URL like <code>positives.life/go/your-code</code>.
+              These still work as share redirects, but they are not the canonical FirstPromoter tracking system. For attribution you should rely on your main FirstPromoter referral link or custom links created in FirstPromoter.
             </p>
           </div>
         </div>
@@ -1274,7 +1226,6 @@ function LinkTab({
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span style={{ fontSize: "0.76rem", color: "#71717A" }}>{link.clicks} clicks</span>
                     <button
                       onClick={() => void handleCopyManagedLink(link)}
                       style={{ border: "none", borderRadius: "9999px", padding: "0.45rem 0.85rem", background: copiedId === link.id ? "rgba(22,163,74,0.12)" : "rgba(68,168,216,0.1)", color: copiedId === link.id ? "#15803D" : "#0F766E", fontWeight: 700, cursor: "pointer" }}
@@ -1328,8 +1279,24 @@ function PerformanceTab({ performance }: { performance: AffiliatePortalViewModel
 
   return (
     <div className="flex flex-col gap-4">
+      <SurfaceCard elevated className="surface-card--editorial">
+        <p style={{ margin: 0, fontSize: "0.68rem", fontWeight: 700, color: "#71717A", letterSpacing: "0.07em", textTransform: "uppercase" }}>
+          FirstPromoter data
+        </p>
+        <h2 style={{ margin: "0.55rem 0 0.25rem", fontSize: "1.05rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.03em", textWrap: "balance" }}>
+          This tab shows FirstPromoter attribution only
+        </h2>
+        <p style={{ margin: 0, fontSize: "0.84rem", lineHeight: 1.65, color: "#71717A" }}>
+          Visitors, leads, members, and earnings here all come from FirstPromoter. If a click does not appear here, FirstPromoter did not count it as an attributed referral interaction.
+        </p>
+      </SurfaceCard>
+
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <MetricCard label="Visitors" value={performance.visitors.toLocaleString()} />
+        <MetricCard
+          label="Visitors"
+          value={performance.visitors.toLocaleString()}
+          detail="Attributed by FirstPromoter"
+        />
         <MetricCard label="Leads" value={performance.leads.toLocaleString()} />
         <MetricCard label="Members" value={performance.members.toLocaleString()} tone="positive" />
         <MetricCard label="Visitor → member" value={`${performance.conversionRate.toFixed(1)}%`} />
@@ -1380,7 +1347,7 @@ function PerformanceTab({ performance }: { performance: AffiliatePortalViewModel
                   This gives you a simple read on which links or source tags are doing the most work.
                 </p>
                 <p style={{ margin: "0.45rem 0 0", fontSize: "0.76rem", lineHeight: 1.55, color: "#A1A1AA" }}>
-                  Positives-managed short-link clicks show up here right away. Lead and member counts fill in as attribution resolves through your referral path.
+                  These rows come from FirstPromoter reporting. If a custom destination is not showing up here, it is not being counted by FirstPromoter yet.
                 </p>
               </div>
             </div>
@@ -1438,7 +1405,7 @@ function PerformanceTab({ performance }: { performance: AffiliatePortalViewModel
             Your performance view will come to life as you share
           </h2>
           <p style={{ margin: "0 auto", maxWidth: 560, fontSize: "0.88rem", lineHeight: 1.65, color: "#71717A" }}>
-            Start with one warm share, one source-tagged link for your blog or email, and one follow-up message. That is enough to get meaningful signal without overcomplicating it.
+            Start with one warm share, then use your FirstPromoter referral link or FirstPromoter custom links for real campaign tracking. This tab will stay clean because it only reflects what FirstPromoter actually attributes.
           </p>
         </SurfaceCard>
       )}
@@ -1448,10 +1415,8 @@ function PerformanceTab({ performance }: { performance: AffiliatePortalViewModel
 
 function ShareTab({
   referralLink,
-  links,
 }: {
   referralLink: string;
-  links: AffiliateLink[];
 }) {
   const shareOptions = useMemo(() => {
     const options = [
@@ -1461,18 +1426,9 @@ function ShareTab({
         detail: "Best for general sharing",
         url: referralLink,
       },
-      ...links.map((link) => ({
-        id: link.id,
-        label: link.label,
-        detail: buildManagedDestination({
-          destination: link.destination,
-          subId: extractSubId(link.destination),
-        }),
-        url: shortUrl(link.code),
-      })),
     ];
     return options;
-  }, [links, referralLink]);
+  }, [referralLink]);
 
   const [selectedLinkId, setSelectedLinkId] = useState(shareOptions[0]?.id ?? "primary");
   const activeLink = shareOptions.find((option) => option.id === selectedLinkId) ?? shareOptions[0];
@@ -2018,7 +1974,7 @@ export function AffiliatePortal({
       ) : null}
 
       {activeTab === "performance" ? <PerformanceTab performance={performance} /> : null}
-      {activeTab === "share" ? <ShareTab referralLink={referralLink} links={managedLinks} /> : null}
+      {activeTab === "share" ? <ShareTab referralLink={referralLink} /> : null}
       {activeTab === "earnings" ? (
         <EarningsTab
           performance={performance}

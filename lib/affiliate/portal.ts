@@ -165,7 +165,7 @@ function buildTopSources(input: {
     sourceMap.set(key, {
       id: key,
       label: link.label,
-      detail: `/go/${link.code}`,
+      detail: `/go/${link.code} · Legacy Positives redirect`,
       clicks: (existing?.clicks ?? 0) + link.clicks,
       leads: existing?.leads ?? 0,
       members: existing?.members ?? 0,
