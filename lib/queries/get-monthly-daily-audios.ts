@@ -18,6 +18,7 @@ export type MonthlyDailyAudio = Pick<
   | "title"
   | "excerpt"
   | "publish_date"
+  | "published_at"
   | "duration_seconds"
   | "castos_episode_url"
   | "s3_audio_key"
@@ -47,16 +48,23 @@ export async function getMonthlyDailyAudios(
   const currentMonthYear = excludeDate.slice(0, 7); // "2026-04"
   const monthStart = `${currentMonthYear}-01`;
 
+  // Some content is published with publish_date set; older entries may only
+  // have published_at (a timestamp). We match both:
+  //   - rows where publish_date is in range  [monthStart, excludeDate)
+  //   - rows where publish_date is null but published_at::date is in range
   const { data, error } = await supabase
     .from("content")
     .select(
-      "id, title, excerpt, publish_date, duration_seconds, castos_episode_url, s3_audio_key"
+      "id, title, excerpt, publish_date, published_at, duration_seconds, castos_episode_url, s3_audio_key"
     )
     .eq("type", "daily_audio")
     .eq("status", "published")
-    .gte("publish_date", monthStart)
-    .lt("publish_date", excludeDate)
-    .order("publish_date", { ascending: false });
+    .or(
+      `and(publish_date.gte.${monthStart},publish_date.lt.${excludeDate}),` +
+      `and(publish_date.is.null,published_at.gte.${monthStart}T00:00:00,published_at.lt.${excludeDate}T00:00:00)`
+    )
+    .order("publish_date", { ascending: false, nullsFirst: false })
+    .order("published_at", { ascending: false });
 
   if (error) {
     console.error("[getMonthlyDailyAudios] Supabase query error:", error.message);
@@ -65,13 +73,19 @@ export async function getMonthlyDailyAudios(
 
   if (!data || data.length === 0) return [];
 
-  // Group by calendar month derived from publish_date
+  // Group by calendar month — prefer publish_date, fall back to published_at date
   const groups = new Map<string, MonthlyDailyAudio[]>();
   for (const row of data) {
-    if (!row.publish_date) continue;
-    const monthYear = row.publish_date.slice(0, 7); // "2026-04"
+    const dateStr = row.publish_date ?? row.published_at?.slice(0, 10);
+    if (!dateStr) continue;
+    const monthYear = dateStr.slice(0, 7); // "2026-04"
     if (!groups.has(monthYear)) groups.set(monthYear, []);
-    groups.get(monthYear)!.push(row);
+    // Normalise: if publish_date is null but published_at exists, surface publish_date
+    // as the published_at date so downstream components can display it
+    const normalised = row.publish_date
+      ? row
+      : { ...row, publish_date: dateStr };
+    groups.get(monthYear)!.push(normalised);
   }
 
   // Return months newest-first
@@ -100,7 +114,7 @@ export async function getArchiveDailyAudios(
   const { data, error } = await supabase
     .from("content")
     .select(
-      "id, title, excerpt, publish_date, duration_seconds, castos_episode_url, s3_audio_key"
+      "id, title, excerpt, publish_date, published_at, duration_seconds, castos_episode_url, s3_audio_key"
     )
     .eq("type", "daily_audio")
     .eq("status", "published")

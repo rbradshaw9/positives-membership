@@ -10,7 +10,7 @@
 
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { ensureAffiliate, getReferralToken, updateAffiliatePayPal } from "@/lib/rewardful/client";
+import { ensureAffiliate, getReferralToken, updateAffiliatePayPal, updateAffiliateLinkToken } from "@/lib/rewardful/client";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { syncAffiliate } from "@/lib/activecampaign/sync";
 
@@ -318,6 +318,136 @@ export async function updateAffiliateLinkAction(
   if (error) {
     console.error("[Affiliate] updateAffiliateLink failed:", error);
     return { error: "Failed to update link." };
+  }
+
+  return { success: true };
+}
+
+// ── Update referral slug (Rewardful link token) ───────────────────────────────────
+
+export async function updateReferralSlugAction(
+  slugInput: string
+): Promise<{ success: true; newToken: string } | { error: string }> {
+  // Validate slug format
+  const slug = slugInput.trim().toLowerCase();
+  if (!slug) return { error: "Please enter a slug." };
+  if (slug.length < 3) return { error: "Slug must be at least 3 characters." };
+  if (slug.length > 30) return { error: "Slug must be 30 characters or fewer." };
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug))
+    return { error: "Only lowercase letters, numbers, and hyphens allowed. Cannot start or end with a hyphen." };
+
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
+  );
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated." };
+
+  const admin = getAdminClient();
+  const { data: member } = await admin
+    .from("member")
+    .select("rewardful_affiliate_id, rewardful_affiliate_token")
+    .eq("id", user.id)
+    .single();
+
+  if (!member?.rewardful_affiliate_id) return { error: "No affiliate account found." };
+  if (member.rewardful_affiliate_token === slug) return { success: true, newToken: slug };
+
+  // Fetch the affiliate to get the link ID
+  const { getAffiliate } = await import("@/lib/rewardful/client");
+  let linkId: string;
+  try {
+    const affiliate = await getAffiliate(member.rewardful_affiliate_id);
+    linkId = affiliate.links?.[0]?.id;
+    if (!linkId) return { error: "Could not find your referral link to update." };
+  } catch (err) {
+    console.error("[Affiliate] getAffiliate failed:", err);
+    return { error: "Could not fetch affiliate data. Please try again." };
+  }
+
+  // Update token in Rewardful
+  try {
+    await updateAffiliateLinkToken(linkId, slug);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "";
+    if (msg.includes("taken") || msg.includes("422") || msg.includes("already"))
+      return { error: "That slug is already taken. Try a different one." };
+    console.error("[Affiliate] updateAffiliateLinkToken failed:", err);
+    return { error: "Failed to update your referral link. Please try again." };
+  }
+
+  // Cache updated token on the member row
+  await admin
+    .from("member")
+    .update({ rewardful_affiliate_token: slug })
+    .eq("id", user.id);
+
+  return { success: true, newToken: slug };
+}
+
+// ── Save W9 form data ──────────────────────────────────────────────────────────
+
+export interface W9FormData {
+  legal_name: string;
+  business_name: string;
+  tax_classification: string;
+  tax_id: string;
+  address: string;
+  city: string;
+  state_code: string;
+  zip: string;
+  signature_name: string;
+}
+
+export async function saveW9Action(
+  data: W9FormData
+): Promise<{ success: true } | { error: string }> {
+  // Basic field validation
+  if (!data.legal_name?.trim()) return { error: "Legal name is required." };
+  if (!data.tax_classification?.trim()) return { error: "Tax classification is required." };
+  if (!data.tax_id?.trim()) return { error: "SSN or EIN is required." };
+  if (!data.address?.trim()) return { error: "Address is required." };
+  if (!data.city?.trim()) return { error: "City is required." };
+  if (!data.state_code?.trim() || data.state_code.trim().length > 2) return { error: "State is required." };
+  if (!data.zip?.trim()) return { error: "ZIP code is required." };
+  if (!data.signature_name?.trim()) return { error: "Electronic signature is required." };
+
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
+  );
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated." };
+
+  const admin = getAdminClient();
+  const { error } = await admin
+    .from("member_w9")
+    .upsert(
+      {
+        member_id: user.id,
+        legal_name: data.legal_name.trim(),
+        business_name: data.business_name?.trim() || null,
+        tax_classification: data.tax_classification.trim(),
+        tax_id: data.tax_id.trim(),
+        address: data.address.trim(),
+        city: data.city.trim(),
+        state_code: data.state_code.trim().toUpperCase(),
+        zip: data.zip.trim(),
+        signature_name: data.signature_name.trim(),
+        signed_at: new Date().toISOString(),
+      },
+      { onConflict: "member_id" }
+    );
+
+  if (error) {
+    console.error("[W9] saveW9 failed:", error);
+    return { error: "Failed to save W9. Please try again." };
   }
 
   return { success: true };

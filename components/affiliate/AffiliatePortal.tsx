@@ -13,8 +13,9 @@
  */
 
 import { useState, useCallback } from "react";
-import { getReferralLinkAction, savePayPalEmailAction, createAffiliateLinkAction, deleteAffiliateLinkAction, updateAffiliateLinkAction } from "@/app/account/affiliate/actions";
-import type { RewardfulCommission } from "@/lib/rewardful/client";
+import { getReferralLinkAction, savePayPalEmailAction, createAffiliateLinkAction, deleteAffiliateLinkAction, updateAffiliateLinkAction, updateReferralSlugAction, saveW9Action } from "@/app/account/affiliate/actions";
+import type { RewardfulCommission, RewardfulPayout } from "@/lib/rewardful/client";
+import type { W9FormData } from "@/app/account/affiliate/actions";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -32,15 +33,34 @@ interface AffiliateLink {
   clicks: number;
 }
 
+interface ExistingW9 {
+  legal_name: string;
+  business_name: string | null;
+  tax_classification: string;
+  tax_id: string;
+  address: string;
+  city: string;
+  state_code: string;
+  zip: string;
+  signature_name: string;
+  signed_at: string;
+}
+
 interface Props {
   isAffiliate: boolean;
   affiliateId: string | null;
+  affiliateLinkId: string | null;
+  affiliateCreatedAt: string | null;
   token: string | null;
   stats: Stats | null;
   commissions: RewardfulCommission[];
+  payouts: RewardfulPayout[];
   memberName: string;
   paypalEmail: string;
   initialLinks?: AffiliateLink[];
+  existingW9?: ExistingW9 | null;
+  /** Dev-only: override the W9 threshold display without real commission data. */
+  w9Preview?: "off" | "soft" | "hard";
 }
 
 type Tab = "link" | "stats" | "share" | "earnings";
@@ -303,6 +323,270 @@ function CommissionRow({ c }: { c: RewardfulCommission }) {
       >
         {c.status}
       </span>
+    </div>
+  );
+}
+
+function PayoutRow({ p }: { p: RewardfulPayout }) {
+  const amount = `$${(p.amount / 100).toFixed(2)}`;
+  const date = new Date(p.created_at).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  const stateStyles: Record<string, { color: string; bg: string; label: string }> = {
+    paid:       { color: "#16A34A", bg: "rgba(22,163,74,0.1)",   label: "Paid" },
+    processing: { color: "#44A8D8", bg: "rgba(68,168,216,0.1)", label: "Processing" },
+    due:        { color: "#D97706", bg: "rgba(217,119,6,0.1)",  label: "Due" },
+    pending:    { color: "#71717A", bg: "rgba(113,113,122,0.1)", label: "Pending" },
+  };
+  const st = stateStyles[p.state] ?? stateStyles.pending;
+
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.875rem 0", borderBottom: "1px solid #F4F4F5" }}>
+      <div>
+        <div style={{ fontSize: "0.9rem", fontWeight: 600, color: "#09090B" }}>{amount}</div>
+        <div style={{ fontSize: "0.75rem", color: "#71717A", marginTop: "0.125rem" }}>{date}</div>
+      </div>
+      <span style={{ fontSize: "0.72rem", fontWeight: 700, color: st.color, background: st.bg, borderRadius: "9999px", padding: "0.25rem 0.75rem", letterSpacing: "0.02em" }}>
+        {st.label}
+      </span>
+    </div>
+  );
+}
+
+// ─── W9 Form ──────────────────────────────────────────────────────────────────
+
+const TAX_CLASSIFICATIONS = [
+  { value: "individual",   label: "Individual / Sole proprietor" },
+  { value: "s_corp",       label: "S Corporation" },
+  { value: "c_corp",       label: "C Corporation" },
+  { value: "partnership",  label: "Partnership" },
+  { value: "llc_single",   label: "LLC — Single member" },
+  { value: "llc_multi",    label: "LLC — Multi member" },
+  { value: "other",        label: "Other" },
+];
+
+const US_STATES = [
+  "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA",
+  "HI","ID","IL","IN","IA","KS","KY","LA","ME","MD",
+  "MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ",
+  "NM","NY","NC","ND","OH","OK","OR","PA","RI","SC",
+  "SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC",
+];
+
+function W9Form({
+  existingW9,
+  onSaved,
+}: {
+  existingW9: ExistingW9 | null;
+  onSaved: () => void;
+}) {
+  const isEdit = Boolean(existingW9);
+  const [open, setOpen] = useState(!isEdit);
+
+  const blank: W9FormData = {
+    legal_name: existingW9?.legal_name ?? "",
+    business_name: existingW9?.business_name ?? "",
+    tax_classification: existingW9?.tax_classification ?? "individual",
+    tax_id: existingW9?.tax_id ?? "",
+    address: existingW9?.address ?? "",
+    city: existingW9?.city ?? "",
+    state_code: existingW9?.state_code ?? "",
+    zip: existingW9?.zip ?? "",
+    signature_name: existingW9?.signature_name ?? "",
+  };
+
+  const [form, setForm] = useState<W9FormData>(blank);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const set = (field: keyof W9FormData, value: string) =>
+    setForm(prev => ({ ...prev, [field]: value }));
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "0.75rem 1rem",
+    fontSize: "0.875rem",
+    border: "1.5px solid #E4E4E7",
+    borderRadius: "0.75rem",
+    outline: "none",
+    fontFamily: "var(--font-sans)",
+    color: "#09090B",
+    background: "#FAFAFA",
+    boxSizing: "border-box",
+    transition: "border-color 0.18s",
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: "0.72rem",
+    fontWeight: 700,
+    color: "#71717A",
+    textTransform: "uppercase",
+    letterSpacing: "0.07em",
+    display: "block",
+    marginBottom: "0.375rem",
+  };
+
+  async function handleSubmit() {
+    setSaving(true);
+    setError(null);
+    const result = await saveW9Action(form);
+    setSaving(false);
+    if ("error" in result) {
+      setError(result.error);
+      return;
+    }
+    setSaved(true);
+    setOpen(false);
+    onSaved();
+  }
+
+  if (saved || (isEdit && !open)) {
+    const signedDate = existingW9?.signed_at
+      ? new Date(existingW9.signed_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+      : null;
+    return (
+      <div style={{ display: "flex", alignItems: "flex-start", gap: "0.875rem", background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.2)", borderRadius: "1rem", padding: "1rem 1.25rem" }}>
+        <span style={{ fontSize: "1.1rem", flexShrink: 0 }}>✅</span>
+        <div style={{ flex: 1 }}>
+          <p style={{ margin: "0 0 0.25rem", fontSize: "0.875rem", fontWeight: 700, color: "#15803D" }}>W-9 on file</p>
+          <p style={{ margin: 0, fontSize: "0.78rem", color: "#4B5563", lineHeight: 1.55 }}>
+            {existingW9?.legal_name ?? form.legal_name}{signedDate ? ` · Signed ${signedDate}` : ""}
+          </p>
+        </div>
+        <button
+          onClick={() => setOpen(true)}
+          style={{ fontSize: "0.75rem", color: "#44A8D8", background: "none", border: "none", cursor: "pointer", padding: "0.25rem", flexShrink: 0, fontWeight: 600 }}
+        >
+          Update
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.02em" }}>
+            📋 W-9 Tax Form
+          </h3>
+          <p style={{ margin: "0.25rem 0 0", fontSize: "0.78rem", color: "#71717A", lineHeight: 1.5 }}>
+            Required for US persons earning $600+ in commissions annually. Treated as an electronic W-9.
+          </p>
+        </div>
+        {isEdit && (
+          <button onClick={() => setOpen(false)} style={{ fontSize: "0.75rem", color: "#A1A1AA", background: "none", border: "none", cursor: "pointer", padding: "0.25rem", flexShrink: 0 }}>Cancel</button>
+        )}
+      </div>
+
+      {/* Name row */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+        <div>
+          <label style={labelStyle}>Legal name *</label>
+          <input style={inputStyle} value={form.legal_name} onChange={e => set("legal_name", e.target.value)} placeholder="As shown on your tax return" />
+        </div>
+        <div>
+          <label style={labelStyle}>Business name (optional)</label>
+          <input style={inputStyle} value={form.business_name} onChange={e => set("business_name", e.target.value)} placeholder="DBA, LLC name, etc." />
+        </div>
+      </div>
+
+      {/* Tax classification */}
+      <div>
+        <label style={labelStyle}>Tax classification *</label>
+        <select
+          style={{ ...inputStyle, appearance: "none", backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2371717A' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 1rem center" }}
+          value={form.tax_classification}
+          onChange={e => set("tax_classification", e.target.value)}
+        >
+          {TAX_CLASSIFICATIONS.map(t => (
+            <option key={t.value} value={t.value}>{t.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Tax ID */}
+      <div>
+        <label style={labelStyle}>SSN or EIN *</label>
+        <input
+          style={inputStyle}
+          value={form.tax_id}
+          onChange={e => set("tax_id", e.target.value)}
+          placeholder={form.tax_classification === "individual" || form.tax_classification === "llc_single" ? "XXX-XX-XXXX" : "XX-XXXXXXX"}
+          maxLength={11}
+        />
+        <p style={{ margin: "0.375rem 0 0", fontSize: "0.72rem", color: "#A1A1AA" }}>Stored securely and used only for 1099 reporting if you reach the $600 threshold.</p>
+      </div>
+
+      {/* Address */}
+      <div>
+        <label style={labelStyle}>Street address *</label>
+        <input style={inputStyle} value={form.address} onChange={e => set("address", e.target.value)} placeholder="123 Main St, Apt 4B" />
+      </div>
+
+      {/* City / State / ZIP */}
+      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: "0.75rem" }}>
+        <div>
+          <label style={labelStyle}>City *</label>
+          <input style={inputStyle} value={form.city} onChange={e => set("city", e.target.value)} placeholder="City" />
+        </div>
+        <div>
+          <label style={labelStyle}>State *</label>
+          <select
+            style={{ ...inputStyle, appearance: "none", backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2371717A' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 0.75rem center" }}
+            value={form.state_code}
+            onChange={e => set("state_code", e.target.value)}
+          >
+            <option value="">—</option>
+            {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={labelStyle}>ZIP *</label>
+          <input style={inputStyle} value={form.zip} onChange={e => set("zip", e.target.value)} placeholder="10001" maxLength={10} />
+        </div>
+      </div>
+
+      {/* Signature */}
+      <div style={{ background: "#F8F8F8", border: "1px solid #E4E4E7", borderRadius: "0.875rem", padding: "1rem 1.125rem" }}>
+        <label style={{ ...labelStyle, color: "#52525B" }}>Electronic signature *</label>
+        <p style={{ margin: "0 0 0.75rem", fontSize: "0.78rem", color: "#71717A", lineHeight: 1.55 }}>
+          By typing your name below, you certify under penalty of perjury that the information provided is correct and complete.
+        </p>
+        <input
+          style={{ ...inputStyle, fontStyle: "italic", fontSize: "1rem" }}
+          value={form.signature_name}
+          onChange={e => set("signature_name", e.target.value)}
+          placeholder="Your legal name"
+        />
+      </div>
+
+      {error && <p style={{ fontSize: "0.8rem", color: "#EF4444", margin: 0 }}>{error}</p>}
+
+      <button
+        onClick={handleSubmit}
+        disabled={saving || !form.legal_name.trim() || !form.tax_id.trim() || !form.signature_name.trim()}
+        style={{
+          alignSelf: "flex-start",
+          padding: "0.75rem 1.5rem",
+          fontSize: "0.875rem",
+          fontWeight: 700,
+          color: "#FFFFFF",
+          background: saving || !form.legal_name.trim() || !form.tax_id.trim() || !form.signature_name.trim()
+            ? "#A1A1AA"
+            : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)",
+          border: "none",
+          borderRadius: "9999px",
+          cursor: saving ? "wait" : "pointer",
+          transition: "all 0.2s",
+        }}
+      >
+        {saving ? "Submitting…" : isEdit ? "Update W-9" : "Submit W-9"}
+      </button>
     </div>
   );
 }
@@ -774,17 +1058,22 @@ function PayoutSetupStep({
 export function AffiliatePortal({
   isAffiliate,
   affiliateId,
+  affiliateLinkId,
+  affiliateCreatedAt,
   token,
   stats,
   commissions,
+  payouts,
   memberName,
   paypalEmail: initialPaypalEmail,
   initialLinks = [],
+  existingW9 = null,
+  w9Preview = "off",
 }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("link");
   const [loading, setLoading]     = useState(false);
   const [enrolled, setEnrolled]   = useState(isAffiliate);
-  const [payoutStep, setPayoutStep] = useState(false); // true after enroll when no PayPal yet
+  const [payoutStep, setPayoutStep] = useState(false);
   const [currentToken, setCurrentToken] = useState(token);
   const [copiedLink, setCopiedLink]     = useState(false);
   const [error, setError]               = useState<string | null>(null);
@@ -795,7 +1084,18 @@ export function AffiliatePortal({
   const [paypalSaved, setPaypalSaved]       = useState(false);
   const [paypalError, setPaypalError]       = useState<string | null>(null);
 
+  // Slug customizer state
+  const [slugEditing, setSlugEditing]   = useState(false);
+  const [slugDraft, setSlugDraft]       = useState(currentToken ?? "");
+  const [slugSaving, setSlugSaving]     = useState(false);
+  const [slugError, setSlugError]       = useState<string | null>(null);
+  const [slugSaved, setSlugSaved]       = useState(false);
+
+  // W9 filed state
+  const [w9Filed, setW9Filed] = useState(Boolean(existingW9));
+
   void affiliateId;
+  void affiliateLinkId;
   void memberName;
 
   const referralLink = currentToken
@@ -827,6 +1127,23 @@ export function AffiliatePortal({
 
   const totalPaid    = commissions.filter(c => c.status === "paid").reduce((s, c) => s + c.amount, 0);
   const totalPending = commissions.filter(c => c.status !== "paid").reduce((s, c) => s + c.amount, 0);
+  // In dev preview mode, override totalEarned to simulate the threshold crossing
+  const totalEarned  = w9Preview === "hard" ? 65000
+    : w9Preview === "soft" ? 55000
+    : totalPaid + totalPending;
+
+  // Slug customizer handlers
+  async function handleSlugSave() {
+    setSlugSaving(true);
+    setSlugError(null);
+    const result = await updateReferralSlugAction(slugDraft);
+    setSlugSaving(false);
+    if ("error" in result) { setSlugError(result.error); return; }
+    setCurrentToken(result.newToken);
+    setSlugEditing(false);
+    setSlugSaved(true);
+    setTimeout(() => setSlugSaved(false), 4000);
+  }
 
   async function handleSavePayPal() {
     setPaypalSaving(true);
@@ -1022,7 +1339,7 @@ export function AffiliatePortal({
                 border: "1.5px solid rgba(46,196,182,0.2)",
                 borderRadius: "0.875rem",
                 padding: "0.875rem 1rem",
-                marginBottom: "1.125rem",
+                marginBottom: "0.875rem",
               }}
             >
               <svg
@@ -1092,6 +1409,56 @@ export function AffiliatePortal({
               </button>
             </div>
 
+            {/* ── Slug customizer ── */}
+            <div style={{ marginBottom: "1.125rem" }}>
+              {slugEditing ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                  {/* Warning */}
+                  <div style={{ display: "flex", gap: "0.5rem", alignItems: "flex-start", background: "rgba(245,158,11,0.07)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: "0.75rem", padding: "0.625rem 0.875rem" }}>
+                    <span style={{ fontSize: "0.9rem", flexShrink: 0 }}>⚠️</span>
+                    <p style={{ margin: 0, fontSize: "0.75rem", color: "#92400E", lineHeight: 1.5 }}>Your old link will stop tracking the moment you save. Update any posts or bios where it appears.</p>
+                  </div>
+                  {/* Input row */}
+                  <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                    <span style={{ fontSize: "0.83rem", color: "#71717A", flexShrink: 0, whiteSpace: "nowrap" }}>positives.life?via=</span>
+                    <input
+                      id="slug-input"
+                      type="text"
+                      value={slugDraft}
+                      onChange={e => setSlugDraft(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+                      maxLength={30}
+                      autoFocus
+                      style={{ flex: 1, padding: "0.625rem 0.875rem", fontSize: "0.875rem", border: "1.5px solid #2EC4B6", borderRadius: "0.75rem", outline: "none", fontFamily: "monospace", color: "#09090B", background: "#FAFAFA", boxSizing: "border-box" }}
+                    />
+                    <button
+                      id="slug-save-btn"
+                      onClick={handleSlugSave}
+                      disabled={slugSaving || slugDraft.length < 3}
+                      style={{ flexShrink: 0, padding: "0.625rem 1rem", fontSize: "0.8rem", fontWeight: 700, color: "#fff", background: slugSaving || slugDraft.length < 3 ? "#A1A1AA" : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)", border: "none", borderRadius: "0.75rem", cursor: slugSaving ? "wait" : "pointer", whiteSpace: "nowrap" }}
+                    >
+                      {slugSaving ? "Saving…" : "Save"}
+                    </button>
+                    <button onClick={() => { setSlugEditing(false); setSlugDraft(currentToken ?? ""); setSlugError(null); }} style={{ flexShrink: 0, fontSize: "0.75rem", color: "#A1A1AA", background: "none", border: "none", cursor: "pointer", padding: "0.25rem" }}>Cancel</button>
+                  </div>
+                  {slugError && <p style={{ fontSize: "0.78rem", color: "#EF4444", margin: 0 }}>{slugError}</p>}
+                  <p style={{ fontSize: "0.72rem", color: "#A1A1AA", margin: 0 }}>3–30 characters. Lowercase letters, numbers, and hyphens only.</p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <span style={{ fontSize: "0.78rem", color: "#71717A" }}>Link slug:</span>
+                  <code style={{ fontSize: "0.83rem", color: "#2EC4B6", background: "rgba(46,196,182,0.08)", borderRadius: "0.375rem", padding: "0.125rem 0.5rem", fontWeight: 600 }}>{currentToken}</code>
+                  {slugSaved && <span style={{ fontSize: "0.75rem", color: "#16A34A", fontWeight: 600 }}>✓ Updated!</span>}
+                  <button
+                    id="slug-edit-btn"
+                    onClick={() => { setSlugEditing(true); setSlugDraft(currentToken ?? ""); setSlugError(null); }}
+                    style={{ fontSize: "0.75rem", color: "#44A8D8", background: "none", border: "none", cursor: "pointer", padding: "0.125rem 0.5rem", fontWeight: 600 }}
+                  >
+                    Customize →
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Commission callout */}
             <div
               style={{
@@ -1102,7 +1469,6 @@ export function AffiliatePortal({
                 border: "1px solid rgba(245,158,11,0.2)",
                 borderRadius: "0.875rem",
                 padding: "0.75rem 1rem",
-                marginBottom: "1.125rem",
               }}
             >
               <span style={{ fontSize: "1.1rem", lineHeight: 1 }}>💰</span>
@@ -1112,6 +1478,12 @@ export function AffiliatePortal({
               </p>
             </div>
 
+            {/* Affiliate since */}
+            {affiliateCreatedAt && (
+              <p style={{ fontSize: "0.72rem", color: "#A1A1AA", margin: "0.875rem 0 0", textAlign: "right" }}>
+                Affiliate since {new Date(affiliateCreatedAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+              </p>
+            )}
           </div>
 
           {/* Link Builder */}
@@ -1506,18 +1878,68 @@ export function AffiliatePortal({
             )}
           </div>
 
-          {/* Tax info note */}
+          {/* Payout history */}
+          {payouts.length > 0 && (
+            <div style={{ background: "#FFFFFF", border: "1.5px solid #E4E4E7", borderRadius: "1.25rem", padding: "1.5rem", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
+              <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "0.9rem", fontWeight: 700, color: "#09090B", marginBottom: "0.125rem", letterSpacing: "-0.02em" }}>Payout History</h2>
+              <p style={{ fontSize: "0.75rem", color: "#71717A", margin: "0 0 0.875rem", lineHeight: 1.5 }}>Payments sent to your PayPal account by Rewardful.</p>
+              <div>
+                {payouts.map(p => <PayoutRow key={p.id} p={p} />)}
+              </div>
+            </div>
+          )}
+
+          {/* W9 section */}
+          {w9Preview !== "off" && (
+            <div style={{ display: "inline-flex", alignItems: "center", gap: "0.375rem", background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.25)", borderRadius: "9999px", padding: "0.25rem 0.75rem", fontSize: "0.72rem", fontWeight: 700, color: "#6366F1", letterSpacing: "0.04em" }}>
+              🧪 DEV PREVIEW — {w9Preview === "hard" ? "$650 earned (hard gate)" : "$550 earned (soft warning)"}
+            </div>
+          )}
           <div
             style={{
-              background: "#F4F4F5",
-              border: "1px solid #E4E4E7",
-              borderRadius: "1rem",
-              padding: "1rem 1.25rem",
+              background: "#FFFFFF",
+              border: `1.5px solid ${
+                !w9Filed && totalEarned >= 60000 ? "rgba(239,68,68,0.35)"
+                : !w9Filed && totalEarned >= 50000 ? "rgba(245,158,11,0.35)"
+                : "#E4E4E7"
+              }`,
+              borderRadius: "1.25rem",
+              padding: "1.75rem",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
             }}
           >
-            <p style={{ fontSize: "0.78rem", color: "#71717A", margin: 0, lineHeight: 1.55 }}>
-              <strong style={{ color: "#52525B" }}>Tax info:</strong> If your total commissions reach $600 in a calendar year, we&apos;ll reach out to collect a W-9 for 1099 reporting. No action needed until then.
-            </p>
+            {/* $600 hard requirement banner */}
+            {!w9Filed && totalEarned >= 60000 && (
+              <div style={{ display: "flex", gap: "0.625rem", alignItems: "flex-start", background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "0.875rem", padding: "0.875rem 1rem", marginBottom: "1.25rem" }}>
+                <span style={{ fontSize: "1rem", flexShrink: 0 }}>🚨</span>
+                <p style={{ margin: 0, fontSize: "0.83rem", color: "#B91C1C", fontWeight: 600, lineHeight: 1.5 }}>
+                  Action required: You&apos;ve earned ${(totalEarned / 100).toFixed(0)} in commissions. We&apos;re required to collect a W-9 before issuing further payouts. Please complete the form below.
+                </p>
+              </div>
+            )}
+            {/* $500 soft warning */}
+            {!w9Filed && totalEarned >= 50000 && totalEarned < 60000 && (
+              <div style={{ display: "flex", gap: "0.625rem", alignItems: "flex-start", background: "rgba(245,158,11,0.07)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: "0.875rem", padding: "0.875rem 1rem", marginBottom: "1.25rem" }}>
+                <span style={{ fontSize: "1rem", flexShrink: 0 }}>📋</span>
+                <p style={{ margin: 0, fontSize: "0.83rem", color: "#92400E", lineHeight: 1.5 }}>
+                  <strong>Heads up:</strong> You&apos;ve earned ${(totalEarned / 100).toFixed(0)} so far. Once you hit $600, we&apos;ll need a W-9 to comply with IRS 1099 rules. You can file it now to get ahead of it.
+                </p>
+              </div>
+            )}
+
+            <W9Form
+              existingW9={w9Filed ? (existingW9 ?? null) : null}
+              onSaved={() => setW9Filed(true)}
+            />
+
+            {/* Info note when no threshold reached */}
+            {!w9Filed && totalEarned < 50000 && (
+              <div style={{ marginTop: "1.25rem", background: "#F4F4F5", border: "1px solid #E4E4E7", borderRadius: "0.875rem", padding: "0.875rem 1rem" }}>
+                <p style={{ fontSize: "0.78rem", color: "#71717A", margin: 0, lineHeight: 1.55 }}>
+                  <strong style={{ color: "#52525B" }}>Tax info:</strong> If your total commissions reach $600 in a calendar year, we&apos;ll need a W-9 for 1099 reporting. You can file it now or wait — no action required until then.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}

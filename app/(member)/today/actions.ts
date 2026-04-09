@@ -18,7 +18,7 @@ import { computeNewStreak } from "@/lib/streak/compute-streak";
  * never interrupt audio playback or degrade the member experience.
  */
 
-export async function markListened(contentId: string): Promise<void> {
+export async function markListened(contentId: string): Promise<{ newStreak: number }> {
   const supabase = await createClient();
 
   const {
@@ -27,7 +27,7 @@ export async function markListened(contentId: string): Promise<void> {
 
   if (!user) {
     // Member logged out mid-session — silently exit
-    return;
+    return { newStreak: 0 };
   }
 
   const now = new Date();
@@ -93,7 +93,7 @@ export async function markListened(contentId: string): Promise<void> {
 
   if (memberFetchError || !member) {
     console.error("[markListened] member fetch error:", memberFetchError?.message);
-    return;
+    return { newStreak: 0 };
   }
 
   // ── 4. Increment streak if appropriate ─────────────────────────────────────
@@ -118,6 +118,8 @@ export async function markListened(contentId: string): Promise<void> {
   if (streakError) {
     console.error("[markListened] streak update error:", streakError.message);
   }
+
+  return { newStreak };
 }
 
 /**

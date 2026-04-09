@@ -55,6 +55,15 @@ export interface RewardfulAffiliateLink {
   conversions: number;
 }
 
+export interface RewardfulPayout {
+  id: string;
+  currency: string;
+  amount: number;       // in cents
+  state: "pending" | "due" | "processing" | "paid";
+  paid_at: string | null;
+  created_at: string;
+}
+
 export interface RewardfulAffiliate {
   id: string;
   email: string;
@@ -256,5 +265,54 @@ export async function updateAffiliatePayPal(
     method: "PUT",
     body: body.toString(),
   });
+}
+
+/**
+ * Update the referral token on an affiliate link.
+ * Endpoint: PUT /v1/affiliate_links/:id  (note: underscore, not hyphen)
+ *
+ * ⚠️  The previous token stops tracking immediately after this call.
+ *     Caller must warn the user before invoking.
+ */
+export async function updateAffiliateLinkToken(
+  linkId: string,
+  token: string
+): Promise<RewardfulAffiliateLink> {
+  const body = new URLSearchParams({ token });
+  return rewardfulFetch<RewardfulAffiliateLink>(`/affiliate_links/${linkId}`, {
+    method: "PUT",
+    body: body.toString(),
+  });
+}
+
+/**
+ * List payouts for a specific affiliate.
+ * Returns up to 100 most recent payouts.
+ */
+export async function getAffiliatePayouts(
+  affiliateId: string
+): Promise<RewardfulPayout[]> {
+  type Response = { data: RewardfulPayout[]; pagination: { total_count: number } };
+  try {
+    const result = await rewardfulFetch<Response>(
+      `/payouts?affiliate_id=${affiliateId}&limit=100`
+    );
+    return result.data ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Generate a clean referral slug from a member's full name.
+ * Ryan Bradshaw → "ryanb" | Sarah Jane Smith → "sarahs"
+ * Falls back to first name only if no last name.
+ */
+export function generateSlugFromName(fullName: string): string {
+  const parts = fullName.trim().toLowerCase().replace(/[^a-z\s]/g, "").split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "";
+  const first = parts[0].slice(0, 10);
+  const lastInitial = parts.length > 1 ? parts[parts.length - 1][0] : "";
+  return (first + lastInitial).slice(0, 12);
 }
 

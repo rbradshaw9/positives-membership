@@ -15,6 +15,7 @@ import { WeeklyPrincipleCard } from "@/components/today/WeeklyPrincipleCard";
 import { MonthlyThemeCard } from "@/components/today/MonthlyThemeCard";
 import { MonthlyAudioArchive } from "@/components/today/MonthlyAudioArchive";
 import { WeeklyArchive } from "@/components/today/WeeklyArchive";
+import { StreakBadge } from "@/components/today/StreakBadge";
 
 
 /**
@@ -139,23 +140,7 @@ export default async function TodayPage() {
               )}
             </div>
 
-            {/* Streak badge */}
-            <span
-              className="shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold mt-1"
-              style={{
-                background:
-                  streak > 0
-                    ? "color-mix(in srgb, var(--color-accent) 12%, transparent)"
-                    : "var(--color-muted)",
-                color: streak > 0 ? "var(--color-accent)" : "var(--color-muted-fg)",
-                border:
-                  streak > 0
-                    ? "1px solid color-mix(in srgb, var(--color-accent) 22%, transparent)"
-                    : "1px solid var(--color-border)",
-              }}
-            >
-              🔥 {streak > 0 ? `${streak}-day streak` : "Start your streak"}
-            </span>
+            <StreakBadge initialStreak={streak} />
           </div>
         </div>
       </section>

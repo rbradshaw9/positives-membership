@@ -222,6 +222,9 @@ select.admin-input {
   border-color: rgba(255,255,255,0.08);
   color: #fff;
   box-shadow: var(--shadow-large);
+  /* Override the global heading color token so h1-h6 inside this card render white */
+  --color-foreground: #ffffff;
+  --color-muted-fg: rgba(255,255,255,0.55);
 }
 
 .ui-section-eyebrow {
