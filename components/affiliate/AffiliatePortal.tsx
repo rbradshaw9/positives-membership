@@ -1606,7 +1606,8 @@ export function AffiliatePortal({
   const [currentToken, setCurrentToken] = useState(token);
   const [copiedLink, setCopiedLink] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [paypalEmail, setPaypalEmail] = useState(initialPaypalEmail);
+  const [savedPaypalEmail, setSavedPaypalEmail] = useState(initialPaypalEmail);
+  const [paypalEmailDraft, setPaypalEmailDraft] = useState(initialPaypalEmail);
   const [paypalSaving, setPaypalSaving] = useState(false);
   const [paypalSaved, setPaypalSaved] = useState(false);
   const [paypalError, setPaypalError] = useState<string | null>(null);
@@ -1670,16 +1671,17 @@ export function AffiliatePortal({
     setPaypalSaving(true);
     setPaypalError(null);
     setPaypalSaved(false);
-    const result = await savePayPalEmailAction(paypalEmail);
+    const result = await savePayPalEmailAction(paypalEmailDraft);
     setPaypalSaving(false);
     if ("error" in result) {
       setPaypalError(result.error);
       return;
     }
+    setSavedPaypalEmail(paypalEmailDraft.trim().toLowerCase());
     setPaypalSaved(true);
     track("affiliate_payout_details_saved", { source_path: "/account/affiliate" });
     window.setTimeout(() => setPaypalSaved(false), 4000);
-  }, [paypalEmail]);
+  }, [paypalEmailDraft]);
 
   const handleSlugSave = useCallback(async () => {
     setSlugSaving(true);
@@ -1697,11 +1699,11 @@ export function AffiliatePortal({
     window.setTimeout(() => setSlugSaved(false), 3000);
   }, [slugDraft]);
 
-  if (enrolled && !paypalEmail.trim()) {
+  if (enrolled && !savedPaypalEmail.trim()) {
     return (
       <PayoutSetupStep
-        paypalEmail={paypalEmail}
-        onPaypalChange={setPaypalEmail}
+        paypalEmail={paypalEmailDraft}
+        onPaypalChange={setPaypalEmailDraft}
         onSave={async () => {
           await handleSavePayPal();
         }}
@@ -1836,8 +1838,8 @@ export function AffiliatePortal({
           performance={performance}
           commissions={commissions}
           payouts={payouts}
-          paypalEmail={paypalEmail}
-          onPaypalChange={setPaypalEmail}
+          paypalEmail={paypalEmailDraft}
+          onPaypalChange={setPaypalEmailDraft}
           onSavePayPal={() => void handleSavePayPal()}
           paypalSaving={paypalSaving}
           paypalSaved={paypalSaved}
