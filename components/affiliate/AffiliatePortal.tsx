@@ -47,31 +47,11 @@ interface Props {
 
 type Tab = "link" | "performance" | "share" | "earnings";
 
-const TABS: { id: Tab; label: string; icon: string; detail: string }[] = [
-  {
-    id: "link",
-    label: "My Links",
-    icon: "🔗",
-    detail: "Your main referral link, assigned campaign links, and source tags.",
-  },
-  {
-    id: "performance",
-    label: "Performance",
-    icon: "📈",
-    detail: "FirstPromoter-attributed clicks, leads, members, and earnings.",
-  },
-  {
-    id: "share",
-    label: "Share Kit",
-    icon: "✉️",
-    detail: "Simple copy, outreach templates, and easy ways to share well.",
-  },
-  {
-    id: "earnings",
-    label: "Earnings",
-    icon: "💸",
-    detail: "Payout setup, commission history, and what is ready to be paid.",
-  },
+const TABS: { id: Tab; label: string; icon: string }[] = [
+  { id: "link", label: "My Links", icon: "🔗" },
+  { id: "performance", label: "Performance", icon: "📈" },
+  { id: "share", label: "Share Kit", icon: "✉️" },
+  { id: "earnings", label: "Earnings", icon: "💸" },
 ];
 
 function formatMoney(cents: number) {
@@ -1750,8 +1730,8 @@ export function AffiliatePortal({
 
   return (
     <div style={{ maxWidth: 1120, margin: "0 auto", padding: "1.75rem 1rem 5rem" }}>
-      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div style={{ maxWidth: 700 }}>
+      <div className="mb-8 flex flex-col gap-5">
+        <div style={{ maxWidth: 760 }}>
           <div
             style={{
               display: "inline-flex",
@@ -1788,131 +1768,41 @@ export function AffiliatePortal({
           </p>
         </div>
 
-        <div className="w-full lg:max-w-[33rem]">
-          <div
-            className="flex gap-2 overflow-x-auto pb-1 lg:hidden"
-            style={{
-              scrollbarWidth: "none",
-              WebkitOverflowScrolling: "touch",
-            }}
-          >
-            {TABS.map((tab) => {
-              const active = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  style={{
-                    flexShrink: 0,
-                    border: active ? "1px solid rgba(46,196,182,0.2)" : "1px solid #E4E4E7",
-                    borderRadius: "9999px",
-                    padding: "0.72rem 1rem",
-                    background: active
-                      ? "linear-gradient(180deg, rgba(46,196,182,0.14) 0%, rgba(68,168,216,0.08) 100%)"
-                      : "#FFFFFF",
-                    color: active ? "#0F766E" : "#52525B",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    boxShadow: active ? "0 10px 24px rgba(46,196,182,0.08)" : "none",
-                  }}
-                >
-                  <span aria-hidden="true" style={{ marginRight: "0.4rem" }}>{tab.icon}</span>
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-
-          <div
-            className="hidden lg:grid lg:grid-cols-2"
-            style={{
-              gap: "0.8rem",
-            }}
-          >
-            {TABS.map((tab) => {
-              const active = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  aria-pressed={active}
-                  style={{
-                    textAlign: "left",
-                    border: active ? "1px solid rgba(46,196,182,0.24)" : "1px solid rgba(228,228,231,1)",
-                    borderRadius: "1.15rem",
-                    padding: "1rem 1.05rem",
-                    background: active
-                      ? "linear-gradient(180deg, rgba(46,196,182,0.14) 0%, rgba(68,168,216,0.08) 100%)"
-                      : "rgba(255,255,255,0.88)",
-                    color: "#09090B",
-                    cursor: "pointer",
-                    boxShadow: active
-                      ? "0 18px 34px rgba(46,196,182,0.10)"
-                      : "0 10px 22px rgba(15,23,42,0.04)",
-                    transition: "transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background 180ms ease",
-                  }}
-                  onMouseEnter={(event) => {
-                    if (active) return;
-                    event.currentTarget.style.transform = "translateY(-1px)";
-                  }}
-                  onMouseLeave={(event) => {
-                    event.currentTarget.style.transform = "translateY(0)";
-                  }}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          width: "2rem",
-                          height: "2rem",
-                          borderRadius: "9999px",
-                          background: active ? "rgba(255,255,255,0.75)" : "rgba(244,244,245,1)",
-                          fontSize: "1rem",
-                        }}
-                      >
-                        <span aria-hidden="true">{tab.icon}</span>
-                      </div>
-                      <h2
-                        style={{
-                          margin: "0.85rem 0 0",
-                          fontSize: "1rem",
-                          fontWeight: 700,
-                          color: active ? "#0F766E" : "#09090B",
-                          letterSpacing: "-0.025em",
-                        }}
-                      >
-                        {tab.label}
-                      </h2>
-                    </div>
-                    <span
-                      style={{
-                        fontSize: "0.75rem",
-                        fontWeight: 700,
-                        color: active ? "#0F766E" : "#A1A1AA",
-                        letterSpacing: "0.04em",
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      {active ? "Open" : "View"}
-                    </span>
-                  </div>
-                  <p
-                    style={{
-                      margin: "0.45rem 0 0",
-                      fontSize: "0.82rem",
-                      lineHeight: 1.6,
-                      color: active ? "#155E75" : "#71717A",
-                    }}
-                  >
-                    {tab.detail}
-                  </p>
-                </button>
-              );
-            })}
-          </div>
+        <div
+          className="flex gap-2 overflow-x-auto rounded-[1.25rem] border border-border bg-white/88 p-1.5 shadow-[0_14px_30px_rgba(15,23,42,0.05)]"
+          style={{
+            scrollbarWidth: "none",
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
+          {TABS.map((tab) => {
+            const active = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                aria-pressed={active}
+                className="min-w-fit lg:min-w-0 lg:flex-1"
+                style={{
+                  flexShrink: 0,
+                  border: active ? "1px solid rgba(46,196,182,0.22)" : "1px solid transparent",
+                  borderRadius: "1rem",
+                  padding: "0.85rem 1rem",
+                  background: active
+                    ? "linear-gradient(180deg, rgba(46,196,182,0.14) 0%, rgba(68,168,216,0.08) 100%)"
+                    : "transparent",
+                  color: active ? "#0F766E" : "#52525B",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  textAlign: "center",
+                  boxShadow: active ? "0 10px 24px rgba(46,196,182,0.08)" : "none",
+                }}
+              >
+                <span aria-hidden="true" style={{ marginRight: "0.4rem" }}>{tab.icon}</span>
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
