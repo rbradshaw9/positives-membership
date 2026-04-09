@@ -425,6 +425,12 @@ export async function updateReferralSlugAction(
     .update({ fp_ref_id: slug })
     .eq("id", user.id);
 
+  // Keep Positives-managed short links pointing at the new active FP token.
+  await admin
+    .from("affiliate_link")
+    .update({ token: slug })
+    .eq("member_id", user.id);
+
   return { success: true, newToken: slug };
 }
 

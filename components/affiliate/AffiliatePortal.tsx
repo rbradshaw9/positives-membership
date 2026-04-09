@@ -952,10 +952,12 @@ function LinkTab({
   slugSaving,
   slugSaved,
   slugError,
+  slugConfirmed,
   onSlugDraftChange,
   onSlugEdit,
   onSlugCancel,
   onSlugSave,
+  onSlugConfirmChange,
   links,
   onLinksChange,
 }: {
@@ -968,10 +970,12 @@ function LinkTab({
   slugSaving: boolean;
   slugSaved: boolean;
   slugError: string | null;
+  slugConfirmed: boolean;
   onSlugDraftChange: (value: string) => void;
   onSlugEdit: () => void;
   onSlugCancel: () => void;
   onSlugSave: () => void;
+  onSlugConfirmChange: (value: boolean) => void;
   links: AffiliateLink[];
   onLinksChange: (links: AffiliateLink[]) => void;
 }) {
@@ -1086,7 +1090,7 @@ function LinkTab({
               <div className="flex flex-col gap-3">
                 <div style={{ background: "rgba(245,158,11,0.07)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: "0.75rem", padding: "0.75rem 0.9rem" }}>
                   <p style={{ margin: 0, fontSize: "0.76rem", lineHeight: 1.55, color: "#92400E" }}>
-                    Your old link stops tracking the moment you save. Update any places where you have already shared it.
+                    Your old direct <code>?fpr=</code> links stop tracking the moment you save. Any Positives-managed <code>/go/</code> links in this portal will be updated automatically.
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -1107,18 +1111,18 @@ function LinkTab({
                     <button
                       id="slug-save-btn"
                       onClick={onSlugSave}
-                      disabled={slugSaving || slugDraft.length < 3}
+                      disabled={slugSaving || slugDraft.length < 3 || !slugConfirmed}
                       style={{
                         border: "none",
                         borderRadius: "0.8rem",
                         padding: "0.75rem 1rem",
-                        background: slugSaving || slugDraft.length < 3 ? "#A1A1AA" : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)",
+                        background: slugSaving || slugDraft.length < 3 || !slugConfirmed ? "#A1A1AA" : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)",
                         color: "#FFFFFF",
                         fontWeight: 700,
                         cursor: slugSaving ? "wait" : "pointer",
                       }}
                     >
-                      {slugSaving ? "Saving…" : "Save"}
+                      {slugSaving ? "Saving…" : "Change slug"}
                     </button>
                     <button onClick={onSlugCancel} style={{ border: "none", background: "transparent", color: "#A1A1AA", cursor: "pointer" }}>
                       Cancel
@@ -1126,8 +1130,17 @@ function LinkTab({
                   </div>
                 </div>
                 {slugError ? <p style={{ margin: 0, fontSize: "0.8rem", color: "#DC2626" }}>{slugError}</p> : null}
+                <label style={{ display: "flex", alignItems: "flex-start", gap: "0.6rem", fontSize: "0.8rem", color: "#52525B", lineHeight: 1.55, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={slugConfirmed}
+                    onChange={(event) => onSlugConfirmChange(event.target.checked)}
+                    style={{ marginTop: "0.15rem" }}
+                  />
+                  <span>I understand that any old direct <code>?fpr=</code> links I already shared will stop tracking after this change.</span>
+                </label>
                 <p style={{ margin: 0, fontSize: "0.75rem", color: "#A1A1AA" }}>
-                  3–30 characters. Lowercase letters, numbers, and hyphens only.
+                  3–30 characters. Lowercase letters, numbers, and hyphens only. If FirstPromoter reports the slug is already taken, you&apos;ll need to choose another one.
                 </p>
               </div>
             ) : (
@@ -1775,6 +1788,7 @@ export function AffiliatePortal({
   const [slugSaving, setSlugSaving] = useState(false);
   const [slugError, setSlugError] = useState<string | null>(null);
   const [slugSaved, setSlugSaved] = useState(false);
+  const [slugConfirmed, setSlugConfirmed] = useState(false);
   const [w9Filed, setW9Filed] = useState(Boolean(existingW9));
   const [managedLinks, setManagedLinks] = useState<AffiliateLink[]>(initialLinks);
   const autoEnrollStartedRef = useRef(false);
@@ -1855,6 +1869,7 @@ export function AffiliatePortal({
     }
     setCurrentToken(result.newToken);
     setSlugEditing(false);
+    setSlugConfirmed(false);
     setSlugSaved(true);
     window.setTimeout(() => setSlugSaved(false), 3000);
   }, [slugDraft]);
@@ -1959,18 +1974,22 @@ export function AffiliatePortal({
           slugSaving={slugSaving}
           slugSaved={slugSaved}
           slugError={slugError}
+          slugConfirmed={slugConfirmed}
           onSlugDraftChange={(value) => setSlugDraft(value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
           onSlugEdit={() => {
             setSlugEditing(true);
             setSlugDraft(currentToken ?? "");
             setSlugError(null);
+            setSlugConfirmed(false);
           }}
           onSlugCancel={() => {
             setSlugEditing(false);
             setSlugDraft(currentToken ?? "");
             setSlugError(null);
+            setSlugConfirmed(false);
           }}
           onSlugSave={handleSlugSave}
+          onSlugConfirmChange={setSlugConfirmed}
           links={managedLinks}
           onLinksChange={setManagedLinks}
         />
