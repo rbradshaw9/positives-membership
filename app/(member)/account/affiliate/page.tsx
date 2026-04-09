@@ -5,11 +5,16 @@ import {
   getPromoterStats,
   getPromoterCommissions,
   getPromoterPayouts,
+  getPromoterTrendReport,
+  getPromoterUrlReports,
   type PromoterStats,
   type AffiliateCommission,
   type AffiliatePayout,
+  type PromoterTrendPoint,
+  type PromoterUrlReport,
 } from "@/lib/firstpromoter/client";
 import { AffiliatePortal } from "@/components/affiliate/AffiliatePortal";
+import { buildAffiliatePortalViewModel } from "@/lib/affiliate/portal";
 
 export const metadata = {
   title: "Affiliate Portal — Positives",
@@ -43,13 +48,34 @@ export default async function AffiliatePage({
   let stats: PromoterStats | null = null;
   let commissions: AffiliateCommission[] = [];
   let payouts: AffiliatePayout[] = [];
+  let trendReport: PromoterTrendPoint[] = [];
+  let urlReports: PromoterUrlReport[] = [];
 
   if (promoterId) {
     try {
-      [stats, commissions, payouts] = await Promise.all([
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setMonth(startDate.getMonth() - 5);
+
+      [stats, commissions, payouts, trendReport, urlReports] = await Promise.all([
         getPromoterStats(promoterId),
         getPromoterCommissions(promoterId),
         getPromoterPayouts(promoterId),
+        getPromoterTrendReport({
+          promoterId,
+          email: member.email,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          groupBy: "month",
+        }).catch(() => []),
+        token
+          ? getPromoterUrlReports({
+              query: token,
+              startDate: startDate.toISOString(),
+              endDate: endDate.toISOString(),
+              groupBy: "month",
+            }).catch(() => [])
+          : Promise.resolve([]),
       ]);
     } catch {
       // Non-fatal — render with partial data
@@ -71,6 +97,17 @@ export default async function AffiliatePage({
     .eq("member_id", member.id)
     .maybeSingle();
 
+  const performance = buildAffiliatePortalViewModel({
+    stats,
+    commissions,
+    payouts,
+    trendReport,
+    urlReports,
+    legacyLinks: affiliateLinks ?? [],
+    paypalEmail,
+    hasW9: Boolean(w9),
+  });
+
   return (
     <AffiliatePortal
       isAffiliate={Boolean(promoterId)}
@@ -87,6 +124,7 @@ export default async function AffiliatePage({
       existingW9={w9 ?? null}
       w9Preview={w9Preview}
       autoEnroll={autoEnroll}
+      performance={performance}
     />
   );
 }

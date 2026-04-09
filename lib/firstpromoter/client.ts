@@ -130,6 +130,23 @@ export interface PromoterStats {
   conversions: number;
 }
 
+export interface PromoterTrendPoint {
+  period: string;
+  visitors: number;
+  leads: number;
+  conversions: number;
+  earnings: number;
+}
+
+export interface PromoterUrlReport {
+  id: string;
+  url: string;
+  clicks: number;
+  leads: number;
+  conversions: number;
+  earnings: number;
+}
+
 interface FpStats {
   clicks_count?: number;
   referrals_count?: number;
@@ -187,6 +204,42 @@ interface FpPayoutResponse {
   state?: string;
   status?: string;
   created_at: string;
+}
+
+interface FpPromoterReportRow {
+  id: number | string;
+  promoter?: {
+    id?: number;
+    email?: string;
+    name?: string;
+  } | null;
+  data?: {
+    clicks_count?: number;
+    referrals_count?: number;
+    customers_count?: number;
+    promoter_earnings_amount?: number;
+  } | null;
+  sub_data?: Array<{
+    period?: string;
+    id?: string;
+    data?: {
+      clicks_count?: number;
+      referrals_count?: number;
+      customers_count?: number;
+      promoter_earnings_amount?: number;
+    } | null;
+  }> | null;
+}
+
+interface FpUrlReportRow {
+  id: string;
+  url?: string | null;
+  data?: {
+    clicks_count?: number;
+    referrals_count?: number;
+    customers_count?: number;
+    promoter_earnings_amount?: number;
+  } | null;
 }
 
 function primaryCampaign(
@@ -482,6 +535,74 @@ export async function getPromoterPayouts(promoterId: number): Promise<AffiliateP
   } catch {
     return [];
   }
+}
+
+export async function getPromoterTrendReport(input: {
+  promoterId?: number;
+  email?: string | null;
+  startDate: string;
+  endDate: string;
+  groupBy?: "day" | "week" | "month" | "year";
+}): Promise<PromoterTrendPoint[]> {
+  const rows = await fpFetch<FpPromoterReportRow[]>("/company/reports/promoters", {
+    query: {
+      columns: [
+        "clicks_count",
+        "referrals_count",
+        "customers_count",
+        "promoter_earnings_amount",
+      ],
+      group_by: input.groupBy ?? "month",
+      start_date: input.startDate,
+      end_date: input.endDate,
+    },
+  });
+
+  const match = rows.find((row) => {
+    if (input.promoterId && row.promoter?.id === input.promoterId) return true;
+    if (input.email && row.promoter?.email?.toLowerCase() === input.email.toLowerCase()) return true;
+    return false;
+  });
+
+  return (match?.sub_data ?? []).map((point) => ({
+    period: point.period ?? point.id ?? "",
+    visitors: point.data?.clicks_count ?? 0,
+    leads: point.data?.referrals_count ?? 0,
+    conversions: point.data?.customers_count ?? 0,
+    earnings: point.data?.promoter_earnings_amount ?? 0,
+  }));
+}
+
+export async function getPromoterUrlReports(input: {
+  query: string;
+  startDate: string;
+  endDate: string;
+  groupBy?: "day" | "week" | "month" | "year";
+}): Promise<PromoterUrlReport[]> {
+  const rows = await fpFetch<FpUrlReportRow[]>("/company/reports/urls", {
+    query: {
+      columns: [
+        "clicks_count",
+        "referrals_count",
+        "customers_count",
+        "promoter_earnings_amount",
+        "url",
+      ],
+      q: input.query,
+      group_by: input.groupBy ?? "month",
+      start_date: input.startDate,
+      end_date: input.endDate,
+    },
+  });
+
+  return rows.map((row) => ({
+    id: row.id,
+    url: row.url ?? "",
+    clicks: row.data?.clicks_count ?? 0,
+    leads: row.data?.referrals_count ?? 0,
+    conversions: row.data?.customers_count ?? 0,
+    earnings: row.data?.promoter_earnings_amount ?? 0,
+  }));
 }
 
 export async function trackFpSale({

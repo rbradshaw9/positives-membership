@@ -194,6 +194,7 @@ export async function savePayPalEmailAction(
 export async function createAffiliateLinkAction(input: {
   label: string;
   destination: string | null;
+  subId?: string | null;
 }): Promise<{ link: { id: string; code: string; label: string; destination: string | null; clicks: number } } | { error: string }> {
   const cookieStore = await cookies();
   const supabase = createServerClient(
@@ -220,6 +221,10 @@ export async function createAffiliateLinkAction(input: {
 
   // Validate and normalize the destination URL
   let destination: string | null = null;
+  const subId = (input.subId ?? "").trim().toLowerCase();
+  if (subId && !/^[a-z0-9]+(?:[-_][a-z0-9]+)*$/.test(subId)) {
+    return { error: "Use letters, numbers, hyphens, or underscores for the source tag." };
+  }
   if (input.destination) {
     let raw = input.destination.trim();
     if (raw) {
@@ -243,11 +248,20 @@ export async function createAffiliateLinkAction(input: {
         if (!host.includes(".") && host !== "localhost") {
           return { error: "Please enter a valid website URL (e.g. https://yourblog.com)." };
         }
+        if (subId) {
+          parsed.searchParams.set("sub_id", subId);
+        }
         destination = parsed.toString();
       } catch {
         return { error: "That doesn't look like a valid URL. Try something like https://yourblog.com/post." };
       }
     }
+  }
+
+  if (!destination && subId) {
+    const fallback = new URL("/", "https://positives.life");
+    fallback.searchParams.set("sub_id", subId);
+    destination = fallback.toString();
   }
 
   // Generate code from label only — short and clean (e.g. "my-blog-post")

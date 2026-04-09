@@ -1,28 +1,23 @@
 "use client";
 
-/**
- * components/affiliate/AffiliatePortal.tsx
- *
- * Full affiliate portal for Positives members.
- *
- * Pre-enrollment: single card CTA to provision an affiliate account.
- * Post-enrollment: 4-tab experience — My Link | Stats | Share Kit | Earnings
- *
- * Design tokens: brand teal (#2EC4B6), sky blue (#44A8D8), amber (#F59E0B),
- * Montserrat headings, Poppins body, generous radii, shadow-medium cards.
- */
-
-import { useState, useCallback, useEffect, useRef } from "react";
-import { getReferralLinkAction, savePayPalEmailAction, createAffiliateLinkAction, deleteAffiliateLinkAction, updateAffiliateLinkAction, updateReferralSlugAction, saveW9Action } from "@/app/account/affiliate/actions";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import {
+  createAffiliateLinkAction,
+  deleteAffiliateLinkAction,
+  getReferralLinkAction,
+  savePayPalEmailAction,
+  saveW9Action,
+  updateReferralSlugAction,
+} from "@/app/account/affiliate/actions";
+import type { W9FormData } from "@/app/account/affiliate/actions";
 import type {
   AffiliateCommission,
   AffiliatePayout,
   PromoterStats,
 } from "@/lib/firstpromoter/client";
-import type { W9FormData } from "@/app/account/affiliate/actions";
+import type { AffiliatePortalViewModel } from "@/lib/affiliate/portal";
+import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { track } from "@/lib/analytics/ga";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface AffiliateLink {
   id: string;
@@ -58,313 +53,28 @@ interface Props {
   paypalEmail: string;
   initialLinks?: AffiliateLink[];
   existingW9?: ExistingW9 | null;
-  /** Dev-only: override the W9 threshold display without real commission data. */
   w9Preview?: "off" | "soft" | "hard";
   autoEnroll?: boolean;
+  performance: AffiliatePortalViewModel;
 }
 
-type Tab = "link" | "stats" | "share" | "earnings";
+type Tab = "link" | "performance" | "share" | "earnings";
 
-const TABS: { id: Tab; label: string; emoji: string }[] = [
-  { id: "link",     label: "My Link",   emoji: "🔗" },
-  { id: "stats",    label: "Stats",     emoji: "📊" },
-  { id: "share",    label: "Share Kit", emoji: "📨" },
-  { id: "earnings", label: "Earnings",  emoji: "💸" },
+const TABS: { id: Tab; label: string; icon: string }[] = [
+  { id: "link", label: "My Link", icon: "🔗" },
+  { id: "performance", label: "Performance", icon: "📈" },
+  { id: "share", label: "Share Kit", icon: "✉️" },
+  { id: "earnings", label: "Earnings", icon: "💸" },
 ];
-
-// ─── Swipe copy ───────────────────────────────────────────────────────────────
-
-function buildSwipes(link: string) {
-  return [
-    {
-      id: "swipe-1",
-      label: "Swipe 1 — Personal recommendation",
-      subject: "This is the daily practice I swear by",
-      body: `Hey [Name],
-
-I've been doing this daily audio practice called Positives for a while now, and it's genuinely changed how I start my day.
-
-It's 10 minutes of curated audio — interviews, stories, and perspectives that actually stick with you. Not self-help fluff. Real stuff that helps me stay grounded no matter what's going on.
-
-I think you'd love it. You can try it here:
-${link}
-
-Let me know what you think.`,
-    },
-    {
-      id: "swipe-2",
-      label: "Swipe 2 — Short & punchy",
-      subject: "10 minutes that changed my mornings",
-      body: `Quick share —
-
-I've been using Positives to start my mornings and it's been really good.
-
-Daily audio, curated reminders, and a practice that actually helps me stay grounded without feeling like homework.
-
-Check it out: ${link}`,
-    },
-  ];
-}
-
-const SOCIAL_CAPTIONS = (link: string) => [
-  {
-    id: "ig",
-    label: "Instagram / Facebook",
-    copy: `I've been doing a 10-minute daily audio practice and it's been a game changer for my mornings.
-
-If you're looking for something that keeps you grounded and inspired — without the hustle noise — check out @positives.life
-
-My link: ${link}
-
-#Positives #MorningRoutine #DailyPractice`,
-  },
-  {
-    id: "twitter",
-    label: "Twitter / X",
-    copy: `Started using @positives for my morning practice.
-
-10 minutes of curated audio that actually sticks with you.
-
-Worth trying: ${link}`,
-  },
-  {
-    id: "linkedin",
-    label: "LinkedIn",
-    copy: `I've been consistent with one new habit this year: a 10-minute morning audio practice from Positives.
-
-It's not a podcast. It's a curated daily practice — stories, interviews, and perspectives that shift how you see the day.
-
-If you're building a more intentional morning, I'd recommend giving it a try: ${link}`,
-  },
-];
-
-const SMS_TEMPLATES = (link: string) => [
-  {
-    id: "sms-personal",
-    label: "Personal intro",
-    copy: `Hey! I've been using this daily audio practice called Positives and I really think you'd like it. 10 mins every morning — stories, interviews, real stuff that sticks with you. Check it out: ${link}`,
-  },
-  {
-    id: "sms-quick",
-    label: "Quick nudge",
-    copy: `Random rec — I started this morning audio thing called Positives and it's been great. Worth a look: ${link}`,
-  },
-];
-
-const DM_SCRIPTS = (link: string) => [
-  {
-    id: "dm-warm",
-    label: "Warm DM (friend or follower)",
-    copy: `Hey! Just wanted to share something I've been using — it's a 10-minute daily audio practice called Positives. Curated stories, interviews, perspectives that actually help you start the day right. Not a podcast, more like a daily ritual. Thought of you because [reason]. Here's my link if you want to try it: ${link}`,
-  },
-  {
-    id: "dm-reply",
-    label: "Reply to someone's post about routine/mindset",
-    copy: `Love this! I've been doing something similar — there's this daily audio practice called Positives that's been a game changer for my mornings. 10 minutes, no fluff. Might be up your alley: ${link}`,
-  },
-];
-
-const TALKING_POINTS = [
-  "20% recurring commission — for as long as each member stays active",
-  "Positives members listen daily — this is a high-retention product",
-  "No approval needed — your link is live the moment you enroll",
-  "Payouts are coordinated monthly using the payment details on your account",
-  "Authentic recommendation only — share with people who would genuinely love it",
-];
-
-// ─── Small primitives ─────────────────────────────────────────────────────────
-
-function StatChip({ label, value }: { label: string; value: number }) {
-  return (
-    <div
-      style={{
-        background: "#FFFFFF",
-        border: "1.5px solid #E4E4E7",
-        borderRadius: "1rem",
-        padding: "1.25rem 1rem",
-        textAlign: "center",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-      }}
-    >
-      <div
-        style={{
-          fontSize: "2rem",
-          fontWeight: 700,
-          color: "#09090B",
-          fontFamily: "var(--font-heading)",
-          letterSpacing: "-0.04em",
-          lineHeight: 1,
-          marginBottom: "0.375rem",
-        }}
-      >
-        {value.toLocaleString()}
-      </div>
-      <div
-        style={{
-          fontSize: "0.7rem",
-          fontWeight: 700,
-          color: "#71717A",
-          textTransform: "uppercase",
-          letterSpacing: "0.07em",
-        }}
-      >
-        {label}
-      </div>
-    </div>
-  );
-}
-
-function CopyBlock({ id, label, content }: { id: string; label: string; content: string }) {
-  const [copied, setCopied] = useState(false);
-  const handleCopy = useCallback(async () => {
-    await navigator.clipboard.writeText(content);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2200);
-  }, [content]);
-
-  return (
-    <div style={{ marginBottom: "1.25rem" }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "0.5rem",
-        }}
-      >
-        <span
-          style={{
-            fontSize: "0.7rem",
-            fontWeight: 700,
-            color: "#71717A",
-            textTransform: "uppercase",
-            letterSpacing: "0.07em",
-          }}
-        >
-          {label}
-        </span>
-        <button
-          id={id}
-          onClick={handleCopy}
-          style={{
-            fontSize: "0.78rem",
-            fontWeight: 600,
-            color: copied ? "#2EC4B6" : "#44A8D8",
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            padding: 0,
-            transition: "color 0.2s",
-          }}
-        >
-          {copied ? "✓ Copied!" : "Copy"}
-        </button>
-      </div>
-      <pre
-        style={{
-          background: "#F4F4F5",
-          border: "1px solid #E4E4E7",
-          borderRadius: "0.875rem",
-          padding: "1rem 1.125rem",
-          fontSize: "0.83rem",
-          color: "#3F3F46",
-          lineHeight: 1.65,
-          whiteSpace: "pre-wrap",
-          wordBreak: "break-word",
-          fontFamily: "var(--font-sans)",
-          margin: 0,
-        }}
-      >
-        {content}
-      </pre>
-    </div>
-  );
-}
-
-function CommissionRow({ c }: { c: AffiliateCommission }) {
-  const amount = `$${(c.amount / 100).toFixed(2)}`;
-  const date = new Date(c.created_at).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-  const statusStyles: Record<string, { color: string; bg: string }> = {
-    paid:    { color: "#16A34A", bg: "rgba(22,163,74,0.1)" },
-    pending: { color: "#D97706", bg: "rgba(217,119,6,0.1)" },
-    unpaid:  { color: "#71717A", bg: "rgba(113,113,122,0.1)" },
-  };
-  const style = statusStyles[c.status] ?? statusStyles.unpaid;
-
-  return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        padding: "0.875rem 0",
-        borderBottom: "1px solid #F4F4F5",
-      }}
-    >
-      <div>
-        <div style={{ fontSize: "0.9rem", fontWeight: 600, color: "#09090B" }}>{amount}</div>
-        <div style={{ fontSize: "0.75rem", color: "#71717A", marginTop: "0.125rem" }}>{date}</div>
-      </div>
-      <span
-        style={{
-          fontSize: "0.72rem",
-          fontWeight: 700,
-          color: style.color,
-          background: style.bg,
-          borderRadius: "9999px",
-          padding: "0.25rem 0.75rem",
-          textTransform: "capitalize",
-          letterSpacing: "0.02em",
-        }}
-      >
-        {c.status}
-      </span>
-    </div>
-  );
-}
-
-function PayoutRow({ p }: { p: AffiliatePayout }) {
-  const amount = `$${(p.amount / 100).toFixed(2)}`;
-  const date = new Date(p.created_at).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-  const stateStyles: Record<string, { color: string; bg: string; label: string }> = {
-    paid:       { color: "#16A34A", bg: "rgba(22,163,74,0.1)",   label: "Paid" },
-    processing: { color: "#44A8D8", bg: "rgba(68,168,216,0.1)", label: "Processing" },
-    due:        { color: "#D97706", bg: "rgba(217,119,6,0.1)",  label: "Due" },
-    pending:    { color: "#71717A", bg: "rgba(113,113,122,0.1)", label: "Pending" },
-  };
-  const st = stateStyles[p.state] ?? stateStyles.pending;
-
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.875rem 0", borderBottom: "1px solid #F4F4F5" }}>
-      <div>
-        <div style={{ fontSize: "0.9rem", fontWeight: 600, color: "#09090B" }}>{amount}</div>
-        <div style={{ fontSize: "0.75rem", color: "#71717A", marginTop: "0.125rem" }}>{date}</div>
-      </div>
-      <span style={{ fontSize: "0.72rem", fontWeight: 700, color: st.color, background: st.bg, borderRadius: "9999px", padding: "0.25rem 0.75rem", letterSpacing: "0.02em" }}>
-        {st.label}
-      </span>
-    </div>
-  );
-}
-
-// ─── W9 Form ──────────────────────────────────────────────────────────────────
 
 const TAX_CLASSIFICATIONS = [
-  { value: "individual",   label: "Individual / Sole proprietor" },
-  { value: "s_corp",       label: "S Corporation" },
-  { value: "c_corp",       label: "C Corporation" },
-  { value: "partnership",  label: "Partnership" },
-  { value: "llc_single",   label: "LLC — Single member" },
-  { value: "llc_multi",    label: "LLC — Multi member" },
-  { value: "other",        label: "Other" },
+  { value: "individual", label: "Individual / Sole proprietor" },
+  { value: "s_corp", label: "S Corporation" },
+  { value: "c_corp", label: "C Corporation" },
+  { value: "partnership", label: "Partnership" },
+  { value: "llc_single", label: "LLC — Single member" },
+  { value: "llc_multi", label: "LLC — Multi member" },
+  { value: "other", label: "Other" },
 ];
 
 const US_STATES = [
@@ -375,6 +85,423 @@ const US_STATES = [
   "SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC",
 ];
 
+function formatMoney(cents: number) {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
+function formatShortDate(value: string | null) {
+  if (!value) return "No payouts yet";
+  return new Date(value).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function extractSubId(destination: string | null) {
+  if (!destination) return null;
+  try {
+    return new URL(destination, "https://positives.life").searchParams.get("sub_id");
+  } catch {
+    return null;
+  }
+}
+
+function shortUrl(code: string) {
+  return `https://positives.life/go/${code}`;
+}
+
+function buildManagedDestination(input: { destination: string | null; subId: string | null }) {
+  const destination = input.destination?.trim() ?? "";
+  const subId = input.subId?.trim() ?? "";
+  if (!destination && !subId) return "Homepage";
+  if (!destination && subId) return `Homepage · source tag: ${subId}`;
+
+  try {
+    const url = new URL(destination);
+    return `${url.hostname}${url.pathname}${subId ? ` · ${subId}` : ""}`;
+  } catch {
+    return destination || "Custom destination";
+  }
+}
+
+function buildSparklinePath(values: number[], width = 240, height = 72) {
+  if (values.length === 0) return "";
+  if (values.length === 1) return `M 0 ${height / 2} L ${width} ${height / 2}`;
+
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+
+  return values
+    .map((value, index) => {
+      const x = (index / (values.length - 1)) * width;
+      const y = height - ((value - min) / range) * height;
+      return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+    })
+    .join(" ");
+}
+
+function buildSwipes(link: string) {
+  return [
+    {
+      id: "email-personal",
+      label: "Personal email",
+      content: `Subject: I think you'd really like this\n\nI've been using Positives as part of my daily routine and it has been one of the most grounding things in my week.\n\nIt's a short daily audio practice with Dr. Paul Jenkins, plus a weekly principle and monthly masterclass. Thought of you because I think you'd actually use it.\n\nHere's my link if you want to take a look:\n${link}`,
+    },
+    {
+      id: "email-followup",
+      label: "Simple follow-up",
+      content: `Subject: Quick follow-up\n\nWanted to send this over in case it helps.\n\nPositives is a daily practice membership I keep coming back to because it is simple, calming, and actually usable in real life.\n\nHere's my link:\n${link}`,
+    },
+  ];
+}
+
+function buildSocialCaptions(link: string) {
+  return [
+    {
+      id: "text-message",
+      label: "Text / DM",
+      content: `I've been using Positives as a short daily audio practice and I think you'd really like it. It's simple, grounding, and easy to stay consistent with.\n\nHere's my link: ${link}`,
+    },
+    {
+      id: "social-caption",
+      label: "Social caption",
+      content: `One of the best habits I've added lately is a short daily practice with Positives.\n\nIt helps me reset, refocus, and start the day with a better frame of mind.\n\nIf you want to check it out, here's my link: ${link}`,
+    },
+    {
+      id: "blog-cta",
+      label: "Blog / newsletter CTA",
+      content: `If you want a simple daily practice for more clarity and steadiness, I recommend Positives. It's short, thoughtful, and easy to return to.\n\nExplore it here: ${link}`,
+    },
+  ];
+}
+
+function MetricCard({
+  label,
+  value,
+  tone = "default",
+  detail,
+}: {
+  label: string;
+  value: string;
+  tone?: "default" | "positive" | "warning";
+  detail?: string;
+}) {
+  const toneStyles =
+    tone === "positive"
+      ? { valueColor: "#15803D", bg: "rgba(22,163,74,0.06)", border: "rgba(22,163,74,0.18)" }
+      : tone === "warning"
+        ? { valueColor: "#B45309", bg: "rgba(245,158,11,0.08)", border: "rgba(245,158,11,0.2)" }
+        : { valueColor: "#09090B", bg: "transparent", border: "rgba(228,228,231,1)" };
+
+  return (
+    <div
+      style={{
+        border: `1px solid ${toneStyles.border}`,
+        background: toneStyles.bg,
+        borderRadius: "1rem",
+        padding: "1rem 1.05rem",
+      }}
+    >
+      <p
+        style={{
+          margin: 0,
+          fontSize: "0.7rem",
+          fontWeight: 700,
+          color: "#71717A",
+          letterSpacing: "0.07em",
+          textTransform: "uppercase",
+        }}
+      >
+        {label}
+      </p>
+      <p
+        style={{
+          margin: "0.35rem 0 0",
+          fontSize: "1.75rem",
+          lineHeight: 1,
+          fontWeight: 700,
+          color: toneStyles.valueColor,
+          fontFamily: "var(--font-heading)",
+          letterSpacing: "-0.04em",
+        }}
+      >
+        {value}
+      </p>
+      {detail ? (
+        <p style={{ margin: "0.45rem 0 0", fontSize: "0.8rem", lineHeight: 1.5, color: "#71717A" }}>
+          {detail}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function InsightCard({
+  eyebrow,
+  title,
+  body,
+}: {
+  eyebrow: string;
+  title: string;
+  body: string;
+}) {
+  return (
+    <SurfaceCard elevated className="surface-card--editorial h-full">
+      <p
+        style={{
+          margin: 0,
+          fontSize: "0.68rem",
+          fontWeight: 700,
+          color: "#71717A",
+          letterSpacing: "0.07em",
+          textTransform: "uppercase",
+        }}
+      >
+        {eyebrow}
+      </p>
+      <h3
+        style={{
+          margin: "0.55rem 0 0.35rem",
+          fontSize: "1rem",
+          fontWeight: 700,
+          color: "#09090B",
+          letterSpacing: "-0.02em",
+          textWrap: "balance",
+        }}
+      >
+        {title}
+      </h3>
+      <p style={{ margin: 0, fontSize: "0.85rem", lineHeight: 1.6, color: "#52525B" }}>{body}</p>
+    </SurfaceCard>
+  );
+}
+
+function TrendCard({
+  title,
+  subtitle,
+  values,
+  labels,
+  formatter = (value: number) => String(value),
+}: {
+  title: string;
+  subtitle: string;
+  values: number[];
+  labels: string[];
+  formatter?: (value: number) => string;
+}) {
+  const path = buildSparklinePath(values);
+  const latest = values.at(-1) ?? 0;
+
+  return (
+    <SurfaceCard elevated className="surface-card--editorial h-full">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p
+            style={{
+              margin: 0,
+              fontSize: "0.68rem",
+              fontWeight: 700,
+              color: "#71717A",
+              letterSpacing: "0.07em",
+              textTransform: "uppercase",
+            }}
+          >
+            Trend
+          </p>
+          <h3 style={{ margin: "0.55rem 0 0.2rem", fontSize: "1rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.02em" }}>
+            {title}
+          </h3>
+          <p style={{ margin: 0, fontSize: "0.82rem", color: "#71717A", lineHeight: 1.5 }}>{subtitle}</p>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <p style={{ margin: 0, fontSize: "0.78rem", color: "#71717A" }}>Latest</p>
+          <p style={{ margin: "0.2rem 0 0", fontSize: "1.15rem", fontWeight: 700, color: "#09090B" }}>{formatter(latest)}</p>
+        </div>
+      </div>
+
+      {values.length > 0 ? (
+        <div style={{ marginTop: "1rem" }}>
+          <svg viewBox="0 0 240 72" width="100%" height="72" aria-hidden="true">
+            <defs>
+              <linearGradient id={`gradient-${title.replace(/\s+/g, "-").toLowerCase()}`} x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#2EC4B6" />
+                <stop offset="100%" stopColor="#44A8D8" />
+              </linearGradient>
+            </defs>
+            <path
+              d={path}
+              fill="none"
+              stroke={`url(#gradient-${title.replace(/\s+/g, "-").toLowerCase()})`}
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6">
+            {labels.map((label) => (
+              <span key={label} style={{ fontSize: "0.72rem", color: "#A1A1AA" }}>
+                {label}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <p style={{ margin: "1rem 0 0", fontSize: "0.82rem", color: "#A1A1AA" }}>
+          Trend data will appear as clicks and commissions start coming in.
+        </p>
+      )}
+    </SurfaceCard>
+  );
+}
+
+function CopyBlock({
+  label,
+  content,
+  onCopied,
+}: {
+  label: string;
+  content: string;
+  onCopied?: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(async () => {
+    await navigator.clipboard.writeText(content);
+    onCopied?.();
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2200);
+  }, [content, onCopied]);
+
+  return (
+    <div style={{ border: "1px solid #E4E4E7", borderRadius: "0.95rem", padding: "1rem", background: "#FAFAFA" }}>
+      <div className="flex items-center justify-between gap-3">
+        <p
+          style={{
+            margin: 0,
+            fontSize: "0.72rem",
+            fontWeight: 700,
+            color: "#71717A",
+            letterSpacing: "0.07em",
+            textTransform: "uppercase",
+          }}
+        >
+          {label}
+        </p>
+        <button
+          onClick={handleCopy}
+          style={{
+            border: "none",
+            background: "transparent",
+            color: copied ? "#15803D" : "#44A8D8",
+            fontSize: "0.78rem",
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
+        >
+          {copied ? "Copied!" : "Copy"}
+        </button>
+      </div>
+      <pre
+        style={{
+          margin: "0.75rem 0 0",
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-word",
+          fontFamily: "var(--font-sans)",
+          fontSize: "0.84rem",
+          lineHeight: 1.65,
+          color: "#3F3F46",
+        }}
+      >
+        {content}
+      </pre>
+    </div>
+  );
+}
+
+function CommissionRow({ commission }: { commission: AffiliateCommission }) {
+  const statusStyles: Record<string, { color: string; bg: string }> = {
+    paid: { color: "#15803D", bg: "rgba(22,163,74,0.08)" },
+    pending: { color: "#B45309", bg: "rgba(245,158,11,0.1)" },
+    approved: { color: "#0F766E", bg: "rgba(46,196,182,0.12)" },
+    unpaid: { color: "#71717A", bg: "rgba(113,113,122,0.12)" },
+  };
+  const tone = statusStyles[commission.status] ?? statusStyles.unpaid;
+
+  return (
+    <div className="flex items-center justify-between gap-4 border-b border-border py-3 last:border-b-0">
+      <div>
+        <p style={{ margin: 0, fontSize: "0.92rem", fontWeight: 700, color: "#09090B" }}>
+          {formatMoney(commission.amount)}
+        </p>
+        <p style={{ margin: "0.2rem 0 0", fontSize: "0.78rem", color: "#71717A" }}>
+          {new Date(commission.created_at).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })}
+          {commission.customer_email ? ` · ${commission.customer_email}` : ""}
+        </p>
+      </div>
+      <span
+        style={{
+          borderRadius: "9999px",
+          padding: "0.3rem 0.75rem",
+          fontSize: "0.72rem",
+          fontWeight: 700,
+          color: tone.color,
+          background: tone.bg,
+          textTransform: "capitalize",
+        }}
+      >
+        {commission.status}
+      </span>
+    </div>
+  );
+}
+
+function PayoutRow({ payout }: { payout: AffiliatePayout }) {
+  const tone =
+    payout.state === "paid"
+      ? { color: "#15803D", bg: "rgba(22,163,74,0.08)" }
+      : payout.state === "processing"
+        ? { color: "#0F766E", bg: "rgba(46,196,182,0.12)" }
+        : payout.state === "due"
+          ? { color: "#B45309", bg: "rgba(245,158,11,0.1)" }
+          : { color: "#71717A", bg: "rgba(113,113,122,0.12)" };
+
+  return (
+    <div className="flex items-center justify-between gap-4 border-b border-border py-3 last:border-b-0">
+      <div>
+        <p style={{ margin: 0, fontSize: "0.92rem", fontWeight: 700, color: "#09090B" }}>
+          {formatMoney(payout.amount)}
+        </p>
+        <p style={{ margin: "0.2rem 0 0", fontSize: "0.78rem", color: "#71717A" }}>
+          {new Date(payout.created_at).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })}
+        </p>
+      </div>
+      <span
+        style={{
+          borderRadius: "9999px",
+          padding: "0.3rem 0.75rem",
+          fontSize: "0.72rem",
+          fontWeight: 700,
+          color: tone.color,
+          background: tone.bg,
+          textTransform: "capitalize",
+        }}
+      >
+        {payout.state}
+      </span>
+    </div>
+  );
+}
+
 function W9Form({
   existingW9,
   onSaved,
@@ -384,8 +511,7 @@ function W9Form({
 }) {
   const isEdit = Boolean(existingW9);
   const [open, setOpen] = useState(!isEdit);
-
-  const blank: W9FormData = {
+  const [form, setForm] = useState<W9FormData>({
     legal_name: existingW9?.legal_name ?? "",
     business_name: existingW9?.business_name ?? "",
     tax_classification: existingW9?.tax_classification ?? "individual",
@@ -395,17 +521,15 @@ function W9Form({
     state_code: existingW9?.state_code ?? "",
     zip: existingW9?.zip ?? "",
     signature_name: existingW9?.signature_name ?? "",
-  };
-
-  const [form, setForm] = useState<W9FormData>(blank);
+  });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const set = (field: keyof W9FormData, value: string) =>
-    setForm(prev => ({ ...prev, [field]: value }));
+  const setField = (field: keyof W9FormData, value: string) =>
+    setForm((current) => ({ ...current, [field]: value }));
 
-  const inputStyle: React.CSSProperties = {
+  const inputStyle: CSSProperties = {
     width: "100%",
     padding: "0.75rem 1rem",
     fontSize: "0.875rem",
@@ -416,10 +540,9 @@ function W9Form({
     color: "#09090B",
     background: "#FAFAFA",
     boxSizing: "border-box",
-    transition: "border-color 0.18s",
   };
 
-  const labelStyle: React.CSSProperties = {
+  const labelStyle: CSSProperties = {
     fontSize: "0.72rem",
     fontWeight: 700,
     color: "#71717A",
@@ -445,20 +568,38 @@ function W9Form({
 
   if (saved || (isEdit && !open)) {
     const signedDate = existingW9?.signed_at
-      ? new Date(existingW9.signed_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+      ? new Date(existingW9.signed_at).toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        })
       : null;
+
     return (
-      <div style={{ display: "flex", alignItems: "flex-start", gap: "0.875rem", background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.2)", borderRadius: "1rem", padding: "1rem 1.25rem" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          gap: "0.875rem",
+          background: "rgba(22,163,74,0.06)",
+          border: "1px solid rgba(22,163,74,0.18)",
+          borderRadius: "1rem",
+          padding: "1rem 1.25rem",
+        }}
+      >
         <span style={{ fontSize: "1.1rem", flexShrink: 0 }}>✅</span>
         <div style={{ flex: 1 }}>
-          <p style={{ margin: "0 0 0.25rem", fontSize: "0.875rem", fontWeight: 700, color: "#15803D" }}>W-9 on file</p>
-          <p style={{ margin: 0, fontSize: "0.78rem", color: "#4B5563", lineHeight: 1.55 }}>
-            {existingW9?.legal_name ?? form.legal_name}{signedDate ? ` · Signed ${signedDate}` : ""}
+          <p style={{ margin: "0 0 0.2rem", fontSize: "0.88rem", fontWeight: 700, color: "#15803D" }}>
+            W-9 on file
+          </p>
+          <p style={{ margin: 0, fontSize: "0.8rem", color: "#4B5563", lineHeight: 1.55 }}>
+            {existingW9?.legal_name ?? form.legal_name}
+            {signedDate ? ` · Signed ${signedDate}` : ""}
           </p>
         </div>
         <button
           onClick={() => setOpen(true)}
-          style={{ fontSize: "0.75rem", color: "#44A8D8", background: "none", border: "none", cursor: "pointer", padding: "0.25rem", flexShrink: 0, fontWeight: 600 }}
+          style={{ border: "none", background: "transparent", color: "#44A8D8", fontWeight: 700, cursor: "pointer" }}
         >
           Update
         </button>
@@ -467,91 +608,82 @@ function W9Form({
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between gap-4">
         <div>
-          <h3 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.02em" }}>
-            📋 W-9 Tax Form
-          </h3>
-          <p style={{ margin: "0.25rem 0 0", fontSize: "0.78rem", color: "#71717A", lineHeight: 1.5 }}>
-            Required for US persons earning $600+ in commissions annually. Treated as an electronic W-9.
+          <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700, color: "#09090B" }}>W-9 Tax Form</h3>
+          <p style={{ margin: "0.25rem 0 0", fontSize: "0.8rem", color: "#71717A", lineHeight: 1.55 }}>
+            Required for US persons earning $600+ in commissions annually.
           </p>
         </div>
-        {isEdit && (
-          <button onClick={() => setOpen(false)} style={{ fontSize: "0.75rem", color: "#A1A1AA", background: "none", border: "none", cursor: "pointer", padding: "0.25rem", flexShrink: 0 }}>Cancel</button>
-        )}
+        {isEdit ? (
+          <button onClick={() => setOpen(false)} style={{ border: "none", background: "transparent", color: "#A1A1AA", cursor: "pointer" }}>
+            Cancel
+          </button>
+        ) : null}
       </div>
 
-      {/* Name row */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+      <div className="grid gap-3 md:grid-cols-2">
         <div>
           <label style={labelStyle}>Legal name *</label>
-          <input style={inputStyle} value={form.legal_name} onChange={e => set("legal_name", e.target.value)} placeholder="As shown on your tax return" />
+          <input style={inputStyle} value={form.legal_name} onChange={(event) => setField("legal_name", event.target.value)} />
         </div>
         <div>
-          <label style={labelStyle}>Business name (optional)</label>
-          <input style={inputStyle} value={form.business_name} onChange={e => set("business_name", e.target.value)} placeholder="DBA, LLC name, etc." />
+          <label style={labelStyle}>Business name</label>
+          <input style={inputStyle} value={form.business_name} onChange={(event) => setField("business_name", event.target.value)} />
         </div>
       </div>
 
-      {/* Tax classification */}
       <div>
         <label style={labelStyle}>Tax classification *</label>
         <select
-          style={{ ...inputStyle, appearance: "none", backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2371717A' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 1rem center" }}
+          style={inputStyle}
           value={form.tax_classification}
-          onChange={e => set("tax_classification", e.target.value)}
+          onChange={(event) => setField("tax_classification", event.target.value)}
         >
-          {TAX_CLASSIFICATIONS.map(t => (
-            <option key={t.value} value={t.value}>{t.label}</option>
+          {TAX_CLASSIFICATIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
           ))}
         </select>
       </div>
 
-      {/* Tax ID */}
       <div>
         <label style={labelStyle}>SSN or EIN *</label>
-        <input
-          style={inputStyle}
-          value={form.tax_id}
-          onChange={e => set("tax_id", e.target.value)}
-          placeholder={form.tax_classification === "individual" || form.tax_classification === "llc_single" ? "XXX-XX-XXXX" : "XX-XXXXXXX"}
-          maxLength={11}
-        />
-        <p style={{ margin: "0.375rem 0 0", fontSize: "0.72rem", color: "#A1A1AA" }}>Stored securely and used only for 1099 reporting if you reach the $600 threshold.</p>
+        <input style={inputStyle} value={form.tax_id} onChange={(event) => setField("tax_id", event.target.value)} />
+        <p style={{ margin: "0.35rem 0 0", fontSize: "0.72rem", color: "#A1A1AA" }}>
+          Stored securely and used only for 1099 reporting if you reach the $600 threshold.
+        </p>
       </div>
 
-      {/* Address */}
       <div>
         <label style={labelStyle}>Street address *</label>
-        <input style={inputStyle} value={form.address} onChange={e => set("address", e.target.value)} placeholder="123 Main St, Apt 4B" />
+        <input style={inputStyle} value={form.address} onChange={(event) => setField("address", event.target.value)} />
       </div>
 
-      {/* City / State / ZIP */}
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: "0.75rem" }}>
+      <div className="grid gap-3 md:grid-cols-[2fr_1fr_1fr]">
         <div>
           <label style={labelStyle}>City *</label>
-          <input style={inputStyle} value={form.city} onChange={e => set("city", e.target.value)} placeholder="City" />
+          <input style={inputStyle} value={form.city} onChange={(event) => setField("city", event.target.value)} />
         </div>
         <div>
           <label style={labelStyle}>State *</label>
-          <select
-            style={{ ...inputStyle, appearance: "none", backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2371717A' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 0.75rem center" }}
-            value={form.state_code}
-            onChange={e => set("state_code", e.target.value)}
-          >
+          <select style={inputStyle} value={form.state_code} onChange={(event) => setField("state_code", event.target.value)}>
             <option value="">—</option>
-            {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+            {US_STATES.map((stateCode) => (
+              <option key={stateCode} value={stateCode}>
+                {stateCode}
+              </option>
+            ))}
           </select>
         </div>
         <div>
           <label style={labelStyle}>ZIP *</label>
-          <input style={inputStyle} value={form.zip} onChange={e => set("zip", e.target.value)} placeholder="10001" maxLength={10} />
+          <input style={inputStyle} value={form.zip} onChange={(event) => setField("zip", event.target.value)} />
         </div>
       </div>
 
-      {/* Signature */}
       <div style={{ background: "#F8F8F8", border: "1px solid #E4E4E7", borderRadius: "0.875rem", padding: "1rem 1.125rem" }}>
         <label style={{ ...labelStyle, color: "#52525B" }}>Electronic signature *</label>
         <p style={{ margin: "0 0 0.75rem", fontSize: "0.78rem", color: "#71717A", lineHeight: 1.55 }}>
@@ -560,29 +692,27 @@ function W9Form({
         <input
           style={{ ...inputStyle, fontStyle: "italic", fontSize: "1rem" }}
           value={form.signature_name}
-          onChange={e => set("signature_name", e.target.value)}
+          onChange={(event) => setField("signature_name", event.target.value)}
           placeholder="Your legal name"
         />
       </div>
 
-      {error && <p style={{ fontSize: "0.8rem", color: "#EF4444", margin: 0 }}>{error}</p>}
+      {error ? <p style={{ margin: 0, fontSize: "0.8rem", color: "#DC2626" }}>{error}</p> : null}
 
       <button
         onClick={handleSubmit}
         disabled={saving || !form.legal_name.trim() || !form.tax_id.trim() || !form.signature_name.trim()}
         style={{
           alignSelf: "flex-start",
-          padding: "0.75rem 1.5rem",
-          fontSize: "0.875rem",
-          fontWeight: 700,
-          color: "#FFFFFF",
+          border: "none",
+          borderRadius: "9999px",
+          padding: "0.8rem 1.5rem",
           background: saving || !form.legal_name.trim() || !form.tax_id.trim() || !form.signature_name.trim()
             ? "#A1A1AA"
             : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)",
-          border: "none",
-          borderRadius: "9999px",
+          color: "#FFFFFF",
+          fontWeight: 700,
           cursor: saving ? "wait" : "pointer",
-          transition: "all 0.2s",
         }}
       >
         {saving ? "Submitting…" : isEdit ? "Update W-9" : "Submit W-9"}
@@ -590,168 +720,6 @@ function W9Form({
     </div>
   );
 }
-
-// ─── Link Builder ─────────────────────────────────────────────────────────────
-
-function LinkBuilder({ token, initialLinks }: { token: string; initialLinks: AffiliateLink[] }) {
-  const appUrl = "https://positives.life";
-  const [links, setLinks]             = useState<AffiliateLink[]>(initialLinks);
-  const [label, setLabel]             = useState("");
-  const [destination, setDestination] = useState("");
-  const [saving, setSaving]           = useState(false);
-  const [error, setError]             = useState<string | null>(null);
-  const [copiedId, setCopiedId]       = useState<string | null>(null);
-  // Edit state: maps link id → draft destination string (falsy = not editing)
-  const [editingId, setEditingId]     = useState<string | null>(null);
-  const [editDraft, setEditDraft]     = useState("");
-  const [editSaving, setEditSaving]   = useState(false);
-  const [editError, setEditError]     = useState<string | null>(null);
-
-  const shortUrl = (code: string) => `${appUrl}/go/${code}`;
-
-  const handleCopy = (code: string) => {
-    navigator.clipboard.writeText(shortUrl(code)).catch(() => {});
-    setCopiedId(code);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
-
-  const handleCreate = async () => {
-    const trimLabel = label.trim();
-    const trimDest  = destination.trim();
-    if (!trimLabel) { setError("Please enter a name for this link."); return; }
-    setSaving(true);
-    setError(null);
-    const result = await createAffiliateLinkAction({ label: trimLabel, destination: trimDest || null });
-    setSaving(false);
-    if ("error" in result) {
-      setError(result.error);
-    } else {
-      setLinks(prev => [result.link, ...prev]);
-      setLabel("");
-      setDestination("");
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    const result = await deleteAffiliateLinkAction(id);
-    if (!("error" in result)) setLinks(prev => prev.filter(l => l.id !== id));
-  };
-
-  const startEdit = (link: AffiliateLink) => {
-    setEditingId(link.id);
-    setEditDraft(link.destination ?? "");
-    setEditError(null);
-  };
-
-  const cancelEdit = () => { setEditingId(null); setEditError(null); };
-
-  const handleSaveEdit = async (id: string) => {
-    setEditSaving(true);
-    setEditError(null);
-    const result = await updateAffiliateLinkAction(id, editDraft.trim() || null);
-    setEditSaving(false);
-    if ("error" in result) {
-      setEditError(result.error);
-    } else {
-      setLinks(prev => prev.map(l => l.id === id ? { ...l, destination: editDraft.trim() || null } : l));
-      setEditingId(null);
-    }
-  };
-
-  const inputStyle: React.CSSProperties = {
-    width: "100%",
-    padding: "0.75rem 1rem",
-    fontSize: "0.875rem",
-    borderRadius: "0.75rem",
-    border: "1.5px solid #E4E4E7",
-    outline: "none",
-    fontFamily: "var(--font-sans)",
-    color: "#09090B",
-    background: "#FAFAFA",
-    boxSizing: "border-box",
-  };
-
-  void token;
-
-  return (
-    <div style={{ background: "#FFFFFF", border: "1.5px solid #E4E4E7", borderRadius: "1.25rem", padding: "1.75rem", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
-      <p style={{ fontSize: "0.68rem", fontWeight: 700, color: "#71717A", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "0.75rem" }}>
-        🔗 Link Builder
-      </p>
-      <p style={{ fontSize: "0.83rem", color: "#52525B", marginBottom: "1.25rem", lineHeight: 1.5 }}>
-        Create short tracked links to any page — your blog, Instagram bio, emails, or any Positives page.
-        Anyone who clicks gets your referral cookie set automatically.
-      </p>
-
-      {/* Create form */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem", marginBottom: "1.25rem" }}>
-        <input style={inputStyle} placeholder="Link name (e.g. My blog post, IG bio)" value={label} onChange={e => setLabel(e.target.value)} maxLength={60} />
-        <input style={inputStyle} placeholder="Destination URL — any site (blank = positives.life homepage)" value={destination} onChange={e => setDestination(e.target.value)} />
-        {error && <p style={{ fontSize: "0.78rem", color: "#DC2626", margin: 0 }}>{error}</p>}
-        <button
-          onClick={handleCreate}
-          disabled={saving || !label.trim()}
-          style={{ alignSelf: "flex-start", padding: "0.625rem 1.25rem", fontSize: "0.83rem", fontWeight: 700, color: "#FFFFFF", background: saving || !label.trim() ? "#A1A1AA" : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)", border: "none", borderRadius: "9999px", cursor: saving || !label.trim() ? "not-allowed" : "pointer" }}
-        >
-          {saving ? "Creating…" : "Create link"}
-        </button>
-      </div>
-
-      {/* Existing links */}
-      {links.length > 0 ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-          {links.map(link => (
-            <div key={link.id} style={{ background: "#F8FBFC", border: "1px solid rgba(46,196,182,0.15)", borderRadius: "0.875rem", padding: "0.75rem 1rem" }}>
-              {/* Top row: label + short URL + actions */}
-              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: "0.8rem", fontWeight: 600, color: "#09090B", margin: "0 0 0.1rem" }}>{link.label}</p>
-                  <p style={{ fontSize: "0.73rem", color: "#2EC4B6", margin: 0, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{shortUrl(link.code)}</p>
-                </div>
-                <span style={{ fontSize: "0.7rem", color: "#71717A", flexShrink: 0 }}>{link.clicks} clicks</span>
-                <button onClick={() => handleCopy(link.code)} style={{ flexShrink: 0, fontSize: "0.75rem", fontWeight: 700, color: copiedId === link.code ? "#2EC4B6" : "#44A8D8", background: "transparent", border: "none", cursor: "pointer", padding: "0.25rem 0.5rem" }}>
-                  {copiedId === link.code ? "Copied!" : "Copy"}
-                </button>
-                {editingId !== link.id && (
-                  <button onClick={() => startEdit(link)} style={{ flexShrink: 0, fontSize: "0.7rem", color: "#71717A", background: "transparent", border: "none", cursor: "pointer", padding: "0.25rem" }} aria-label="Edit destination">✏️</button>
-                )}
-                <button onClick={() => handleDelete(link.id)} style={{ flexShrink: 0, fontSize: "0.75rem", color: "#A1A1AA", background: "transparent", border: "none", cursor: "pointer", padding: "0.25rem" }} aria-label="Delete link">✕</button>
-              </div>
-
-              {/* Inline edit row */}
-              {editingId === link.id && (
-                <div style={{ marginTop: "0.625rem", display: "flex", flexDirection: "column", gap: "0.375rem" }}>
-                  <input
-                    style={{ ...inputStyle, fontSize: "0.8rem", padding: "0.5rem 0.75rem" }}
-                    placeholder="New destination URL"
-                    value={editDraft}
-                    onChange={e => setEditDraft(e.target.value)}
-                    autoFocus
-                  />
-                  {editError && <p style={{ fontSize: "0.75rem", color: "#DC2626", margin: 0 }}>{editError}</p>}
-                  <div style={{ display: "flex", gap: "0.5rem" }}>
-                    <button
-                      onClick={() => handleSaveEdit(link.id)}
-                      disabled={editSaving}
-                      style={{ fontSize: "0.75rem", fontWeight: 700, color: "#FFFFFF", background: editSaving ? "#A1A1AA" : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)", border: "none", borderRadius: "9999px", padding: "0.375rem 0.875rem", cursor: editSaving ? "not-allowed" : "pointer" }}
-                    >
-                      {editSaving ? "Saving…" : "Save"}
-                    </button>
-                    <button onClick={cancelEdit} style={{ fontSize: "0.75rem", color: "#71717A", background: "transparent", border: "none", cursor: "pointer", padding: "0.375rem 0.5rem" }}>Cancel</button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p style={{ fontSize: "0.78rem", color: "#A1A1AA", textAlign: "center", margin: "0.5rem 0 0" }}>No custom links yet — create one above.</p>
-      )}
-    </div>
-  );
-}
-
-// ─── Pre-enrollment screen ────────────────────────────────────────────────────
 
 function EnrollScreen({
   onEnroll,
@@ -763,26 +731,8 @@ function EnrollScreen({
   error: string | null;
 }) {
   return (
-    <div
-      style={{
-        maxWidth: 480,
-        margin: "3rem auto",
-        padding: "0 1rem",
-      }}
-    >
-      <div
-        style={{
-          background: "#FFFFFF",
-          border: "1.5px solid #E4E4E7",
-          borderRadius: "1.5rem",
-          padding: "2.5rem 2rem",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
-          textAlign: "center",
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
-        {/* Top gradient strip */}
+    <div style={{ maxWidth: 560, margin: "3rem auto", padding: "0 1rem" }}>
+      <SurfaceCard elevated className="surface-card--editorial relative overflow-hidden p-8 text-center">
         <div
           aria-hidden="true"
           style={{
@@ -794,8 +744,6 @@ function EnrollScreen({
             background: "linear-gradient(90deg, #2EC4B6 0%, #44A8D8 100%)",
           }}
         />
-
-        {/* Icon */}
         <div
           style={{
             width: 60,
@@ -809,163 +757,82 @@ function EnrollScreen({
             margin: "0.75rem auto 1.75rem",
           }}
         >
-          <svg
-            width="26"
-            height="26"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#2EC4B6"
-            strokeWidth="1.75"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-            <circle cx="9" cy="7" r="4" />
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-          </svg>
+          <span style={{ fontSize: "1.6rem", lineHeight: 1 }}>🌱</span>
         </div>
 
         <h1
           style={{
-            fontFamily: "var(--font-heading)",
-            fontSize: "1.4rem",
+            margin: 0,
+            fontSize: "clamp(1.5rem, 4vw, 2rem)",
             fontWeight: 700,
             color: "#09090B",
-            letterSpacing: "-0.03em",
-            lineHeight: 1.2,
-            marginBottom: "0.75rem",
+            letterSpacing: "-0.04em",
+            lineHeight: 1.08,
             textWrap: "balance",
           }}
         >
           Earn 20% for every member you refer
         </h1>
-
-        <p style={{ fontSize: "0.9rem", color: "#52525B", lineHeight: 1.65, marginBottom: "1.75rem" }}>
-          Share Positives with people you care about. When they join, you earn 20% of their
-          monthly membership — for as long as they stay.
+        <p style={{ margin: "0.9rem auto 0", maxWidth: 460, fontSize: "0.94rem", lineHeight: 1.7, color: "#52525B" }}>
+          Share Positives with people you trust. We&apos;ll create your referral account instantly and give you a link you can start using right away.
         </p>
 
-        {/* Benefits */}
-        <ul
-          style={{
-            listStyle: "none",
-            margin: "0 0 2rem",
-            padding: 0,
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.625rem",
-            textAlign: "left",
-          }}
-        >
+        <div className="mx-auto mt-6 flex max-w-md flex-col gap-3 text-left">
           {[
-            ["🔗", "Unique referral link — generated instantly"],
-            ["💰", "20% recurring — paid monthly to your PayPal email"],
-            ["📊", "Real-time stats, earnings, and share resources"],
-          ].map(([icon, text]) => (
-            <li
-              key={text}
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: "0.75rem",
-                fontSize: "0.875rem",
-                color: "#3F3F46",
-              }}
-            >
-              <span style={{ fontSize: "1rem", lineHeight: 1.4, flexShrink: 0 }}>{icon}</span>
-              <span style={{ lineHeight: 1.55 }}>{text}</span>
-            </li>
+            "Your primary referral link is ready immediately",
+            "You earn 20% recurring for active memberships you refer",
+            "You can create simple source-tagged links for blogs, email, or bio links",
+          ].map((item) => (
+            <div key={item} className="flex items-start gap-3 text-sm text-muted-foreground">
+              <span aria-hidden="true">✓</span>
+              <span>{item}</span>
+            </div>
           ))}
-        </ul>
+        </div>
 
-        {error && (
+        {error ? (
           <p
             style={{
+              margin: "1rem auto 0",
+              maxWidth: 460,
               fontSize: "0.85rem",
-              color: "#EF4444",
-              marginBottom: "1rem",
+              color: "#DC2626",
               background: "rgba(239,68,68,0.07)",
               borderRadius: "0.75rem",
-              padding: "0.625rem 1rem",
+              padding: "0.75rem 1rem",
             }}
           >
             {error}
           </p>
-        )}
+        ) : null}
 
         <button
           id="affiliate-enroll-btn"
           onClick={onEnroll}
           disabled={loading}
           style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "0.5rem",
-            background: loading
-              ? "linear-gradient(135deg, #5DDDD4 0%, #74C0E0 100%)"
-              : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)",
-            color: "#FFFFFF",
+            marginTop: "1.5rem",
+            width: "100%",
+            maxWidth: 360,
             border: "none",
             borderRadius: "9999px",
-            padding: "0.875rem 2rem",
-            fontSize: "0.9rem",
+            padding: "0.95rem 1.75rem",
+            background: loading ? "#7DD4CB" : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)",
+            color: "#FFFFFF",
             fontWeight: 700,
+            fontSize: "0.95rem",
             cursor: loading ? "wait" : "pointer",
-            letterSpacing: "-0.01em",
-            boxShadow: "0 4px 20px rgba(46,196,182,0.3), 0 0 0 0 rgba(46,196,182,0)",
-            transition: "opacity 0.2s, box-shadow 0.2s",
-            width: "100%",
-            maxWidth: 320,
           }}
         >
-          {loading ? (
-            <>
-              <svg
-                width="15"
-                height="15"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                aria-hidden="true"
-                style={{ animation: "spin 0.75s linear infinite" }}
-              >
-                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-              </svg>
-              Setting up your link…
-            </>
-          ) : (
-            <>
-              Get my referral link
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
-            </>
-          )}
+          {loading ? "Setting up your link…" : "Get my referral link"}
         </button>
-
-        <p style={{ fontSize: "0.75rem", color: "#A1A1AA", marginTop: "1rem" }}>
-          Free to join · Instant link · No approval needed
+        <p style={{ margin: "0.85rem 0 0", fontSize: "0.76rem", color: "#A1A1AA" }}>
+          Free to join · Instant setup · No approval needed
         </p>
-      </div>
+      </SurfaceCard>
     </div>
   );
 }
-
-// ─── Payout setup step (shown after enrollment if no PayPal email) ────────────
 
 function PayoutSetupStep({
   paypalEmail,
@@ -976,84 +843,904 @@ function PayoutSetupStep({
   error,
 }: {
   paypalEmail: string;
-  onPaypalChange: (v: string) => void;
+  onPaypalChange: (value: string) => void;
   onSave: () => void;
   onSkip: () => void;
   saving: boolean;
   error: string | null;
 }) {
   return (
-    <div style={{ maxWidth: 480, margin: "3rem auto", padding: "0 1rem" }}>
-      <div
-        style={{
-          background: "#FFFFFF",
-          border: "1.5px solid #E4E4E7",
-          borderRadius: "1.5rem",
-          padding: "2.5rem 2rem",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
-          textAlign: "center",
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
-        <div aria-hidden="true" style={{ position: "absolute", top: 0, left: 0, right: 0, height: 4, background: "linear-gradient(90deg, #2EC4B6 0%, #44A8D8 100%)" }} />
-
-        <div style={{ width: 60, height: 60, borderRadius: "1.125rem", background: "linear-gradient(135deg, rgba(46,196,182,0.12) 0%, rgba(68,168,216,0.08) 100%)", border: "1px solid rgba(46,196,182,0.2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0.75rem auto 1.75rem", fontSize: "1.75rem", lineHeight: 1 }}>
+    <div style={{ maxWidth: 560, margin: "3rem auto", padding: "0 1rem" }}>
+      <SurfaceCard elevated className="surface-card--editorial relative overflow-hidden p-8 text-center">
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 4,
+            background: "linear-gradient(90deg, #2EC4B6 0%, #44A8D8 100%)",
+          }}
+        />
+        <div
+          style={{
+            width: 60,
+            height: 60,
+            borderRadius: "1.125rem",
+            background: "linear-gradient(135deg, rgba(46,196,182,0.12) 0%, rgba(68,168,216,0.08) 100%)",
+            border: "1px solid rgba(46,196,182,0.2)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            margin: "0.75rem auto 1.75rem",
+            fontSize: "1.75rem",
+          }}
+        >
           💳
         </div>
 
-        <h1 style={{ fontFamily: "var(--font-heading)", fontSize: "1.3rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.03em", lineHeight: 1.2, marginBottom: "0.625rem", textWrap: "balance" }}>
-          Your link is ready — where should we send your commissions?
+        <h1 style={{ margin: 0, fontSize: "clamp(1.4rem, 3.5vw, 1.85rem)", fontWeight: 700, color: "#09090B", lineHeight: 1.1, textWrap: "balance", letterSpacing: "-0.04em" }}>
+          Your link is ready. Where should we send commissions?
         </h1>
-
-        <p style={{ fontSize: "0.875rem", color: "#52525B", lineHeight: 1.65, marginBottom: "1.75rem" }}>
-          You earn 20% recurring. Enter your PayPal email so we know where to send it.
+        <p style={{ margin: "0.8rem auto 0", maxWidth: 440, fontSize: "0.9rem", color: "#52525B", lineHeight: 1.65 }}>
+          Add your PayPal email now so payout coordination stays smooth. You can always update it later in earnings settings.
         </p>
 
-        <div style={{ textAlign: "left", marginBottom: "1rem" }}>
+        <div style={{ marginTop: "1.5rem", textAlign: "left" }}>
           <input
             id="payout-paypal-input"
             type="email"
             placeholder="your-paypal@email.com"
             value={paypalEmail}
-            onChange={e => onPaypalChange(e.target.value)}
-            style={{ width: "100%", padding: "0.875rem 1rem", fontSize: "0.9rem", border: "1.5px solid #E4E4E7", borderRadius: "0.875rem", outline: "none", fontFamily: "var(--font-sans)", color: "#09090B", background: "#FAFAFA", boxSizing: "border-box", transition: "border-color 0.2s" }}
-            onFocus={e => (e.currentTarget.style.borderColor = "#2EC4B6")}
-            onBlur={e => (e.currentTarget.style.borderColor = "#E4E4E7")}
+            onChange={(event) => onPaypalChange(event.target.value)}
+            style={{
+              width: "100%",
+              padding: "0.95rem 1rem",
+              fontSize: "0.9rem",
+              border: "1.5px solid #E4E4E7",
+              borderRadius: "0.875rem",
+              outline: "none",
+              fontFamily: "var(--font-sans)",
+              color: "#09090B",
+              background: "#FAFAFA",
+              boxSizing: "border-box",
+            }}
             autoFocus
           />
-          {error && <p style={{ fontSize: "0.8rem", color: "#EF4444", marginTop: "0.5rem" }}>{error}</p>}
+          {error ? <p style={{ margin: "0.55rem 0 0", fontSize: "0.8rem", color: "#DC2626" }}>{error}</p> : null}
         </div>
 
         <button
           id="payout-save-btn"
           onClick={onSave}
           disabled={saving || !paypalEmail.trim()}
-          style={{ width: "100%", padding: "0.875rem", fontSize: "0.9rem", fontWeight: 700, color: "#FFFFFF", background: saving || !paypalEmail.trim() ? "#A1A1AA" : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)", border: "none", borderRadius: "9999px", cursor: saving || !paypalEmail.trim() ? "not-allowed" : "pointer", marginBottom: "0.875rem", transition: "all 0.2s" }}
+          style={{
+            marginTop: "1rem",
+            width: "100%",
+            border: "none",
+            borderRadius: "9999px",
+            padding: "0.95rem 1.5rem",
+            background: saving || !paypalEmail.trim() ? "#A1A1AA" : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)",
+            color: "#FFFFFF",
+            fontWeight: 700,
+            cursor: saving || !paypalEmail.trim() ? "not-allowed" : "pointer",
+          }}
         >
-          {saving ? "Saving…" : "Save & view my link →"}
+          {saving ? "Saving…" : "Save & view portal"}
         </button>
 
         <button
           id="payout-skip-btn"
           onClick={onSkip}
-          style={{ background: "none", border: "none", fontSize: "0.83rem", color: "#A1A1AA", cursor: "pointer", padding: "0.25rem", display: "block", margin: "0 auto 1rem" }}
+          style={{ marginTop: "0.85rem", border: "none", background: "transparent", color: "#A1A1AA", cursor: "pointer" }}
         >
-          Skip for now →
+          Skip for now
         </button>
+      </SurfaceCard>
+    </div>
+  );
+}
 
-        <p style={{ fontSize: "0.75rem", color: "#A1A1AA", margin: 0 }}>
-          Don&apos;t have PayPal?{" "}
-          <a href="https://www.paypal.com/us/webapps/mpp/account-selection" target="_blank" rel="noopener noreferrer" style={{ color: "#44A8D8", textDecoration: "none" }}>
-            Create a free account →
-          </a>
+function LinkTab({
+  currentToken,
+  referralLink,
+  copiedLink,
+  onCopyPrimaryLink,
+  slugEditing,
+  slugDraft,
+  slugSaving,
+  slugSaved,
+  slugError,
+  onSlugDraftChange,
+  onSlugEdit,
+  onSlugCancel,
+  onSlugSave,
+  links,
+  onLinksChange,
+}: {
+  currentToken: string | null;
+  referralLink: string | null;
+  copiedLink: boolean;
+  onCopyPrimaryLink: () => void;
+  slugEditing: boolean;
+  slugDraft: string;
+  slugSaving: boolean;
+  slugSaved: boolean;
+  slugError: string | null;
+  onSlugDraftChange: (value: string) => void;
+  onSlugEdit: () => void;
+  onSlugCancel: () => void;
+  onSlugSave: () => void;
+  links: AffiliateLink[];
+  onLinksChange: (links: AffiliateLink[]) => void;
+}) {
+  const [label, setLabel] = useState("");
+  const [destination, setDestination] = useState("");
+  const [subId, setSubId] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const handleCopyManagedLink = useCallback(async (link: AffiliateLink) => {
+    await navigator.clipboard.writeText(shortUrl(link.code));
+    track("affiliate_custom_link_copied", {
+      source_path: "/account/affiliate",
+      link_code: link.code,
+      sub_id: extractSubId(link.destination) ?? undefined,
+    });
+    setCopiedId(link.id);
+    window.setTimeout(() => setCopiedId(null), 2200);
+  }, []);
+
+  const handleCreate = useCallback(async () => {
+    const result = await createAffiliateLinkAction({
+      label: label.trim(),
+      destination: destination.trim() || null,
+      subId: subId.trim() || null,
+    });
+
+    setSaving(false);
+    if ("error" in result) {
+      setError(result.error);
+      return;
+    }
+
+    const nextLinks = [result.link, ...links];
+    onLinksChange(nextLinks);
+    track("affiliate_custom_link_created", {
+      source_path: "/account/affiliate",
+      has_destination: Boolean(destination.trim()),
+      has_sub_id: Boolean(subId.trim()),
+    });
+    setLabel("");
+    setDestination("");
+    setSubId("");
+    setError(null);
+  }, [destination, label, links, onLinksChange, subId]);
+
+  const handleDelete = useCallback(async (id: string) => {
+    const result = await deleteAffiliateLinkAction(id);
+    if ("error" in result) return;
+    onLinksChange(links.filter((link) => link.id !== id));
+  }, [links, onLinksChange]);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid gap-4 lg:grid-cols-[1.3fr_0.9fr]">
+        <SurfaceCard elevated className="surface-card--editorial">
+          <p
+            style={{
+              margin: 0,
+              fontSize: "0.68rem",
+              fontWeight: 700,
+              color: "#71717A",
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+            }}
+          >
+            Primary link
+          </p>
+          <h2 style={{ margin: "0.65rem 0 0.25rem", fontSize: "1.25rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.03em", textWrap: "balance" }}>
+            Your main referral link
+          </h2>
+          <p style={{ margin: 0, fontSize: "0.86rem", lineHeight: 1.6, color: "#71717A" }}>
+            Keep this as your simplest all-purpose link. Use custom campaign links below when you want to track a specific source.
+          </p>
+
+          <div
+            style={{
+              marginTop: "1rem",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.65rem",
+              border: "1px solid rgba(46,196,182,0.22)",
+              background: "#F8FBFC",
+              borderRadius: "0.95rem",
+              padding: "0.9rem 1rem",
+            }}
+          >
+            <span aria-hidden="true">🔗</span>
+            <span style={{ flex: 1, minWidth: 0, fontSize: "0.9rem", color: "#09090B", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {referralLink}
+            </span>
+            <button
+              id="copy-referral-link"
+              onClick={onCopyPrimaryLink}
+              style={{
+                border: "none",
+                borderRadius: "9999px",
+                background: copiedLink ? "rgba(22,163,74,0.12)" : "rgba(68,168,216,0.1)",
+                color: copiedLink ? "#15803D" : "#0F766E",
+                fontWeight: 700,
+                padding: "0.45rem 0.85rem",
+                cursor: "pointer",
+              }}
+            >
+              {copiedLink ? "Copied!" : "Copy"}
+            </button>
+          </div>
+
+          <div style={{ marginTop: "1rem" }}>
+            {slugEditing ? (
+              <div className="flex flex-col gap-3">
+                <div style={{ background: "rgba(245,158,11,0.07)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: "0.75rem", padding: "0.75rem 0.9rem" }}>
+                  <p style={{ margin: 0, fontSize: "0.76rem", lineHeight: 1.55, color: "#92400E" }}>
+                    Your old link stops tracking the moment you save. Update any places where you have already shared it.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                  <span style={{ fontSize: "0.82rem", color: "#71717A", whiteSpace: "nowrap" }}>positives.life?fpr=</span>
+                  <input
+                    value={slugDraft}
+                    onChange={(event) => onSlugDraftChange(event.target.value)}
+                    style={{
+                      flex: 1,
+                      padding: "0.75rem 0.9rem",
+                      borderRadius: "0.8rem",
+                      border: "1.5px solid #2EC4B6",
+                      fontFamily: "monospace",
+                      fontSize: "0.9rem",
+                    }}
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      id="slug-save-btn"
+                      onClick={onSlugSave}
+                      disabled={slugSaving || slugDraft.length < 3}
+                      style={{
+                        border: "none",
+                        borderRadius: "0.8rem",
+                        padding: "0.75rem 1rem",
+                        background: slugSaving || slugDraft.length < 3 ? "#A1A1AA" : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)",
+                        color: "#FFFFFF",
+                        fontWeight: 700,
+                        cursor: slugSaving ? "wait" : "pointer",
+                      }}
+                    >
+                      {slugSaving ? "Saving…" : "Save"}
+                    </button>
+                    <button onClick={onSlugCancel} style={{ border: "none", background: "transparent", color: "#A1A1AA", cursor: "pointer" }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+                {slugError ? <p style={{ margin: 0, fontSize: "0.8rem", color: "#DC2626" }}>{slugError}</p> : null}
+                <p style={{ margin: 0, fontSize: "0.75rem", color: "#A1A1AA" }}>
+                  3–30 characters. Lowercase letters, numbers, and hyphens only.
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-3">
+                <span style={{ fontSize: "0.8rem", color: "#71717A" }}>Link slug</span>
+                <code style={{ borderRadius: "0.5rem", background: "rgba(46,196,182,0.08)", padding: "0.2rem 0.55rem", color: "#0F766E", fontWeight: 700 }}>
+                  {currentToken}
+                </code>
+                {slugSaved ? <span style={{ fontSize: "0.75rem", color: "#15803D", fontWeight: 700 }}>Updated</span> : null}
+                <button onClick={onSlugEdit} style={{ border: "none", background: "transparent", color: "#44A8D8", fontWeight: 700, cursor: "pointer" }}>
+                  Customize
+                </button>
+              </div>
+            )}
+          </div>
+        </SurfaceCard>
+
+        <SurfaceCard elevated className="surface-card--editorial">
+          <p
+            style={{
+              margin: 0,
+              fontSize: "0.68rem",
+              fontWeight: 700,
+              color: "#71717A",
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+            }}
+          >
+            Campaign links
+          </p>
+          <h2 style={{ margin: "0.65rem 0 0.25rem", fontSize: "1.1rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.03em", textWrap: "balance" }}>
+            Create a source-tagged link
+          </h2>
+          <p style={{ margin: 0, fontSize: "0.84rem", lineHeight: 1.6, color: "#71717A" }}>
+            Use these for things like your blog, newsletter, bio link, or a specific post. They stay simple for the person clicking, but give you better source visibility.
+          </p>
+
+          <div className="mt-4 flex flex-col gap-3">
+            <input
+              value={label}
+              onChange={(event) => setLabel(event.target.value)}
+              placeholder="Link name, like Blog CTA or April newsletter"
+              style={{ padding: "0.8rem 0.95rem", borderRadius: "0.8rem", border: "1.5px solid #E4E4E7", fontSize: "0.88rem" }}
+            />
+            <input
+              value={destination}
+              onChange={(event) => setDestination(event.target.value)}
+              placeholder="Destination URL, or leave blank for the homepage"
+              style={{ padding: "0.8rem 0.95rem", borderRadius: "0.8rem", border: "1.5px solid #E4E4E7", fontSize: "0.88rem" }}
+            />
+            <input
+              value={subId}
+              onChange={(event) => setSubId(event.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
+              placeholder="Optional source tag, like blog or april-email"
+              style={{ padding: "0.8rem 0.95rem", borderRadius: "0.8rem", border: "1.5px solid #E4E4E7", fontSize: "0.88rem" }}
+            />
+            <p style={{ margin: 0, fontSize: "0.75rem", color: "#A1A1AA", lineHeight: 1.55 }}>
+              Source tags are for your internal tracking. Use simple labels like <code>blog</code>, <code>email</code>, or <code>ig-bio</code>.
+            </p>
+            {error ? <p style={{ margin: 0, fontSize: "0.8rem", color: "#DC2626" }}>{error}</p> : null}
+            <button
+              onClick={async () => {
+                if (!label.trim()) {
+                  setError("Please enter a name for this link.");
+                  return;
+                }
+                setSaving(true);
+                await handleCreate();
+              }}
+              disabled={saving || !label.trim()}
+              style={{
+                alignSelf: "flex-start",
+                border: "none",
+                borderRadius: "9999px",
+                padding: "0.75rem 1.25rem",
+                background: saving || !label.trim() ? "#A1A1AA" : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)",
+                color: "#FFFFFF",
+                fontWeight: 700,
+                cursor: saving ? "wait" : "pointer",
+              }}
+            >
+              {saving ? "Creating…" : "Create campaign link"}
+            </button>
+          </div>
+        </SurfaceCard>
+      </div>
+
+      <SurfaceCard elevated className="surface-card--editorial">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p
+              style={{
+                margin: 0,
+                fontSize: "0.68rem",
+                fontWeight: 700,
+                color: "#71717A",
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+              }}
+            >
+              Existing short links
+            </p>
+            <h2 style={{ margin: "0.6rem 0 0.2rem", fontSize: "1.1rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.03em" }}>
+              Your managed share links
+            </h2>
+            <p style={{ margin: 0, fontSize: "0.84rem", lineHeight: 1.6, color: "#71717A" }}>
+              These are still fully supported. Use them when you want a cleaner share URL like <code>positives.life/go/your-code</code>.
+            </p>
+          </div>
+        </div>
+
+        {links.length === 0 ? (
+          <p style={{ margin: "1rem 0 0", fontSize: "0.84rem", color: "#A1A1AA" }}>
+            No custom campaign links yet. Start with one for your blog, newsletter, or bio link.
+          </p>
+        ) : (
+          <div className="mt-4 flex flex-col gap-3">
+            {links.map((link) => (
+              <div key={link.id} style={{ border: "1px solid #E4E4E7", borderRadius: "1rem", padding: "1rem" }}>
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: "0.92rem", fontWeight: 700, color: "#09090B" }}>{link.label}</p>
+                    <p style={{ margin: "0.15rem 0 0", fontSize: "0.8rem", color: "#71717A" }}>
+                      {buildManagedDestination({
+                        destination: link.destination,
+                        subId: extractSubId(link.destination),
+                      })}
+                    </p>
+                    <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#0F766E", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {shortUrl(link.code)}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span style={{ fontSize: "0.76rem", color: "#71717A" }}>{link.clicks} clicks</span>
+                    <button
+                      onClick={() => void handleCopyManagedLink(link)}
+                      style={{ border: "none", borderRadius: "9999px", padding: "0.45rem 0.85rem", background: copiedId === link.id ? "rgba(22,163,74,0.12)" : "rgba(68,168,216,0.1)", color: copiedId === link.id ? "#15803D" : "#0F766E", fontWeight: 700, cursor: "pointer" }}
+                    >
+                      {copiedId === link.id ? "Copied!" : "Copy"}
+                    </button>
+                    <a
+                      href={shortUrl(link.code)}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ borderRadius: "9999px", padding: "0.45rem 0.85rem", background: "#F4F4F5", color: "#52525B", fontWeight: 700, textDecoration: "none" }}
+                    >
+                      Open
+                    </a>
+                    <button
+                      onClick={() => void handleDelete(link.id)}
+                      style={{ border: "none", background: "transparent", color: "#A1A1AA", cursor: "pointer", fontWeight: 700 }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </SurfaceCard>
+    </div>
+  );
+}
+
+function PerformanceTab({ performance }: { performance: AffiliatePortalViewModel }) {
+  const earningsValues = performance.earningsTrend.map((point) => point.value);
+  const earningsLabels = performance.earningsTrend.map((point) => point.label);
+  const memberValues = performance.membersTrend.map((point) => point.value);
+  const memberLabels = performance.membersTrend.map((point) => point.label);
+  const hasPerformanceData =
+    performance.visitors > 0 ||
+    performance.leads > 0 ||
+    performance.members > 0 ||
+    performance.totalEarned > 0;
+
+  useEffect(() => {
+    track("affiliate_performance_viewed", {
+      source_path: "/account/affiliate",
+      has_data: hasPerformanceData,
+      visitors: performance.visitors,
+      conversions: performance.members,
+    });
+  }, [hasPerformanceData, performance.members, performance.visitors]);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <MetricCard label="Visitors" value={performance.visitors.toLocaleString()} />
+        <MetricCard label="Leads" value={performance.leads.toLocaleString()} />
+        <MetricCard label="Members" value={performance.members.toLocaleString()} tone="positive" />
+        <MetricCard label="Visitor → member" value={`${performance.conversionRate.toFixed(1)}%`} />
+        <MetricCard label="Total earned" value={formatMoney(performance.totalEarned)} tone="positive" />
+        <MetricCard label="Pending" value={formatMoney(performance.totalPending)} tone="warning" />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        <InsightCard eyebrow="Momentum" title={performance.momentumTitle} body={performance.momentumBody} />
+        <SurfaceCard elevated className="surface-card--editorial h-full">
+          <p style={{ margin: 0, fontSize: "0.68rem", fontWeight: 700, color: "#71717A", letterSpacing: "0.07em", textTransform: "uppercase" }}>
+            Milestone
+          </p>
+          <h3 style={{ margin: "0.55rem 0 0.25rem", fontSize: "1rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.02em" }}>
+            {performance.milestoneLabel}
+          </h3>
+          <p style={{ margin: 0, fontSize: "0.84rem", color: "#71717A", lineHeight: 1.55 }}>{performance.milestoneValue}</p>
+          <div style={{ marginTop: "1rem", height: 10, borderRadius: 9999, background: "#E4E4E7", overflow: "hidden" }}>
+            <div
+              style={{
+                width: `${performance.milestoneProgress}%`,
+                height: "100%",
+                background: "linear-gradient(90deg, #2EC4B6 0%, #44A8D8 100%)",
+              }}
+            />
+          </div>
+        </SurfaceCard>
+        <InsightCard eyebrow="Best next action" title={performance.nextActionTitle} body={performance.nextActionBody} />
+      </div>
+
+      {hasPerformanceData ? (
+        <>
+          <div className="grid gap-4 xl:grid-cols-2">
+            <TrendCard title="Earnings trend" subtitle="Recent monthly commission movement" values={earningsValues} labels={earningsLabels} formatter={(value) => `$${value}`} />
+            <TrendCard title="Member trend" subtitle="Recent monthly conversion movement" values={memberValues} labels={memberLabels} />
+          </div>
+
+          <SurfaceCard elevated className="surface-card--editorial">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p style={{ margin: 0, fontSize: "0.68rem", fontWeight: 700, color: "#71717A", letterSpacing: "0.07em", textTransform: "uppercase" }}>
+                  Top sources
+                </p>
+                <h2 style={{ margin: "0.6rem 0 0.2rem", fontSize: "1.1rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.03em" }}>
+                  What is getting attention
+                </h2>
+                <p style={{ margin: 0, fontSize: "0.84rem", lineHeight: 1.6, color: "#71717A" }}>
+                  This gives you a simple read on which links or source tags are doing the most work.
+                </p>
+              </div>
+            </div>
+
+            {performance.topSources.length > 0 ? (
+              <div className="mt-4 flex flex-col gap-3">
+                {performance.topSources.map((source) => (
+                  <div key={source.id} style={{ border: "1px solid #E4E4E7", borderRadius: "0.95rem", padding: "0.95rem 1rem" }}>
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "#09090B" }}>{source.label}</p>
+                        <p style={{ margin: "0.15rem 0 0", fontSize: "0.78rem", color: "#71717A" }}>{source.detail}</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 text-right sm:grid-cols-4">
+                        <div>
+                          <p style={{ margin: 0, fontSize: "0.68rem", color: "#A1A1AA", textTransform: "uppercase" }}>Clicks</p>
+                          <p style={{ margin: "0.15rem 0 0", fontSize: "0.9rem", fontWeight: 700, color: "#09090B" }}>{source.clicks}</p>
+                        </div>
+                        <div>
+                          <p style={{ margin: 0, fontSize: "0.68rem", color: "#A1A1AA", textTransform: "uppercase" }}>Leads</p>
+                          <p style={{ margin: "0.15rem 0 0", fontSize: "0.9rem", fontWeight: 700, color: "#09090B" }}>{source.leads}</p>
+                        </div>
+                        <div>
+                          <p style={{ margin: 0, fontSize: "0.68rem", color: "#A1A1AA", textTransform: "uppercase" }}>Members</p>
+                          <p style={{ margin: "0.15rem 0 0", fontSize: "0.9rem", fontWeight: 700, color: "#09090B" }}>{source.members}</p>
+                        </div>
+                        <div>
+                          <p style={{ margin: 0, fontSize: "0.68rem", color: "#A1A1AA", textTransform: "uppercase" }}>Earned</p>
+                          <p style={{ margin: "0.15rem 0 0", fontSize: "0.9rem", fontWeight: 700, color: "#09090B" }}>{formatMoney(source.earnings)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ margin: "1rem 0 0", fontSize: "0.84rem", color: "#A1A1AA" }}>
+                Create a source-tagged link and start sharing. This section gets more useful as those links collect clicks.
+              </p>
+            )}
+          </SurfaceCard>
+        </>
+      ) : (
+        <SurfaceCard elevated className="surface-card--editorial text-center">
+          <div style={{ fontSize: "2rem" }}>🌿</div>
+          <h2 style={{ margin: "0.75rem 0 0.35rem", fontSize: "1.15rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.02em", textWrap: "balance" }}>
+            Your performance view will come to life as you share
+          </h2>
+          <p style={{ margin: "0 auto", maxWidth: 560, fontSize: "0.88rem", lineHeight: 1.65, color: "#71717A" }}>
+            Start with one warm share, one source-tagged link for your blog or email, and one follow-up message. That is enough to get meaningful signal without overcomplicating it.
+          </p>
+        </SurfaceCard>
+      )}
+    </div>
+  );
+}
+
+function ShareTab({
+  referralLink,
+  links,
+}: {
+  referralLink: string;
+  links: AffiliateLink[];
+}) {
+  const shareOptions = useMemo(() => {
+    const options = [
+      {
+        id: "primary",
+        label: "Primary referral link",
+        detail: "Best for general sharing",
+        url: referralLink,
+      },
+      ...links.map((link) => ({
+        id: link.id,
+        label: link.label,
+        detail: buildManagedDestination({
+          destination: link.destination,
+          subId: extractSubId(link.destination),
+        }),
+        url: shortUrl(link.code),
+      })),
+    ];
+    return options;
+  }, [links, referralLink]);
+
+  const [selectedLinkId, setSelectedLinkId] = useState(shareOptions[0]?.id ?? "primary");
+  const activeLink = shareOptions.find((option) => option.id === selectedLinkId) ?? shareOptions[0];
+  const emailSwipes = buildSwipes(activeLink?.url ?? referralLink);
+  const shareBlocks = buildSocialCaptions(activeLink?.url ?? referralLink);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <SurfaceCard elevated className="surface-card--editorial">
+        <p style={{ margin: 0, fontSize: "0.68rem", fontWeight: 700, color: "#71717A", letterSpacing: "0.07em", textTransform: "uppercase" }}>
+          Share setup
         </p>
+        <h2 style={{ margin: "0.6rem 0 0.25rem", fontSize: "1.15rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.03em", textWrap: "balance" }}>
+          Choose which link you want to share
+        </h2>
+        <p style={{ margin: 0, fontSize: "0.84rem", lineHeight: 1.6, color: "#71717A" }}>
+          Use your primary link for general sharing, or select one of your source-tagged campaign links before copying any templates below.
+        </p>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-[1.2fr_1fr]">
+          <select
+            value={selectedLinkId}
+            onChange={(event) => setSelectedLinkId(event.target.value)}
+            style={{ padding: "0.9rem 1rem", borderRadius: "0.8rem", border: "1.5px solid #E4E4E7", fontSize: "0.88rem" }}
+          >
+            {shareOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <div style={{ border: "1px solid #E4E4E7", borderRadius: "0.8rem", padding: "0.9rem 1rem", background: "#FAFAFA" }}>
+            <p style={{ margin: 0, fontSize: "0.76rem", color: "#71717A" }}>{activeLink?.detail}</p>
+            <p style={{ margin: "0.2rem 0 0", fontSize: "0.82rem", color: "#09090B", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {activeLink?.url}
+            </p>
+          </div>
+        </div>
+      </SurfaceCard>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <SurfaceCard elevated className="surface-card--editorial">
+          <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.02em" }}>Best places to share</h2>
+          <div className="mt-4 flex flex-col gap-3">
+            {[
+              "A personal text or email to someone who already trusts you",
+              "A blog post, newsletter, or creator page where you already have attention",
+              "Your bio link, if you want a steady source of warm traffic",
+            ].map((tip) => (
+              <div key={tip} className="flex items-start gap-3 text-sm text-muted-foreground">
+                <span aria-hidden="true">•</span>
+                <span>{tip}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: "1rem", border: "1px solid rgba(46,196,182,0.18)", background: "rgba(46,196,182,0.05)", borderRadius: "0.9rem", padding: "0.9rem 1rem" }}>
+            <p style={{ margin: 0, fontSize: "0.82rem", color: "#0F766E", lineHeight: 1.6 }}>
+              Share in a way that feels like a genuine recommendation, not a campaign blast. Affiliates usually do best when the invitation feels personal and specific.
+            </p>
+          </div>
+        </SurfaceCard>
+
+        <SurfaceCard elevated className="surface-card--editorial">
+          <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.02em" }}>Email</h2>
+          <div className="mt-4 flex flex-col gap-3">
+            {emailSwipes.map((swipe) => (
+              <CopyBlock
+                key={swipe.id}
+                label={swipe.label}
+                content={swipe.content}
+                onCopied={() =>
+                  track("affiliate_share_asset_copied", {
+                    source_path: "/account/affiliate",
+                    asset_type: swipe.id,
+                    selected_link: activeLink?.label,
+                  })
+                }
+              />
+            ))}
+          </div>
+        </SurfaceCard>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <SurfaceCard elevated className="surface-card--editorial">
+          <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.02em" }}>Text / DM</h2>
+          <div className="mt-4">
+            <CopyBlock
+              label={shareBlocks[0].label}
+              content={shareBlocks[0].content}
+              onCopied={() =>
+                track("affiliate_share_asset_copied", {
+                  source_path: "/account/affiliate",
+                  asset_type: shareBlocks[0].id,
+                  selected_link: activeLink?.label,
+                })
+              }
+            />
+          </div>
+        </SurfaceCard>
+
+        <SurfaceCard elevated className="surface-card--editorial">
+          <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.02em" }}>Social or blog CTA</h2>
+          <div className="mt-4 flex flex-col gap-3">
+            {shareBlocks.slice(1).map((block) => (
+              <CopyBlock
+                key={block.id}
+                label={block.label}
+                content={block.content}
+                onCopied={() =>
+                  track("affiliate_share_asset_copied", {
+                    source_path: "/account/affiliate",
+                    asset_type: block.id,
+                    selected_link: activeLink?.label,
+                  })
+                }
+              />
+            ))}
+          </div>
+        </SurfaceCard>
       </div>
     </div>
   );
 }
 
-// ─── Main portal ──────────────────────────────────────────────────────────────
+function EarningsTab({
+  performance,
+  commissions,
+  payouts,
+  paypalEmail,
+  onPaypalChange,
+  onSavePayPal,
+  paypalSaving,
+  paypalSaved,
+  paypalError,
+  existingW9,
+  w9Filed,
+  onW9Saved,
+  w9Preview,
+}: {
+  performance: AffiliatePortalViewModel;
+  commissions: AffiliateCommission[];
+  payouts: AffiliatePayout[];
+  paypalEmail: string;
+  onPaypalChange: (value: string) => void;
+  onSavePayPal: () => void;
+  paypalSaving: boolean;
+  paypalSaved: boolean;
+  paypalError: string | null;
+  existingW9: ExistingW9 | null;
+  w9Filed: boolean;
+  onW9Saved: () => void;
+  w9Preview: "off" | "soft" | "hard";
+}) {
+  const totalEarned = w9Preview === "hard" ? 65000 : w9Preview === "soft" ? 55000 : performance.totalEarned;
+  const needsW9 = !w9Filed && totalEarned >= 60000;
+  const shouldWarnW9 = !w9Filed && totalEarned >= 50000 && totalEarned < 60000;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard label="Total paid" value={formatMoney(performance.totalPaid)} tone="positive" />
+        <MetricCard label="Pending" value={formatMoney(performance.totalPending)} tone="warning" />
+        <MetricCard label="Last payout" value={formatShortDate(performance.lastPayoutDate)} detail="Latest FirstPromoter payout record" />
+        <MetricCard
+          label="Payout readiness"
+          value={performance.payoutReady ? "Ready" : "Needs attention"}
+          tone={performance.payoutReady ? "positive" : "warning"}
+          detail={performance.payoutReady ? "Payment details are in good shape." : "Add payout details or tax info to stay ready."}
+        />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <SurfaceCard elevated className="surface-card--editorial">
+          <p style={{ margin: 0, fontSize: "0.68rem", fontWeight: 700, color: "#71717A", letterSpacing: "0.07em", textTransform: "uppercase" }}>
+            Payout checklist
+          </p>
+          <div className="mt-4 flex flex-col gap-3">
+            {[
+              { label: "Affiliate account is active", complete: true },
+              { label: "PayPal email is saved", complete: Boolean(paypalEmail.trim()) },
+              { label: "W-9 is on file if required", complete: performance.totalEarned < 60000 || w9Filed },
+            ].map((item) => (
+              <div key={item.label} className="flex items-center justify-between gap-4 rounded-2xl border border-border px-4 py-3">
+                <span style={{ fontSize: "0.88rem", color: "#09090B", fontWeight: 600 }}>{item.label}</span>
+                <span style={{ fontSize: "0.78rem", fontWeight: 700, color: item.complete ? "#15803D" : "#B45309" }}>
+                  {item.complete ? "Ready" : "Needs attention"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </SurfaceCard>
+
+        <SurfaceCard elevated className="surface-card--editorial">
+          <p style={{ margin: 0, fontSize: "0.68rem", fontWeight: 700, color: "#71717A", letterSpacing: "0.07em", textTransform: "uppercase" }}>
+            Payout settings
+          </p>
+          <h2 style={{ margin: "0.6rem 0 0.25rem", fontSize: "1rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.02em" }}>
+            PayPal email
+          </h2>
+          <p style={{ margin: 0, fontSize: "0.84rem", lineHeight: 1.6, color: "#71717A" }}>
+            This is the email Positives should use when coordinating your affiliate payouts.
+          </p>
+
+          <div className="mt-4 flex flex-col gap-3">
+            <input
+              type="email"
+              value={paypalEmail}
+              onChange={(event) => onPaypalChange(event.target.value)}
+              placeholder="your-paypal@email.com"
+              style={{ padding: "0.85rem 0.95rem", borderRadius: "0.8rem", border: "1.5px solid #E4E4E7", fontSize: "0.88rem" }}
+            />
+            {paypalError ? <p style={{ margin: 0, fontSize: "0.8rem", color: "#DC2626" }}>{paypalError}</p> : null}
+            {paypalSaved ? <p style={{ margin: 0, fontSize: "0.8rem", color: "#15803D" }}>PayPal email saved.</p> : null}
+            <button
+              onClick={onSavePayPal}
+              disabled={paypalSaving || !paypalEmail.trim()}
+              style={{
+                alignSelf: "flex-start",
+                border: "none",
+                borderRadius: "9999px",
+                padding: "0.75rem 1.2rem",
+                background: paypalSaving || !paypalEmail.trim() ? "#A1A1AA" : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)",
+                color: "#FFFFFF",
+                fontWeight: 700,
+                cursor: paypalSaving ? "wait" : "pointer",
+              }}
+            >
+              {paypalSaving ? "Saving…" : "Save payout email"}
+            </button>
+          </div>
+        </SurfaceCard>
+      </div>
+
+      {w9Preview !== "off" ? (
+        <div style={{ display: "inline-flex", alignItems: "center", gap: "0.375rem", background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.25)", borderRadius: "9999px", padding: "0.25rem 0.75rem", fontSize: "0.72rem", fontWeight: 700, color: "#6366F1" }}>
+          DEV PREVIEW — {w9Preview === "hard" ? "$650 earned" : "$550 earned"}
+        </div>
+      ) : null}
+
+      <SurfaceCard elevated className="surface-card--editorial">
+        {needsW9 ? (
+          <div style={{ marginBottom: "1rem", background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "0.875rem", padding: "0.875rem 1rem" }}>
+            <p style={{ margin: 0, fontSize: "0.83rem", color: "#B91C1C", lineHeight: 1.55 }}>
+              Action required: you&apos;ve earned {formatMoney(totalEarned)} in commissions. We need a W-9 before issuing further payouts.
+            </p>
+          </div>
+        ) : shouldWarnW9 ? (
+          <div style={{ marginBottom: "1rem", background: "rgba(245,158,11,0.07)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: "0.875rem", padding: "0.875rem 1rem" }}>
+            <p style={{ margin: 0, fontSize: "0.83rem", color: "#92400E", lineHeight: 1.55 }}>
+              Heads up: you&apos;ve earned {formatMoney(totalEarned)} so far. Once you hit $600, we&apos;ll need a W-9 for 1099 reporting.
+            </p>
+          </div>
+        ) : null}
+
+        <W9Form existingW9={w9Filed ? existingW9 : null} onSaved={onW9Saved} />
+      </SurfaceCard>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <SurfaceCard elevated className="surface-card--editorial">
+          <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.02em" }}>Commission history</h2>
+          {commissions.length === 0 ? (
+            <p style={{ margin: "1rem 0 0", fontSize: "0.84rem", color: "#A1A1AA" }}>
+              No commissions yet. Once your referrals start converting, they&apos;ll appear here.
+            </p>
+          ) : (
+            <div className="mt-4">
+              {commissions.map((commission) => (
+                <CommissionRow key={commission.id} commission={commission} />
+              ))}
+            </div>
+          )}
+        </SurfaceCard>
+
+        <SurfaceCard elevated className="surface-card--editorial">
+          <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.02em" }}>Payout history</h2>
+          {payouts.length === 0 ? (
+            <p style={{ margin: "1rem 0 0", fontSize: "0.84rem", color: "#A1A1AA" }}>
+              No payouts recorded yet. When payouts are issued through FirstPromoter, they&apos;ll show up here.
+            </p>
+          ) : (
+            <div className="mt-4">
+              {payouts.map((payout) => (
+                <PayoutRow key={payout.id} payout={payout} />
+              ))}
+            </div>
+          )}
+        </SurfaceCard>
+      </div>
+    </div>
+  );
+}
 
 export function AffiliatePortal({
   isAffiliate,
@@ -1070,39 +1757,35 @@ export function AffiliatePortal({
   existingW9 = null,
   w9Preview = "off",
   autoEnroll = false,
+  performance,
 }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("link");
-  const [loading, setLoading]     = useState(false);
-  const [enrolled, setEnrolled]   = useState(isAffiliate);
+  const [loading, setLoading] = useState(false);
+  const [enrolled, setEnrolled] = useState(isAffiliate);
   const [payoutStep, setPayoutStep] = useState(false);
   const [currentToken, setCurrentToken] = useState(token);
-  const [copiedLink, setCopiedLink]     = useState(false);
-  const [error, setError]               = useState<string | null>(null);
-
-  // PayPal payout state
-  const [paypalEmail, setPaypalEmail]       = useState(initialPaypalEmail);
-  const [paypalSaving, setPaypalSaving]     = useState(false);
-  const [paypalSaved, setPaypalSaved]       = useState(false);
-  const [paypalError, setPaypalError]       = useState<string | null>(null);
-
-  // Slug customizer state
-  const [slugEditing, setSlugEditing]   = useState(false);
-  const [slugDraft, setSlugDraft]       = useState(currentToken ?? "");
-  const [slugSaving, setSlugSaving]     = useState(false);
-  const [slugError, setSlugError]       = useState<string | null>(null);
-  const [slugSaved, setSlugSaved]       = useState(false);
-
-  // W9 filed state
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [paypalEmail, setPaypalEmail] = useState(initialPaypalEmail);
+  const [paypalSaving, setPaypalSaving] = useState(false);
+  const [paypalSaved, setPaypalSaved] = useState(false);
+  const [paypalError, setPaypalError] = useState<string | null>(null);
+  const [slugEditing, setSlugEditing] = useState(false);
+  const [slugDraft, setSlugDraft] = useState(currentToken ?? "");
+  const [slugSaving, setSlugSaving] = useState(false);
+  const [slugError, setSlugError] = useState<string | null>(null);
+  const [slugSaved, setSlugSaved] = useState(false);
   const [w9Filed, setW9Filed] = useState(Boolean(existingW9));
+  const [managedLinks, setManagedLinks] = useState<AffiliateLink[]>(initialLinks);
   const autoEnrollStartedRef = useRef(false);
 
   void affiliateId;
   void affiliateLinkId;
+  void affiliateCreatedAt;
   void memberName;
+  void stats;
 
-  const referralLink = currentToken
-    ? `https://positives.life?fpr=${currentToken}`
-    : null;
+  const referralLink = currentToken ? `https://positives.life?fpr=${currentToken}` : null;
 
   useEffect(() => {
     track("affiliate_portal_viewed", {
@@ -1111,7 +1794,6 @@ export function AffiliatePortal({
     });
   }, [enrolled]);
 
-  // Enroll handler
   const handleEnroll = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -1127,55 +1809,27 @@ export function AffiliatePortal({
       source_path: "/account/affiliate",
       affiliate_token_present: Boolean(result.token),
     });
-    // Show PayPal setup step if they haven't set one yet
-    if (!paypalEmail.trim()) setPayoutStep(true);
+    if (!paypalEmail.trim()) {
+      setPayoutStep(true);
+    }
   }, [paypalEmail]);
 
   useEffect(() => {
     if (!autoEnroll || enrolled || loading || autoEnrollStartedRef.current) return;
     autoEnrollStartedRef.current = true;
-    const timer = window.setTimeout(() => {
-      void handleEnroll();
-    }, 0);
-
+    const timer = window.setTimeout(() => void handleEnroll(), 0);
     return () => window.clearTimeout(timer);
-  }, [autoEnroll, enrolled, loading, handleEnroll]);
+  }, [autoEnroll, enrolled, handleEnroll, loading]);
 
-  async function handleCopyLink() {
+  const handleCopyPrimaryLink = useCallback(async () => {
     if (!referralLink) return;
     await navigator.clipboard.writeText(referralLink);
-    track("affiliate_link_copied", {
-      source_path: "/account/affiliate",
-    });
+    track("affiliate_link_copied", { source_path: "/account/affiliate" });
     setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2500);
-  }
+    window.setTimeout(() => setCopiedLink(false), 2200);
+  }, [referralLink]);
 
-  const totalPaid = payouts
-    .filter((payout) => payout.state === "paid")
-    .reduce((sum, payout) => sum + payout.amount, 0);
-  const totalPending = commissions
-    .filter((commission) => !["paid", "rejected", "denied", "voided", "canceled", "cancelled"].includes(commission.status.toLowerCase()))
-    .reduce((sum, commission) => sum + commission.amount, 0);
-  // In dev preview mode, override totalEarned to simulate the threshold crossing
-  const totalEarned  = w9Preview === "hard" ? 65000
-    : w9Preview === "soft" ? 55000
-    : totalPaid + totalPending;
-
-  // Slug customizer handlers
-  async function handleSlugSave() {
-    setSlugSaving(true);
-    setSlugError(null);
-    const result = await updateReferralSlugAction(slugDraft);
-    setSlugSaving(false);
-    if ("error" in result) { setSlugError(result.error); return; }
-    setCurrentToken(result.newToken);
-    setSlugEditing(false);
-    setSlugSaved(true);
-    setTimeout(() => setSlugSaved(false), 4000);
-  }
-
-  async function handleSavePayPal() {
+  const handleSavePayPal = useCallback(async () => {
     setPaypalSaving(true);
     setPaypalError(null);
     setPaypalSaved(false);
@@ -1186,13 +1840,25 @@ export function AffiliatePortal({
       return;
     }
     setPaypalSaved(true);
-    track("affiliate_payout_details_saved", {
-      source_path: "/account/affiliate",
-    });
-    setTimeout(() => setPaypalSaved(false), 4000);
-  }
+    track("affiliate_payout_details_saved", { source_path: "/account/affiliate" });
+    window.setTimeout(() => setPaypalSaved(false), 4000);
+  }, [paypalEmail]);
 
-  // ── Payout setup step (after enrollment, no PayPal set) ──
+  const handleSlugSave = useCallback(async () => {
+    setSlugSaving(true);
+    setSlugError(null);
+    const result = await updateReferralSlugAction(slugDraft);
+    setSlugSaving(false);
+    if ("error" in result) {
+      setSlugError(result.error);
+      return;
+    }
+    setCurrentToken(result.newToken);
+    setSlugEditing(false);
+    setSlugSaved(true);
+    window.setTimeout(() => setSlugSaved(false), 3000);
+  }, [slugDraft]);
+
   if (enrolled && payoutStep) {
     return (
       <PayoutSetupStep
@@ -1209,773 +1875,126 @@ export function AffiliatePortal({
     );
   }
 
-  // ── Pre-enrollment ──
   if (!enrolled) {
-    return (
-      <EnrollScreen
-        onEnroll={handleEnroll}
-        loading={loading}
-        error={error}
-      />
-    );
+    return <EnrollScreen onEnroll={handleEnroll} loading={loading} error={error} />;
   }
 
-  const swipes  = referralLink ? buildSwipes(referralLink) : [];
-  const socials = referralLink ? SOCIAL_CAPTIONS(referralLink) : [];
-  const smsTemplates = referralLink ? SMS_TEMPLATES(referralLink) : [];
-  const dmScripts    = referralLink ? DM_SCRIPTS(referralLink) : [];
+  if (!referralLink) {
+    return <EnrollScreen onEnroll={handleEnroll} loading={loading} error={error} />;
+  }
 
-  // ── Full portal ──
   return (
-    <div style={{ maxWidth: 680, margin: "0 auto", padding: "1.5rem 1rem 5rem" }}>
-
-      {/* Page header */}
-      <div style={{ marginBottom: "2rem" }}>
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "0.375rem",
-            background: "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)",
-            color: "#fff",
-            fontSize: "0.68rem",
-            fontWeight: 700,
-            letterSpacing: "0.07em",
-            textTransform: "uppercase",
-            padding: "0.25rem 0.75rem",
-            borderRadius: "9999px",
-            marginBottom: "0.875rem",
-          }}
-        >
-          <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-          </svg>
-          Affiliate Program
-        </div>
-        <h1
-          style={{
-            fontFamily: "var(--font-heading)",
-            fontSize: "clamp(1.4rem, 3vw, 1.75rem)",
-            fontWeight: 700,
-            color: "#09090B",
-            letterSpacing: "-0.035em",
-            lineHeight: 1.15,
-            marginBottom: "0.375rem",
-            textWrap: "balance",
-          }}
-        >
-          Your Affiliate Portal
-        </h1>
-        <p style={{ fontSize: "0.875rem", color: "#71717A", lineHeight: 1.55 }}>
-          Referral link, share resources, stats, and earnings — all in one place.
-        </p>
-      </div>
-
-      {/* Tab bar */}
-      <div
-        role="tablist"
-        aria-label="Affiliate portal sections"
-        style={{
-          display: "flex",
-          gap: "0.25rem",
-          background: "#F4F4F5",
-          borderRadius: "1rem",
-          padding: "0.3rem",
-          marginBottom: "1.75rem",
-        }}
-      >
-        {TABS.map(tab => {
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              id={`tab-${tab.id}`}
-              role="tab"
-              aria-selected={isActive}
-              aria-controls={`panel-${tab.id}`}
-              onClick={() => setActiveTab(tab.id)}
-              style={{
-                flex: 1,
-                padding: "0.5rem 0.25rem",
-                fontSize: "clamp(0.72rem, 1.8vw, 0.82rem)",
-                fontWeight: 600,
-                border: "none",
-                borderRadius: "0.75rem",
-                cursor: "pointer",
-                transition: "all 0.18s ease",
-                background: isActive ? "#FFFFFF" : "transparent",
-                color: isActive ? "#09090B" : "#71717A",
-                boxShadow: isActive ? "0 1px 4px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)" : "none",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: "0.15rem",
-              }}
-            >
-              <span style={{ fontSize: "1rem", lineHeight: 1 }}>{tab.emoji}</span>
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ── Tab: My Link ── */}
-      {activeTab === "link" && (
-        <div
-          id="panel-link"
-          role="tabpanel"
-          aria-labelledby="tab-link"
-          style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
-        >
-          {/* Link card */}
+    <div style={{ maxWidth: 1120, margin: "0 auto", padding: "1.75rem 1rem 5rem" }}>
+      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div style={{ maxWidth: 700 }}>
           <div
             style={{
-              background: "#FFFFFF",
-              border: "1.5px solid #E4E4E7",
-              borderRadius: "1.25rem",
-              padding: "1.75rem",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-              position: "relative",
-              overflow: "hidden",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.35rem",
+              borderRadius: "9999px",
+              padding: "0.3rem 0.8rem",
+              background: "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)",
+              color: "#FFFFFF",
+              fontSize: "0.68rem",
+              fontWeight: 700,
+              letterSpacing: "0.07em",
+              textTransform: "uppercase",
             }}
           >
-            <div
-              aria-hidden="true"
-              style={{
-                position: "absolute",
-                top: 0, left: 0, right: 0,
-                height: 3,
-                background: "linear-gradient(90deg, #2EC4B6 0%, #44A8D8 100%)",
-              }}
-            />
-            <p
-              style={{
-                fontSize: "0.68rem",
-                fontWeight: 700,
-                color: "#71717A",
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                marginBottom: "0.75rem",
-                marginTop: "0.25rem",
-              }}
-            >
-              Your referral link
-            </p>
+            Affiliate Program
+          </div>
+          <h1
+            style={{
+              margin: "0.9rem 0 0.35rem",
+              fontFamily: "var(--font-heading)",
+              fontSize: "clamp(1.7rem, 4vw, 2.35rem)",
+              fontWeight: 700,
+              color: "#09090B",
+              letterSpacing: "-0.045em",
+              lineHeight: 1.02,
+              textWrap: "balance",
+            }}
+          >
+            Your affiliate portal
+          </h1>
+          <p style={{ margin: 0, fontSize: "0.94rem", color: "#71717A", lineHeight: 1.65 }}>
+            Keep your core link simple, create a few source-tagged links when you need them, and watch which sharing efforts are actually moving.
+          </p>
+        </div>
 
-            {/* Link display + copy */}
-            <div
-              style={{
-                display: "flex",
-                gap: "0.5rem",
-                alignItems: "center",
-                background: "#F8FBFC",
-                border: "1.5px solid rgba(46,196,182,0.2)",
-                borderRadius: "0.875rem",
-                padding: "0.875rem 1rem",
-                marginBottom: "0.875rem",
-              }}
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#2EC4B6"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                style={{ flexShrink: 0 }}
-                aria-hidden="true"
-              >
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-              </svg>
-              <span
-                style={{
-                  flex: 1,
-                  fontSize: "0.875rem",
-                  color: "#09090B",
-                  fontFamily: "var(--font-sans)",
-                  fontWeight: 500,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {referralLink}
-              </span>
+        <div className="flex flex-wrap gap-2">
+          {TABS.map((tab) => {
+            const active = activeTab === tab.id;
+            return (
               <button
-                id="copy-referral-link"
-                onClick={handleCopyLink}
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
                 style={{
-                  flexShrink: 0,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "0.3rem",
-                  fontSize: "0.8rem",
-                  fontWeight: 700,
-                  color: copiedLink ? "#2EC4B6" : "#44A8D8",
-                  background: copiedLink ? "rgba(46,196,182,0.08)" : "transparent",
-                  border: `1px solid ${copiedLink ? "rgba(46,196,182,0.3)" : "transparent"}`,
+                  border: active ? "1px solid rgba(46,196,182,0.2)" : "1px solid #E4E4E7",
                   borderRadius: "9999px",
-                  padding: "0.3rem 0.75rem",
+                  padding: "0.65rem 0.95rem",
+                  background: active ? "rgba(46,196,182,0.08)" : "#FFFFFF",
+                  color: active ? "#0F766E" : "#52525B",
+                  fontWeight: 700,
                   cursor: "pointer",
-                  transition: "all 0.2s",
                 }}
               >
-                {copiedLink ? (
-                  <>
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                    Copied!
-                  </>
-                ) : (
-                  <>
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                    </svg>
-                    Copy
-                  </>
-                )}
+                <span aria-hidden="true" style={{ marginRight: "0.4rem" }}>{tab.icon}</span>
+                {tab.label}
               </button>
-            </div>
-
-            {/* ── Slug customizer ── */}
-            <div style={{ marginBottom: "1.125rem" }}>
-              {slugEditing ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                  {/* Warning */}
-                  <div style={{ display: "flex", gap: "0.5rem", alignItems: "flex-start", background: "rgba(245,158,11,0.07)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: "0.75rem", padding: "0.625rem 0.875rem" }}>
-                    <span style={{ fontSize: "0.9rem", flexShrink: 0 }}>⚠️</span>
-                    <p style={{ margin: 0, fontSize: "0.75rem", color: "#92400E", lineHeight: 1.5 }}>Your old link will stop tracking the moment you save. Update any posts or bios where it appears.</p>
-                  </div>
-                  {/* Input row */}
-                  <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                    <span style={{ fontSize: "0.83rem", color: "#71717A", flexShrink: 0, whiteSpace: "nowrap" }}>positives.life?fpr=</span>
-                    <input
-                      id="slug-input"
-                      type="text"
-                      value={slugDraft}
-                      onChange={e => setSlugDraft(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-                      maxLength={30}
-                      autoFocus
-                      style={{ flex: 1, padding: "0.625rem 0.875rem", fontSize: "0.875rem", border: "1.5px solid #2EC4B6", borderRadius: "0.75rem", outline: "none", fontFamily: "monospace", color: "#09090B", background: "#FAFAFA", boxSizing: "border-box" }}
-                    />
-                    <button
-                      id="slug-save-btn"
-                      onClick={handleSlugSave}
-                      disabled={slugSaving || slugDraft.length < 3}
-                      style={{ flexShrink: 0, padding: "0.625rem 1rem", fontSize: "0.8rem", fontWeight: 700, color: "#fff", background: slugSaving || slugDraft.length < 3 ? "#A1A1AA" : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)", border: "none", borderRadius: "0.75rem", cursor: slugSaving ? "wait" : "pointer", whiteSpace: "nowrap" }}
-                    >
-                      {slugSaving ? "Saving…" : "Save"}
-                    </button>
-                    <button onClick={() => { setSlugEditing(false); setSlugDraft(currentToken ?? ""); setSlugError(null); }} style={{ flexShrink: 0, fontSize: "0.75rem", color: "#A1A1AA", background: "none", border: "none", cursor: "pointer", padding: "0.25rem" }}>Cancel</button>
-                  </div>
-                  {slugError && <p style={{ fontSize: "0.78rem", color: "#EF4444", margin: 0 }}>{slugError}</p>}
-                  <p style={{ fontSize: "0.72rem", color: "#A1A1AA", margin: 0 }}>3–30 characters. Lowercase letters, numbers, and hyphens only.</p>
-                </div>
-              ) : (
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <span style={{ fontSize: "0.78rem", color: "#71717A" }}>Link slug:</span>
-                  <code style={{ fontSize: "0.83rem", color: "#2EC4B6", background: "rgba(46,196,182,0.08)", borderRadius: "0.375rem", padding: "0.125rem 0.5rem", fontWeight: 600 }}>{currentToken}</code>
-                  {slugSaved && <span style={{ fontSize: "0.75rem", color: "#16A34A", fontWeight: 600 }}>✓ Updated!</span>}
-                  <button
-                    id="slug-edit-btn"
-                    onClick={() => { setSlugEditing(true); setSlugDraft(currentToken ?? ""); setSlugError(null); }}
-                    style={{ fontSize: "0.75rem", color: "#44A8D8", background: "none", border: "none", cursor: "pointer", padding: "0.125rem 0.5rem", fontWeight: 600 }}
-                  >
-                    Customize →
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Commission callout */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.625rem",
-                background: "rgba(245,158,11,0.08)",
-                border: "1px solid rgba(245,158,11,0.2)",
-                borderRadius: "0.875rem",
-                padding: "0.75rem 1rem",
-              }}
-            >
-              <span style={{ fontSize: "1.1rem", lineHeight: 1 }}>💰</span>
-              <p style={{ fontSize: "0.85rem", color: "#92400E", lineHeight: 1.5, margin: 0 }}>
-                <strong style={{ fontWeight: 700 }}>You earn 20% recurring.</strong>{" "}
-                Every month your referrals stay active, that commission is yours.
-              </p>
-            </div>
-
-            {/* Affiliate since */}
-            {affiliateCreatedAt && (
-              <p style={{ fontSize: "0.72rem", color: "#A1A1AA", margin: "0.875rem 0 0", textAlign: "right" }}>
-                Affiliate since {new Date(affiliateCreatedAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
-              </p>
-            )}
-          </div>
-
-          {/* Link Builder */}
-          {currentToken && <LinkBuilder token={currentToken} initialLinks={initialLinks ?? []} />}
-
-            {/* Quick-stats peek (if any data) */}
-          {stats && (stats.visitors > 0 || stats.conversions > 0) && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
-              <StatChip label="Visitors" value={stats.visitors} />
-              <StatChip label="Leads"  value={stats.leads}    />
-              <StatChip label="Members" value={stats.conversions} />
-            </div>
-          )}
+            );
+          })}
         </div>
-      )}
+      </div>
 
-      {/* ── Tab: Stats ── */}
-      {activeTab === "stats" && (
-        <div
-          id="panel-stats"
-          role="tabpanel"
-          aria-labelledby="tab-stats"
-        >
-          {stats ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.875rem" }}>
-                <StatChip label="Visitors" value={stats.visitors}   />
-                <StatChip label="Leads"   value={stats.leads}       />
-                <StatChip label="Members" value={stats.conversions} />
-              </div>
-              <div
-                style={{
-                  background: "#F4F4F5",
-                  border: "1px solid #E4E4E7",
-                  borderRadius: "1rem",
-                  padding: "1rem 1.25rem",
-                }}
-              >
-                <p style={{ fontSize: "0.8rem", color: "#71717A", margin: 0, lineHeight: 1.55 }}>
-                  These totals come from FirstPromoter and reflect all-time visitors, leads, and member conversions attributed to your referral code. Updates may take up to 24 hours to appear.
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div
-              style={{
-                background: "#FFFFFF",
-                border: "1.5px solid #E4E4E7",
-                borderRadius: "1.25rem",
-                padding: "3rem 2rem",
-                textAlign: "center",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-              }}
-            >
-              <div style={{ fontSize: "2.5rem", marginBottom: "0.875rem" }}>📊</div>
-              <p style={{ fontSize: "0.9rem", fontWeight: 600, color: "#09090B", marginBottom: "0.375rem" }}>
-                No stats yet
-              </p>
-              <p style={{ fontSize: "0.85rem", color: "#71717A", lineHeight: 1.55 }}>
-                Share your link and check back once you&apos;ve had some clicks.
-              </p>
-            </div>
-          )}
-        </div>
-      )}
+      {activeTab === "link" ? (
+        <LinkTab
+          currentToken={currentToken}
+          referralLink={referralLink}
+          copiedLink={copiedLink}
+          onCopyPrimaryLink={handleCopyPrimaryLink}
+          slugEditing={slugEditing}
+          slugDraft={slugDraft}
+          slugSaving={slugSaving}
+          slugSaved={slugSaved}
+          slugError={slugError}
+          onSlugDraftChange={(value) => setSlugDraft(value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+          onSlugEdit={() => {
+            setSlugEditing(true);
+            setSlugDraft(currentToken ?? "");
+            setSlugError(null);
+          }}
+          onSlugCancel={() => {
+            setSlugEditing(false);
+            setSlugDraft(currentToken ?? "");
+            setSlugError(null);
+          }}
+          onSlugSave={handleSlugSave}
+          links={managedLinks}
+          onLinksChange={setManagedLinks}
+        />
+      ) : null}
 
-      {/* ── Tab: Share Kit ── */}
-      {activeTab === "share" && (
-        <div
-          id="panel-share"
-          role="tabpanel"
-          aria-labelledby="tab-share"
-          style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}
-        >
-          {/* Email Swipes */}
-          <div
-            style={{
-              background: "#FFFFFF",
-              border: "1.5px solid #E4E4E7",
-              borderRadius: "1.25rem",
-              padding: "1.75rem",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-            }}
-          >
-            <h2
-              style={{
-                fontFamily: "var(--font-heading)",
-                fontSize: "0.95rem",
-                fontWeight: 700,
-                color: "#09090B",
-                marginBottom: "0.25rem",
-                letterSpacing: "-0.02em",
-              }}
-            >
-              📧 Email Swipes
-            </h2>
-            <p style={{ fontSize: "0.8rem", color: "#71717A", marginBottom: "1.25rem", lineHeight: 1.5 }}>
-              Your referral link is already embedded — just swap in the recipient&apos;s name and send.
-            </p>
-            {swipes.map(s => (
-              <CopyBlock
-                key={s.id}
-                id={`copy-${s.id}`}
-                label={s.label}
-                content={`Subject: ${s.subject}\n\n${s.body}`}
-              />
-            ))}
-          </div>
-
-          {/* SMS Templates */}
-          <div
-            style={{
-              background: "#FFFFFF",
-              border: "1.5px solid #E4E4E7",
-              borderRadius: "1.25rem",
-              padding: "1.75rem",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-            }}
-          >
-            <h2
-              style={{
-                fontFamily: "var(--font-heading)",
-                fontSize: "0.95rem",
-                fontWeight: 700,
-                color: "#09090B",
-                marginBottom: "0.25rem",
-                letterSpacing: "-0.02em",
-              }}
-            >
-              💬 Text / SMS
-            </h2>
-            <p style={{ fontSize: "0.8rem", color: "#71717A", marginBottom: "1.25rem", lineHeight: 1.5 }}>
-              Copy, paste into a text to a friend. Personal texts convert the best.
-            </p>
-            {smsTemplates.map(s => (
-              <CopyBlock key={s.id} id={`copy-${s.id}`} label={s.label} content={s.copy} />
-            ))}
-          </div>
-
-          {/* DM Scripts */}
-          <div
-            style={{
-              background: "#FFFFFF",
-              border: "1.5px solid #E4E4E7",
-              borderRadius: "1.25rem",
-              padding: "1.75rem",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-            }}
-          >
-            <h2
-              style={{
-                fontFamily: "var(--font-heading)",
-                fontSize: "0.95rem",
-                fontWeight: 700,
-                color: "#09090B",
-                marginBottom: "0.25rem",
-                letterSpacing: "-0.02em",
-              }}
-            >
-              📩 DM Scripts
-            </h2>
-            <p style={{ fontSize: "0.8rem", color: "#71717A", marginBottom: "1.25rem", lineHeight: 1.5 }}>
-              For Instagram DMs, Facebook Messenger, or any direct message.
-            </p>
-            {dmScripts.map(s => (
-              <CopyBlock key={s.id} id={`copy-${s.id}`} label={s.label} content={s.copy} />
-            ))}
-          </div>
-
-          {/* Social Captions */}
-          <div
-            style={{
-              background: "#FFFFFF",
-              border: "1.5px solid #E4E4E7",
-              borderRadius: "1.25rem",
-              padding: "1.75rem",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-            }}
-          >
-            <h2
-              style={{
-                fontFamily: "var(--font-heading)",
-                fontSize: "0.95rem",
-                fontWeight: 700,
-                color: "#09090B",
-                marginBottom: "0.25rem",
-                letterSpacing: "-0.02em",
-              }}
-            >
-              📱 Social Captions
-            </h2>
-            <p style={{ fontSize: "0.8rem", color: "#71717A", marginBottom: "1.25rem", lineHeight: 1.5 }}>
-              Ready-to-post captions with your link already included.
-            </p>
-            {socials.map(s => (
-              <CopyBlock key={s.id} id={`copy-${s.id}`} label={s.label} content={s.copy} />
-            ))}
-          </div>
-
-          {/* Talking Points */}
-          <div
-            style={{
-              background: "#FFFFFF",
-              border: "1.5px solid #E4E4E7",
-              borderRadius: "1.25rem",
-              padding: "1.75rem",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-            }}
-          >
-            <h2
-              style={{
-                fontFamily: "var(--font-heading)",
-                fontSize: "0.95rem",
-                fontWeight: 700,
-                color: "#09090B",
-                marginBottom: "1rem",
-                letterSpacing: "-0.02em",
-              }}
-            >
-              💬 Key Talking Points
-            </h2>
-            <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: "0.625rem" }}>
-              {TALKING_POINTS.map((p, i) => (
-                <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: "0.625rem" }}>
-                  <span
-                    style={{
-                      flexShrink: 0,
-                      width: 20,
-                      height: 20,
-                      borderRadius: "50%",
-                      background: "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      marginTop: "0.1rem",
-                    }}
-                  >
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </span>
-                  <span style={{ fontSize: "0.875rem", color: "#3F3F46", lineHeight: 1.55 }}>{p}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      )}
-
-      {/* ── Tab: Earnings ── */}
-      {activeTab === "earnings" && (
-        <div
-          id="panel-earnings"
-          role="tabpanel"
-          aria-labelledby="tab-earnings"
-          style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
-        >
-          {/* Summary totals */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.875rem" }}>
-            <div
-              style={{
-                background: "#FFFFFF",
-                border: "1.5px solid #E4E4E7",
-                borderRadius: "1.25rem",
-                padding: "1.5rem",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-              }}
-            >
-              <p style={{ fontSize: "0.68rem", fontWeight: 700, color: "#71717A", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: "0.5rem" }}>
-                Total Paid
-              </p>
-              <p
-                style={{
-                  fontSize: "1.875rem",
-                  fontWeight: 700,
-                  color: "#16A34A",
-                  fontFamily: "var(--font-heading)",
-                  letterSpacing: "-0.04em",
-                  lineHeight: 1,
-                }}
-              >
-                ${(totalPaid / 100).toFixed(2)}
-              </p>
-            </div>
-            <div
-              style={{
-                background: "#FFFFFF",
-                border: "1.5px solid #E4E4E7",
-                borderRadius: "1.25rem",
-                padding: "1.5rem",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-              }}
-            >
-              <p style={{ fontSize: "0.68rem", fontWeight: 700, color: "#71717A", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: "0.5rem" }}>
-                Pending
-              </p>
-              <p
-                style={{
-                  fontSize: "1.875rem",
-                  fontWeight: 700,
-                  color: "#D97706",
-                  fontFamily: "var(--font-heading)",
-                  letterSpacing: "-0.04em",
-                  lineHeight: 1,
-                }}
-              >
-                ${(totalPending / 100).toFixed(2)}
-              </p>
-            </div>
-          </div>
-
-          {/* PayPal payout setup */}
-          {paypalEmail.trim() ? (
-            <div style={{ background: "#FFFFFF", border: "1.5px solid #E4E4E7", borderRadius: "1.25rem", padding: "1.5rem", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
-              <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "0.9rem", fontWeight: 700, color: "#09090B", marginBottom: "0.25rem", letterSpacing: "-0.02em" }}>💳 Payout Settings</h2>
-              <p style={{ fontSize: "0.8rem", color: "#71717A", marginBottom: "1rem", lineHeight: 1.5 }}>Save the PayPal email Positives should use when coordinating your affiliate payouts.</p>
-              <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                <input id="paypal-email-input" type="email" placeholder="your-paypal@email.com" value={paypalEmail} onChange={e => setPaypalEmail(e.target.value)}
-                  style={{ flex: 1, padding: "0.75rem 1rem", fontSize: "0.875rem", border: "1.5px solid #E4E4E7", borderRadius: "0.875rem", outline: "none", fontFamily: "var(--font-sans)", color: "#09090B", background: "#FAFAFA", transition: "border-color 0.2s" }}
-                  onFocus={e => (e.currentTarget.style.borderColor = "#2EC4B6")}
-                  onBlur={e => (e.currentTarget.style.borderColor = "#E4E4E7")}
-                />
-                <button id="save-paypal-btn" onClick={handleSavePayPal} disabled={paypalSaving || !paypalEmail.trim()}
-                  style={{ padding: "0.75rem 1.25rem", fontSize: "0.83rem", fontWeight: 700, color: "#FFFFFF", background: paypalSaved ? "#16A34A" : paypalSaving ? "#A1A1AA" : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)", border: "none", borderRadius: "0.875rem", cursor: paypalSaving ? "wait" : "pointer", whiteSpace: "nowrap", transition: "all 0.2s" }}
-                >
-                  {paypalSaved ? "✓ Saved!" : paypalSaving ? "Saving…" : "Save"}
-                </button>
-              </div>
-              {paypalError && <p style={{ fontSize: "0.8rem", color: "#EF4444", marginTop: "0.5rem" }}>{paypalError}</p>}
-              {paypalSaved && <p style={{ fontSize: "0.8rem", color: "#16A34A", marginTop: "0.5rem" }}>PayPal email saved. We&apos;ll use this address for affiliate payout coordination.</p>}
-            </div>
-          ) : (
-            <div style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: "1rem", padding: "1rem 1.25rem" }}>
-              <span style={{ fontSize: "1.1rem", lineHeight: 1, flexShrink: 0 }}>⚠️</span>
-              <div style={{ flex: 1 }}>
-                <p style={{ margin: "0 0 0.625rem", fontSize: "0.85rem", fontWeight: 700, color: "#92400E", lineHeight: 1.4 }}>Add a PayPal email so we can coordinate your affiliate payouts</p>
-                <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                  <input id="earnings-paypal-input" type="email" placeholder="your-paypal@email.com" value={paypalEmail} onChange={e => setPaypalEmail(e.target.value)}
-                    style={{ flex: 1, padding: "0.625rem 0.875rem", fontSize: "0.83rem", border: "1.5px solid rgba(245,158,11,0.35)", borderRadius: "0.75rem", outline: "none", fontFamily: "var(--font-sans)", color: "#09090B", background: "rgba(255,255,255,0.8)", transition: "border-color 0.2s" }}
-                    onFocus={e => (e.currentTarget.style.borderColor = "#F59E0B")}
-                    onBlur={e => (e.currentTarget.style.borderColor = "rgba(245,158,11,0.35)")}
-                  />
-                  <button id="earnings-save-paypal-btn" onClick={handleSavePayPal} disabled={paypalSaving || !paypalEmail.trim()}
-                    style={{ padding: "0.625rem 1rem", fontSize: "0.8rem", fontWeight: 700, color: "#FFFFFF", background: paypalSaved ? "#16A34A" : "#F59E0B", border: "none", borderRadius: "0.75rem", cursor: paypalSaving || !paypalEmail.trim() ? "not-allowed" : "pointer", whiteSpace: "nowrap", transition: "all 0.2s", flexShrink: 0 }}
-                  >
-                    {paypalSaved ? "✓ Saved!" : paypalSaving ? "Saving…" : "Save"}
-                  </button>
-                </div>
-                {paypalError && <p style={{ fontSize: "0.8rem", color: "#EF4444", marginTop: "0.5rem" }}>{paypalError}</p>}
-                <p style={{ margin: "0.5rem 0 0", fontSize: "0.72rem", color: "#92400E" }}>
-                  Don&apos;t have PayPal?{" "}
-                  <a href="https://www.paypal.com/us/webapps/mpp/account-selection" target="_blank" rel="noopener noreferrer" style={{ color: "#D97706", textDecoration: "underline" }}>Create a free account →</a>
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Commission history */}
-          <div
-            style={{
-              background: "#FFFFFF",
-              border: "1.5px solid #E4E4E7",
-              borderRadius: "1.25rem",
-              padding: "1.5rem",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-            }}
-          >
-            <h2
-              style={{
-                fontFamily: "var(--font-heading)",
-                fontSize: "0.9rem",
-                fontWeight: 700,
-                color: "#09090B",
-                marginBottom: "0.125rem",
-                letterSpacing: "-0.02em",
-              }}
-            >
-              Commission History
-            </h2>
-            {commissions.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "2rem 0" }}>
-                <p style={{ fontSize: "0.875rem", color: "#71717A" }}>
-                  No commissions yet — share your link to start earning.
-                </p>
-              </div>
-            ) : (
-              <div style={{ marginTop: "0.75rem" }}>
-                {commissions.map(c => (
-                  <CommissionRow key={c.id} c={c} />
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Payout history */}
-          {payouts.length > 0 && (
-            <div style={{ background: "#FFFFFF", border: "1.5px solid #E4E4E7", borderRadius: "1.25rem", padding: "1.5rem", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
-              <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "0.9rem", fontWeight: 700, color: "#09090B", marginBottom: "0.125rem", letterSpacing: "-0.02em" }}>Payout History</h2>
-              <p style={{ fontSize: "0.75rem", color: "#71717A", margin: "0 0 0.875rem", lineHeight: 1.5 }}>This history reflects payouts recorded in FirstPromoter. Keep your PayPal email current so payout coordination stays smooth.</p>
-              <div>
-                {payouts.map(p => <PayoutRow key={p.id} p={p} />)}
-              </div>
-            </div>
-          )}
-
-          {/* W9 section */}
-          {w9Preview !== "off" && (
-            <div style={{ display: "inline-flex", alignItems: "center", gap: "0.375rem", background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.25)", borderRadius: "9999px", padding: "0.25rem 0.75rem", fontSize: "0.72rem", fontWeight: 700, color: "#6366F1", letterSpacing: "0.04em" }}>
-              🧪 DEV PREVIEW — {w9Preview === "hard" ? "$650 earned (hard gate)" : "$550 earned (soft warning)"}
-            </div>
-          )}
-          <div
-            style={{
-              background: "#FFFFFF",
-              border: `1.5px solid ${
-                !w9Filed && totalEarned >= 60000 ? "rgba(239,68,68,0.35)"
-                : !w9Filed && totalEarned >= 50000 ? "rgba(245,158,11,0.35)"
-                : "#E4E4E7"
-              }`,
-              borderRadius: "1.25rem",
-              padding: "1.75rem",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-            }}
-          >
-            {/* $600 hard requirement banner */}
-            {!w9Filed && totalEarned >= 60000 && (
-              <div style={{ display: "flex", gap: "0.625rem", alignItems: "flex-start", background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "0.875rem", padding: "0.875rem 1rem", marginBottom: "1.25rem" }}>
-                <span style={{ fontSize: "1rem", flexShrink: 0 }}>🚨</span>
-                <p style={{ margin: 0, fontSize: "0.83rem", color: "#B91C1C", fontWeight: 600, lineHeight: 1.5 }}>
-                  Action required: You&apos;ve earned ${(totalEarned / 100).toFixed(0)} in commissions. We&apos;re required to collect a W-9 before issuing further payouts. Please complete the form below.
-                </p>
-              </div>
-            )}
-            {/* $500 soft warning */}
-            {!w9Filed && totalEarned >= 50000 && totalEarned < 60000 && (
-              <div style={{ display: "flex", gap: "0.625rem", alignItems: "flex-start", background: "rgba(245,158,11,0.07)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: "0.875rem", padding: "0.875rem 1rem", marginBottom: "1.25rem" }}>
-                <span style={{ fontSize: "1rem", flexShrink: 0 }}>📋</span>
-                <p style={{ margin: 0, fontSize: "0.83rem", color: "#92400E", lineHeight: 1.5 }}>
-                  <strong>Heads up:</strong> You&apos;ve earned ${(totalEarned / 100).toFixed(0)} so far. Once you hit $600, we&apos;ll need a W-9 to comply with IRS 1099 rules. You can file it now to get ahead of it.
-                </p>
-              </div>
-            )}
-
-            <W9Form
-              existingW9={w9Filed ? (existingW9 ?? null) : null}
-              onSaved={() => setW9Filed(true)}
-            />
-
-            {/* Info note when no threshold reached */}
-            {!w9Filed && totalEarned < 50000 && (
-              <div style={{ marginTop: "1.25rem", background: "#F4F4F5", border: "1px solid #E4E4E7", borderRadius: "0.875rem", padding: "0.875rem 1rem" }}>
-                <p style={{ fontSize: "0.78rem", color: "#71717A", margin: 0, lineHeight: 1.55 }}>
-                  <strong style={{ color: "#52525B" }}>Tax info:</strong> If your total commissions reach $600 in a calendar year, we&apos;ll need a W-9 for 1099 reporting. You can file it now or wait — no action required until then.
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {activeTab === "performance" ? <PerformanceTab performance={performance} /> : null}
+      {activeTab === "share" ? <ShareTab referralLink={referralLink} links={managedLinks} /> : null}
+      {activeTab === "earnings" ? (
+        <EarningsTab
+          performance={performance}
+          commissions={commissions}
+          payouts={payouts}
+          paypalEmail={paypalEmail}
+          onPaypalChange={setPaypalEmail}
+          onSavePayPal={() => void handleSavePayPal()}
+          paypalSaving={paypalSaving}
+          paypalSaved={paypalSaved}
+          paypalError={paypalError}
+          existingW9={existingW9}
+          w9Filed={w9Filed}
+          onW9Saved={() => setW9Filed(true)}
+          w9Preview={w9Preview}
+        />
+      ) : null}
     </div>
   );
 }
