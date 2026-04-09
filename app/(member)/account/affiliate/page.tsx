@@ -23,6 +23,7 @@ export default async function AffiliatePage({
 }) {
   const member = await requireActiveMember();
   const params = await searchParams;
+  const autoEnroll = ["1", "true", "yes"].includes(String(params.auto_enroll ?? "").toLowerCase());
   // w9_preview is only honoured outside of production
   const w9Preview = process.env.NODE_ENV !== "production"
     ? (["soft", "hard"].includes(String(params.w9_preview)) ? (params.w9_preview as "soft" | "hard") : "off")
@@ -85,6 +86,7 @@ export default async function AffiliatePage({
       initialLinks={affiliateLinks ?? []}
       existingW9={w9 ?? null}
       w9Preview={w9Preview}
+      autoEnroll={autoEnroll}
     />
   );
 }

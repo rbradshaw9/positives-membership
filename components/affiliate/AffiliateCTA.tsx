@@ -5,7 +5,7 @@ import { SurfaceCard } from "@/components/ui/SurfaceCard";
  * components/affiliate/AffiliateCTA.tsx
  *
  * Shown on /account for members who are NOT yet affiliates.
- * Routes to /account/affiliate where they can enroll + access the full portal.
+ * Routes to /account/affiliate and auto-starts enrollment.
  */
 
 const BENEFITS = [
@@ -80,10 +80,10 @@ export function AffiliateCTA() {
         {/* CTA */}
         <div className="mt-6">
           <Link
-            href="/account/affiliate"
+            href="/account/affiliate?auto_enroll=1"
             className="btn-primary inline-flex items-center gap-2 px-5 py-2.5 text-sm"
           >
-            Get my referral link
+            Set up my referral link
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M5 12h14M12 5l7 7-7 7" />
             </svg>

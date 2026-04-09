@@ -158,7 +158,7 @@ export default async function JoinPage({
           style={{ background: "radial-gradient(ellipse at 50% 0%, rgba(47,111,237,0.06) 0%, transparent 60%)" }}
         />
         <div
-          className="relative max-w-2xl mx-auto"
+          className="relative max-w-4xl mx-auto"
           style={{ paddingTop: "clamp(2rem, 4vw, 3.5rem)", paddingBottom: "clamp(1.5rem, 2.5vw, 2.5rem)" }}
         >
           <p
@@ -175,6 +175,8 @@ export default async function JoinPage({
               lineHeight: "1.06",
               color: "#121417",
               textWrap: "balance",
+              maxWidth: "16ch",
+              marginInline: "auto",
             }}
           >
             Choose the level of support that fits you.
@@ -185,7 +187,7 @@ export default async function JoinPage({
               fontSize: "clamp(0.95rem, 1.5vw, 1.05rem)",
               color: "#68707A",
               lineHeight: "1.68",
-              maxWidth: "480px",
+              maxWidth: "700px",
               letterSpacing: "-0.01em",
             }}
           >
@@ -198,6 +200,10 @@ export default async function JoinPage({
               fontSize: "0.85rem",
               color: "#9AA0A8",
               letterSpacing: "-0.01em",
+              maxWidth: "780px",
+              marginInline: "auto",
+              lineHeight: "1.6",
+              textWrap: "balance",
             }}
           >
             Membership, Membership + Events, and Coaching Circle are live now · Executive

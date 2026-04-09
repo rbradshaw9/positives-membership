@@ -20,7 +20,11 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { syncAffiliate } from "@/lib/activecampaign/sync";
-import { ensureFpPromoter } from "@/lib/firstpromoter/client";
+import {
+  ensureFpPromoter,
+  isFirstPromoterAuthError,
+  updatePromoterRefId,
+} from "@/lib/firstpromoter/client";
 
 export interface GetReferralLinkResult {
   referralLink: string;
@@ -89,6 +93,12 @@ export async function getReferralLinkAction(): Promise<
     });
   } catch (err) {
     console.error("[Affiliate] ensureFpPromoter failed:", err);
+    if (isFirstPromoterAuthError(err)) {
+      return {
+        error:
+          "Affiliate setup is temporarily unavailable because the FirstPromoter API key needs attention. Please contact support@positives.life.",
+      };
+    }
     return {
       error: "Something went wrong setting up your referral link. Please try again.",
     };
@@ -378,34 +388,19 @@ export async function updateReferralSlugAction(
   if (!member?.fp_promoter_id) return { error: "No affiliate account found." };
   if (member.fp_ref_id === slug) return { success: true, newToken: slug };
 
-  // Update ref_id in FirstPromoter via PATCH /promoters/:id
-  const fpKey = process.env.FIRSTPROMOTER_API_KEY;
-  if (!fpKey) return { error: "Affiliate system configuration error. Please contact support." };
-
   try {
-    const res = await fetch(
-      `https://firstpromoter.com/api/v1/promoters/${member.fp_promoter_id}`,
-      {
-        method: "PATCH",
-        headers: {
-          "x-api-key": fpKey,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ ref_id: slug }),
-      }
-    );
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      if (res.status === 422 || text.includes("taken") || text.includes("already")) {
-        return { error: "That slug is already taken. Try a different one." };
-      }
-      throw new Error(`FP PATCH /promoters → ${res.status}: ${text}`);
-    }
+    await updatePromoterRefId(member.fp_promoter_id, slug);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "";
-    if (msg.includes("taken") || msg.includes("422") || msg.includes("already"))
+    if (msg.includes("taken") || msg.includes("422") || msg.includes("already")) {
       return { error: "That slug is already taken. Try a different one." };
+    }
+    if (isFirstPromoterAuthError(err)) {
+      return {
+        error:
+          "Affiliate link updates are temporarily unavailable because the FirstPromoter API key needs attention. Please contact support@positives.life.",
+      };
+    }
     console.error("[Affiliate] FP slug update failed:", err);
     return { error: "Failed to update your referral link. Please try again." };
   }

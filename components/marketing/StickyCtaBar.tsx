@@ -63,7 +63,7 @@ export function StickyCtaBar({ sentinelRef }: StickyCtaBarProps) {
             boxShadow: "0 4px 18px rgba(47,111,237,0.35)",
           }}
         >
-          Try it for 30 days →
+          Start your daily practice →
         </Link>
         <div className="text-right flex-shrink-0">
           <p className="text-xs font-medium" style={{ color: "#FFFFFF", lineHeight: "1.3" }}>From $37/mo</p>

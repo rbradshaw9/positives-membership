@@ -12,7 +12,7 @@
  * Montserrat headings, Poppins body, generous radii, shadow-medium cards.
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { getReferralLinkAction, savePayPalEmailAction, createAffiliateLinkAction, deleteAffiliateLinkAction, updateAffiliateLinkAction, updateReferralSlugAction, saveW9Action } from "@/app/account/affiliate/actions";
 import type {
   AffiliateCommission,
@@ -60,6 +60,7 @@ interface Props {
   existingW9?: ExistingW9 | null;
   /** Dev-only: override the W9 threshold display without real commission data. */
   w9Preview?: "off" | "soft" | "hard";
+  autoEnroll?: boolean;
 }
 
 type Tab = "link" | "stats" | "share" | "earnings";
@@ -1068,6 +1069,7 @@ export function AffiliatePortal({
   initialLinks = [],
   existingW9 = null,
   w9Preview = "off",
+  autoEnroll = false,
 }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("link");
   const [loading, setLoading]     = useState(false);
@@ -1092,6 +1094,7 @@ export function AffiliatePortal({
 
   // W9 filed state
   const [w9Filed, setW9Filed] = useState(Boolean(existingW9));
+  const autoEnrollStartedRef = useRef(false);
 
   void affiliateId;
   void affiliateLinkId;
@@ -1109,7 +1112,7 @@ export function AffiliatePortal({
   }, [enrolled]);
 
   // Enroll handler
-  async function handleEnroll() {
+  const handleEnroll = useCallback(async () => {
     setLoading(true);
     setError(null);
     const result = await getReferralLinkAction();
@@ -1126,7 +1129,17 @@ export function AffiliatePortal({
     });
     // Show PayPal setup step if they haven't set one yet
     if (!paypalEmail.trim()) setPayoutStep(true);
-  }
+  }, [paypalEmail]);
+
+  useEffect(() => {
+    if (!autoEnroll || enrolled || loading || autoEnrollStartedRef.current) return;
+    autoEnrollStartedRef.current = true;
+    const timer = window.setTimeout(() => {
+      void handleEnroll();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [autoEnroll, enrolled, loading, handleEnroll]);
 
   async function handleCopyLink() {
     if (!referralLink) return;
@@ -1138,8 +1151,12 @@ export function AffiliatePortal({
     setTimeout(() => setCopiedLink(false), 2500);
   }
 
-  const totalPaid    = commissions.filter(c => c.status === "paid").reduce((s, c) => s + c.amount, 0);
-  const totalPending = commissions.filter(c => c.status !== "paid").reduce((s, c) => s + c.amount, 0);
+  const totalPaid = payouts
+    .filter((payout) => payout.state === "paid")
+    .reduce((sum, payout) => sum + payout.amount, 0);
+  const totalPending = commissions
+    .filter((commission) => !["paid", "rejected", "denied", "voided", "canceled", "cancelled"].includes(commission.status.toLowerCase()))
+    .reduce((sum, commission) => sum + commission.amount, 0);
   // In dev preview mode, override totalEarned to simulate the threshold crossing
   const totalEarned  = w9Preview === "hard" ? 65000
     : w9Preview === "soft" ? 55000

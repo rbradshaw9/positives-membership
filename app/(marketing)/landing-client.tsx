@@ -414,7 +414,7 @@ export function LandingPageClient() {
                 padding: "1rem 2.25rem",
               }}
             >
-              Try it for 30 days →
+              Start your daily practice →
             </Link>
             <Link href="#how-it-works" className="text-sm font-medium" style={{ color: "#68707A" }}>
               See how it works
@@ -989,7 +989,7 @@ export function LandingPageClient() {
               padding: "1rem 2.5rem",
             }}
           >
-            Try it for 30 days →
+            Start your daily practice →
           </Link>
 
           <p className="mt-5 text-sm" style={{ color: "#68707A" }}>
