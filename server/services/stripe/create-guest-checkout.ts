@@ -43,6 +43,20 @@ export async function createGuestCheckoutSession(
 
   const appUrl = config.app.url;
 
+  // Guard: Stripe rejects relative or placeholder URLs with an opaque
+  // "Not a valid URL" error. Catch it early with an actionable message.
+  try {
+    const parsed = new URL(appUrl);
+    if (!["https:", "http:"].includes(parsed.protocol)) {
+      throw new Error("invalid protocol");
+    }
+  } catch {
+    throw new Error(
+      `[Stripe] NEXT_PUBLIC_APP_URL is not a valid absolute URL: "${appUrl}". ` +
+        `Set it to "https://positives.life" in Vercel environment variables.`
+    );
+  }
+
   console.log(
     `[Stripe] Creating guest checkout session — priceId: ${priceId}${fprRefId ? ` fpr: ${fprRefId}` : ""}`
   );
