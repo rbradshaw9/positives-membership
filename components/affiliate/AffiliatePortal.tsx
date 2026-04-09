@@ -1379,32 +1379,43 @@ function PerformanceTab({ performance }: { performance: AffiliatePortalViewModel
                 <p style={{ margin: 0, fontSize: "0.84rem", lineHeight: 1.6, color: "#71717A" }}>
                   This gives you a simple read on which links or source tags are doing the most work.
                 </p>
+                <p style={{ margin: "0.45rem 0 0", fontSize: "0.76rem", lineHeight: 1.55, color: "#A1A1AA" }}>
+                  Positives-managed short-link clicks show up here right away. Lead and member counts fill in as attribution resolves through your referral path.
+                </p>
               </div>
             </div>
 
             {performance.topSources.length > 0 ? (
               <div className="mt-4 flex flex-col gap-3">
                 {performance.topSources.map((source) => (
-                  <div key={source.id} style={{ border: "1px solid #E4E4E7", borderRadius: "0.95rem", padding: "0.95rem 1rem" }}>
-                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div
+                    key={source.id}
+                    style={{
+                      border: "1px solid #E4E4E7",
+                      borderRadius: "1rem",
+                      padding: "1rem 1rem 0.95rem",
+                      background: source.clicks > 0 ? "linear-gradient(180deg, rgba(248,251,252,1) 0%, rgba(255,255,255,1) 100%)" : "#FFFFFF",
+                    }}
+                  >
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                       <div>
                         <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "#09090B" }}>{source.label}</p>
                         <p style={{ margin: "0.15rem 0 0", fontSize: "0.78rem", color: "#71717A" }}>{source.detail}</p>
                       </div>
-                      <div className="grid grid-cols-2 gap-3 text-right sm:grid-cols-4">
-                        <div>
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:min-w-[340px]">
+                        <div style={{ textAlign: "left" }}>
                           <p style={{ margin: 0, fontSize: "0.68rem", color: "#A1A1AA", textTransform: "uppercase" }}>Clicks</p>
                           <p style={{ margin: "0.15rem 0 0", fontSize: "0.9rem", fontWeight: 700, color: "#09090B" }}>{source.clicks}</p>
                         </div>
-                        <div>
+                        <div style={{ textAlign: "left" }}>
                           <p style={{ margin: 0, fontSize: "0.68rem", color: "#A1A1AA", textTransform: "uppercase" }}>Leads</p>
                           <p style={{ margin: "0.15rem 0 0", fontSize: "0.9rem", fontWeight: 700, color: "#09090B" }}>{source.leads}</p>
                         </div>
-                        <div>
+                        <div style={{ textAlign: "left" }}>
                           <p style={{ margin: 0, fontSize: "0.68rem", color: "#A1A1AA", textTransform: "uppercase" }}>Members</p>
                           <p style={{ margin: "0.15rem 0 0", fontSize: "0.9rem", fontWeight: 700, color: "#09090B" }}>{source.members}</p>
                         </div>
-                        <div>
+                        <div style={{ textAlign: "left" }}>
                           <p style={{ margin: 0, fontSize: "0.68rem", color: "#A1A1AA", textTransform: "uppercase" }}>Earned</p>
                           <p style={{ margin: "0.15rem 0 0", fontSize: "0.9rem", fontWeight: 700, color: "#09090B" }}>{formatMoney(source.earnings)}</p>
                         </div>
@@ -1938,7 +1949,16 @@ export function AffiliatePortal({
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div
+          style={{
+            display: "flex",
+            gap: "0.55rem",
+            overflowX: "auto",
+            paddingBottom: "0.25rem",
+            scrollbarWidth: "none",
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
           {TABS.map((tab) => {
             const active = activeTab === tab.id;
             return (
@@ -1946,13 +1966,15 @@ export function AffiliatePortal({
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 style={{
+                  flexShrink: 0,
                   border: active ? "1px solid rgba(46,196,182,0.2)" : "1px solid #E4E4E7",
                   borderRadius: "9999px",
-                  padding: "0.65rem 0.95rem",
-                  background: active ? "rgba(46,196,182,0.08)" : "#FFFFFF",
+                  padding: "0.72rem 1rem",
+                  background: active ? "linear-gradient(180deg, rgba(46,196,182,0.14) 0%, rgba(68,168,216,0.08) 100%)" : "#FFFFFF",
                   color: active ? "#0F766E" : "#52525B",
                   fontWeight: 700,
                   cursor: "pointer",
+                  boxShadow: active ? "0 10px 24px rgba(46,196,182,0.08)" : "none",
                 }}
               >
                 <span aria-hidden="true" style={{ marginRight: "0.4rem" }}>{tab.icon}</span>

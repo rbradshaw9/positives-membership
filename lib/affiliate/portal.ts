@@ -159,18 +159,18 @@ function buildTopSources(input: {
     sourceMap.set(parsed.key, current);
   }
 
-  if (sourceMap.size === 0) {
-    for (const link of input.legacyLinks) {
-      sourceMap.set(`legacy:${link.id}`, {
-        id: `legacy:${link.id}`,
-        label: link.label,
-        detail: `/go/${link.code}`,
-        clicks: link.clicks,
-        leads: 0,
-        members: 0,
-        earnings: 0,
-      });
-    }
+  for (const link of input.legacyLinks) {
+    const key = `legacy:${link.id}`;
+    const existing = sourceMap.get(key);
+    sourceMap.set(key, {
+      id: key,
+      label: link.label,
+      detail: `/go/${link.code}`,
+      clicks: (existing?.clicks ?? 0) + link.clicks,
+      leads: existing?.leads ?? 0,
+      members: existing?.members ?? 0,
+      earnings: existing?.earnings ?? 0,
+    });
   }
 
   return [...sourceMap.values()]

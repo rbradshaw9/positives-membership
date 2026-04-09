@@ -32,8 +32,9 @@ export async function GET(
     return NextResponse.redirect(new URL("/", appUrl));
   }
 
-  // Increment click counter (fire and forget — non-blocking)
-  void supabase
+  // Increment click counter before redirecting so custom short-link clicks are
+  // reliably recorded even on fast redirects or short-lived serverless runs.
+  await supabase
     .from("affiliate_link")
     .update({ clicks: (link.clicks ?? 0) + 1 })
     .eq("code", code);
