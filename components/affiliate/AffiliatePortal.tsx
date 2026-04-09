@@ -633,7 +633,7 @@ function PayoutSetupStep({
 }: {
   paypalEmail: string;
   onPaypalChange: (value: string) => void;
-  onSave: () => void;
+  onSave: () => Promise<void> | void;
   saving: boolean;
   error: string | null;
 }) {
@@ -692,7 +692,14 @@ function PayoutSetupStep({
           </a>
         </div>
 
-        <div style={{ marginTop: "1.5rem", textAlign: "left" }}>
+        <form
+          onSubmit={async (event) => {
+            event.preventDefault();
+            if (saving || !paypalEmail.trim()) return;
+            await onSave();
+          }}
+          style={{ marginTop: "1.5rem", textAlign: "left" }}
+        >
           <input
             id="payout-paypal-input"
             type="email"
@@ -714,26 +721,26 @@ function PayoutSetupStep({
             autoFocus
           />
           {error ? <p style={{ margin: "0.55rem 0 0", fontSize: "0.8rem", color: "#DC2626" }}>{error}</p> : null}
-        </div>
 
-        <button
-          id="payout-save-btn"
-          onClick={onSave}
-          disabled={saving || !paypalEmail.trim()}
-          style={{
-            marginTop: "1rem",
-            width: "100%",
-            border: "none",
-            borderRadius: "9999px",
-            padding: "0.95rem 1.5rem",
-            background: saving || !paypalEmail.trim() ? "#A1A1AA" : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)",
-            color: "#FFFFFF",
-            fontWeight: 700,
-            cursor: saving || !paypalEmail.trim() ? "not-allowed" : "pointer",
-          }}
-        >
-          {saving ? "Saving…" : "Save payout email & open portal"}
-        </button>
+          <button
+            id="payout-save-btn"
+            type="submit"
+            disabled={saving || !paypalEmail.trim()}
+            style={{
+              marginTop: "1rem",
+              width: "100%",
+              border: "none",
+              borderRadius: "9999px",
+              padding: "0.95rem 1.5rem",
+              background: saving || !paypalEmail.trim() ? "#A1A1AA" : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)",
+              color: "#FFFFFF",
+              fontWeight: 700,
+              cursor: saving || !paypalEmail.trim() ? "not-allowed" : "pointer",
+            }}
+          >
+            {saving ? "Saving…" : "Save payout email & open portal"}
+          </button>
+        </form>
       </SurfaceCard>
     </div>
   );
