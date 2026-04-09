@@ -5,23 +5,23 @@ import { useState } from "react";
 const JOIN_FAQS = [
   {
     q: "What is the Founding Member rate?",
-    a: "The founding member rate ($49/month, down from $97/month) is a permanent price lock for early members who join during launch. When we raise prices for new members, your rate stays exactly where it is — forever.",
+    a: "The founding member rate ($37/month or $370/year, down from the standard $97/month) is a permanent price lock for early members who join during launch. When we raise prices for new members, your rate stays exactly where it is — forever.",
   },
   {
     q: "Can I cancel anytime?",
     a: "Yes. Cancel immediately from your account settings. No phone calls, no cancellation screens, no hoops. If you want to leave, you leave.",
   },
   {
-    q: "What's included in Level 1 (Membership)?",
+    q: "What's included in Membership?",
     a: "Everything you need to start and sustain the practice: daily guided audio sessions fresh every morning, weekly mindset principles backed by research, monthly masterclass with Dr. Paul, and access to the complete member library of every past session.",
   },
   {
     q: "What are the other pricing tiers?",
-    a: "Higher tiers — including live virtual events, group coaching sessions with Dr. Paul's team, and 1:1 private coaching — are in development and launching through 2025. Join Level 1 now to lock your founding rate. When tiers go live, you'll have first access.",
+    a: "Membership + Events adds live workshops and event access. Coaching Circle adds weekly group coaching and deeper implementation support. Executive Coaching is our most personalized path and begins with a Breakthrough Session.",
   },
   {
     q: "Is there a free trial?",
-    a: "There's no free trial, but every membership comes with an unconditional 30-day money-back guarantee. If the practice doesn't meaningfully improve your days within 30 days, email support@gopositives.com for a full refund — no questions asked.",
+    a: "There's no free trial, but every membership comes with an unconditional 30-day money-back guarantee. If the practice doesn't meaningfully improve your days within 30 days, email support@positives.life for a full refund — no questions asked.",
   },
   {
     q: "What happens after 30 days?",

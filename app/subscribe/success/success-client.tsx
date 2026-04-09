@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { track } from "@/lib/analytics/ga";
 
 /**
  * app/subscribe/success/success-client.tsx
@@ -94,6 +95,20 @@ export function SuccessClient({ sessionId }: SuccessClientProps) {
     console.log("[Success] verifyOtp succeeded — session established.");
     setPhase("success");
 
+    const eventKey = `positives:analytics:account-activated:${sessionId ?? "unknown"}`;
+    if (!window.sessionStorage.getItem(eventKey)) {
+      window.sessionStorage.setItem(eventKey, "1");
+      track("sign_up", {
+        method: "stripe_checkout",
+        source_path: "/subscribe/success",
+      });
+      track("account_activated", {
+        activation_method: "instant_login",
+        source_path: "/subscribe/success",
+        session_id: sessionId ?? undefined,
+      });
+    }
+
     setTimeout(() => {
       // ?welcome=1 triggers WelcomeModal on first landing — stripped by the modal after mount
       router.push("/today?welcome=1");
@@ -148,6 +163,10 @@ export function SuccessClient({ sessionId }: SuccessClientProps) {
 
       setMagicLinkEmail(email);
       setPhase("link-sent");
+      track("account_activation_link_sent", {
+        source_path: "/subscribe/success",
+        session_id: sessionId ?? undefined,
+      });
       console.log(`[Success] Magic link sent to ${email}`);
     } catch (err) {
       console.error("[Success] sendMagicLink threw:", err);

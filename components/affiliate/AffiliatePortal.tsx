@@ -12,10 +12,11 @@
  * Montserrat headings, Poppins body, generous radii, shadow-medium cards.
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { getReferralLinkAction, savePayPalEmailAction, createAffiliateLinkAction, deleteAffiliateLinkAction, updateAffiliateLinkAction, updateReferralSlugAction, saveW9Action } from "@/app/account/affiliate/actions";
 import type { AffiliateCommission, AffiliatePayout } from "@/lib/firstpromoter/client";
 import type { W9FormData } from "@/app/account/affiliate/actions";
+import { track } from "@/lib/analytics/ga";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1102,6 +1103,13 @@ export function AffiliatePortal({
     ? `https://positives.life?via=${currentToken}`
     : null;
 
+  useEffect(() => {
+    track("affiliate_portal_viewed", {
+      source_path: "/account/affiliate",
+      is_affiliate: enrolled,
+    });
+  }, [enrolled]);
+
   // Enroll handler
   async function handleEnroll() {
     setLoading(true);
@@ -1114,6 +1122,10 @@ export function AffiliatePortal({
     }
     setCurrentToken(result.token);
     setEnrolled(true);
+    track("affiliate_enrollment_completed", {
+      source_path: "/account/affiliate",
+      affiliate_token_present: Boolean(result.token),
+    });
     // Show PayPal setup step if they haven't set one yet
     if (!paypalEmail.trim()) setPayoutStep(true);
   }
@@ -1121,6 +1133,9 @@ export function AffiliatePortal({
   async function handleCopyLink() {
     if (!referralLink) return;
     await navigator.clipboard.writeText(referralLink);
+    track("affiliate_link_copied", {
+      source_path: "/account/affiliate",
+    });
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2500);
   }
@@ -1156,6 +1171,9 @@ export function AffiliatePortal({
       return;
     }
     setPaypalSaved(true);
+    track("affiliate_payout_details_saved", {
+      source_path: "/account/affiliate",
+    });
     setTimeout(() => setPaypalSaved(false), 4000);
   }
 

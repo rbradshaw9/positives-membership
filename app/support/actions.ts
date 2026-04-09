@@ -36,9 +36,9 @@ export async function submitSupportForm(
 
     if (error) {
       console.error("[support] insert error:", error.message);
-      return {
-        status: "error",
-        message: "Something went wrong. Please email us directly at support@gopositives.com",
+        return {
+          status: "error",
+        message: "Something went wrong. Please email us directly at support@positives.life",
       };
     }
 
@@ -47,7 +47,7 @@ export async function submitSupportForm(
     console.error("[support] unexpected error:", err);
     return {
       status: "error",
-      message: "Something went wrong. Please email us directly at support@gopositives.com",
+      message: "Something went wrong. Please email us directly at support@positives.life",
     };
   }
 }

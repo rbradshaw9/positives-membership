@@ -7,9 +7,9 @@ import { PricingToggle } from "@/components/marketing/PricingToggle";
 import { JoinPageFaq } from "./join-faq";
 
 export const metadata = {
-  title: "Join Positives — Choose Your Membership",
+  title: "Join Positives — Start Your Practice",
   description:
-    "Start your Positives practice from $49/month. Daily guided audio, weekly principles, and monthly masterclasses with Dr. Paul Jenkins.",
+    "Start your Positives practice from $37/month. Daily guided audio, weekly principles, and monthly masterclasses with Dr. Paul Jenkins.",
 };
 
 function JoinPageNav() {
@@ -174,10 +174,10 @@ export default async function JoinPage({
               letterSpacing: "-0.045em",
               lineHeight: "1.06",
               color: "#121417",
-              whiteSpace: "nowrap",
+              textWrap: "balance",
             }}
           >
-            Choose your starting point.
+            Choose the level of support that fits you.
           </h1>
           <p
             className="mb-4 mx-auto"
@@ -189,7 +189,8 @@ export default async function JoinPage({
               letterSpacing: "-0.01em",
             }}
           >
-            Begin the Positives practice today and build a mindset that grows stronger every day.
+            Start with the daily practice, add live events, or step into deeper coaching support
+            with Dr. Paul.
           </p>
           <p
             className="mb-0"
@@ -199,7 +200,8 @@ export default async function JoinPage({
               letterSpacing: "-0.01em",
             }}
           >
-            Level 1 is live now · Higher tiers stay in preview until their launches are announced · Join to lock your founding rate
+            Membership, Membership + Events, and Coaching Circle are live now · Executive
+            Coaching starts with a Breakthrough Session
           </p>
         </div>
       </section>
@@ -471,7 +473,7 @@ export default async function JoinPage({
           </Link>
 
           <p className="mt-5 text-sm" style={{ color: "#68707A" }}>
-            From $49/month · Cancel anytime · 30-day guarantee
+            From $37/month · Cancel anytime · 30-day guarantee
           </p>
         </div>
       </section>

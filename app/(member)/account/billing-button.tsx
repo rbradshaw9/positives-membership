@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { track } from "@/lib/analytics/ga";
 
 /**
  * app/(member)/account/billing-button.tsx
@@ -17,6 +18,9 @@ export function BillingButton() {
     const res = await fetch("/api/stripe/billing-portal", { method: "POST" });
     const data = await res.json();
     if (data?.url) {
+      track("billing_portal_opened", {
+        source_path: "/account",
+      });
       window.location.href = data.url;
     } else {
       setLoading(false);

@@ -162,7 +162,7 @@ export function ContentForm({
           <option value="daily_audio">Daily — audio practice</option>
           <option value="weekly_principle">Weekly — principle</option>
           <option value="monthly_theme">Monthly — theme</option>
-          <option value="coaching_call">Coaching call (Level 3+)</option>
+          <option value="coaching_call">Coaching call (Coaching Circle+)</option>
         </select>
         <p className="admin-hint">Determines which Today card this appears in</p>
       </div>
@@ -248,10 +248,10 @@ export function ContentForm({
             className="admin-select"
           >
             <option value="">All tiers (no restriction)</option>
-            <option value="level_1">Level 1+</option>
-            <option value="level_2">Level 2+</option>
-            <option value="level_3">Level 3+ (default for coaching)</option>
-            <option value="level_4">Level 4 only</option>
+            <option value="level_1">All Members</option>
+            <option value="level_2">Membership + Events and above</option>
+            <option value="level_3">Coaching Circle and above</option>
+            <option value="level_4">Executive Coaching only</option>
           </select>
           <p className="admin-hint">
             Members below this tier will not see this content in library or search.

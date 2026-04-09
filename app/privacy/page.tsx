@@ -128,15 +128,23 @@ export default function PrivacyPage() {
                 <li>Request deletion of your account and associated data</li>
                 <li>Opt out of marketing communications at any time</li>
               </ul>
-              <p className="mt-4">To exercise any of these rights, please contact us at <a href="mailto:support@gopositives.com" className="underline underline-offset-2" style={{ color: "#2F6FED" }}>support@gopositives.com</a>.</p>
+              <p className="mt-4">To exercise any of these rights, please contact us at <a href="mailto:support@positives.life" className="underline underline-offset-2" style={{ color: "#2F6FED" }}>support@positives.life</a>.</p>
             </section>
 
             <section>
               <h2 className="font-heading font-semibold mb-4" style={{ fontSize: "1.25rem", color: "#121417", letterSpacing: "-0.02em" }}>
                 Cookies
               </h2>
-              <p>
-                We use essential cookies to maintain your session and authentication state. We do not use advertising or tracking cookies. You can disable cookies in your browser settings, but this may affect your ability to log in.
+              <p className="mb-4">
+                We use a mix of essential cookies and limited analytics or attribution cookies.
+              </p>
+              <ul className="space-y-2 pl-5 list-disc" style={{ color: "#68707A" }}>
+                <li>Essential cookies keep you signed in, maintain your session, and support secure access to member features.</li>
+                <li>Analytics cookies help us understand high-level site usage and important product events so we can improve the Positives experience.</li>
+                <li>Attribution cookies help us understand when a visitor arrived through an approved referral or affiliate link.</li>
+              </ul>
+              <p className="mt-4">
+                We currently use service providers including Google Analytics for product and website measurement and FirstPromoter for affiliate attribution. We do not use third-party advertising cookies to build ad audiences or sell your personal information. You can control cookies through your browser settings, but disabling some cookies may affect login, checkout, referral attribution, or other core site functions.
               </p>
             </section>
 
@@ -155,8 +163,8 @@ export default function PrivacyPage() {
               </h2>
               <p>
                 If you have questions about this Privacy Policy, please contact us at{" "}
-                <a href="mailto:support@gopositives.com" className="underline underline-offset-2" style={{ color: "#2F6FED" }}>
-                  support@gopositives.com
+                <a href="mailto:support@positives.life" className="underline underline-offset-2" style={{ color: "#2F6FED" }}>
+                  support@positives.life
                 </a>.
               </p>
             </section>

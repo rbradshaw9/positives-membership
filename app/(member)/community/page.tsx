@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/Button";
  * app/(member)/community/page.tsx
  * Community Q&A page — weekly principle discussion threads.
  *
- * Level 2+ tier gating: Level 1 members see a friendly upgrade prompt.
+ * Membership + Events tier gating: Membership members see a friendly upgrade prompt.
  * Admins get pin/answer/delete controls on all posts.
  */
 
@@ -31,7 +31,7 @@ export const metadata = {
 export default async function CommunityPage() {
   const member = await requireActiveMember();
 
-  // ── Tier gate: Level 2+ only ──────────────────────────────────────────────
+  // ── Tier gate: Membership + Events only ───────────────────────────────────
   const hasAccess = checkTierAccess(member.subscription_tier, "level_2");
 
   if (!hasAccess) {
@@ -44,12 +44,12 @@ export default async function CommunityPage() {
         />
         <div className="member-container py-10">
           <SurfaceCard tone="tint" padding="lg" className="surface-card--editorial text-center max-w-xl mx-auto">
-            <p className="ui-section-eyebrow mb-3">Level 2 Feature</p>
+            <p className="ui-section-eyebrow mb-3">Membership + Events Feature</p>
             <h2 className="heading-balance font-heading text-2xl font-semibold tracking-[-0.03em] text-foreground">
               Join the conversation
             </h2>
             <p className="mt-3 text-sm leading-[1.75] text-muted-foreground">
-              The Q&A section is available to Level 2 members and above.
+              The Q&A section is available to Membership + Events members and above.
               Upgrade your plan to share reflections, ask questions, and
               connect with other members around each week&apos;s principle.
             </p>

@@ -73,4 +73,9 @@ export const config = {
       get level4() { return optional("STRIPE_PRODUCT_LEVEL_4"); },
     },
   },
+
+  analytics: {
+    get measurementId() { return optional("NEXT_PUBLIC_GA_MEASUREMENT_ID"); },
+    get measurementProtocolApiSecret() { return optional("GA_MEASUREMENT_PROTOCOL_API_SECRET"); },
+  },
 } as const;

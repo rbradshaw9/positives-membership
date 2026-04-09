@@ -5,6 +5,8 @@ import { welcomeEmailHtml, welcomeEmailText } from "@/lib/email/templates/welcom
 import { syncNewMember } from "@/lib/activecampaign/sync";
 import { enrollInOnboardingSequence } from "@/lib/onboarding/enroll";
 import { trackFpSale } from "@/lib/firstpromoter/client";
+import { trackServerEvent } from "@/lib/analytics/measurement-protocol";
+import { getSubscriptionAnalyticsFromPriceId } from "@/lib/analytics/subscription";
 
 /**
  * server/services/stripe/handle-checkout.ts
@@ -293,6 +295,32 @@ async function handleGuestCheckout(
     `[Stripe] Onboarding token stored — userId: ${userId}. ` +
       `Guest checkout complete. Member ready for instant login.`
   );
+
+  const purchaseValue = (session.amount_total ?? 0) / 100;
+  const currency = session.currency?.toUpperCase() ?? "USD";
+  const priceId = session.metadata?.priceId ?? null;
+
+  try {
+    await trackServerEvent({
+      name: "purchase",
+      clientSeed: customerId,
+      userId,
+      params: {
+        transaction_id: session.id,
+        value: purchaseValue,
+        currency,
+        subscription_status: "active",
+        affiliate_attributed: Boolean(fprRefId),
+        affiliate_code: fprRefId ?? undefined,
+        ...getSubscriptionAnalyticsFromPriceId(priceId),
+      },
+    });
+  } catch (analyticsError) {
+    console.error(
+      `[GA4] Failed to track purchase for ${email}: ` +
+        `${analyticsError instanceof Error ? analyticsError.message : String(analyticsError)}`
+    );
+  }
 
   // ── Step 6: Send welcome email ───────────────────────────────────────────
   // Non-fatal — a send failure should never block the webhook response.

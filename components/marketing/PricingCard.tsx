@@ -24,8 +24,9 @@
  *   the cookie hasn't been set yet (e.g. same-tab navigation).
  */
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { getGuestCheckoutUrl } from "@/app/join/actions";
+import { track } from "@/lib/analytics/ga";
 
 type Billing = "monthly" | "annual";
 type Level = 1 | 2 | 3 | 4;
@@ -42,40 +43,42 @@ interface PricingCardProps {
 const CARDS = {
   1: {
     title: "Membership",
-    tagline: "The complete daily practice.",
+    tagline: "Daily practice, steady guidance, and the full core library.",
     badge: "Founding Member Rate",
     benefits: [
-      "Daily mindset practice · fresh every morning",
-      "Weekly principles & research-backed practices",
-      "Monthly masterclass with Dr. Paul (live + replay)",
-      "Member library access · every past session",
+      "Daily guided audio practice · fresh every morning",
+      "Weekly reflections and research-backed practices",
+      "Monthly masterclass with Dr. Paul",
+      "Full member library access",
     ],
   },
   2: {
     title: "Membership + Events",
-    tagline: "Everything in Membership, plus live access.",
+    tagline: "Everything in Membership, plus live interaction and event access.",
     badge: "Coming Soon",
     benefits: [
       "Everything in Membership",
-      "Live virtual events & workshops",
-      "Member Q&A with Dr. Paul's team",
-      "All event replays in your library",
+      "Coach-moderated Q&A access",
+      "Quarterly live virtual events",
+      "Event replays in your library",
+      "Annual Positives event access",
     ],
   },
   3: {
     title: "Coaching Circle",
-    tagline: "Small group coaching with Dr. Paul.",
+    tagline: "Everything in Membership + Events, plus weekly coaching support.",
     badge: "Coming Soon",
     benefits: [
-      "Everything in Events",
+      "Everything in Membership + Events",
       "Weekly group coaching sessions",
-      "Priority Q&A with coaches",
-      "Deep-dive implementation support",
+      "Coaching session replays",
+      "Implementation support from certified coaches",
+      "A deeper accountability rhythm",
     ],
   },
   4: {
     title: "Executive Coaching",
-    tagline: "Private 1:1 coaching with Dr. Paul.",
+    tagline: "Our highest-touch path for personalized support.",
     badge: "Coming Soon",
     benefits: [
       "Everything in Coaching Circle",
@@ -90,12 +93,17 @@ const CARDS = {
 
 const PRICING = {
   1: {
-    monthly: { regular: 97, offer: 49 },
-    annual: { total: 490, perMonth: 41 },
+    monthly: { regular: 97, offer: 37 },
+    annual: { total: 370, perMonth: 31 },
   },
-  // Fill in when prices are confirmed:
-  2: null,
-  3: null,
+  2: {
+    monthly: { offer: 97 },
+    annual: { total: 970, perMonth: 81 },
+  },
+  3: {
+    monthly: { offer: 297 },
+    annual: { total: 2970, perMonth: 248 },
+  },
   4: null,
 } as const;
 
@@ -133,12 +141,12 @@ function Level1Price({ billing }: { billing: Billing }) {
             className="font-heading font-bold"
             style={{ fontSize: "2.75rem", letterSpacing: "-0.045em", color: "#121417", lineHeight: 1 }}
           >
-            $490
+            $370
           </span>
           <span style={{ fontSize: "0.9rem", color: "#9AA0A8" }}>/year</span>
         </div>
         <p className="text-xs font-semibold" style={{ color: "#4E8C78" }}>
-          2 months free · $41/mo
+          2 months free · $31/mo
         </p>
       </div>
     );
@@ -151,7 +159,53 @@ function Level1Price({ billing }: { billing: Billing }) {
           className="font-heading font-bold"
           style={{ fontSize: "2.75rem", letterSpacing: "-0.045em", color: "#121417", lineHeight: 1 }}
         >
-          $49
+          $37
+        </span>
+        <span style={{ fontSize: "0.9rem", color: "#9AA0A8" }}>/month</span>
+      </div>
+      <p className="text-xs" style={{ color: "#9AA0A8" }}>Cancel anytime · No contracts</p>
+    </div>
+  );
+}
+
+function TierPrice({ level, billing }: { level: 1 | 2 | 3; billing: Billing }) {
+  const pricing = PRICING[level];
+
+  if (level === 1) {
+    return <Level1Price billing={billing} />;
+  }
+
+  if (!pricing) {
+    return <PricingTbd />;
+  }
+
+  if (billing === "annual") {
+    return (
+      <div>
+        <div className="flex items-baseline gap-1.5 mb-1.5">
+          <span
+            className="font-heading font-bold"
+            style={{ fontSize: "2.75rem", letterSpacing: "-0.045em", color: "#121417", lineHeight: 1 }}
+          >
+            ${pricing.annual.total}
+          </span>
+          <span style={{ fontSize: "0.9rem", color: "#9AA0A8" }}>/year</span>
+        </div>
+        <p className="text-xs font-semibold" style={{ color: "#4E8C78" }}>
+          Founding rate · about ${pricing.annual.perMonth}/mo
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex items-baseline gap-1 mb-1">
+        <span
+          className="font-heading font-bold"
+          style={{ fontSize: "2.75rem", letterSpacing: "-0.045em", color: "#121417", lineHeight: 1 }}
+        >
+          ${pricing.monthly.offer}
         </span>
         <span style={{ fontSize: "0.9rem", color: "#9AA0A8" }}>/month</span>
       </div>
@@ -172,6 +226,24 @@ function PricingTbd() {
       <p className="text-xs" style={{ color: "#9AA0A8" }}>Join waitlist to be notified first</p>
     </div>
   );
+}
+
+function getFirstPromoterRefId() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const urlParam = new URLSearchParams(window.location.search).get("fpr");
+  if (urlParam) {
+    return urlParam;
+  }
+
+  const fpCookie = document.cookie
+    .split("; ")
+    .find((row) => row.startsWith("_fprom_track="))
+    ?.split("=")[1];
+
+  return fpCookie ? decodeURIComponent(fpCookie) : null;
 }
 
 function CheckoutButton({ pending }: { pending: boolean }) {
@@ -223,38 +295,43 @@ export function PricingCard({ level, billing, priceId }: PricingCardProps) {
   const card = CARDS[level];
   const isLive = !!priceId; // card is live when a real Stripe price ID is configured
   const isHighlighted = level === 1; // Level 1 gets the elevated visual treatment
+  const badgeLabel =
+    level === 1 ? card.badge : isLive ? "Now Available" : card.badge;
 
   const pricingData = PRICING[level as keyof typeof PRICING];
 
-  // FirstPromoter affiliate tracking — read on mount.
-  // Priority: URL ?fpr= param → _fprom_track cookie → null
-  // Stored permanently on the member row for lifetime genealogy linking.
-  const [fpr, setFpr] = useState<string | null>(null);
+  const checkoutValue =
+    level === 1
+      ? billing === "annual"
+        ? PRICING[1].annual.total
+        : PRICING[1].monthly.offer
+      : undefined;
+
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    // 1. Check URL param first (handles same-tab navigation before cookie is set)
-    const urlParam = new URLSearchParams(window.location.search).get("fpr");
-    if (urlParam) {
-      setFpr(urlParam);
-      return;
-    }
-
-    // 2. Read FirstPromoter cookie (_fprom_track stores the ref_id)
-    const fpCookie = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith("_fprom_track="))
-      ?.split("=")[1];
-    if (fpCookie) setFpr(decodeURIComponent(fpCookie));
-  }, []);
 
   const handleCheckout = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setCheckoutError(null);
     const formData = new FormData(e.currentTarget);
+    const fpr = getFirstPromoterRefId();
+
+    if (fpr) {
+      formData.set("fpr", fpr);
+    }
+
+    track("begin_checkout", {
+      currency: "USD",
+      value: checkoutValue,
+      plan_level: `level_${level}`,
+      plan_name: card.title,
+      billing_interval: billing,
+      price_id: priceId ?? undefined,
+      affiliate_attributed: Boolean(fpr),
+      affiliate_code: fpr ?? undefined,
+      source_path: "/join",
+    });
+
     startTransition(async () => {
       const result = await getGuestCheckoutUrl(formData);
       if (result.url) {
@@ -262,6 +339,13 @@ export function PricingCard({ level, billing, priceId }: PricingCardProps) {
         // external URL redirect to checkout.stripe.com
         window.location.href = result.url;
       } else {
+        track("checkout_error", {
+          plan_level: `level_${level}`,
+          billing_interval: billing,
+          price_id: priceId ?? undefined,
+          affiliate_attributed: Boolean(fpr),
+          source_path: "/join",
+        });
         setCheckoutError(result.error ?? "Something went wrong. Please try again.");
       }
     });
@@ -294,13 +378,19 @@ export function PricingCard({ level, billing, priceId }: PricingCardProps) {
           <span
             className="flex-shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full"
             style={{
-              background: isHighlighted ? "rgba(78,140,120,0.12)" : "rgba(18,20,23,0.06)",
-              color: isHighlighted ? "#4E8C78" : "#9AA0A8",
+              background:
+                isHighlighted || isLive
+                  ? "rgba(78,140,120,0.12)"
+                  : "rgba(18,20,23,0.06)",
+              color:
+                isHighlighted || isLive
+                  ? "#4E8C78"
+                  : "#9AA0A8",
               letterSpacing: "0.02em",
               whiteSpace: "nowrap",
             }}
           >
-            {card.badge}
+            {badgeLabel}
           </span>
         </div>
         <p style={{ fontSize: "0.875rem", color: "#9AA0A8", lineHeight: 1.5 }}>{card.tagline}</p>
@@ -308,8 +398,8 @@ export function PricingCard({ level, billing, priceId }: PricingCardProps) {
 
       {/* ── Pricing ─────────────────────────────────────────── */}
       <div className="mb-6">
-        {level === 1 ? (
-          <Level1Price billing={billing} />
+        {level === 1 || level === 2 || level === 3 ? (
+          <TierPrice level={level} billing={billing} />
         ) : pricingData ? (
           // Future: render real pricing when pricingData is populated
           <PricingTbd />
@@ -319,6 +409,12 @@ export function PricingCard({ level, billing, priceId }: PricingCardProps) {
       </div>
 
       {/* ── Benefits ────────────────────────────────────────── */}
+      <p
+        className="text-[11px] font-semibold uppercase mb-3"
+        style={{ color: "#9AA0A8", letterSpacing: "0.08em" }}
+      >
+        Included
+      </p>
       <ul className="space-y-2.5 flex-1 mb-7">
         {card.benefits.map((item) => (
           <li key={item} className="flex items-start gap-3">
@@ -340,8 +436,6 @@ export function PricingCard({ level, billing, priceId }: PricingCardProps) {
       {isLive ? (
         <form onSubmit={handleCheckout}>
           <input type="hidden" name="priceId" value={priceId} />
-          {/* FirstPromoter ref_id — injected when visitor arrived via affiliate link */}
-          {fpr && <input type="hidden" name="fpr" value={fpr} />}
           <CheckoutButton pending={isPending} />
           {checkoutError && (
             <p

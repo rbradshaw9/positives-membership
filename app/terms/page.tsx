@@ -101,7 +101,7 @@ export default function TermsPage() {
               </h2>
               <p>
                 If you are not satisfied with your membership within the first 30 days, contact us at{" "}
-                <a href="mailto:support@gopositives.com" className="underline underline-offset-2" style={{ color: "#2F6FED" }}>support@gopositives.com</a>{" "}
+                <a href="mailto:support@positives.life" className="underline underline-offset-2" style={{ color: "#2F6FED" }}>support@positives.life</a>{" "}
                 and we will issue a full refund, no questions asked. This guarantee applies to your first subscription period only and is not available to accounts that have previously received a refund.
               </p>
             </section>
@@ -162,8 +162,8 @@ export default function TermsPage() {
               </h2>
               <p>
                 Questions about these Terms? Please contact us at{" "}
-                <a href="mailto:support@gopositives.com" className="underline underline-offset-2" style={{ color: "#2F6FED" }}>
-                  support@gopositives.com
+                <a href="mailto:support@positives.life" className="underline underline-offset-2" style={{ color: "#2F6FED" }}>
+                  support@positives.life
                 </a>.
               </p>
             </section>

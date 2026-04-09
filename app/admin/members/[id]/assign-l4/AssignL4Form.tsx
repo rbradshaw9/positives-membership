@@ -281,7 +281,7 @@ export function AssignL4Form({ memberId, threePayPriceId, savedPrices, action }:
             {billingType === "one_time" && (
               <div>
                 <p style={LABEL_MICRO}>Invoice Description</p>
-                <input type="text" name="customDescription" placeholder="Positives Level 4 — Executive Coaching" style={INPUT} />
+                <input type="text" name="customDescription" placeholder="Positives Executive Coaching" style={INPUT} />
               </div>
             )}
           </div>
@@ -324,11 +324,11 @@ export function AssignL4Form({ memberId, threePayPriceId, savedPrices, action }:
 
       {/* ── Submit ───────────────────────────────────────────────────────── */}
       <button type="submit" disabled={isPending} style={{ background: isPending ? "var(--color-muted-fg)" : "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)", color: "white", border: "none", borderRadius: "9999px", padding: "0.9375rem 2rem", fontSize: "0.9375rem", fontWeight: 600, cursor: isPending ? "not-allowed" : "pointer", boxShadow: isPending ? "none" : "0 4px 16px rgba(47,111,237,0.25)", textAlign: "center" }}>
-        {isPending ? "Activating…" : "Activate Level 4 Package"}
+        {isPending ? "Activating…" : "Activate Executive Coaching Package"}
       </button>
 
       <p style={{ textAlign: "center", fontSize: "0.75rem", color: "var(--color-muted-fg)", lineHeight: 1.6 }}>
-        Creates a live charge or subscription and immediately grants L4 access.
+        Creates a live charge or subscription and immediately grants Executive Coaching access.
         Manage billing in the{" "}
         <a href="https://dashboard.stripe.com" target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-primary)" }}>Stripe Dashboard ↗</a>
       </p>

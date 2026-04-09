@@ -18,7 +18,7 @@ import { assignL4Subscription } from "./actions";
  */
 
 export const metadata = {
-  title: "Assign Level 4 — Positives Admin",
+  title: "Assign Executive Coaching — Positives Admin",
 };
 
 export type SavedPrice = {
@@ -89,10 +89,10 @@ export default async function AssignL4Page({ params }: { params: PageParams }) {
         <p style={{ fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-muted-fg)", marginBottom: "0.375rem" }}>
           Admin action
         </p>
-        <h1 className="admin-page-header__title">Assign Level 4</h1>
+        <h1 className="admin-page-header__title">Assign Executive Coaching</h1>
         <p style={{ marginTop: "0.5rem", fontSize: "0.875rem", color: "var(--color-muted-fg)", lineHeight: 1.6 }}>
           Use this during or after a Breakthrough Session call. Creates a Stripe charge
-          or subscription and immediately grants Level 4 access.
+          or subscription and immediately grants Executive Coaching access.
         </p>
       </div>
 
@@ -132,8 +132,8 @@ export default async function AssignL4Page({ params }: { params: PageParams }) {
       {/* Guard */}
       {!canProceed ? (
         <div style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "0.75rem", padding: "1rem 1.25rem", fontSize: "0.875rem", color: "#dc2626", lineHeight: 1.6 }}>
-          <strong>Cannot assign L4.</strong> This member has no Stripe customer ID. Have them
-          complete at least a Level 1 checkout before assigning L4.
+          <strong>Cannot assign Executive Coaching.</strong> This member has no Stripe customer ID.
+          Have them complete at least a Membership checkout before assigning Executive Coaching.
         </div>
       ) : (
         <AssignL4Form

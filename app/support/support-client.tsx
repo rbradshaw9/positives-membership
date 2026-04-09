@@ -2,13 +2,29 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { submitSupportForm, type SupportFormState } from "./actions";
+import { track } from "@/lib/analytics/ga";
 
 const initial: SupportFormState = { status: "idle" };
 
 export default function SupportPage() {
   const [state, formAction, isPending] = useActionState(submitSupportForm, initial);
+
+  useEffect(() => {
+    if (state.status === "sent") {
+      track("support_submitted", {
+        source_path: "/support",
+      });
+      return;
+    }
+
+    if (state.status === "error") {
+      track("support_submit_failed", {
+        source_path: "/support",
+      });
+    }
+  }, [state.status]);
 
   return (
     <div className="min-h-dvh" style={{ background: "#FAFAF8" }}>
@@ -142,11 +158,11 @@ export default function SupportPage() {
                 <div>
                   <p className="font-medium mb-1" style={{ fontSize: "0.9rem", color: "#121417" }}>Email</p>
                   <a
-                    href="mailto:support@gopositives.com"
+                    href="mailto:support@positives.life"
                     className="text-sm transition-colors hover:opacity-80"
                     style={{ color: "#2F6FED" }}
                   >
-                    support@gopositives.com
+                    support@positives.life
                   </a>
                 </div>
                 <div>

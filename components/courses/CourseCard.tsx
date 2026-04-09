@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { CourseWithProgress } from "@/lib/queries/get-courses";
+import { TIER_ACCESS_LABEL_BY_TIER } from "@/lib/plans";
 
 /**
  * components/courses/CourseCard.tsx
@@ -17,13 +18,6 @@ const GRADIENTS = [
   "linear-gradient(135deg, #EC4899 0%, #9d174d 100%)",
   "linear-gradient(135deg, #10B981 0%, #065f46 100%)",
 ];
-
-const TIER_LABELS: Record<string, string> = {
-  level_1: "All Members",
-  level_2: "Level 2+",
-  level_3: "Level 3+",
-  level_4: "Level 4",
-};
 
 interface CourseCardProps {
   course: CourseWithProgress;
@@ -107,7 +101,7 @@ export function CourseCard({ course, index }: CourseCardProps) {
                 color: "var(--color-primary)",
               }}
             >
-              {TIER_LABELS[course.tier_min] ?? course.tier_min}
+              {TIER_ACCESS_LABEL_BY_TIER[course.tier_min as keyof typeof TIER_ACCESS_LABEL_BY_TIER] ?? course.tier_min}
             </span>
           )}
           <span className="text-xs text-muted-foreground">

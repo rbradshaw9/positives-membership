@@ -1,15 +1,16 @@
 import { Button } from "@/components/ui/Button";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
+import { getPlanName } from "@/lib/plans";
 
 /**
  * components/coaching/CoachingUpgradePrompt.tsx
- * Sprint 10: Shown to Level 1 and Level 2 members on /coaching.
+ * Sprint 10: Shown to members without Coaching Circle access on /coaching.
  * Calm, non-pushy upgrade prompt. Tier name is passed from the server.
  * No Stripe logic here — links to /join.
  */
 
 export function CoachingUpgradePrompt({ tier }: { tier: string | null }) {
-  const tierLabel = tier === "level_2" ? "Level 2" : "Level 1";
+  const tierLabel = getPlanName(tier);
 
   return (
     <div className="member-container py-12 md:py-16">
@@ -51,13 +52,19 @@ export function CoachingUpgradePrompt({ tier }: { tier: string | null }) {
             className="text-sm leading-relaxed"
             style={{ color: "var(--color-muted-foreground)" }}
           >
-            Live weekly coaching with Dr. Paul is available for Level 3 and above. You&apos;re
+            Live weekly coaching with Dr. Paul is available in Coaching Circle and above. You&apos;re
             currently on <strong style={{ color: "var(--color-foreground)" }}>{tierLabel}</strong>.
+          </p>
+          <p
+            className="text-sm leading-relaxed mt-2"
+            style={{ color: "var(--color-muted-foreground)" }}
+          >
+            Coaching access opens with <strong style={{ color: "var(--color-foreground)" }}>Coaching Circle</strong> and above.
           </p>
         </div>
 
         <Button href="/upgrade">
-          Explore higher levels
+          Explore coaching options
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M5 12h14M12 5l7 7-7 7" />
           </svg>
@@ -65,8 +72,8 @@ export function CoachingUpgradePrompt({ tier }: { tier: string | null }) {
 
         <p className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>
           Questions? Email us at{" "}
-          <a href="mailto:hello@livetoday.com" style={{ color: "var(--color-primary)" }}>
-            hello@livetoday.com
+          <a href="mailto:support@positives.life" style={{ color: "var(--color-primary)" }}>
+            support@positives.life
           </a>
         </p>
       </SurfaceCard>

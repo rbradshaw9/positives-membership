@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Montserrat, Poppins } from "next/font/google";
 import Script from "next/script";
+import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
 import "./globals.css";
 
 const montserrat = Montserrat({
@@ -43,27 +45,18 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+
   return (
     <html
       lang="en"
       className={`${montserrat.variable} ${poppins.variable} h-full`}
     >
-      <head>
-        {/*
-         * FirstPromoter click tracking — Step 1: inline init script.
-         *
-         * Inlined directly into <head> so it is guaranteed to be in the
-         * server-rendered HTML and run synchronously before any other JS.
-         *
-         * Initializes window.fpr queue → fpr("init") sets account ID →
-         * fpr("click") captures the ?fpr= URL param into _fprom_track cookie.
-         *
-         * The CDN script (Step 2 below) processes this queue on load.
-         */}
-        {/* eslint-disable-next-line @next/next/no-script-tags-in-head -- intentional: we need synchronous execution before hydration */}
-        <script dangerouslySetInnerHTML={{ __html: FP_INIT }} />
-      </head>
+      <head />
       <body className="h-full antialiased bg-background text-foreground">
+        <Script id="fp-init" strategy="beforeInteractive">
+          {FP_INIT}
+        </Script>
         {/*
          * FirstPromoter — Step 2: CDN SDK (async, after hydration).
          * Processes the fpr() queue set up by the inline init script above.
@@ -78,6 +71,11 @@ export default function RootLayout({
           src="https://cdn.firstpromoter.com/fpr.js"
           strategy="afterInteractive"
         />
+        {gaMeasurementId ? (
+          <Suspense fallback={null}>
+            <GoogleAnalytics measurementId={gaMeasurementId} />
+          </Suspense>
+        ) : null}
         {children}
       </body>
     </html>

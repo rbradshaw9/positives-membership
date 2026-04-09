@@ -66,7 +66,7 @@ export function StickyCtaBar({ sentinelRef }: StickyCtaBarProps) {
           Try it for 30 days →
         </Link>
         <div className="text-right flex-shrink-0">
-          <p className="text-xs font-medium" style={{ color: "#FFFFFF", lineHeight: "1.3" }}>From $49/mo</p>
+          <p className="text-xs font-medium" style={{ color: "#FFFFFF", lineHeight: "1.3" }}>From $37/mo</p>
           <p className="text-xs" style={{ color: "rgba(255,255,255,0.5)", lineHeight: "1.3" }}>Cancel anytime</p>
         </div>
       </div>

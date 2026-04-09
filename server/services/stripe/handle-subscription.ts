@@ -9,6 +9,8 @@ import { syncCancellation, syncPaymentFailed, syncPaymentRecovered, syncTierChan
 import { generateBillingToken } from "@/lib/auth/billing-token";
 import { enrollInWinbackSequence } from "@/lib/winback/enroll";
 import { enrollInPaymentRecoverySequence, cancelPaymentRecoverySequence } from "@/lib/payment-recovery/enroll";
+import { trackServerEvent } from "@/lib/analytics/measurement-protocol";
+import { comparePlanLevels, getSubscriptionAnalyticsFromPriceId } from "@/lib/analytics/subscription";
 
 type SubscriptionStatus = Enums<"subscription_status">;
 type SubscriptionTier = Enums<"subscription_tier">;
@@ -170,6 +172,27 @@ async function updateMemberSubscription(
       newTier: tier,
     });
   }
+
+  if (comparePlanLevels(existing.subscription_tier, tier) > 0) {
+    try {
+      await trackServerEvent({
+        name: "upgrade_completed",
+        clientSeed: customerId,
+        userId: existing.id,
+        params: {
+          previous_plan_level: existing.subscription_tier ?? undefined,
+          new_plan_level: tier,
+          subscription_status: status,
+          ...getSubscriptionAnalyticsFromPriceId(priceId),
+        },
+      });
+    } catch (analyticsError) {
+      console.error(
+        `[GA4] Failed to track upgrade for customer ${customerId}: ` +
+          `${analyticsError instanceof Error ? analyticsError.message : String(analyticsError)}`
+      );
+    }
+  }
 }
 
 export async function handleSubscriptionCreated(
@@ -221,6 +244,24 @@ export async function handleSubscriptionDeleted(
     // Non-fatal: enroll in win-back email sequence (Day 1, 14, 30)
     await enrollInWinbackSequence(canceledMember.id, canceledMember.email);
   }
+
+  if (canceledMember?.id) {
+    try {
+      await trackServerEvent({
+        name: "subscription_canceled",
+        clientSeed: customerId,
+        userId: canceledMember.id,
+        params: {
+          subscription_status: "canceled",
+        },
+      });
+    } catch (analyticsError) {
+      console.error(
+        `[GA4] Failed to track cancellation for customer ${customerId}: ` +
+          `${analyticsError instanceof Error ? analyticsError.message : String(analyticsError)}`
+      );
+    }
+  }
 }
 
 /** Fetch member email + name from Supabase by Stripe customer ID. */
@@ -270,6 +311,26 @@ export async function handlePaymentFailed(invoice: Stripe.Invoice) {
 
   console.log(`[Stripe] Payment failed — customer marked past_due: ${customerId}`);
 
+  const memberId = await getMemberIdByCustomerId(customerId);
+  try {
+    await trackServerEvent({
+      name: "payment_failed",
+      clientSeed: customerId,
+      userId: memberId,
+      params: {
+        currency: invoice.currency?.toUpperCase() ?? "USD",
+        value: (invoice.amount_due ?? 0) / 100,
+        invoice_id: invoice.id,
+        subscription_status: "past_due",
+      },
+    });
+  } catch (analyticsError) {
+    console.error(
+      `[GA4] Failed to track payment failure for customer ${customerId}: ` +
+        `${analyticsError instanceof Error ? analyticsError.message : String(analyticsError)}`
+    );
+  }
+
   // Non-fatal: send payment-failed email (with signed 1-click billing link)
   try {
     const member = await getMemberByCustomerId(customerId);
@@ -313,7 +374,6 @@ export async function handlePaymentFailed(invoice: Stripe.Invoice) {
       await syncPaymentFailed({ email: member.email, billingLink });
 
       // Enroll in Day 3 + Day 7 follow-up recovery sequence
-      const memberId = await getMemberIdByCustomerId(customerId);
       if (memberId) {
         await enrollInPaymentRecoverySequence(memberId, member.email);
       }

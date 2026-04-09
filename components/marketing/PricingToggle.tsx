@@ -2,15 +2,14 @@
 
 import { useState } from "react";
 import { PricingCard } from "./PricingCard";
+import { track } from "@/lib/analytics/ga";
 
 /**
  * components/marketing/PricingToggle.tsx
  *
  * Owns the billing interval state ("monthly" | "annual").
- * Renders the toggle UI + all 4 pricing cards.
- *
- * Each card receives its priceId from the server (never bundled into client JS).
- * Cards where priceId is empty/null render a "Notify me" state automatically.
+ * Keeps the join page focused on the live offers without pushing executive
+ * coaching into the main pricing grid.
  */
 
 interface PricingToggleProps {
@@ -41,8 +40,6 @@ export function PricingToggle({
   level2Annual,
   level3Monthly,
   level3Annual,
-  level4Monthly = "",
-  level4Annual = "",
 }: PricingToggleProps) {
   const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
 
@@ -50,7 +47,6 @@ export function PricingToggle({
     1: billing === "annual" ? level1Annual : level1Monthly,
     2: billing === "annual" ? level2Annual : level2Monthly,
     3: billing === "annual" ? level3Annual : level3Monthly,
-    4: billing === "annual" ? level4Annual : level4Monthly,
   };
 
   return (
@@ -100,16 +96,77 @@ export function PricingToggle({
       </div>
 
       <p className="text-center text-xs mb-8" style={{ color: "#B0A89E" }}>
-        Annual billing currently available for Level 1.
+        Annual billing is available for all live levels.
       </p>
 
-      {/* ── Pricing cards — 2-col on mobile, 4-col on xl ─── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         <PricingCard level={1} billing={billing} priceId={prices[1]} />
         <PricingCard level={2} billing={billing} priceId={prices[2]} />
         <PricingCard level={3} billing={billing} priceId={prices[3]} />
-        <PricingCard level={4} billing={billing} priceId={prices[4]} />
       </div>
+
+      <section
+        className="mt-6 rounded-3xl p-6"
+        style={{
+          background: "linear-gradient(180deg, rgba(47,111,237,0.05) 0%, rgba(78,140,120,0.05) 100%)",
+          border: "1.5px solid rgba(47,111,237,0.14)",
+          boxShadow: "0 10px 28px rgba(18,20,23,0.05)",
+        }}
+      >
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="max-w-2xl">
+            <p
+              className="text-xs font-semibold uppercase mb-3"
+              style={{ color: "#2F6FED", letterSpacing: "0.12em" }}
+            >
+              Personalized coaching
+            </p>
+            <h3
+              className="font-heading font-bold mb-3"
+              style={{
+                fontSize: "clamp(1.35rem, 2.5vw, 1.7rem)",
+                letterSpacing: "-0.035em",
+                lineHeight: "1.08",
+                color: "#121417",
+                textWrap: "balance",
+              }}
+            >
+              Looking for the most personalized support?
+            </h3>
+            <p style={{ fontSize: "0.95rem", color: "#4A5360", lineHeight: "1.68" }}>
+              If you already know you want a higher-touch path, schedule a Breakthrough Session
+              and we&apos;ll help you decide whether coaching is the right fit.
+            </p>
+          </div>
+
+          <a
+            href="https://calendly.com/positives/breakthrough"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() =>
+              track("breakthrough_session_clicked", {
+                source_path: "/join",
+                cta_location: "join_below_cards",
+              })
+            }
+            className="inline-flex items-center justify-center rounded-full font-semibold"
+            style={{
+              background: "#121417",
+              color: "#FFFFFF",
+              fontSize: "0.95rem",
+              letterSpacing: "-0.01em",
+              padding: "0.9rem 1.4rem",
+              minWidth: "260px",
+            }}
+          >
+            Schedule a Breakthrough Session →
+          </a>
+        </div>
+      </section>
+      
+      <p className="text-center text-xs mt-5" style={{ color: "#9AA0A8" }}>
+        Executive coaching is handled separately so we can guide you to the right fit.
+      </p>
     </div>
   );
 }

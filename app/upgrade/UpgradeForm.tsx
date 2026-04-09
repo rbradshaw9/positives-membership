@@ -5,11 +5,11 @@ import Link from "next/link";
 
 /**
  * app/upgrade/UpgradeForm.tsx
- * Client component — interactive upgrade UI for Level 1 members.
+ * Client component — interactive upgrade UI for Membership members.
  *
  * Layout:
- *   - Tier cards: L2 (self-serve) + L3 (self-serve, coming soon) + L4 (book a call)
- *   - Billing toggle (monthly / annual) for L2/L3
+ *   - Tier cards: Membership + Events + Coaching Circle + Executive Coaching
+ *   - Billing toggle (monthly / annual) for self-serve upgrades
  *
  * Brand voice: calm, clear, non-pushy. No urgency language.
  * L4 is never self-serve — CTA links to booking page.
@@ -160,7 +160,7 @@ export function UpgradeForm({
       {/* Tier cards */}
       <div className="grid gap-5 md:grid-cols-3">
 
-        {/* Level 2 */}
+        {/* Membership + Events */}
         <div
           className="relative flex flex-col rounded-2xl p-6 transition-all cursor-pointer"
           style={{
@@ -180,7 +180,7 @@ export function UpgradeForm({
           <div className="mb-4 flex items-start justify-between">
             <div>
               <span className="text-xs font-bold uppercase tracking-[0.12em]" style={{ color: "var(--color-primary)" }}>
-                Level 2
+                Live events
               </span>
               <p className="mt-0.5 font-heading font-bold text-lg tracking-tight" style={{ color: "var(--color-text-default)" }}>
                 Events + Q&A
@@ -222,7 +222,7 @@ export function UpgradeForm({
           </div>
 
           <ul className="flex flex-col gap-2.5 mb-5">
-            <li className="text-xs font-medium" style={{ color: "var(--color-muted-fg)" }}>Everything in Level 1, plus:</li>
+            <li className="text-xs font-medium" style={{ color: "var(--color-muted-fg)" }}>Everything in Membership, plus:</li>
             {L2_ADDITIONS.map((f) => (
               <li key={f} className="flex items-start gap-2.5 text-sm" style={{ color: "var(--color-text-default)" }}>
                 <CheckIcon color="#2F6FED" />
@@ -243,13 +243,13 @@ export function UpgradeForm({
                   boxShadow: "0 4px 16px rgba(47,111,237,0.25)",
                 }}
               >
-                {isPending ? "Upgrading…" : "Upgrade to Level 2"}
+                {isPending ? "Upgrading…" : "Upgrade to Membership + Events"}
               </button>
             </form>
           )}
         </div>
 
-        {/* Level 3 */}
+        {/* Coaching Circle */}
         <div
           className="relative flex flex-col rounded-2xl p-6 transition-all cursor-pointer"
           style={{
@@ -269,7 +269,7 @@ export function UpgradeForm({
           <div className="mb-4 flex items-start justify-between">
             <div>
               <span className="text-xs font-bold uppercase tracking-[0.12em]" style={{ color: "var(--color-accent)" }}>
-                Level 3
+                Coaching
               </span>
               <p className="mt-0.5 font-heading font-bold text-lg tracking-tight" style={{ color: "var(--color-text-default)" }}>
                 Coaching Circle
@@ -332,13 +332,13 @@ export function UpgradeForm({
                   boxShadow: "0 4px 16px rgba(47,111,237,0.25)",
                 }}
               >
-                {isPending ? "Upgrading…" : "Upgrade to Level 3"}
+                {isPending ? "Upgrading…" : "Upgrade to Coaching Circle"}
               </button>
             </form>
           )}
         </div>
 
-        {/* Level 4 — Executive (never self-serve) */}
+        {/* Executive Coaching — never self-serve */}
         <div
           className="flex flex-col rounded-2xl p-6"
           style={{
@@ -348,7 +348,7 @@ export function UpgradeForm({
         >
           <div className="mb-4">
             <span className="text-xs font-bold uppercase tracking-[0.12em]" style={{ color: "var(--color-muted-fg)" }}>
-              Level 4
+              Personalized support
             </span>
             <p className="mt-0.5 font-heading font-bold text-lg tracking-tight" style={{ color: "var(--color-text-default)" }}>
               Executive Coaching
@@ -399,7 +399,7 @@ export function UpgradeForm({
         style={{ background: "var(--color-muted)", border: "1px solid var(--color-border)" }}
       >
         <p className="mb-3 text-xs font-bold uppercase tracking-[0.12em]" style={{ color: "var(--color-muted-fg)" }}>
-          Already included in your Level 1 membership
+          Already included in Membership
         </p>
         <ul className="flex flex-wrap gap-x-6 gap-y-2">
           {L1_FEATURES.map((f) => (

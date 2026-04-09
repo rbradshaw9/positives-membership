@@ -5,6 +5,7 @@ import {
   type MemberStatusFilter,
   type MemberTierFilter,
 } from "@/lib/queries/get-admin-members";
+import { ADMIN_PLAN_SHORT_LABEL_BY_TIER, PLAN_NAME_BY_TIER } from "@/lib/plans";
 
 /**
  * app/admin/members/page.tsx
@@ -42,12 +43,7 @@ const TIER_BADGE: Record<string, string> = {
   level_4: "admin-badge admin-badge--l4",
 };
 
-const TIER_LABEL: Record<string, string> = {
-  level_1: "L1",
-  level_2: "L2",
-  level_3: "L3 · Coaching",
-  level_4: "L4 · Executive",
-};
+const TIER_LABEL: Record<string, string> = ADMIN_PLAN_SHORT_LABEL_BY_TIER;
 
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
@@ -90,10 +86,10 @@ const STATUS_FILTERS: { label: string; value: MemberStatusFilter }[] = [
 
 const TIER_FILTERS: { label: string; value: MemberTierFilter }[] = [
   { label: "All tiers", value: "" },
-  { label: "Level 1", value: "level_1" },
-  { label: "Level 2", value: "level_2" },
-  { label: "Level 3 · Coaching", value: "level_3" },
-  { label: "Level 4 · Executive", value: "level_4" },
+  { label: PLAN_NAME_BY_TIER.level_1, value: "level_1" },
+  { label: PLAN_NAME_BY_TIER.level_2, value: "level_2" },
+  { label: PLAN_NAME_BY_TIER.level_3, value: "level_3" },
+  { label: PLAN_NAME_BY_TIER.level_4, value: "level_4" },
 ];
 
 // ─────────────────────────────────────────────────

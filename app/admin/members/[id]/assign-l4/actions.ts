@@ -148,7 +148,7 @@ export async function assignL4Subscription(
       const raw = (formData.get("customAmount") as string)?.trim();
       const cents = raw ? Math.round(parseFloat(raw) * 100) : 450000;
       if (isNaN(cents) || cents < 100) return { error: "Invalid amount." };
-      await createInvoice(stripe, cid, cents, "Positives Level 4 — Executive Coaching (Pay in Full)", adminNote, collectAuto);
+      await createInvoice(stripe, cid, cents, "Positives Executive Coaching (Pay in Full)", adminNote, collectAuto);
     }
 
     // ── 3-Pay Plan ───────────────────────────────────────────────────────────
@@ -179,7 +179,7 @@ export async function assignL4Subscription(
       const amountStr = (formData.get("customAmount") as string)?.trim();
       const billingType = (formData.get("billingType") as string) ?? "monthly";
       const cyclesStr = (formData.get("cycles") as string)?.trim();
-      const nickname = (formData.get("nickname") as string)?.trim() || `Custom L4 — ${billingType}`;
+      const nickname = (formData.get("nickname") as string)?.trim() || `Custom Executive Coaching — ${billingType}`;
       const l4ProductId = config.stripe.products.level4;
 
       if (!l4ProductId) return { error: "STRIPE_PRODUCT_LEVEL_4 is not configured." };

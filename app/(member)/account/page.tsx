@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { AffiliateCTA } from "@/components/affiliate/AffiliateCTA";
 import { signOut } from "./actions";
+import { getPositivesPlanName } from "@/lib/plans";
 
 export const metadata = {
   title: "Account — Positives",
@@ -20,13 +21,6 @@ export const metadata = {
  * Sprint 11: hero mode on PageHeader, elevated membership card with accent
  *   border, deeper shadows, unified status indicator.
  */
-
-const PLAN_NAMES: Record<string, string> = {
-  level_1: "Positives Membership",
-  level_2: "Positives Plus",
-  level_3: "Positives Circle",
-  level_4: "Executive Coaching",
-};
 
 export default async function AccountPage() {
   const supabase = await createClient();
@@ -45,7 +39,7 @@ export default async function AccountPage() {
   const email = member?.email ?? user?.email ?? "";
   const passwordSet = member?.password_set === true;
   const tier = member?.subscription_tier ?? "level_1";
-  const planName = PLAN_NAMES[tier] ?? "Positives Membership";
+  const planName = getPositivesPlanName(tier);
   const timezone = member?.timezone ?? "America/New_York";
   const hasBillingPortal = !!member?.stripe_customer_id;
   const status = member?.subscription_status ?? "active";

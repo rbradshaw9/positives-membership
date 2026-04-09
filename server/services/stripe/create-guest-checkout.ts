@@ -81,6 +81,7 @@ export async function createGuestCheckoutSession(
     // remains available for Supabase userId in the auth-first path (Path A).
     metadata: {
       guest: "true",
+      priceId,
       ...(fprRefId ? { fpr: fprRefId } : {}),
     },
 

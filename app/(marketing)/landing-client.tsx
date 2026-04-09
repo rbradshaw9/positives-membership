@@ -63,11 +63,11 @@ const LANDING_FAQS = [
   },
   {
     q: "What is the 'Founding Member' rate?",
-    a: "The founding member rate ($49/month, down from $97/month) is a special price for early members who join during our launch. Your rate stays locked in permanently — when we raise prices for new members, yours doesn't change.",
+    a: "The founding member rate ($37/month or $370/year, down from the standard $97/month) is a special price for early members who join during our launch. Your rate stays locked in permanently — when we raise prices for new members, yours doesn't change.",
   },
   {
     q: "What do the other pricing tiers include?",
-    a: "Level 1 (Membership) is live now and includes everything: daily audio, weekly principles, monthly masterclass, and the full member library. Higher tiers — including group coaching, live events, and 1:1 coaching with Dr. Paul — are coming soon. Join now to lock your founding rate.",
+    a: "Membership is the foundation. Membership + Events adds live workshops and event access. Coaching Circle adds weekly group coaching and deeper implementation support. Executive Coaching is the highest-touch option and begins with a Breakthrough Session.",
   },
 ];
 
@@ -423,7 +423,7 @@ export function LandingPageClient() {
 
           {/* Micro pricing anchor */}
           <p className="text-sm" style={{ color: "#B0A89E" }}>
-            From <span style={{ color: "#68707A" }}>$49/month</span> · Cancel anytime · 30-day guarantee
+            From <span style={{ color: "#68707A" }}>$37/month</span> · Cancel anytime · 30-day guarantee
           </p>
         </div>
       </section>
@@ -993,7 +993,7 @@ export function LandingPageClient() {
           </Link>
 
           <p className="mt-5 text-sm" style={{ color: "#68707A" }}>
-            From $49/month · Cancel anytime · 30-day guarantee
+            From $37/month · Cancel anytime · 30-day guarantee
           </p>
         </div>
       </section>
@@ -1057,7 +1057,7 @@ export function LandingPageClient() {
               © {new Date().getFullYear()} Positives. All rights reserved.
             </span>
             <p className="text-xs" style={{ color: "#C4BDB5" }}>
-              From $49/month · Cancel anytime · 30-day guarantee
+              From $37/month · Cancel anytime · 30-day guarantee
             </p>
           </div>
         </div>

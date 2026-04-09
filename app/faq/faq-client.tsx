@@ -41,11 +41,11 @@ const FAQS = [
   },
   {
     q: "What is the 'Founding Member' rate?",
-    a: "The founding member rate ($49/month, down from $97/month) is a special price for early members who join during our launch. Your rate stays locked in permanently — when we raise prices for new members, yours doesn't change.",
+    a: "The founding member rate ($37/month or $370/year, down from the standard $97/month) is a special price for early members who join during our launch. Your rate stays locked in permanently — when we raise prices for new members, yours doesn't change.",
   },
   {
     q: "What do the other pricing tiers include?",
-    a: "Level 1 (Membership) is live now and includes everything: daily audio, weekly principles, monthly masterclass, and the full member library. Higher tiers — including group coaching, live events, and 1:1 coaching with Dr. Paul — are coming soon. Join now to lock your founding rate.",
+    a: "Membership is the foundation. Membership + Events adds live workshops and event access. Coaching Circle adds weekly group coaching and deeper implementation support. Executive Coaching is the highest-touch option and begins with a Breakthrough Session.",
   },
 ];
 

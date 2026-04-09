@@ -7,6 +7,7 @@ import {
   getMemberStats,
   getContentTitleMap,
 } from "@/lib/queries/get-admin-members";
+import { PLAN_NAME_BY_TIER } from "@/lib/plans";
 
 /**
  * app/admin/members/[id]/page.tsx
@@ -51,12 +52,7 @@ const TIER_BADGE: Record<string, string> = {
   level_4: "admin-badge admin-badge--l4",
 };
 
-const TIER_LABEL: Record<string, string> = {
-  level_1: "Level 1 — Membership",
-  level_2: "Level 2 — Plus",
-  level_3: "Level 3 — Coaching Circle",
-  level_4: "Level 4 — Executive Coaching",
-};
+const TIER_LABEL: Record<string, string> = PLAN_NAME_BY_TIER;
 
 // Events that meaningfully relate to a piece of content
 const CONTENT_EVENT_TYPES = new Set([
