@@ -16,7 +16,6 @@ import { MonthlyThemeCard } from "@/components/today/MonthlyThemeCard";
 import { MonthlyAudioArchive } from "@/components/today/MonthlyAudioArchive";
 import { WeeklyArchive } from "@/components/today/WeeklyArchive";
 import { StreakBadge } from "@/components/today/StreakBadge";
-import { TodayListenStatusBadge } from "@/components/today/TodayListenStatusBadge";
 
 
 /**
@@ -70,7 +69,19 @@ export default async function TodayPage() {
     Boolean
   ) as string[];
 
-  const [noteContentIds, listenedToday] = await Promise.all([
+  const archiveContentIds = monthGroups.flatMap((group) => group.audios.map((audio) => audio.id));
+  const listenedArchiveIdsPromise =
+    archiveContentIds.length > 0
+      ? supabase
+          .from("activity_event")
+          .select("content_id")
+          .eq("member_id", member.id)
+          .eq("event_type", "daily_listened")
+          .in("content_id", archiveContentIds)
+          .then(({ data }) => new Set((data ?? []).map((row) => row.content_id).filter(Boolean)))
+      : Promise.resolve(new Set<string>());
+
+  const [noteContentIds, listenedToday, listenedArchiveIds] = await Promise.all([
     contentIds.length > 0
       ? getMemberNoteContentIds(member.id)
       : Promise.resolve(new Set<string>()),
@@ -85,6 +96,7 @@ export default async function TodayPage() {
           .maybeSingle()
           .then((r) => !!r.data)
       : Promise.resolve(false),
+    listenedArchiveIdsPromise,
   ]);
 
   // Only show a non-zero streak if the member practiced today or yesterday.
@@ -141,13 +153,7 @@ export default async function TodayPage() {
               )}
             </div>
 
-            <div className="flex shrink-0 flex-col items-end gap-2">
-              <StreakBadge initialStreak={streak} />
-              <TodayListenStatusBadge
-                initialHasListened={listenedToday}
-                contentId={todayContent?.id ?? null}
-              />
-            </div>
+            <StreakBadge initialStreak={streak} />
           </div>
         </div>
       </section>
@@ -211,7 +217,13 @@ export default async function TodayPage() {
 
         {/* ── Zone 4: Daily practice playlist (inline) ──────────────── */}
         {monthGroups.length > 0 && (
-          <MonthlyAudioArchive monthGroups={monthGroups} currentMonthName={currentMonthName} />
+          <MonthlyAudioArchive
+            monthGroups={monthGroups}
+            currentMonthName={currentMonthName}
+            listenedContentIds={[...listenedArchiveIds].filter(
+              (contentId): contentId is string => Boolean(contentId)
+            )}
+          />
         )}
       </div>
     </div>

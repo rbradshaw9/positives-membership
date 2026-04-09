@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMemberAudio } from "@/components/member/audio/MemberAudioProvider";
 import type { MonthGroup } from "@/lib/queries/get-monthly-daily-audios";
 
@@ -20,6 +20,7 @@ interface MonthlyAudioArchiveProps {
   monthGroups: MonthGroup[];
   /** e.g. "April" — used to render the section heading */
   currentMonthName: string;
+  listenedContentIds?: string[];
 }
 
 function formatDate(dateStr: string): string {
@@ -42,8 +43,10 @@ const PREVIEW_COUNT = 5;
 
 function AudioRow({
   audio,
+  listened,
 }: {
   audio: MonthGroup["audios"][number];
+  listened: boolean;
 }) {
   const {
     playTrack,
@@ -142,13 +145,31 @@ function AudioRow({
         </button>
 
         {/* ── Title + date — constrained when controls are visible ── */}
-        <div className={isThis ? "shrink-0 w-28 sm:w-40 min-w-0" : "flex-1 min-w-0"}>
-          <p
-            className="text-sm font-medium truncate transition-colors"
-            style={{ color: isThis ? "var(--color-accent)" : "var(--color-foreground)" }}
-          >
-            {audio.title}
-          </p>
+        <div className={isThis ? "shrink-0 w-40 sm:w-52 min-w-0" : "flex-1 min-w-0"}>
+          <div className="flex items-center gap-2 min-w-0">
+            <p
+              className="text-sm font-medium truncate transition-colors"
+              style={{ color: isThis ? "var(--color-accent)" : "var(--color-foreground)" }}
+            >
+              {audio.title}
+            </p>
+            <span
+              className="shrink-0 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+              style={{
+                color: listened ? "#15803D" : "var(--color-muted-fg)",
+                background: listened
+                  ? "rgba(22,163,74,0.10)"
+                  : "var(--color-muted)",
+                border: listened
+                  ? "1px solid rgba(22,163,74,0.16)"
+                  : "1px solid var(--color-border)",
+              }}
+              aria-label={listened ? "Listened" : "Not listened yet"}
+              title={listened ? "Listened" : "Not listened yet"}
+            >
+              {listened ? "✓" : "○"}
+            </span>
+          </div>
           {audio.publish_date && (
             <p className="text-xs text-muted-foreground mt-0.5 truncate">
               {formatDate(audio.publish_date)}
@@ -274,9 +295,11 @@ function AudioRow({
 function MonthSection({
   group,
   defaultOpen,
+  listenedIds,
 }: {
   group: MonthGroup;
   defaultOpen: boolean;
+  listenedIds: Set<string>;
 }) {
   const [expanded, setExpanded] = useState(defaultOpen);
   const [showAll, setShowAll] = useState(false);
@@ -346,7 +369,7 @@ function MonthSection({
           `}</style>
 
           {visible.map((audio) => (
-            <AudioRow key={audio.id} audio={audio} />
+            <AudioRow key={audio.id} audio={audio} listened={listenedIds.has(audio.id)} />
           ))}
 
           {hasMore && (
@@ -378,7 +401,44 @@ function MonthSection({
   );
 }
 
-export function MonthlyAudioArchive({ monthGroups, currentMonthName }: MonthlyAudioArchiveProps) {
+export function MonthlyAudioArchive({
+  monthGroups,
+  currentMonthName,
+  listenedContentIds = [],
+}: MonthlyAudioArchiveProps) {
+  const [listenedIds, setListenedIds] = useState<Set<string>>(
+    () => new Set(listenedContentIds)
+  );
+
+  useEffect(() => {
+    function handleTodayListened(event: Event) {
+      const detail = (event as CustomEvent<{ contentId?: string | null }>).detail;
+      if (!detail?.contentId) return;
+      setListenedIds((current) => {
+        const next = new Set(current);
+        next.add(detail.contentId!);
+        return next;
+      });
+    }
+
+    window.addEventListener("positives:today-listened", handleTodayListened);
+    return () => window.removeEventListener("positives:today-listened", handleTodayListened);
+  }, []);
+
+  const listenedCount = useMemo(
+    () =>
+      monthGroups.reduce(
+        (sum, group) =>
+          sum + group.audios.filter((audio) => listenedIds.has(audio.id)).length,
+        0
+      ),
+    [listenedIds, monthGroups]
+  );
+  const totalCount = useMemo(
+    () => monthGroups.reduce((sum, group) => sum + group.audios.length, 0),
+    [monthGroups]
+  );
+
   if (monthGroups.length === 0) return null;
 
   return (
@@ -393,6 +453,9 @@ export function MonthlyAudioArchive({ monthGroups, currentMonthName }: MonthlyAu
         <p className="text-xs text-muted-foreground mt-0.5">
           Tap any day to play it inline.
         </p>
+        <p className="text-xs text-muted-foreground mt-1">
+          {listenedCount} of {totalCount} marked listened
+        </p>
       </div>
 
       <div className="flex flex-col gap-3">
@@ -401,6 +464,7 @@ export function MonthlyAudioArchive({ monthGroups, currentMonthName }: MonthlyAu
             key={group.monthYear}
             group={group}
             defaultOpen={i === 0}
+            listenedIds={listenedIds}
           />
         ))}
       </div>
