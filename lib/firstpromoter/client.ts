@@ -1,21 +1,23 @@
 /**
  * lib/firstpromoter/client.ts
  *
- * Thin client for the FirstPromoter REST API v1.
+ * Thin client for the FirstPromoter REST API v2.
  *
  * Docs: https://docs.firstpromoter.com/
  *
- * All requests are authenticated via the FIRSTPROMOTER_API_KEY env var
- * (secret/private key — not the tracking script key).
+ * Admin requests use:
+ *   - Authorization: Bearer <FIRSTPROMOTER_API_KEY>
+ *   - Account-ID: <FIRSTPROMOTER_ACCOUNT_ID>
  */
 
-const FP_BASE = "https://firstpromoter.com/api/v1";
+const FP_BASE = "https://api.firstpromoter.com/api/v2";
 
 type Primitive = string | number | boolean | null | undefined;
 type QueryValue = Primitive | Primitive[];
 
 interface FpFetchOptions extends Omit<RequestInit, "body"> {
   query?: Record<string, QueryValue>;
+  json?: unknown;
 }
 
 export class FirstPromoterApiError extends Error {
@@ -38,6 +40,14 @@ function apiKey(): string {
   return key;
 }
 
+function accountId(): string {
+  const id =
+    process.env.FIRSTPROMOTER_ACCOUNT_ID ??
+    process.env.NEXT_PUBLIC_FIRSTPROMOTER_ACCOUNT_ID;
+  if (!id) throw new Error("[FP] FIRSTPROMOTER_ACCOUNT_ID env var is not set.");
+  return id;
+}
+
 function appendQuery(url: URL, query?: Record<string, QueryValue>) {
   if (!query) return;
 
@@ -57,7 +67,7 @@ function appendQuery(url: URL, query?: Record<string, QueryValue>) {
 
 async function fpFetch<T>(
   path: string,
-  { query, headers, method = "GET", ...options }: FpFetchOptions = {}
+  { query, json, headers, method = "GET", ...options }: FpFetchOptions = {}
 ): Promise<T> {
   const url = new URL(`${FP_BASE}${path}`);
   appendQuery(url, query);
@@ -66,10 +76,13 @@ async function fpFetch<T>(
     ...options,
     method,
     headers: {
-      "X-API-KEY": apiKey(),
+      Authorization: `Bearer ${apiKey()}`,
+      "Account-ID": accountId(),
       Accept: "application/json",
+      ...(json !== undefined ? { "Content-Type": "application/json" } : {}),
       ...(headers ?? {}),
     },
+    ...(json !== undefined ? { body: JSON.stringify(json) } : {}),
     cache: "no-store",
   });
 
@@ -78,14 +91,9 @@ async function fpFetch<T>(
     throw new FirstPromoterApiError(path, method, res.status, text);
   }
 
-  if (!text) {
-    return undefined as T;
-  }
-
+  if (!text) return undefined as T;
   return JSON.parse(text) as T;
 }
-
-// ── Types ──────────────────────────────────────────────────────────────────────
 
 export interface FpPromoter {
   id: number;
@@ -93,77 +101,81 @@ export interface FpPromoter {
   email: string;
   state: string;
   created_at: string;
-  auth_token?: string;
+  promoterCampaignId?: number;
+  referralLink?: string;
+  passwordSetupUrl?: string | null;
   promoter?: {
     id: number;
-    ref_id: string;
   };
 }
 
-/** Platform-agnostic commission record (mapped from FP's reward object). */
 export interface AffiliateCommission {
   id: string | number;
-  /** Amount in cents */
   amount: number;
   status: "paid" | "unpaid" | "pending" | "approved" | string;
   created_at: string;
-  /** Email of the referred member who generated this commission */
   customer_email?: string;
 }
 
-/** Platform-agnostic payout record. */
 export interface AffiliatePayout {
   id: string | number;
-  /** Amount in cents */
   amount: number;
   state: "paid" | "processing" | "due" | "pending" | string;
   created_at: string;
 }
 
-/** Platform-agnostic traffic/conversion stats for a promoter. */
 export interface PromoterStats {
   visitors: number;
   leads: number;
   conversions: number;
 }
 
-interface FpPromotionStats {
-  ref_id?: string;
-  visitors_count?: number;
-  leads_count?: number;
+interface FpStats {
+  clicks_count?: number;
+  referrals_count?: number;
   customers_count?: number;
+  sales_count?: number;
+  revenue_amount?: number;
+}
+
+interface FpPromoterCampaign {
+  id: number;
+  campaign_id: number;
+  promoter_id: number;
+  state?: string;
+  created_at?: string;
+  ref_token?: string;
+  ref_link?: string;
+  campaign?: {
+    id: number;
+    name?: string;
+    color?: string;
+  } | null;
 }
 
 interface FpPromoterResponse {
   id: number;
   email: string;
-  status?: string;
   state?: string;
   created_at: string;
-  default_ref_id?: string;
-  ref_id?: string;
-  auth_token?: string;
-  pref?: string;
-  parent_promoter_id?: number | string | null;
+  password_setup_url?: string | null;
+  stats?: FpStats | null;
+  promoter_campaigns?: FpPromoterCampaign[];
   parent_promoter?: {
-    id?: number;
-    default_ref_id?: string;
-    ref_id?: string;
+    id: number;
+    email?: string;
+    name?: string;
   } | null;
-  promotions?: FpPromotionStats[];
-  visitors_count?: number;
-  leads_count?: number;
-  customers_count?: number;
 }
 
-interface FpRewardResponse {
+interface FpCommissionResponse {
   id: number;
   amount?: number;
   conversion_amount?: number;
-  status?: string;
   state?: string;
+  status?: string;
   created_at: string;
-  lead?: {
+  referral?: {
     email?: string;
   } | null;
 }
@@ -177,42 +189,32 @@ interface FpPayoutResponse {
   created_at: string;
 }
 
-interface FpCollectionResponse<T> {
-  items?: T[];
-  data?: T[];
+function primaryCampaign(
+  promoter: FpPromoterResponse,
+  campaignId?: number | null
+): FpPromoterCampaign | undefined {
+  if (!promoter.promoter_campaigns?.length) return undefined;
+  if (campaignId) {
+    const match = promoter.promoter_campaigns.find((item) => item.campaign_id === campaignId);
+    if (match) return match;
+  }
+  return promoter.promoter_campaigns[0];
 }
 
-function normalizePromoter(raw: FpPromoterResponse): FpPromoter {
-  const refId =
-    raw.ref_id ??
-    raw.default_ref_id ??
-    raw.promotions?.find((promotion) => promotion.ref_id)?.ref_id ??
-    raw.pref ??
-    "";
-
-  const parentRefId =
-    raw.parent_promoter?.ref_id ?? raw.parent_promoter?.default_ref_id ?? undefined;
+function normalizePromoter(raw: FpPromoterResponse, campaignId?: number | null): FpPromoter {
+  const campaign = primaryCampaign(raw, campaignId);
 
   return {
     id: raw.id,
-    ref_id: refId,
+    ref_id: campaign?.ref_token ?? "",
     email: raw.email,
-    state: raw.state ?? raw.status ?? "active",
+    state: campaign?.state ?? raw.state ?? "pending",
     created_at: raw.created_at,
-    auth_token: raw.auth_token,
-    promoter:
-      raw.parent_promoter?.id && parentRefId
-        ? { id: raw.parent_promoter.id, ref_id: parentRefId }
-        : undefined,
+    promoterCampaignId: campaign?.id,
+    referralLink: campaign?.ref_link ?? undefined,
+    passwordSetupUrl: raw.password_setup_url ?? null,
+    promoter: raw.parent_promoter?.id ? { id: raw.parent_promoter.id } : undefined,
   };
-}
-
-function normalizeCollection<T>(payload: T[] | FpCollectionResponse<T> | null | undefined): T[] {
-  if (!payload) return [];
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload.items)) return payload.items;
-  if (Array.isArray(payload.data)) return payload.data;
-  return [];
 }
 
 function normalizeCommissionStatus(status: string | undefined): AffiliateCommission["status"] {
@@ -241,38 +243,112 @@ function normalizePayoutState(state: string | undefined): AffiliatePayout["state
   }
 }
 
-async function showPromoter(query: Record<string, QueryValue>): Promise<FpPromoterResponse> {
-  return fpFetch<FpPromoterResponse>("/promoters/show", { query });
-}
-
-async function listPromoters(query: Record<string, QueryValue>): Promise<FpPromoterResponse[]> {
-  const payload = await fpFetch<FpPromoterResponse[] | FpCollectionResponse<FpPromoterResponse>>(
-    "/promoters/list",
-    { query }
-  );
-
-  return normalizeCollection(payload);
-}
-
 export function isFirstPromoterAuthError(error: unknown): boolean {
   return (
     error instanceof FirstPromoterApiError &&
-    (error.status === 401 || /bad credentials/i.test(error.body))
+    (error.status === 401 || /unauthorized|bad credentials/i.test(error.body))
   );
 }
 
-// ── Create or find a promoter ──────────────────────────────────────────────────
+async function getPromoterDetailsByIdentifier(
+  identifier: string | number,
+  findBy?: "email" | "ref_token" | "auth_token" | "promo_code"
+): Promise<FpPromoterResponse> {
+  return fpFetch<FpPromoterResponse>(`/company/promoters/${encodeURIComponent(String(identifier))}`, {
+    query: {
+      ...(findBy ? { find_by: findBy } : {}),
+      include_parent_promoter: true,
+    },
+  });
+}
 
-/**
- * Create a promoter in FP, or return the existing one if already present.
- *
- * @param email         Member's email
- * @param ref_id        Custom slug / referral code (e.g. "ryan-level-1")
- * @param parentRefId   Optional: the ?fpr= code that originally referred this
- *                      member. When provided, FP links this promoter as a
- *                      "child" of the parent, enabling the override commission.
- *                      This is the permanent genealogy link — not cookie-based.
- */
+async function getDefaultCampaignId(): Promise<number> {
+  const explicit = process.env.FIRSTPROMOTER_CAMPAIGN_ID;
+  if (explicit && /^\d+$/.test(explicit)) return Number(explicit);
+
+  const campaigns = await fpFetch<FpPromoterCampaign[]>("/company/promoter_campaigns");
+  const positivesCampaign =
+    campaigns.find((item) => item.campaign?.name === "Positives Affiliate Program") ?? campaigns[0];
+
+  if (!positivesCampaign?.campaign_id) {
+    throw new Error("[FP] Could not determine a default campaign ID.");
+  }
+
+  return positivesCampaign.campaign_id;
+}
+
+async function addPromoterToCampaign(promoterId: number, campaignId: number): Promise<void> {
+  await fpFetch("/company/promoters/add_to_campaign", {
+    method: "POST",
+    json: {
+      campaign_id: campaignId,
+      ids: [promoterId],
+    },
+  });
+}
+
+async function acceptPromoter(promoterId: number, campaignId: number): Promise<void> {
+  await fpFetch("/company/promoters/accept", {
+    method: "POST",
+    json: {
+      campaign_id: campaignId,
+      ids: [promoterId],
+    },
+  });
+}
+
+async function assignParentPromoter(promoterId: number, parentPromoterId: number): Promise<void> {
+  await fpFetch("/company/promoters/assign_parent", {
+    method: "POST",
+    json: {
+      parent_promoter_id: parentPromoterId,
+      ids: [promoterId],
+    },
+  });
+}
+
+async function ensureCampaignMembership(
+  promoter: FpPromoterResponse,
+  campaignId: number
+): Promise<FpPromoterResponse> {
+  const campaign = primaryCampaign(promoter, campaignId);
+  if (!campaign) {
+    await addPromoterToCampaign(promoter.id, campaignId);
+    return getPromoterDetailsByIdentifier(promoter.id);
+  }
+  return promoter;
+}
+
+async function ensureAcceptedPromoter(
+  promoter: FpPromoterResponse,
+  campaignId: number
+): Promise<FpPromoterResponse> {
+  const campaign = primaryCampaign(promoter, campaignId);
+  if (!campaign) return promoter;
+
+  if (campaign.state === "accepted") return promoter;
+
+  await acceptPromoter(promoter.id, campaignId);
+  return getPromoterDetailsByIdentifier(promoter.id);
+}
+
+export async function findPromoterByRefId(refId: string): Promise<FpPromoter | null> {
+  try {
+    const promoter = await getPromoterDetailsByIdentifier(refId, "ref_token");
+    return normalizePromoter(promoter);
+  } catch (error) {
+    if (error instanceof FirstPromoterApiError && error.status === 404) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+export async function getPromoter(promoterId: number): Promise<FpPromoter> {
+  const campaignId = await getDefaultCampaignId();
+  return normalizePromoter(await getPromoterDetailsByIdentifier(promoterId), campaignId);
+}
+
 export async function ensureFpPromoter({
   email,
   firstName,
@@ -286,160 +362,118 @@ export async function ensureFpPromoter({
   ref_id?: string;
   parentRefId?: string | null;
 }): Promise<FpPromoter> {
+  const campaignId = await getDefaultCampaignId();
+
+  let promoter: FpPromoterResponse;
+
   try {
-    const existing = await showPromoter({ promoter_email: email });
-    if (existing?.id) {
-      console.log(`[FP] Existing promoter found — email: ${email}, id: ${existing.id}`);
-      return normalizePromoter(existing);
-    }
+    promoter = await getPromoterDetailsByIdentifier(email, "email");
+    console.log(`[FP] Existing promoter found — email: ${email}, id: ${promoter.id}`);
   } catch (error) {
-    if (error instanceof FirstPromoterApiError && error.status !== 404) {
+    if (!(error instanceof FirstPromoterApiError) || error.status !== 404) {
       throw error;
     }
+
+    promoter = await fpFetch<FpPromoterResponse>("/company/promoters", {
+      method: "POST",
+      json: {
+        email,
+        profile: {
+          first_name: firstName,
+          last_name: lastName,
+        },
+        initial_campaign_id: campaignId,
+        drip_emails: true,
+      },
+    });
+
+    console.log(`[FP] Promoter created — email: ${email}, id: ${promoter.id}`);
   }
 
-  let parentPromoterId: number | undefined;
+  promoter = await ensureCampaignMembership(promoter, campaignId);
+  promoter = await ensureAcceptedPromoter(promoter, campaignId);
+
+  if (ref_id) {
+    const current = normalizePromoter(promoter, campaignId);
+    if (current.ref_id && current.ref_id !== ref_id) {
+      promoter = await (async () => {
+        const updated = await updatePromoterRefId(promoter.id, ref_id);
+        return getPromoterDetailsByIdentifier(updated.id);
+      })();
+    }
+  }
+
   if (parentRefId) {
-    try {
-      const parent = await findPromoterByRefId(parentRefId);
-      if (parent?.id) {
-        parentPromoterId = parent.id;
-        console.log(
-          `[FP] Linking new promoter to parent — parentRefId: ${parentRefId}, parentPromoterId: ${parentPromoterId}`
-        );
-      }
-    } catch (error) {
-      console.warn(
-        `[FP] Could not resolve parent promoter for refId: ${parentRefId}: ${error}. Proceeding without parent link.`
-      );
+    const parent = await findPromoterByRefId(parentRefId);
+    if (parent?.id && promoter.id !== parent.id && promoter.parent_promoter?.id !== parent.id) {
+      await assignParentPromoter(promoter.id, parent.id);
+      promoter = await getPromoterDetailsByIdentifier(promoter.id);
     }
   }
 
-  const created = await fpFetch<FpPromoterResponse>("/promoters/create", {
-    method: "POST",
-    query: {
-      email,
-      first_name: firstName,
-      last_name: lastName,
-      ref_id,
-      parent_promoter_id: parentPromoterId,
-    },
-  });
-
-  const promoter = normalizePromoter(created);
-
-  console.log(
-    `[FP] Promoter created — email: ${email}, id: ${promoter.id}, ref_id: ${promoter.ref_id}${parentPromoterId ? `, parent: ${parentPromoterId}` : ""}`
-  );
-
-  return promoter;
-}
-
-/**
- * Find a promoter by their ?fpr= tracking code (ref_id).
- * Used to resolve the parent promoter ID when enrolling a new affiliate.
- */
-export async function findPromoterByRefId(refId: string): Promise<FpPromoter | null> {
-  try {
-    const result = await showPromoter({ ref_id: refId });
-    return result?.id ? normalizePromoter(result) : null;
-  } catch (error) {
-    if (error instanceof FirstPromoterApiError && error.status === 404) {
-      return null;
-    }
-    throw error;
-  }
-}
-
-/**
- * Get a promoter by ID.
- */
-export async function getPromoter(promoterId: number): Promise<FpPromoter> {
-  return normalizePromoter(await showPromoter({ id: promoterId }));
+  return normalizePromoter(promoter, campaignId);
 }
 
 export async function updatePromoterRefId(
   promoterId: number,
   refId: string
 ): Promise<FpPromoter> {
-  const promoter = await fpFetch<FpPromoterResponse>("/promoters/update", {
+  const promoter = await getPromoterDetailsByIdentifier(promoterId);
+  const campaign = primaryCampaign(promoter);
+
+  if (!campaign?.id) {
+    throw new Error("[FP] No promoter campaign found for slug update.");
+  }
+
+  await fpFetch(`/company/promoter_campaigns/${campaign.id}`, {
     method: "PUT",
-    query: {
-      id: promoterId,
-      ref_id: refId,
+    json: {
+      ref_token: refId,
     },
   });
 
-  return normalizePromoter(promoter);
+  return normalizePromoter(await getPromoterDetailsByIdentifier(promoterId), campaign.campaign_id);
 }
 
-/**
- * Get traffic/conversion stats for a promoter.
- */
 export async function getPromoterStats(promoterId: number): Promise<PromoterStats> {
-  const promoter = await showPromoter({ id: promoterId });
-  const promotions = promoter.promotions ?? [];
-
-  const rolledUp = promotions.reduce(
-    (totals, promotion) => ({
-      visitors: totals.visitors + (promotion.visitors_count ?? 0),
-      leads: totals.leads + (promotion.leads_count ?? 0),
-      conversions: totals.conversions + (promotion.customers_count ?? 0),
-    }),
-    { visitors: 0, leads: 0, conversions: 0 }
-  );
-
+  const promoter = await getPromoterDetailsByIdentifier(promoterId);
+  const stats = promoter.stats ?? {};
   return {
-    visitors: rolledUp.visitors || promoter.visitors_count || 0,
-    leads: rolledUp.leads || promoter.leads_count || 0,
-    conversions: rolledUp.conversions || promoter.customers_count || 0,
+    visitors: stats.clicks_count ?? 0,
+    leads: stats.referrals_count ?? 0,
+    conversions: stats.customers_count ?? 0,
   };
 }
 
-/**
- * Get commissions (rewards) for a promoter.
- * FP calls these "rewards" in its API.
- */
-export async function getPromoterCommissions(
-  promoterId: number
-): Promise<AffiliateCommission[]> {
+export async function getPromoterCommissions(promoterId: number): Promise<AffiliateCommission[]> {
   try {
-    const payload = await fpFetch<
-      FpRewardResponse[] | FpCollectionResponse<FpRewardResponse>
-    >("/rewards/list", {
+    const commissions = await fpFetch<FpCommissionResponse[]>("/company/commissions", {
       query: {
-        promoter_id: promoterId,
-        per_page: 50,
+        "filters[promoter_id]": promoterId,
       },
     });
 
-    return normalizeCollection(payload).map((reward) => ({
-      id: reward.id,
-      amount: reward.amount ?? reward.conversion_amount ?? 0,
-      status: normalizeCommissionStatus(reward.status ?? reward.state),
-      created_at: reward.created_at,
-      customer_email: reward.lead?.email ?? undefined,
+    return commissions.map((commission) => ({
+      id: commission.id,
+      amount: commission.amount ?? commission.conversion_amount ?? 0,
+      status: normalizeCommissionStatus(commission.status ?? commission.state),
+      created_at: commission.created_at,
+      customer_email: commission.referral?.email ?? undefined,
     }));
   } catch {
     return [];
   }
 }
 
-/**
- * Get payouts for a promoter.
- */
 export async function getPromoterPayouts(promoterId: number): Promise<AffiliatePayout[]> {
   try {
-    const payload = await fpFetch<
-      FpPayoutResponse[] | FpCollectionResponse<FpPayoutResponse>
-    >("/payouts/list", {
+    const payouts = await fpFetch<FpPayoutResponse[]>("/company/payouts", {
       query: {
-        promoter_id: promoterId,
-        per_page: 50,
+        "filters[promoter_id]": promoterId,
       },
     });
 
-    return normalizeCollection(payload).map((payout) => ({
+    return payouts.map((payout) => ({
       id: payout.id,
       amount: payout.amount ?? payout.total_amount ?? 0,
       state: normalizePayoutState(payout.state ?? payout.status),
@@ -450,17 +484,6 @@ export async function getPromoterPayouts(promoterId: number): Promise<AffiliateP
   }
 }
 
-/**
- * Track a sale/conversion in FP.
- *
- * Called after a successful checkout when the session carried a ?fpr= referral.
- * FP will credit the referring promoter and apply override commissions up the chain.
- *
- * @param email     The purchaser's email (lead identifier)
- * @param amount    Sale amount in dollars (not cents)
- * @param planId    Optional: the Stripe price ID as an external ref for reporting
- * @param refId     The ?fpr= code that the buyer arrived with (from session metadata)
- */
 export async function trackFpSale({
   email,
   amount,
@@ -474,7 +497,7 @@ export async function trackFpSale({
 }): Promise<void> {
   await fpFetch("/track/sale", {
     method: "POST",
-    query: {
+    json: {
       email,
       amount: Math.round(amount * 100),
       plan: planId,
@@ -486,6 +509,13 @@ export async function trackFpSale({
 }
 
 export async function listPromotersByEmail(email: string): Promise<FpPromoter[]> {
-  const promoters = await listPromoters({ promoter_email: email, per_page: 10 });
-  return promoters.map(normalizePromoter);
+  try {
+    const promoter = await getPromoterDetailsByIdentifier(email, "email");
+    return [normalizePromoter(promoter)];
+  } catch (error) {
+    if (error instanceof FirstPromoterApiError && error.status === 404) {
+      return [];
+    }
+    throw error;
+  }
 }
