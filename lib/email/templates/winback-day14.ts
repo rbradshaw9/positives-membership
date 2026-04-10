@@ -6,14 +6,15 @@
  * Still no pressure. Curiosity, not urgency.
  */
 
-import { B, emailWrapper, emailHeader, emailFooter, ctaButton } from "../brand";
+import { B, emailWrapper, emailHeader, memberEmailFooter, ctaButton } from "../brand";
 
 export type WinbackDay14Data = {
   firstName: string;
   rejoindUrl: string;
+  unsubscribeUrl?: string;
 };
 
-export function winbackDay14EmailHtml({ firstName, rejoindUrl }: WinbackDay14Data): string {
+export function winbackDay14EmailHtml({ firstName, rejoindUrl, unsubscribeUrl }: WinbackDay14Data): string {
   const body = `
     ${emailHeader()}
 
@@ -54,7 +55,7 @@ export function winbackDay14EmailHtml({ firstName, rejoindUrl }: WinbackDay14Dat
       </td>
     </tr>
 
-    ${emailFooter()}`;
+    ${memberEmailFooter("https://positives.life/account", unsubscribeUrl)}`;
 
   return emailWrapper(body);
 }

@@ -14,6 +14,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { resend } from "@/lib/email/resend";
+import { verifyUnsubscribeToken } from "@/lib/email/unsubscribe";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -21,12 +22,14 @@ const supabase = createClient(
 );
 
 async function suppressEmail(email: string): Promise<void> {
+  const normalizedEmail = email.trim().toLowerCase();
+
   // 1. Add to Resend contact suppression
   try {
     await (resend.contacts as unknown as {
       create: (opts: { email: string; audienceId: string; unsubscribed: boolean }) => Promise<unknown>;
     }).create({
-      email,
+      email: normalizedEmail,
       audienceId: process.env.RESEND_AUDIENCE_ID ?? "",
       unsubscribed: true,
     });
@@ -38,23 +41,38 @@ async function suppressEmail(email: string): Promise<void> {
   await supabase
     .from("member")
     .update({ email_unsubscribed: true })
-    .eq("email", email);
+    .eq("email", normalizedEmail);
 }
 
-/** GET — user-facing confirmation page */
-export async function GET(req: NextRequest) {
-  const email = req.nextUrl.searchParams.get("email") ?? "";
+function verifyRequest(req: NextRequest) {
+  const email = (req.nextUrl.searchParams.get("email") ?? "").trim().toLowerCase();
+  const token = (req.nextUrl.searchParams.get("token") ?? "").trim();
 
-  if (email) {
-    await suppressEmail(email);
+  if (!email || !token) {
+    return { ok: false as const, reason: "missing" as const, email };
   }
 
-  const html = `<!DOCTYPE html>
+  const verification = verifyUnsubscribeToken(email, token);
+  if (!verification.ok) {
+    return { ok: false as const, reason: verification.reason, email };
+  }
+
+  return { ok: true as const, email: verification.email };
+}
+
+function renderResponseHtml({
+  title,
+  body,
+}: {
+  title: string;
+  body: string;
+}) {
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Unsubscribed — Positives</title>
+  <title>${title}</title>
   <style>
     body { margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; background: #FAFAFA; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
     .card { background: #fff; border-radius: 16px; padding: 48px 40px; max-width: 420px; text-align: center; box-shadow: 0 4px 24px rgba(0,0,0,0.07); }
@@ -65,28 +83,53 @@ export async function GET(req: NextRequest) {
 </head>
 <body>
   <div class="card">
-    <h1>You&rsquo;ve been unsubscribed.</h1>
-    <p>We&rsquo;ve removed <strong>${email ? email.replace(/</g, "&lt;") : "your address"}</strong> from our marketing emails. You&rsquo;ll still receive important account notifications.</p>
+    ${body}
     <a href="https://positives.life">Back to Positives</a>
   </div>
 </body>
 </html>`;
+}
+
+/** GET — user-facing confirmation page */
+export async function GET(req: NextRequest) {
+  const verification = verifyRequest(req);
+
+  if (verification.ok) {
+    await suppressEmail(verification.email);
+
+    const html = renderResponseHtml({
+      title: "Unsubscribed — Positives",
+      body: `
+    <h1>You&rsquo;ve been unsubscribed.</h1>
+    <p>We&rsquo;ve removed <strong>${verification.email.replace(/</g, "&lt;")}</strong> from our marketing emails. You&rsquo;ll still receive important account notifications.</p>`,
+    });
+
+    return new NextResponse(html, {
+      status: 200,
+      headers: { "Content-Type": "text/html" },
+    });
+  }
+
+  const html = renderResponseHtml({
+    title: "Unsubscribe link expired — Positives",
+    body: `
+    <h1>This unsubscribe link isn&rsquo;t valid anymore.</h1>
+    <p>For safety, unsubscribe links are signed and expire after a while. Please use the latest email we sent you, or reply to support@positives.life and we&rsquo;ll take care of it.</p>`,
+  });
 
   return new NextResponse(html, {
-    status: 200,
+    status: 400,
     headers: { "Content-Type": "text/html" },
   });
 }
 
 /** POST — List-Unsubscribe-Post handler (email client sends this automatically) */
 export async function POST(req: NextRequest) {
-  // List-Unsubscribe-Post sends: `List-Unsubscribe=One-Click` as form body
-  // The email address may be in query params (we encode it in the header URL)
-  const email = req.nextUrl.searchParams.get("email") ?? "";
-
-  if (email) {
-    await suppressEmail(email);
+  const verification = verifyRequest(req);
+  if (!verification.ok) {
+    return new NextResponse(null, { status: 400 });
   }
 
+  await suppressEmail(verification.email);
   return new NextResponse(null, { status: 200 });
 }

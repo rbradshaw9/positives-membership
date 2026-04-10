@@ -6,18 +6,20 @@
  * Tone: honest (this is the last chance), still calm, not threatening.
  */
 
-import { B, emailWrapper, emailHeader, emailFooter, ctaButton } from "../brand";
+import { B, emailWrapper, emailHeader, memberEmailFooter, ctaButton } from "../brand";
 
 export type PaymentRecoveryDay7Data = {
   firstName: string;
   amountDue: string;
   updatePaymentUrl: string;
+  unsubscribeUrl?: string;
 };
 
 export function paymentRecoveryDay7EmailHtml({
   firstName,
   amountDue,
   updatePaymentUrl,
+  unsubscribeUrl,
 }: PaymentRecoveryDay7Data): string {
   const body = `
     ${emailHeader()}
@@ -58,7 +60,7 @@ export function paymentRecoveryDay7EmailHtml({
       </td>
     </tr>
 
-    ${emailFooter()}`;
+    ${memberEmailFooter("https://positives.life/account", unsubscribeUrl)}`;
 
   return emailWrapper(body);
 }

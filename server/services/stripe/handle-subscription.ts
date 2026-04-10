@@ -2,15 +2,20 @@ import type Stripe from "stripe";
 import { getAdminClient } from "@/lib/supabase/admin";
 import type { Enums } from "@/types/supabase";
 import { config } from "@/lib/config";
+import { getStripe } from "@/lib/stripe/config";
 import { resend, FROM_ADDRESS, REPLY_TO } from "@/lib/email/resend";
 import { receiptEmailHtml, receiptEmailText } from "@/lib/email/templates/receipt";
 import { paymentFailedEmailHtml, paymentFailedEmailText } from "@/lib/email/templates/payment-failed";
+import { trialEndingEmailHtml, trialEndingEmailText } from "@/lib/email/templates/trial-ending";
+import { buildUnsubscribeUrl } from "@/lib/email/unsubscribe";
 import { syncCancellation, syncPaymentFailed, syncPaymentRecovered, syncTierChange } from "@/lib/activecampaign/sync";
 import { generateBillingToken } from "@/lib/auth/billing-token";
 import { enrollInWinbackSequence } from "@/lib/winback/enroll";
 import { enrollInPaymentRecoverySequence, cancelPaymentRecoverySequence } from "@/lib/payment-recovery/enroll";
 import { trackServerEvent } from "@/lib/analytics/measurement-protocol";
 import { comparePlanLevels, getSubscriptionAnalyticsFromPriceId } from "@/lib/analytics/subscription";
+import { trackFpSale } from "@/lib/firstpromoter/client";
+import { PLAN_NAME_BY_TIER } from "@/lib/plans";
 
 type SubscriptionStatus = Enums<"subscription_status">;
 type SubscriptionTier = Enums<"subscription_tier">;
@@ -103,6 +108,7 @@ async function updateMemberSubscription(
   subscription: Stripe.Subscription
 ) {
   const supabase = getAdminClient();
+  const stripe = getStripe();
 
   const priceId =
     subscription.items.data[0]?.price?.id ?? null;
@@ -120,7 +126,7 @@ async function updateMemberSubscription(
   // First verify the member row exists — a zero-row update is otherwise silent.
   const { data: existing, error: lookupError } = await supabase
     .from("member")
-    .select("id, email, subscription_tier")
+    .select("id, email, subscription_tier, subscription_status, referred_by_fpr")
     .eq("stripe_customer_id", customerId)
     .maybeSingle();
 
@@ -163,6 +169,86 @@ async function updateMemberSubscription(
   console.log(
     `[Stripe] Member updated — customer: ${customerId}, memberId: ${existing.id}, status: ${status}, tier: ${tier}`
   );
+
+  if (existing.id && existing.subscription_status !== "trialing" && status === "trialing") {
+    try {
+      await trackServerEvent({
+        name: "trial_started",
+        clientSeed: customerId,
+        userId: existing.id,
+        params: {
+          plan_level: tier,
+          subscription_status: status,
+          trial_end: subscription.trial_end ?? undefined,
+          ...getSubscriptionAnalyticsFromPriceId(priceId),
+        },
+      });
+    } catch (analyticsError) {
+      console.error(
+        `[GA4] Failed to track trial start for customer ${customerId}: ` +
+          `${analyticsError instanceof Error ? analyticsError.message : String(analyticsError)}`
+      );
+    }
+  }
+
+  if (existing.id && existing.subscription_status === "trialing" && status === "active") {
+    try {
+      await trackServerEvent({
+        name: "trial_converted",
+        clientSeed: customerId,
+        userId: existing.id,
+        params: {
+          plan_level: tier,
+          subscription_status: status,
+          ...getSubscriptionAnalyticsFromPriceId(priceId),
+        },
+      });
+    } catch (analyticsError) {
+      console.error(
+        `[GA4] Failed to track trial conversion for customer ${customerId}: ` +
+          `${analyticsError instanceof Error ? analyticsError.message : String(analyticsError)}`
+      );
+    }
+
+    if (existing.email && existing.referred_by_fpr) {
+      const latestInvoiceId =
+        typeof subscription.latest_invoice === "string"
+          ? subscription.latest_invoice
+          : subscription.latest_invoice?.id ?? null;
+
+      if (!latestInvoiceId) {
+        console.warn(
+          `[FP] Trial converted for ${existing.email}, but no latest invoice ID was present on subscription ${subscription.id}.`
+        );
+      } else {
+        try {
+          const invoice = await stripe.invoices.retrieve(latestInvoiceId);
+          const amountPaid = (invoice.amount_paid ?? 0) / 100;
+
+          if (amountPaid > 0) {
+            await trackFpSale({
+              email: existing.email,
+              amount: amountPaid,
+              planId: priceId ?? undefined,
+              refId: existing.referred_by_fpr,
+            });
+            console.log(
+              `[FP] Trial conversion sale tracked for ${existing.email} (fpr: ${existing.referred_by_fpr})`
+            );
+          } else {
+            console.warn(
+              `[FP] Trial converted for ${existing.email}, but invoice ${latestInvoiceId} had no paid amount.`
+            );
+          }
+        } catch (fpError) {
+          console.error(
+            `[FP] Failed to track trial conversion sale for ${existing.email}: ` +
+              `${fpError instanceof Error ? fpError.message : String(fpError)}`
+          );
+        }
+      }
+    }
+  }
 
   // Non-fatal: sync tier change to ActiveCampaign
   if (existing.email) {
@@ -267,11 +353,11 @@ export async function handleSubscriptionDeleted(
 /** Fetch member email + name from Supabase by Stripe customer ID. */
 async function getMemberByCustomerId(
   customerId: string
-): Promise<{ email: string; name: string | null } | null> {
+): Promise<{ email: string; name: string | null; subscription_tier: SubscriptionTier | null } | null> {
   const supabase = getAdminClient();
   const { data } = await supabase
     .from("member")
-    .select("email, name")
+    .select("email, name, subscription_tier")
     .eq("stripe_customer_id", customerId)
     .maybeSingle();
   return data ?? null;
@@ -363,7 +449,13 @@ export async function handlePaymentFailed(invoice: Stripe.Invoice) {
           replyTo: REPLY_TO,
           to: member.email,
           subject: "Action needed — your Positives payment didn't go through",
-          html: paymentFailedEmailHtml({ firstName, amountDue, updatePaymentUrl, nextRetryDate }),
+          html: paymentFailedEmailHtml({
+            firstName,
+            amountDue,
+            updatePaymentUrl,
+            nextRetryDate,
+            unsubscribeUrl: buildUnsubscribeUrl(member.email),
+          }),
           text: paymentFailedEmailText({ firstName, amountDue, updatePaymentUrl, nextRetryDate }),
         },
         { idempotencyKey: `payment-failed/${invoice.id}` },
@@ -419,6 +511,7 @@ export async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
         html: receiptEmailHtml({
           firstName, invoiceNumber, amountPaid, billingDate,
           description, nextBillingDate, invoiceUrl,
+          unsubscribeUrl: buildUnsubscribeUrl(member.email),
         }),
         text: receiptEmailText({
           firstName, invoiceNumber, amountPaid, billingDate,
@@ -439,5 +532,71 @@ export async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
   const recoveredMemberId = await getMemberIdByCustomerId(customerId);
   if (recoveredMemberId) {
     await cancelPaymentRecoverySequence(recoveredMemberId);
+  }
+}
+
+export async function handleTrialWillEnd(subscription: Stripe.Subscription) {
+  const customerId =
+    typeof subscription.customer === "string" ? subscription.customer : null;
+
+  if (!customerId) {
+    console.warn("[Stripe] customer.subscription.trial_will_end — no customer ID found.");
+    return;
+  }
+
+  const member = await getMemberByCustomerId(customerId);
+  if (!member?.email) {
+    console.warn(
+      `[Stripe] customer.subscription.trial_will_end — no member email for customer ${customerId}.`
+    );
+    return;
+  }
+
+  const firstName = member.name?.split(" ")[0] ?? "there";
+  const planName = member.subscription_tier
+    ? PLAN_NAME_BY_TIER[member.subscription_tier]
+    : undefined;
+  const trialEndDate = subscription.trial_end
+    ? new Date(subscription.trial_end * 1000).toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })
+    : undefined;
+
+  const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://positives.life"}/today`;
+  const billingUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://positives.life"}/account`;
+
+  try {
+    await resend.emails.send(
+      {
+        from: FROM_ADDRESS,
+        replyTo: REPLY_TO,
+        to: member.email,
+        subject: "Your Positives trial ends soon",
+        html: trialEndingEmailHtml({
+          firstName,
+          planName,
+          dashboardUrl,
+          billingUrl,
+          trialEndDate,
+          unsubscribeUrl: buildUnsubscribeUrl(member.email),
+        }),
+        text: trialEndingEmailText({
+          firstName,
+          planName,
+          dashboardUrl,
+          billingUrl,
+          trialEndDate,
+        }),
+      },
+      { idempotencyKey: `trial-will-end/${subscription.id}` },
+    );
+    console.log(`[Stripe] Trial-ending reminder sent to ${member.email}`);
+  } catch (error) {
+    console.error(
+      `[Stripe] Failed to send trial-ending reminder for customer ${customerId}:`,
+      error,
+    );
   }
 }

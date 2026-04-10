@@ -37,10 +37,10 @@ export function BillingButton() {
     >
       <div>
         <p className="text-sm font-semibold text-foreground">
-          {loading ? "Loading…" : "Manage billing"}
+          {loading ? "Loading…" : "Open billing center"}
         </p>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Invoices, payment method, and subscription
+          Change plan, cancel, invoices, and payment method
         </p>
       </div>
       <svg

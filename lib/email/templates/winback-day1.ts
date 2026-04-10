@@ -5,14 +5,15 @@
  * Tone: warm, gracious, zero guilt. Soft door left open.
  */
 
-import { B, emailWrapper, emailHeader, emailFooter, ctaButton } from "../brand";
+import { B, emailWrapper, emailHeader, memberEmailFooter, ctaButton } from "../brand";
 
 export type WinbackDay1Data = {
   firstName: string;
   rejoindUrl: string; // URL to re-subscribe (join page)
+  unsubscribeUrl?: string;
 };
 
-export function winbackDay1EmailHtml({ firstName, rejoindUrl }: WinbackDay1Data): string {
+export function winbackDay1EmailHtml({ firstName, rejoindUrl, unsubscribeUrl }: WinbackDay1Data): string {
   const body = `
     ${emailHeader()}
 
@@ -41,7 +42,7 @@ export function winbackDay1EmailHtml({ firstName, rejoindUrl }: WinbackDay1Data)
       </td>
     </tr>
 
-    ${emailFooter()}`;
+    ${memberEmailFooter("https://positives.life/account", unsubscribeUrl)}`;
 
   return emailWrapper(body);
 }

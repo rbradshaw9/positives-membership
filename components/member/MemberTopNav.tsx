@@ -5,13 +5,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "@/app/(member)/account/actions";
 import { Logo } from "@/components/marketing/Logo";
+import { checkTierAccess } from "@/lib/auth/check-tier-access";
 
 const BASE_NAV_ITEMS = [
   { href: "/today", label: "Home", mobileLabel: "Home" },
   { href: "/library", label: "Library" },
   { href: "/practice", label: "My Practice", mobileLabel: "Practice" },
 ] as const;
-const COMMUNITY_NAV_ITEM = { href: "/community", label: "Community", mobileLabel: "Community" } as const;
+const COMMUNITY_NAV_ITEM = { href: "/community", label: "Community", mobileLabel: "Q&A" } as const;
+const EVENTS_NAV_ITEM = { href: "/events", label: "Events", mobileLabel: "Events" } as const;
 type NavItem = { href: string; label: string; mobileLabel?: string };
 
 interface MemberTopNavProps {
@@ -22,6 +24,7 @@ interface MemberTopNavProps {
 }
 
 export function MemberTopNav({
+  tier,
   memberName,
   communityPreviewEnabled = false,
 }: MemberTopNavProps) {
@@ -43,9 +46,12 @@ export function MemberTopNav({
     [cleanName]
   );
 
-  const navItems: NavItem[] = communityPreviewEnabled
-    ? [BASE_NAV_ITEMS[0], BASE_NAV_ITEMS[1], COMMUNITY_NAV_ITEM, BASE_NAV_ITEMS[2]]
-    : [...BASE_NAV_ITEMS];
+  const hasLevel2Access = checkTierAccess(tier, "level_2");
+  const navItems: NavItem[] = hasLevel2Access
+    ? [BASE_NAV_ITEMS[0], BASE_NAV_ITEMS[1], COMMUNITY_NAV_ITEM, EVENTS_NAV_ITEM, BASE_NAV_ITEMS[2]]
+    : communityPreviewEnabled
+      ? [BASE_NAV_ITEMS[0], BASE_NAV_ITEMS[1], COMMUNITY_NAV_ITEM, BASE_NAV_ITEMS[2]]
+      : [...BASE_NAV_ITEMS];
 
   useEffect(() => {
     function handleOutsideClick(event: MouseEvent) {
@@ -284,6 +290,18 @@ function NavIcon({ href }: { href: string }) {
         <path d="M7 10h10" />
         <path d="M7 14h6" />
         <path d="M5 19a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5z" />
+      </svg>
+    );
+  }
+
+  if (href === "/events") {
+    return (
+      <svg {...props}>
+        <rect x="3" y="5" width="18" height="16" rx="2" ry="2" />
+        <line x1="16" y1="3" x2="16" y2="7" />
+        <line x1="8" y1="3" x2="8" y2="7" />
+        <line x1="3" y1="11" x2="21" y2="11" />
+        <path d="M8 15h8" />
       </svg>
     );
   }

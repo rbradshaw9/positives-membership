@@ -23,8 +23,10 @@ import { createGuestCheckoutSession } from "@/server/services/stripe/create-gues
  *   doing a full browser navigation avoids the issue entirely.
  *
  * FirstPromoter affiliate tracking:
- *   The FP JS snippet sets a cookie (_fprom_track) when a visitor arrives
- *   via an affiliate link (?fpr=code). PricingCard reads this client-side
+ *   The FP JS snippet sets a referral cookie when a visitor arrives via an
+ *   affiliate link (?fpr=code). Production currently exposes `_fprom_ref`,
+ *   with `_fprom_track` retained as a compatibility fallback. PricingCard
+ *   reads this client-side
  *   and submits it as a hidden 'fpr' field. We embed it in Stripe checkout
  *   metadata so the webhook can permanently store it on the member row for
  *   lifetime affiliate genealogy linking (not cookie/time dependent).
@@ -33,6 +35,8 @@ import { createGuestCheckoutSession } from "@/server/services/stripe/create-gues
 export type CheckoutResult =
   | { url: string; error?: never }
   | { url?: never; error: string };
+
+type CheckoutMode = "paid" | "trial_7_day";
 
 /**
  * Returns the Stripe Checkout URL (or an error string).
@@ -43,6 +47,9 @@ export async function getGuestCheckoutUrl(
   formData: FormData
 ): Promise<CheckoutResult> {
   const priceId = (formData.get("priceId") as string | null)?.trim();
+  const checkoutMode = ((formData.get("checkoutMode") as string | null)?.trim() ??
+    "paid") as CheckoutMode;
+  const sourcePath = (formData.get("sourcePath") as string | null)?.trim() || "/join";
 
   if (!priceId) {
     return { error: "No plan selected. Please choose a plan and try again." };
@@ -57,10 +64,16 @@ export async function getGuestCheckoutUrl(
     console.log(`[Join] FirstPromoter referral detected — fpr: ${fprRefId}`);
   }
 
-  console.log(`[Join] Guest checkout initiated — priceId: ${priceId}`);
+  console.log(
+    `[Join] Guest checkout initiated — priceId: ${priceId}, mode: ${checkoutMode}, source: ${sourcePath}`
+  );
 
   try {
-    const { url } = await createGuestCheckoutSession(priceId, fprRefId);
+    const { url } = await createGuestCheckoutSession(priceId, {
+      fprRefId,
+      checkoutMode,
+      sourcePath,
+    });
     console.log(`[Join] Stripe session created — redirecting to checkout`);
     return { url };
   } catch (err) {

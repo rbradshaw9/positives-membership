@@ -24,14 +24,8 @@ export const metadata = {
   description: "Your referral link, stats, earnings, and share resources.",
 };
 
-export default async function AffiliatePage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
+export default async function AffiliatePage() {
   const member = await requireActiveMember();
-  const params = await searchParams;
-  const autoEnroll = ["1", "true", "yes"].includes(String(params.auto_enroll ?? "").toLowerCase());
 
   const supabase = await createClient();
   const { data: row } = await supabase
@@ -50,7 +44,6 @@ export default async function AffiliatePage({
   let trendReport: PromoterTrendPoint[] = [];
   let urlReports: PromoterUrlReport[] = [];
   let trackedLinks: AffiliateTrackedLink[] = [];
-  let trackedLinksError: string | null = null;
 
   if (promoterId) {
     try {
@@ -79,22 +72,11 @@ export default async function AffiliatePage({
           : Promise.resolve([]),
       ]);
 
-      trackedLinks = await getPromoterTrackedLinks(promoterId).catch(() => {
-        trackedLinksError =
-          "We couldn't load your extra FirstPromoter links right now. Your main referral link still works.";
-        return [];
-      });
+      trackedLinks = await getPromoterTrackedLinks(promoterId).catch(() => []);
     } catch {
       // Non-fatal — render with partial data
     }
   }
-
-  // Fetch existing custom affiliate links
-  const { data: affiliateLinks } = await supabase
-    .from("affiliate_link")
-    .select("id, code, label, destination, clicks")
-    .eq("member_id", member.id)
-    .order("created_at", { ascending: false });
 
   const performance = buildAffiliatePortalViewModel({
     stats,
@@ -117,10 +99,7 @@ export default async function AffiliatePage({
       payouts={payouts}
       memberName={member.name ?? ""}
       paypalEmail={paypalEmail}
-      initialLinks={affiliateLinks ?? []}
       trackedLinks={trackedLinks}
-      trackedLinksError={trackedLinksError}
-      autoEnroll={autoEnroll}
       performance={performance}
     />
   );

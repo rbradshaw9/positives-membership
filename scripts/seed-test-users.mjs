@@ -76,6 +76,28 @@ const USERS = [
     },
     label: "Level 1 member",
   },
+  {
+    email: "rbradshaw+l2@gmail.com",
+    password: "PiR43Tx2-",
+    memberPatch: {
+      name: "Ryan (L2 Test)",
+      subscription_status: "active",
+      subscription_tier: "level_2",
+      password_set: true,
+    },
+    label: "Level 2 member",
+  },
+  {
+    email: "rbradshaw+l3@gmail.com",
+    password: "PiR43Tx2-",
+    memberPatch: {
+      name: "Ryan (L3 Test)",
+      subscription_status: "active",
+      subscription_tier: "level_3",
+      password_set: true,
+    },
+    label: "Level 3 member",
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -168,4 +190,6 @@ for (const user of USERS) {
 console.log("[seed] All test users ready.\n");
 console.log("  lopcadmin@gmail.com  → /admin  (email in ADMIN_EMAILS)");
 console.log("  rbradshaw+l1@gmail.com → /today  (Level 1 active member)");
+console.log("  rbradshaw+l2@gmail.com → /today  (Level 2 active member)");
+console.log("  rbradshaw+l3@gmail.com → /today  (Level 3 active member)");
 console.log("");

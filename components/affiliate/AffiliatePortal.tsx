@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  deleteAffiliateLinkAction,
   getReferralLinkAction,
   savePayPalEmailAction,
   updateReferralSlugAction,
@@ -19,14 +20,6 @@ import type {
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { track } from "@/lib/analytics/ga";
 
-interface AffiliateLink {
-  id: string;
-  code: string;
-  label: string;
-  destination: string | null;
-  clicks: number;
-}
-
 interface Props {
   isAffiliate: boolean;
   affiliateId: string | null;
@@ -38,10 +31,7 @@ interface Props {
   payouts: AffiliatePayout[];
   memberName: string;
   paypalEmail: string;
-  initialLinks?: AffiliateLink[];
   trackedLinks: AffiliateTrackedLink[];
-  trackedLinksError: string | null;
-  autoEnroll?: boolean;
   performance: AffiliatePortalViewModel;
 }
 
@@ -67,33 +57,6 @@ function formatShortDate(value: string | null) {
   });
 }
 
-function extractSubId(destination: string | null) {
-  if (!destination) return null;
-  try {
-    return new URL(destination, "https://positives.life").searchParams.get("sub_id");
-  } catch {
-    return null;
-  }
-}
-
-function shortUrl(code: string) {
-  return `https://positives.life/go/${code}`;
-}
-
-function buildManagedDestination(input: { destination: string | null; subId: string | null }) {
-  const destination = input.destination?.trim() ?? "";
-  const subId = input.subId?.trim() ?? "";
-  if (!destination && !subId) return "Homepage";
-  if (!destination && subId) return `Homepage · source tag: ${subId}`;
-
-  try {
-    const url = new URL(destination);
-    return `${url.hostname}${url.pathname}${subId ? ` · ${subId}` : ""}`;
-  } catch {
-    return destination || "Custom destination";
-  }
-}
-
 function buildTaggedTrackedLink(link: string, subId: string) {
   try {
     const url = new URL(link);
@@ -114,6 +77,12 @@ function formatTrackedDestination(destinationPath: string) {
   return destinationPath;
 }
 
+function formatTrackedLinkKind(kind: AffiliateTrackedLink["kind"]) {
+  if (kind === "primary") return "Main";
+  if (kind === "campaign") return "Campaign";
+  return "Tracked";
+}
+
 function buildSparklinePath(values: number[], width = 240, height = 72) {
   if (values.length === 0) return "";
   if (values.length === 1) return `M 0 ${height / 2} L ${width} ${height / 2}`;
@@ -131,7 +100,7 @@ function buildSparklinePath(values: number[], width = 240, height = 72) {
     .join(" ");
 }
 
-function buildSwipes(link: string) {
+function buildEmailSwipes(link: string) {
   return [
     {
       id: "email-personal",
@@ -140,18 +109,65 @@ function buildSwipes(link: string) {
     },
     {
       id: "email-followup",
-      label: "Simple follow-up",
+      label: "Follow-up email",
       content: `Subject: Quick follow-up\n\nWanted to send this over in case it helps.\n\nPositives is a daily practice membership I keep coming back to because it is simple, calming, and actually usable in real life.\n\nHere's my link:\n${link}`,
+    },
+    {
+      id: "email-newsletter-feature",
+      label: "Newsletter feature",
+      content: `Subject: A simple resource for steadier days\n\nI wanted to share something I've been genuinely recommending lately.\n\nPositives is a membership built around a short daily practice with Dr. Paul Jenkins. It includes a daily audio, a weekly principle, and a monthly theme, so it feels more like a steady rhythm than another course to finish.\n\nIf that sounds useful, you can take a look here:\n${link}`,
     },
   ];
 }
 
-function buildSocialCaptions(link: string) {
+function buildQuickSharePacks(link: string) {
+  return [
+    {
+      id: "warm-text-pack",
+      title: "Warm personal text",
+      channel: "Text / DM",
+      audience: "Best for one person you already know",
+      whyItWorks: "Short, personal, and easy to reply to.",
+      content: `I've been using Positives as a short daily practice and immediately thought of you. It's simple, grounding, and actually easy to stick with.\n\nIf you want to take a look, here's my link: ${link}`,
+    },
+    {
+      id: "warm-email-pack",
+      title: "Warm email intro",
+      channel: "Email",
+      audience: "Best for a thoughtful one-to-one recommendation",
+      whyItWorks: "Gives enough context without sounding like a pitch.",
+      content: `Subject: Thought of you\n\nI've been using Positives as part of my routine and wanted to send it your way.\n\nIt's built around a short daily audio with Dr. Paul Jenkins, plus a weekly principle and monthly theme. What I like is that it feels simple and steady instead of overwhelming.\n\nIf you want to check it out, here's my link:\n${link}`,
+    },
+    {
+      id: "newsletter-pack",
+      title: "Newsletter / blog mention",
+      channel: "Newsletter / creator",
+      audience: "Best for your audience, list, or community",
+      whyItWorks: "Easy to drop into existing content without a full promo sequence.",
+      content: `A resource I've been genuinely recommending lately is Positives — a short daily practice membership with Dr. Paul Jenkins. It includes a daily audio, a weekly principle, and a monthly theme, so it feels more like a steady rhythm than another course to finish.\n\nTake a look here: ${link}`,
+    },
+    {
+      id: "spoken-pack",
+      title: "Live / spoken mention",
+      channel: "Podcast / webinar / live",
+      audience: "Best for interviews, events, and spoken recommendations",
+      whyItWorks: "Natural to say out loud without sounding scripted.",
+      content: `If you want a simple daily practice that helps you feel more grounded and intentional, check out Positives with Dr. Paul Jenkins. I've got a link here if you want to explore it: ${link}`,
+    },
+  ];
+}
+
+function buildShareTemplates(link: string) {
   return [
     {
       id: "text-message",
       label: "Text / DM",
       content: `I've been using Positives as a short daily audio practice and I think you'd really like it. It's simple, grounding, and easy to stay consistent with.\n\nHere's my link: ${link}`,
+    },
+    {
+      id: "personal-followup",
+      label: "Personal follow-up",
+      content: `Circling back in case this is helpful. If you've been wanting something simple and steady for daily personal growth, this is the one I've been sharing lately.\n\nHere's my link: ${link}`,
     },
     {
       id: "social-caption",
@@ -163,8 +179,56 @@ function buildSocialCaptions(link: string) {
       label: "Blog / newsletter CTA",
       content: `If you want a simple daily practice for more clarity and steadiness, I recommend Positives. It's short, thoughtful, and easy to return to.\n\nExplore it here: ${link}`,
     },
+    {
+      id: "story-frame",
+      label: "Story / short post",
+      content: `A simple thing that's helped me lately: a short daily practice with Positives.\n\nIf you want something calming, practical, and easy to stick with, here's my link: ${link}`,
+    },
+    {
+      id: "webinar-invite",
+      label: "Webinar / live invite",
+      content: `If you're joining me for this event and want a simple daily practice to keep the momentum going afterward, take a look at Positives here: ${link}`,
+    },
+    {
+      id: "podcast-mention",
+      label: "Podcast / spoken mention",
+      content: `If you want a simple daily practice that helps you stay more grounded and intentional, check out Positives. I've linked it here: ${link}`,
+    },
   ];
 }
+
+const DOWNLOADABLE_SHARE_ASSETS = [
+  {
+    id: "square-social",
+    title: "Square social graphic",
+    description: "A clean 1:1 post for feed placements, evergreen link pages, and creator shout-outs.",
+    dimensions: "1080 x 1080",
+    bestFor: "Instagram feed, Facebook posts, LinkedIn, and evergreen promo blocks",
+    href: "/affiliate/share-kit/positives-affiliate-square.svg",
+    previewWidth: 280,
+    previewHeight: 280,
+  },
+  {
+    id: "story-vertical",
+    title: "Story-sized graphic",
+    description: "A tall 9:16 asset with a stronger CTA for story shares and mobile-first promotion.",
+    dimensions: "1080 x 1920",
+    bestFor: "Instagram stories, Facebook stories, mobile-first shares, and text-message screenshots",
+    href: "/affiliate/share-kit/positives-affiliate-story.svg",
+    previewWidth: 210,
+    previewHeight: 374,
+  },
+  {
+    id: "email-banner",
+    title: "Email / newsletter banner",
+    description: "A wide banner affiliates can drop into an email intro, newsletter block, or partner page.",
+    dimensions: "1200 x 675",
+    bestFor: "Email headers, newsletters, partner pages, and webinar follow-up emails",
+    href: "/affiliate/share-kit/positives-affiliate-email-banner.svg",
+    previewWidth: 320,
+    previewHeight: 180,
+  },
+] as const;
 
 function MetricCard({
   label,
@@ -409,6 +473,324 @@ function CopyBlock({
   );
 }
 
+function ShareTemplateCard({
+  title,
+  description,
+  blocks,
+  selectedLinkLabel,
+}: {
+  title: string;
+  description: string;
+  blocks: { id: string; label: string; content: string }[];
+  selectedLinkLabel: string;
+}) {
+  return (
+    <SurfaceCard elevated className="surface-card--editorial">
+      <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.02em" }}>
+        {title}
+      </h2>
+      <p style={{ margin: "0.35rem 0 0", fontSize: "0.84rem", color: "#71717A", lineHeight: 1.6 }}>
+        {description}
+      </p>
+      <div className="mt-4 flex flex-col gap-3">
+        {blocks.map((block) => (
+          <CopyBlock
+            key={block.id}
+            label={block.label}
+            content={block.content}
+            onCopied={() =>
+              track("affiliate_share_asset_copied", {
+                source_path: "/account/affiliate",
+                asset_type: block.id,
+                selected_link: selectedLinkLabel,
+              })
+            }
+          />
+        ))}
+      </div>
+    </SurfaceCard>
+  );
+}
+
+function QuickSharePackCard({
+  pack,
+  selectedLinkLabel,
+}: {
+  pack: {
+    id: string;
+    title: string;
+    channel: string;
+    audience: string;
+    whyItWorks: string;
+    content: string;
+  };
+  selectedLinkLabel: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(async () => {
+    await navigator.clipboard.writeText(pack.content);
+    track("affiliate_share_asset_copied", {
+      source_path: "/account/affiliate",
+      asset_type: `quick-pack:${pack.id}`,
+      selected_link: selectedLinkLabel,
+    });
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2200);
+  }, [pack.content, pack.id, selectedLinkLabel]);
+
+  return (
+    <SurfaceCard elevated className="surface-card--editorial h-full">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p
+            style={{
+              margin: 0,
+              fontSize: "0.68rem",
+              fontWeight: 700,
+              color: "#71717A",
+              letterSpacing: "0.07em",
+              textTransform: "uppercase",
+            }}
+          >
+            {pack.channel}
+          </p>
+          <h2
+            style={{
+              margin: "0.55rem 0 0.2rem",
+              fontSize: "1rem",
+              fontWeight: 700,
+              color: "#09090B",
+              letterSpacing: "-0.02em",
+              textWrap: "balance",
+            }}
+          >
+            {pack.title}
+          </h2>
+        </div>
+        <button
+          onClick={handleCopy}
+          style={{
+            border: "none",
+            borderRadius: "9999px",
+            padding: "0.6rem 0.9rem",
+            background: copied
+              ? "rgba(22,163,74,0.12)"
+              : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)",
+            color: copied ? "#15803D" : "#FFFFFF",
+            fontWeight: 700,
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {copied ? "Copied!" : "Copy pack"}
+        </button>
+      </div>
+
+      <p style={{ margin: "0.35rem 0 0", fontSize: "0.82rem", color: "#71717A", lineHeight: 1.55 }}>
+        {pack.audience}
+      </p>
+      <p style={{ margin: "0.4rem 0 0", fontSize: "0.82rem", color: "#52525B", lineHeight: 1.55 }}>
+        {pack.whyItWorks}
+      </p>
+
+      <div
+        style={{
+          marginTop: "0.95rem",
+          border: "1px solid #E4E4E7",
+          borderRadius: "0.95rem",
+          background: "#FAFAFA",
+          padding: "0.95rem 1rem",
+        }}
+      >
+        <pre
+          style={{
+            margin: 0,
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+            fontFamily: "var(--font-sans)",
+            fontSize: "0.84rem",
+            lineHeight: 1.65,
+            color: "#3F3F46",
+          }}
+        >
+          {pack.content}
+        </pre>
+      </div>
+    </SurfaceCard>
+  );
+}
+
+function ResourceListCard({
+  title,
+  description,
+  items,
+}: {
+  title: string;
+  description: string;
+  items: string[];
+}) {
+  return (
+    <SurfaceCard elevated className="surface-card--editorial">
+      <h2
+        style={{
+          margin: 0,
+          fontSize: "1rem",
+          fontWeight: 700,
+          color: "#09090B",
+          letterSpacing: "-0.02em",
+          textWrap: "balance",
+        }}
+      >
+        {title}
+      </h2>
+      <p style={{ margin: "0.35rem 0 0", fontSize: "0.84rem", color: "#71717A", lineHeight: 1.6 }}>
+        {description}
+      </p>
+      <div className="mt-4 flex flex-col gap-3">
+        {items.map((item) => (
+          <div key={item} className="flex items-start gap-3 text-sm text-muted-foreground">
+            <span aria-hidden="true">•</span>
+            <span>{item}</span>
+          </div>
+        ))}
+      </div>
+    </SurfaceCard>
+  );
+}
+
+function DownloadableAssetCard({
+  asset,
+  selectedLinkLabel,
+}: {
+  asset: (typeof DOWNLOADABLE_SHARE_ASSETS)[number];
+  selectedLinkLabel: string;
+}) {
+  const handleDownload = useCallback(() => {
+    track("affiliate_share_asset_downloaded", {
+      source_path: "/account/affiliate",
+      asset_type: asset.id,
+      selected_link: selectedLinkLabel,
+    });
+  }, [asset.id, selectedLinkLabel]);
+
+  return (
+    <SurfaceCard elevated className="surface-card--editorial h-full">
+      <div className="flex h-full flex-col gap-4">
+        <div
+          style={{
+            alignSelf: "flex-start",
+            overflow: "hidden",
+            borderRadius: "1rem",
+            border: "1px solid rgba(228,228,231,1)",
+            background: "#F8FAFC",
+            width: "100%",
+            maxWidth: `${asset.previewWidth}px`,
+          }}
+        >
+          <div
+            style={{
+              position: "relative",
+              width: "100%",
+              aspectRatio: `${asset.previewWidth} / ${asset.previewHeight}`,
+            }}
+          >
+            <Image
+              src={asset.href}
+              alt={`${asset.title} preview`}
+              fill
+              unoptimized
+              sizes={`${asset.previewWidth}px`}
+              style={{
+                objectFit: "cover",
+              }}
+            />
+          </div>
+        </div>
+
+        <div>
+          <p
+            style={{
+              margin: 0,
+              fontSize: "0.68rem",
+              fontWeight: 700,
+              color: "#71717A",
+              letterSpacing: "0.07em",
+              textTransform: "uppercase",
+            }}
+          >
+            Graphic asset
+          </p>
+          <h2
+            style={{
+              margin: "0.55rem 0 0.2rem",
+              fontSize: "1rem",
+              fontWeight: 700,
+              color: "#09090B",
+              letterSpacing: "-0.02em",
+              textWrap: "balance",
+            }}
+          >
+            {asset.title}
+          </h2>
+          <p style={{ margin: 0, fontSize: "0.84rem", color: "#71717A", lineHeight: 1.6 }}>
+            {asset.description}
+          </p>
+        </div>
+
+        <div
+          style={{
+            border: "1px solid #E4E4E7",
+            borderRadius: "0.95rem",
+            background: "#FAFAFA",
+            padding: "0.95rem 1rem",
+          }}
+        >
+          <p style={{ margin: 0, fontSize: "0.78rem", color: "#52525B", lineHeight: 1.55 }}>
+            <strong style={{ color: "#09090B" }}>Size:</strong> {asset.dimensions}
+          </p>
+          <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#52525B", lineHeight: 1.55 }}>
+            <strong style={{ color: "#09090B" }}>Best for:</strong> {asset.bestFor}
+          </p>
+        </div>
+
+        <div className="mt-auto flex flex-wrap gap-2">
+          <a
+            href={asset.href}
+            download
+            onClick={handleDownload}
+            style={{
+              borderRadius: "9999px",
+              padding: "0.75rem 1rem",
+              background: "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)",
+              color: "#FFFFFF",
+              fontWeight: 700,
+              textDecoration: "none",
+            }}
+          >
+            Download graphic
+          </a>
+          <a
+            href={asset.href}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              borderRadius: "9999px",
+              padding: "0.75rem 1rem",
+              background: "#F4F4F5",
+              color: "#52525B",
+              fontWeight: 700,
+              textDecoration: "none",
+            }}
+          >
+            Open preview
+          </a>
+        </div>
+      </div>
+    </SurfaceCard>
+  );
+}
+
 function CommissionRow({ commission }: { commission: AffiliateCommission }) {
   const statusStyles: Record<string, { color: string; bg: string }> = {
     paid: { color: "#15803D", bg: "rgba(22,163,74,0.08)" },
@@ -495,10 +877,14 @@ function EnrollScreen({
   onEnroll,
   loading,
   error,
+  agreedToTerms,
+  onAgreementChange,
 }: {
   onEnroll: () => void;
   loading: boolean;
   error: string | null;
+  agreedToTerms: boolean;
+  onAgreementChange: (value: boolean) => void;
 }) {
   return (
     <div style={{ maxWidth: 560, margin: "3rem auto", padding: "0 1rem" }}>
@@ -551,7 +937,7 @@ function EnrollScreen({
           {[
             "Your primary referral link is ready immediately",
             "You earn 20% recurring for active memberships you refer",
-            "Any extra tracked campaign links assigned in FirstPromoter will appear automatically",
+            "You can use the ready-to-share links and messaging inside your portal",
           ].map((item) => (
             <div key={item} className="flex items-start gap-3 text-sm text-muted-foreground">
               <span aria-hidden="true">✓</span>
@@ -576,10 +962,39 @@ function EnrollScreen({
           </p>
         ) : null}
 
+        <label
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: "0.65rem",
+            margin: "1.25rem auto 0",
+            maxWidth: 420,
+            textAlign: "left",
+            fontSize: "0.84rem",
+            lineHeight: 1.6,
+            color: "#52525B",
+            cursor: "pointer",
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={agreedToTerms}
+            onChange={(event) => onAgreementChange(event.target.checked)}
+            style={{ marginTop: "0.2rem" }}
+          />
+          <span>
+            I agree to the{" "}
+            <Link href="/affiliate-program" style={{ color: "#0F766E", fontWeight: 700, textDecoration: "underline" }}>
+              Affiliate Program Terms
+            </Link>
+            .
+          </span>
+        </label>
+
         <button
           id="affiliate-enroll-btn"
           onClick={onEnroll}
-          disabled={loading}
+          disabled={loading || !agreedToTerms}
           style={{
             marginTop: "1.5rem",
             width: "100%",
@@ -587,11 +1002,14 @@ function EnrollScreen({
             border: "none",
             borderRadius: "9999px",
             padding: "0.95rem 1.75rem",
-            background: loading ? "#7DD4CB" : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)",
+            background:
+              loading || !agreedToTerms
+                ? "#A1A1AA"
+                : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)",
             color: "#FFFFFF",
             fontWeight: 700,
             fontSize: "0.95rem",
-            cursor: loading ? "wait" : "pointer",
+            cursor: loading ? "wait" : !agreedToTerms ? "not-allowed" : "pointer",
           }}
         >
           {loading ? "Setting up your link…" : "Get my referral link"}
@@ -670,6 +1088,11 @@ function PayoutSetupStep({
           >
             Create a PayPal account
           </a>
+          <div style={{ marginTop: "0.55rem" }}>
+            <Link href="/affiliate-program" style={{ color: "#2563EB", fontWeight: 700, textDecoration: "underline" }}>
+              Review affiliate program rules
+            </Link>
+          </div>
         </div>
 
         <form
@@ -743,9 +1166,6 @@ function LinkTab({
   onSlugSave,
   onSlugConfirmChange,
   trackedLinks,
-  trackedLinksError,
-  links,
-  onLinksChange,
 }: {
   currentToken: string | null;
   referralLink: string | null;
@@ -763,9 +1183,6 @@ function LinkTab({
   onSlugSave: () => void;
   onSlugConfirmChange: (value: boolean) => void;
   trackedLinks: AffiliateTrackedLink[];
-  trackedLinksError: string | null;
-  links: AffiliateLink[];
-  onLinksChange: (links: AffiliateLink[]) => void;
 }) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [expandedTrackedLinkId, setExpandedTrackedLinkId] = useState<string | null>(null);
@@ -775,17 +1192,6 @@ function LinkTab({
     () => trackedLinks.filter((link) => link.url !== referralLink),
     [referralLink, trackedLinks]
   );
-
-  const handleCopyManagedLink = useCallback(async (link: AffiliateLink) => {
-    await navigator.clipboard.writeText(shortUrl(link.code));
-    track("affiliate_custom_link_copied", {
-      source_path: "/account/affiliate",
-      link_code: link.code,
-      sub_id: extractSubId(link.destination) ?? undefined,
-    });
-    setCopiedId(link.id);
-    window.setTimeout(() => setCopiedId(null), 2200);
-  }, []);
 
   const handleCopyTrackedLink = useCallback(async (link: AffiliateTrackedLink) => {
     await navigator.clipboard.writeText(link.url);
@@ -813,12 +1219,6 @@ function LinkTab({
     window.setTimeout(() => setCopiedId(null), 2200);
   }, [tagDrafts]);
 
-  const handleDelete = useCallback(async (id: string) => {
-    const result = await deleteAffiliateLinkAction(id);
-    if ("error" in result) return;
-    onLinksChange(links.filter((link) => link.id !== id));
-  }, [links, onLinksChange]);
-
   return (
     <div className="flex flex-col gap-4">
       <SurfaceCard elevated className="surface-card--editorial">
@@ -832,46 +1232,151 @@ function LinkTab({
             textTransform: "uppercase",
           }}
         >
-          Primary link
+          Your links
         </p>
         <h2 style={{ margin: "0.65rem 0 0.25rem", fontSize: "1.25rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.03em", textWrap: "balance" }}>
-          Your main referral link
+          Grab the link you want to promote
         </h2>
         <p style={{ margin: 0, fontSize: "0.86rem", lineHeight: 1.6, color: "#71717A" }}>
-          This is the link most affiliates will use. It goes straight to your default FirstPromoter-tracked sales page and is the simplest link to share anywhere.
+          Your main referral link is ready to use now. Any extra campaign links set up for your portal will show up here too. This tab is for choosing links to share; the Performance tab is where FirstPromoter-attributed results live.
         </p>
+        <div className="mt-4 flex flex-col gap-3">
+          <div style={{ border: "1px solid rgba(46,196,182,0.22)", borderRadius: "1rem", background: "linear-gradient(180deg, rgba(248,251,252,1) 0%, rgba(255,255,255,1) 100%)", padding: "1rem" }}>
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div style={{ minWidth: 0 }}>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700, color: "#09090B" }}>Main referral link</p>
+                  <span style={{ borderRadius: "9999px", background: "rgba(46,196,182,0.12)", color: "#0F766E", fontSize: "0.72rem", fontWeight: 700, padding: "0.2rem 0.55rem" }}>
+                    Main
+                  </span>
+                </div>
+                <p style={{ margin: "0.2rem 0 0", fontSize: "0.8rem", color: "#71717A" }}>Sales page</p>
+                <p style={{ margin: "0.45rem 0 0", fontSize: "0.78rem", color: "#0F766E", fontFamily: "monospace", wordBreak: "break-word" }}>
+                  {referralLink}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  id="copy-referral-link"
+                  onClick={onCopyPrimaryLink}
+                  style={{
+                    border: "none",
+                    borderRadius: "9999px",
+                    background: copiedLink ? "rgba(22,163,74,0.12)" : "rgba(68,168,216,0.1)",
+                    color: copiedLink ? "#15803D" : "#0F766E",
+                    fontWeight: 700,
+                    padding: "0.45rem 0.85rem",
+                    cursor: "pointer",
+                  }}
+                >
+                  {copiedLink ? "Copied!" : "Copy"}
+                </button>
+                <a
+                  href={referralLink ?? "#"}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ borderRadius: "9999px", padding: "0.45rem 0.85rem", background: "#F4F4F5", color: "#52525B", fontWeight: 700, textDecoration: "none" }}
+                >
+                  Open
+                </a>
+              </div>
+            </div>
+          </div>
 
-        <div
-          style={{
-            marginTop: "1rem",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.65rem",
-            border: "1px solid rgba(46,196,182,0.22)",
-            background: "#F8FBFC",
-            borderRadius: "0.95rem",
-            padding: "0.9rem 1rem",
-          }}
-        >
-          <span aria-hidden="true">🔗</span>
-          <span style={{ flex: 1, minWidth: 0, fontSize: "0.9rem", color: "#09090B", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {referralLink}
-          </span>
-          <button
-            id="copy-referral-link"
-            onClick={onCopyPrimaryLink}
-            style={{
-              border: "none",
-              borderRadius: "9999px",
-              background: copiedLink ? "rgba(22,163,74,0.12)" : "rgba(68,168,216,0.1)",
-              color: copiedLink ? "#15803D" : "#0F766E",
-              fontWeight: 700,
-              padding: "0.45rem 0.85rem",
-              cursor: "pointer",
-            }}
-          >
-            {copiedLink ? "Copied!" : "Copy"}
-          </button>
+          {availableTrackedLinks.map((link) => {
+            const subId = tagDrafts[link.id] ?? "";
+            const taggedLink = buildTaggedTrackedLink(link.url, subId);
+            const tagEditorOpen = expandedTrackedLinkId === link.id;
+
+            return (
+              <div key={link.id} style={{ border: "1px solid #E4E4E7", borderRadius: "1rem", padding: "1rem" }}>
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div style={{ minWidth: 0 }}>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700, color: "#09090B" }}>{link.name}</p>
+                        <span style={{ borderRadius: "9999px", background: "rgba(68,168,216,0.1)", color: "#0F766E", fontSize: "0.72rem", fontWeight: 700, padding: "0.2rem 0.55rem" }}>
+                          {formatTrackedLinkKind(link.kind)}
+                        </span>
+                      </div>
+                      <p style={{ margin: "0.2rem 0 0", fontSize: "0.8rem", color: "#71717A" }}>
+                        {formatTrackedDestination(link.destinationPath)}
+                      </p>
+                      <p style={{ margin: "0.45rem 0 0", fontSize: "0.78rem", color: "#0F766E", fontFamily: "monospace", wordBreak: "break-word" }}>
+                        {tagEditorOpen ? taggedLink : link.url}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        onClick={() => void handleCopyTrackedLink(link)}
+                        style={{ border: "none", borderRadius: "9999px", padding: "0.45rem 0.85rem", background: copiedId === `tracked:${link.id}` ? "rgba(22,163,74,0.12)" : "rgba(68,168,216,0.1)", color: copiedId === `tracked:${link.id}` ? "#15803D" : "#0F766E", fontWeight: 700, cursor: "pointer" }}
+                      >
+                        {copiedId === `tracked:${link.id}` ? "Copied!" : "Copy"}
+                      </button>
+                      <a
+                        href={link.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ borderRadius: "9999px", padding: "0.45rem 0.85rem", background: "#F4F4F5", color: "#52525B", fontWeight: 700, textDecoration: "none" }}
+                      >
+                        Open
+                      </a>
+                      <button
+                        onClick={() =>
+                          setExpandedTrackedLinkId((current) => (current === link.id ? null : link.id))
+                        }
+                        style={{ border: "1px solid #E4E4E7", borderRadius: "9999px", padding: "0.45rem 0.85rem", background: "#FFFFFF", color: "#52525B", fontWeight: 700, cursor: "pointer" }}
+                      >
+                        {tagEditorOpen ? "Hide source tag" : "Add source tag"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {tagEditorOpen ? (
+                    <div style={{ borderTop: "1px solid #F1F5F9", paddingTop: "0.85rem" }}>
+                      <div className="grid gap-3 lg:grid-cols-[0.95fr_1.25fr_auto] lg:items-end">
+                        <div>
+                          <label
+                            htmlFor={`tracked-link-subid-${link.id}`}
+                            style={{ display: "block", marginBottom: "0.45rem", fontSize: "0.72rem", fontWeight: 700, color: "#71717A", letterSpacing: "0.07em", textTransform: "uppercase" }}
+                          >
+                            Source tag
+                          </label>
+                          <input
+                            id={`tracked-link-subid-${link.id}`}
+                            value={subId}
+                            onChange={(event) =>
+                              setTagDrafts((current) => ({
+                                ...current,
+                                [link.id]: event.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""),
+                              }))
+                            }
+                            placeholder="email, april-webinar, ig-bio"
+                            style={{ width: "100%", padding: "0.8rem 0.95rem", borderRadius: "0.8rem", border: "1.5px solid #E4E4E7", fontSize: "0.88rem" }}
+                          />
+                        </div>
+                        <div style={{ border: "1px solid rgba(68,168,216,0.16)", background: "rgba(68,168,216,0.06)", borderRadius: "0.95rem", padding: "0.85rem 0.95rem" }}>
+                          <p style={{ margin: 0, fontSize: "0.72rem", fontWeight: 700, color: "#2563EB", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                            Tagged link preview
+                          </p>
+                          <p style={{ margin: "0.4rem 0 0", fontSize: "0.82rem", lineHeight: 1.6, color: "#0F766E", wordBreak: "break-word", fontFamily: "monospace" }}>
+                            {taggedLink}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => void handleCopyTaggedLink(link)}
+                          style={{ border: "none", borderRadius: "9999px", padding: "0.8rem 1.05rem", background: copiedId === `tagged:${link.id}` ? "rgba(22,163,74,0.12)" : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)", color: copiedId === `tagged:${link.id}` ? "#15803D" : "#FFFFFF", fontWeight: 700, cursor: "pointer" }}
+                        >
+                          {copiedId === `tagged:${link.id}` ? "Copied!" : "Copy tagged link"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         <div style={{ marginTop: "1rem" }}>
@@ -945,217 +1450,6 @@ function LinkTab({
             </div>
           )}
         </div>
-      </SurfaceCard>
-
-      <SurfaceCard elevated className="surface-card--editorial">
-        <p
-          style={{
-            margin: 0,
-            fontSize: "0.68rem",
-            fontWeight: 700,
-            color: "#71717A",
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-          }}
-        >
-          Available tracked links
-        </p>
-        <h2 style={{ margin: "0.65rem 0 0.25rem", fontSize: "1.1rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.03em", textWrap: "balance" }}>
-          FirstPromoter links available to you
-        </h2>
-        <p style={{ margin: 0, fontSize: "0.84rem", lineHeight: 1.6, color: "#71717A" }}>
-          Any campaign or co-branded links configured for you in FirstPromoter will show up here automatically. Add an optional source tag when you want to compare traffic from email, social, or a specific campaign.
-        </p>
-
-        {trackedLinksError ? (
-          <div style={{ marginTop: "1rem", border: "1px solid rgba(245,158,11,0.2)", background: "rgba(245,158,11,0.07)", borderRadius: "0.85rem", padding: "0.8rem 0.95rem" }}>
-            <p style={{ margin: 0, fontSize: "0.8rem", lineHeight: 1.55, color: "#92400E" }}>
-              {trackedLinksError}
-            </p>
-          </div>
-        ) : null}
-
-        {availableTrackedLinks.length === 0 ? (
-          <div style={{ marginTop: "1rem", border: "1px solid #E4E4E7", borderRadius: "1rem", padding: "1rem 1.05rem", background: "#FAFAFA" }}>
-            <p style={{ margin: 0, fontSize: "0.84rem", color: "#52525B", lineHeight: 1.6 }}>
-              No extra FirstPromoter links are configured for your account yet. Your main referral link above is ready to use now, and any future campaign links will appear here automatically.
-            </p>
-          </div>
-        ) : (
-          <div className="mt-4 flex flex-col gap-3">
-            {availableTrackedLinks.map((link) => {
-              const subId = tagDrafts[link.id] ?? "";
-              const taggedLink = buildTaggedTrackedLink(link.url, subId);
-              const tagEditorOpen = expandedTrackedLinkId === link.id;
-
-              return (
-                <div key={link.id} style={{ border: "1px solid #E4E4E7", borderRadius: "1rem", padding: "1rem" }}>
-                  <div className="flex flex-col gap-3">
-                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                      <div style={{ minWidth: 0 }}>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700, color: "#09090B" }}>{link.name}</p>
-                          <span style={{ borderRadius: "9999px", background: "rgba(68,168,216,0.1)", color: "#0F766E", fontSize: "0.72rem", fontWeight: 700, padding: "0.2rem 0.55rem" }}>
-                            {link.kind === "primary" ? "Default" : "Campaign"}
-                          </span>
-                        </div>
-                        <p style={{ margin: "0.2rem 0 0", fontSize: "0.8rem", color: "#71717A" }}>
-                          {formatTrackedDestination(link.destinationPath)}
-                        </p>
-                        <p style={{ margin: "0.45rem 0 0", fontSize: "0.78rem", color: "#0F766E", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {link.url}
-                        </p>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button
-                          onClick={() => void handleCopyTrackedLink(link)}
-                          style={{ border: "none", borderRadius: "9999px", padding: "0.45rem 0.85rem", background: copiedId === `tracked:${link.id}` ? "rgba(22,163,74,0.12)" : "rgba(68,168,216,0.1)", color: copiedId === `tracked:${link.id}` ? "#15803D" : "#0F766E", fontWeight: 700, cursor: "pointer" }}
-                        >
-                          {copiedId === `tracked:${link.id}` ? "Copied!" : "Copy"}
-                        </button>
-                        <a
-                          href={link.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          style={{ borderRadius: "9999px", padding: "0.45rem 0.85rem", background: "#F4F4F5", color: "#52525B", fontWeight: 700, textDecoration: "none" }}
-                        >
-                          Open
-                        </a>
-                        <button
-                          onClick={() =>
-                            setExpandedTrackedLinkId((current) => (current === link.id ? null : link.id))
-                          }
-                          style={{ border: "1px solid #E4E4E7", borderRadius: "9999px", padding: "0.45rem 0.85rem", background: "#FFFFFF", color: "#52525B", fontWeight: 700, cursor: "pointer" }}
-                        >
-                          {tagEditorOpen ? "Hide source tag" : "Add source tag"}
-                        </button>
-                      </div>
-                    </div>
-
-                    {tagEditorOpen ? (
-                      <div style={{ borderTop: "1px solid #F1F5F9", paddingTop: "0.85rem" }}>
-                        <div className="grid gap-3 lg:grid-cols-[0.95fr_1.25fr_auto] lg:items-end">
-                          <div>
-                            <label
-                              htmlFor={`tracked-link-subid-${link.id}`}
-                              style={{ display: "block", marginBottom: "0.45rem", fontSize: "0.72rem", fontWeight: 700, color: "#71717A", letterSpacing: "0.07em", textTransform: "uppercase" }}
-                            >
-                              Source tag
-                            </label>
-                            <input
-                              id={`tracked-link-subid-${link.id}`}
-                              value={subId}
-                              onChange={(event) =>
-                                setTagDrafts((current) => ({
-                                  ...current,
-                                  [link.id]: event.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""),
-                                }))
-                              }
-                              placeholder="email, april-webinar, ig-bio"
-                              style={{ width: "100%", padding: "0.8rem 0.95rem", borderRadius: "0.8rem", border: "1.5px solid #E4E4E7", fontSize: "0.88rem" }}
-                            />
-                          </div>
-                          <div style={{ border: "1px solid rgba(68,168,216,0.16)", background: "rgba(68,168,216,0.06)", borderRadius: "0.95rem", padding: "0.85rem 0.95rem" }}>
-                            <p style={{ margin: 0, fontSize: "0.72rem", fontWeight: 700, color: "#2563EB", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                              Tagged link preview
-                            </p>
-                            <p style={{ margin: "0.4rem 0 0", fontSize: "0.82rem", lineHeight: 1.6, color: "#0F766E", wordBreak: "break-word", fontFamily: "monospace" }}>
-                              {taggedLink}
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => void handleCopyTaggedLink(link)}
-                            style={{ border: "none", borderRadius: "9999px", padding: "0.8rem 1.05rem", background: copiedId === `tagged:${link.id}` ? "rgba(22,163,74,0.12)" : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)", color: copiedId === `tagged:${link.id}` ? "#15803D" : "#FFFFFF", fontWeight: 700, cursor: "pointer" }}
-                          >
-                            {copiedId === `tagged:${link.id}` ? "Copied!" : "Copy tagged link"}
-                          </button>
-                        </div>
-                        <p style={{ margin: "0.55rem 0 0", fontSize: "0.76rem", color: "#A1A1AA", lineHeight: 1.55 }}>
-                          Source tags help you compare where clicks and conversions are coming from inside FirstPromoter without creating a separate link record.
-                        </p>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </SurfaceCard>
-
-      <SurfaceCard elevated className="surface-card--editorial">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p
-              style={{
-                margin: 0,
-                fontSize: "0.68rem",
-                fontWeight: 700,
-                color: "#71717A",
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-              }}
-            >
-              Legacy Positives redirects
-            </p>
-            <h2 style={{ margin: "0.6rem 0 0.2rem", fontSize: "1.1rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.03em" }}>
-              Older convenience links you can still manage
-            </h2>
-            <p style={{ margin: 0, fontSize: "0.84rem", lineHeight: 1.6, color: "#71717A" }}>
-              These still work as share redirects, but they are not the canonical FirstPromoter tracking system. For attribution you should rely on your main FirstPromoter referral link or the tracked links shown above.
-            </p>
-          </div>
-        </div>
-
-        {links.length === 0 ? (
-          <p style={{ margin: "1rem 0 0", fontSize: "0.84rem", color: "#A1A1AA" }}>
-            No legacy redirects on file.
-          </p>
-        ) : (
-          <div className="mt-4 flex flex-col gap-3">
-            {links.map((link) => (
-              <div key={link.id} style={{ border: "1px solid #E4E4E7", borderRadius: "1rem", padding: "1rem" }}>
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <div style={{ minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: "0.92rem", fontWeight: 700, color: "#09090B" }}>{link.label}</p>
-                    <p style={{ margin: "0.15rem 0 0", fontSize: "0.8rem", color: "#71717A" }}>
-                      {buildManagedDestination({
-                        destination: link.destination,
-                        subId: extractSubId(link.destination),
-                      })}
-                    </p>
-                    <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#0F766E", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {shortUrl(link.code)}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      onClick={() => void handleCopyManagedLink(link)}
-                      style={{ border: "none", borderRadius: "9999px", padding: "0.45rem 0.85rem", background: copiedId === link.id ? "rgba(22,163,74,0.12)" : "rgba(68,168,216,0.1)", color: copiedId === link.id ? "#15803D" : "#0F766E", fontWeight: 700, cursor: "pointer" }}
-                    >
-                      {copiedId === link.id ? "Copied!" : "Copy"}
-                    </button>
-                    <a
-                      href={shortUrl(link.code)}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{ borderRadius: "9999px", padding: "0.45rem 0.85rem", background: "#F4F4F5", color: "#52525B", fontWeight: 700, textDecoration: "none" }}
-                    >
-                      Open
-                    </a>
-                    <button
-                      onClick={() => void handleDelete(link.id)}
-                      style={{ border: "none", background: "transparent", color: "#A1A1AA", cursor: "pointer", fontWeight: 700 }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </SurfaceCard>
     </div>
   );
@@ -1319,140 +1613,251 @@ function PerformanceTab({ performance }: { performance: AffiliatePortalViewModel
 
 function ShareTab({
   referralLink,
+  trackedLinks,
 }: {
   referralLink: string;
+  trackedLinks: AffiliateTrackedLink[];
 }) {
-  const shareOptions = useMemo(() => {
-    const options = [
+  const shareOptions = useMemo(
+    () => [
       {
         id: "primary",
-        label: "Primary referral link",
-        detail: "Best for general sharing",
+        label: "Main referral link",
+        detail: "Best for everyday sharing",
         url: referralLink,
+        destination: "Sales page",
       },
-    ];
-    return options;
-  }, [referralLink]);
+      ...trackedLinks
+        .filter((link) => link.url !== referralLink)
+        .map((link) => ({
+          id: `tracked:${link.id}`,
+          label: link.name,
+          detail: formatTrackedLinkKind(link.kind),
+          url: link.url,
+          destination: formatTrackedDestination(link.destinationPath),
+        })),
+    ],
+    [referralLink, trackedLinks]
+  );
 
-  const [selectedLinkId, setSelectedLinkId] = useState(shareOptions[0]?.id ?? "primary");
-  const activeLink = shareOptions.find((option) => option.id === selectedLinkId) ?? shareOptions[0];
-  const emailSwipes = buildSwipes(activeLink?.url ?? referralLink);
-  const shareBlocks = buildSocialCaptions(activeLink?.url ?? referralLink);
+  const [selectedLinkId, setSelectedLinkId] = useState<string | null>(shareOptions[0]?.id ?? null);
+  const [sourceTag, setSourceTag] = useState("");
+  const activeLink =
+    shareOptions.find((option) => option.id === selectedLinkId) ?? shareOptions[0];
+  const finalShareLink = buildTaggedTrackedLink(activeLink?.url ?? referralLink, sourceTag);
+  const emailSwipes = buildEmailSwipes(finalShareLink);
+  const quickSharePacks = buildQuickSharePacks(finalShareLink);
+  const shareBlocks = buildShareTemplates(finalShareLink);
+  const [copiedFinalLink, setCopiedFinalLink] = useState(false);
+
+  async function handleCopyFinalLink() {
+    await navigator.clipboard.writeText(finalShareLink);
+    track("affiliate_custom_link_copied", {
+      source_path: "/account/affiliate",
+      link_name: activeLink?.label,
+      sub_id: sourceTag.trim() || undefined,
+      link_kind: activeLink?.detail,
+    });
+    setCopiedFinalLink(true);
+    window.setTimeout(() => setCopiedFinalLink(false), 2200);
+  }
 
   return (
     <div className="flex flex-col gap-4">
       <SurfaceCard elevated className="surface-card--editorial">
         <p style={{ margin: 0, fontSize: "0.68rem", fontWeight: 700, color: "#71717A", letterSpacing: "0.07em", textTransform: "uppercase" }}>
-          Share setup
+          Share flow
         </p>
         <h2 style={{ margin: "0.6rem 0 0.25rem", fontSize: "1.15rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.03em", textWrap: "balance" }}>
-          Choose which link you want to share
+          Pick a link, add a source tag if you want, then copy a message
         </h2>
-        <p style={{ margin: 0, fontSize: "0.84rem", lineHeight: 1.6, color: "#71717A" }}>
-          Use your primary referral link for general sharing. If you want to use a specific tracked page from My Links, paste that version into these templates before sending.
-        </p>
+        <div className="mt-4 grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+          <div className="grid gap-3">
+            {shareOptions.map((option) => {
+              const selected = option.id === selectedLinkId;
+              return (
+                <button
+                  key={option.id}
+                  onClick={() => setSelectedLinkId(option.id)}
+                  style={{
+                    border: selected ? "1.5px solid rgba(46,196,182,0.32)" : "1px solid #E4E4E7",
+                    borderRadius: "1rem",
+                    padding: "1rem",
+                    background: selected
+                      ? "linear-gradient(180deg, rgba(46,196,182,0.12) 0%, rgba(255,255,255,1) 100%)"
+                      : "#FFFFFF",
+                    textAlign: "left",
+                    cursor: "pointer",
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div style={{ minWidth: 0 }}>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p style={{ margin: 0, fontSize: "0.94rem", fontWeight: 700, color: "#09090B" }}>{option.label}</p>
+                        <span style={{ borderRadius: "9999px", background: selected ? "rgba(46,196,182,0.14)" : "rgba(244,244,245,1)", color: selected ? "#0F766E" : "#71717A", fontSize: "0.72rem", fontWeight: 700, padding: "0.2rem 0.55rem" }}>
+                          {option.detail}
+                        </span>
+                      </div>
+                      <p style={{ margin: "0.2rem 0 0", fontSize: "0.8rem", color: "#71717A" }}>{option.destination}</p>
+                      <p style={{ margin: "0.45rem 0 0", fontSize: "0.78rem", color: "#0F766E", fontFamily: "monospace", wordBreak: "break-word" }}>
+                        {option.url}
+                      </p>
+                    </div>
+                    <span style={{ fontSize: "0.78rem", fontWeight: 700, color: selected ? "#0F766E" : "#A1A1AA" }}>
+                      {selected ? "Using" : "Use"}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
 
-        <div className="mt-4 grid gap-3 md:grid-cols-[1.2fr_1fr]">
-          <select
-            value={selectedLinkId}
-            onChange={(event) => setSelectedLinkId(event.target.value)}
-            style={{ padding: "0.9rem 1rem", borderRadius: "0.8rem", border: "1.5px solid #E4E4E7", fontSize: "0.88rem" }}
-          >
-            {shareOptions.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          <div style={{ border: "1px solid #E4E4E7", borderRadius: "0.8rem", padding: "0.9rem 1rem", background: "#FAFAFA" }}>
-            <p style={{ margin: 0, fontSize: "0.76rem", color: "#71717A" }}>{activeLink?.detail}</p>
-            <p style={{ margin: "0.2rem 0 0", fontSize: "0.82rem", color: "#09090B", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {activeLink?.url}
-            </p>
+          <div className="flex flex-col gap-3">
+            <div style={{ border: "1px solid rgba(68,168,216,0.16)", background: "rgba(68,168,216,0.06)", borderRadius: "1rem", padding: "1rem" }}>
+              <p style={{ margin: 0, fontSize: "0.72rem", fontWeight: 700, color: "#2563EB", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                Optional source tag
+              </p>
+              <input
+                value={sourceTag}
+                onChange={(event) =>
+                  setSourceTag(event.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))
+                }
+                placeholder="email, april-webinar, ig-bio"
+                style={{ width: "100%", marginTop: "0.75rem", padding: "0.85rem 0.95rem", borderRadius: "0.8rem", border: "1.5px solid #E4E4E7", fontSize: "0.88rem", background: "#FFFFFF" }}
+              />
+              <p style={{ margin: "0.75rem 0 0", fontSize: "0.8rem", color: "#71717A", lineHeight: 1.55 }}>
+                Use a source tag only when you want to compare different campaigns or placements inside FirstPromoter.
+              </p>
+            </div>
+
+            <div style={{ border: "1px solid #E4E4E7", borderRadius: "1rem", padding: "1rem", background: "#FAFAFA" }}>
+              <p style={{ margin: 0, fontSize: "0.72rem", fontWeight: 700, color: "#71717A", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                Link ready to share
+              </p>
+              <p style={{ margin: "0.5rem 0 0", fontSize: "0.82rem", lineHeight: 1.6, color: "#0F766E", wordBreak: "break-word", fontFamily: "monospace" }}>
+                {finalShareLink}
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  onClick={() => void handleCopyFinalLink()}
+                  style={{ border: "none", borderRadius: "9999px", padding: "0.75rem 1rem", background: copiedFinalLink ? "rgba(22,163,74,0.12)" : "linear-gradient(135deg, #2EC4B6 0%, #44A8D8 100%)", color: copiedFinalLink ? "#15803D" : "#FFFFFF", fontWeight: 700, cursor: "pointer" }}
+                >
+                  {copiedFinalLink ? "Copied!" : "Copy link"}
+                </button>
+                <a
+                  href={finalShareLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ borderRadius: "9999px", padding: "0.75rem 1rem", background: "#F4F4F5", color: "#52525B", fontWeight: 700, textDecoration: "none" }}
+                >
+                  Open link
+                </a>
+              </div>
+            </div>
+
+            <div style={{ border: "1px solid rgba(46,196,182,0.18)", background: "rgba(46,196,182,0.05)", borderRadius: "1rem", padding: "1rem" }}>
+              <p style={{ margin: 0, fontSize: "0.82rem", color: "#0F766E", lineHeight: 1.6 }}>
+                Warm, personal sharing usually works best. Use the message blocks below as a starting point, then make them sound like you.
+              </p>
+            </div>
           </div>
         </div>
       </SurfaceCard>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <SurfaceCard elevated className="surface-card--editorial">
-          <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.02em" }}>Best places to share</h2>
-          <div className="mt-4 flex flex-col gap-3">
-            {[
-              "A personal text or email to someone who already trusts you",
-              "A blog post, newsletter, or creator page where you already have attention",
-              "Your bio link, if you want a steady source of warm traffic",
-            ].map((tip) => (
-              <div key={tip} className="flex items-start gap-3 text-sm text-muted-foreground">
-                <span aria-hidden="true">•</span>
-                <span>{tip}</span>
-              </div>
-            ))}
-          </div>
-          <div style={{ marginTop: "1rem", border: "1px solid rgba(46,196,182,0.18)", background: "rgba(46,196,182,0.05)", borderRadius: "0.9rem", padding: "0.9rem 1rem" }}>
-            <p style={{ margin: 0, fontSize: "0.82rem", color: "#0F766E", lineHeight: 1.6 }}>
-              Share in a way that feels like a genuine recommendation, not a campaign blast. Affiliates usually do best when the invitation feels personal and specific.
-            </p>
-          </div>
-        </SurfaceCard>
-
-        <SurfaceCard elevated className="surface-card--editorial">
-          <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.02em" }}>Email</h2>
-          <div className="mt-4 flex flex-col gap-3">
-            {emailSwipes.map((swipe) => (
-              <CopyBlock
-                key={swipe.id}
-                label={swipe.label}
-                content={swipe.content}
-                onCopied={() =>
-                  track("affiliate_share_asset_copied", {
-                    source_path: "/account/affiliate",
-                    asset_type: swipe.id,
-                    selected_link: activeLink?.label,
-                  })
-                }
-              />
-            ))}
-          </div>
-        </SurfaceCard>
+        {DOWNLOADABLE_SHARE_ASSETS.map((asset) => (
+          <DownloadableAssetCard
+            key={asset.id}
+            asset={asset}
+            selectedLinkLabel={activeLink?.label ?? "Main referral link"}
+          />
+        ))}
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <SurfaceCard elevated className="surface-card--editorial">
-          <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.02em" }}>Text / DM</h2>
-          <div className="mt-4">
-            <CopyBlock
-              label={shareBlocks[0].label}
-              content={shareBlocks[0].content}
-              onCopied={() =>
-                track("affiliate_share_asset_copied", {
-                  source_path: "/account/affiliate",
-                  asset_type: shareBlocks[0].id,
-                  selected_link: activeLink?.label,
-                })
-              }
-            />
-          </div>
-        </SurfaceCard>
+        {quickSharePacks.map((pack) => (
+          <QuickSharePackCard
+            key={pack.id}
+            pack={pack}
+            selectedLinkLabel={activeLink?.label ?? "Main referral link"}
+          />
+        ))}
+      </div>
 
-        <SurfaceCard elevated className="surface-card--editorial">
-          <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#09090B", letterSpacing: "-0.02em" }}>Social or blog CTA</h2>
-          <div className="mt-4 flex flex-col gap-3">
-            {shareBlocks.slice(1).map((block) => (
-              <CopyBlock
-                key={block.id}
-                label={block.label}
-                content={block.content}
-                onCopied={() =>
-                  track("affiliate_share_asset_copied", {
-                    source_path: "/account/affiliate",
-                    asset_type: block.id,
-                    selected_link: activeLink?.label,
-                  })
-                }
-              />
-            ))}
-          </div>
-        </SurfaceCard>
+      <div className="grid gap-4 xl:grid-cols-2">
+        <ResourceListCard
+          title="Best places to share first"
+          description="Start where trust is already high. Positives usually converts better through warm recommendations than broad cold promotion."
+          items={[
+            "A personal text or email to someone who already trusts you",
+            "A newsletter, blog post, or creator page where you already have attention",
+            "A webinar, podcast, or live conversation where you can recommend it naturally",
+            "A bio link or evergreen page if you want one steady place to send people",
+          ]}
+        />
+        <ResourceListCard
+          title="Good source-tag ideas"
+          description="Use source tags only when you want to compare placements inside FirstPromoter. Keep them short and easy to recognize later."
+          items={[
+            "email for a personal email send",
+            "newsletter-april for a specific newsletter issue",
+            "ig-bio for your Instagram bio link",
+            "podcast-may for a spoken mention on a show",
+            "webinar-followup for a post-event follow-up sequence",
+          ]}
+        />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <ResourceListCard
+          title="Three good angles to lead with"
+          description="These usually sound more natural than generic affiliate language."
+          items={[
+            "A short daily practice that fits into normal life",
+            "A steady rhythm: daily audio, weekly principle, monthly theme",
+            "Something calming and practical you actually return to",
+          ]}
+        />
+        <ResourceListCard
+          title="What to avoid when you share"
+          description="Keeping the recommendation grounded tends to convert better and fits the Positives brand better too."
+          items={[
+            "Avoid hypey promises or dramatic transformation language",
+            "Avoid making it sound like a course people need to complete",
+            "Avoid copying generic sales copy word-for-word if a warmer version would sound more like you",
+            "Avoid using source tags unless you actually want to compare placements later",
+          ]}
+        />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <ShareTemplateCard
+          title="Email"
+          description="For personal outreach or a thoughtful follow-up."
+          blocks={emailSwipes}
+          selectedLinkLabel={activeLink?.label ?? "Main referral link"}
+        />
+        <ShareTemplateCard
+          title="Text / DM"
+          description="For a quick warm share to someone who already trusts you."
+          blocks={shareBlocks.slice(0, 2)}
+          selectedLinkLabel={activeLink?.label ?? "Main referral link"}
+        />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <ShareTemplateCard
+          title="Social and creator copy"
+          description="For public posts, blog mentions, or creator-style recommendations."
+          blocks={shareBlocks.slice(2, 5)}
+          selectedLinkLabel={activeLink?.label ?? "Main referral link"}
+        />
+        <ShareTemplateCard
+          title="Live event and spoken mention"
+          description="For webinars, podcasts, live trainings, or spoken recommendations."
+          blocks={shareBlocks.slice(5)}
+          selectedLinkLabel={activeLink?.label ?? "Main referral link"}
+        />
       </div>
     </div>
   );
@@ -1523,6 +1928,13 @@ function EarningsTab({
           </h2>
           <p style={{ margin: 0, fontSize: "0.84rem", lineHeight: 1.6, color: "#71717A" }}>
             This is the email Positives should use when coordinating your affiliate payouts. If PayPal needs any tax or verification details later, they will handle that in their own flow.
+          </p>
+          <p style={{ margin: "0.55rem 0 0", fontSize: "0.8rem", color: "#71717A", lineHeight: 1.55 }}>
+            Need a refresher on payouts, prohibited behavior, or program rules?{" "}
+            <Link href="/affiliate-program" style={{ color: "#0F766E", fontWeight: 700, textDecoration: "underline" }}>
+              Review the Affiliate Program Terms
+            </Link>
+            .
           </p>
 
           <div className="mt-4 flex flex-col gap-3">
@@ -1601,10 +2013,7 @@ export function AffiliatePortal({
   payouts,
   memberName,
   paypalEmail: initialPaypalEmail,
-  initialLinks = [],
   trackedLinks,
-  trackedLinksError,
-  autoEnroll = false,
   performance,
 }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("link");
@@ -1624,8 +2033,7 @@ export function AffiliatePortal({
   const [slugError, setSlugError] = useState<string | null>(null);
   const [slugSaved, setSlugSaved] = useState(false);
   const [slugConfirmed, setSlugConfirmed] = useState(false);
-  const [managedLinks, setManagedLinks] = useState<AffiliateLink[]>(initialLinks);
-  const autoEnrollStartedRef = useRef(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   void affiliateId;
   void affiliateLinkId;
@@ -1645,7 +2053,7 @@ export function AffiliatePortal({
   const handleEnroll = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const result = await getReferralLinkAction();
+    const result = await getReferralLinkAction(agreedToTerms);
     setLoading(false);
     if ("error" in result) {
       setError(result.error);
@@ -1657,14 +2065,7 @@ export function AffiliatePortal({
       source_path: "/account/affiliate",
       affiliate_token_present: Boolean(result.token),
     });
-  }, []);
-
-  useEffect(() => {
-    if (!autoEnroll || enrolled || loading || autoEnrollStartedRef.current) return;
-    autoEnrollStartedRef.current = true;
-    const timer = window.setTimeout(() => void handleEnroll(), 0);
-    return () => window.clearTimeout(timer);
-  }, [autoEnroll, enrolled, handleEnroll, loading]);
+  }, [agreedToTerms]);
 
   const handleCopyPrimaryLink = useCallback(async () => {
     if (!referralLink) return;
@@ -1721,11 +2122,27 @@ export function AffiliatePortal({
   }
 
   if (!enrolled) {
-    return <EnrollScreen onEnroll={handleEnroll} loading={loading} error={error} />;
+    return (
+      <EnrollScreen
+        onEnroll={handleEnroll}
+        loading={loading}
+        error={error}
+        agreedToTerms={agreedToTerms}
+        onAgreementChange={setAgreedToTerms}
+      />
+    );
   }
 
   if (!referralLink) {
-    return <EnrollScreen onEnroll={handleEnroll} loading={loading} error={error} />;
+    return (
+      <EnrollScreen
+        onEnroll={handleEnroll}
+        loading={loading}
+        error={error}
+        agreedToTerms={agreedToTerms}
+        onAgreementChange={setAgreedToTerms}
+      />
+    );
   }
 
   return (
@@ -1834,14 +2251,11 @@ export function AffiliatePortal({
           onSlugSave={handleSlugSave}
           onSlugConfirmChange={setSlugConfirmed}
           trackedLinks={trackedLinks}
-          trackedLinksError={trackedLinksError}
-          links={managedLinks}
-          onLinksChange={setManagedLinks}
         />
       ) : null}
 
       {activeTab === "performance" ? <PerformanceTab performance={performance} /> : null}
-      {activeTab === "share" ? <ShareTab referralLink={referralLink} /> : null}
+      {activeTab === "share" ? <ShareTab referralLink={referralLink} trackedLinks={trackedLinks} /> : null}
       {activeTab === "earnings" ? (
         <EarningsTab
           performance={performance}

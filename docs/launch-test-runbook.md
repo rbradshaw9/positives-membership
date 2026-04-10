@@ -1,7 +1,7 @@
 # Positives — Level 1 Launch Rehearsal Runbook
 
 **Purpose:** Operator-grade rehearsal for the Level 1 public launch.\
-**Last updated:** April 7, 2026\
+**Last updated:** April 10, 2026\
 **Scope:** Level 1 only. Community stays off. Level 2-4 stay preview / notify-me only.
 
 ---
@@ -61,16 +61,21 @@ Operational launch settings:
 
 ## 3. Content runway
 
-Before the rehearsal, fill the launch window through June 1, 2026.
+Before the rehearsal, fill the launch window through June 4, 2026.
 
 Expected runway:
 
-- one published `daily_audio` for every day from `2026-04-07` through `2026-06-01`
+- one published `daily_audio` for every day from `2026-04-07` through `2026-06-04`
 - one published `weekly_principle` for every Monday in that window
 - published `monthly_theme` rows for `2026-05` and `2026-06`
 - no published daily or weekly rows missing both `castos_episode_url` and `s3_audio_key`
 
 Use the structured content workflow in [docs/launch-content-ops.md](/Users/ryanbradshaw/AntiGravity/positives-membership/docs/launch-content-ops.md).
+
+Operator note:
+
+- `scripts/launch-content-plan.l1-window.template.json` is the base runway plan
+- `scripts/launch-content-plan.june-window-extension.json` extends the seeded daily coverage through `2026-06-04`
 
 Quick verification queries:
 

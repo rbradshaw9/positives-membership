@@ -74,9 +74,13 @@ type ContactSyncResponse = {
 async function syncContact(payload: ContactSyncPayload): Promise<string> {
   const res = await ac.post<ContactSyncResponse>("/contact/sync", {
     contact: {
-      email:     payload.email,
-      firstName: payload.firstName ?? "",
-      lastName:  payload.lastName ?? "",
+      email: payload.email,
+      ...(payload.firstName?.trim()
+        ? { firstName: payload.firstName.trim() }
+        : {}),
+      ...(payload.lastName?.trim()
+        ? { lastName: payload.lastName.trim() }
+        : {}),
       ...(payload.phone ? { phone: payload.phone } : {}),
     },
   });
@@ -118,6 +122,21 @@ async function setFieldValue(contactId: string, fieldId: number, value: string):
   });
 }
 
+async function syncExactTierState(
+  contactId: string,
+  tier: SubscriptionTier
+): Promise<void> {
+  for (const [candidateTier, tagId] of Object.entries(TIER_TAG) as Array<
+    [SubscriptionTier, number]
+  >) {
+    if (candidateTier === tier) continue;
+    await removeTagIfPresent(contactId, tagId);
+  }
+
+  await addTag(contactId, TIER_TAG[tier]);
+  await setFieldValue(contactId, FIELD.membershipTier, tier);
+}
+
 // ─── Public sync functions ────────────────────────────────────────────────────
 
 /**
@@ -144,12 +163,11 @@ export async function syncNewMember(params: {
     });
 
     await subscribeToList(contactId);
-    await addTag(contactId, TIER_TAG[params.tier]);
+    await syncExactTierState(contactId, params.tier);
     await addTag(contactId, TAG.founding_member);
 
     // Write searchable custom fields
     const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-    await setFieldValue(contactId, FIELD.membershipTier, params.tier);
     await setFieldValue(contactId, FIELD.memberSince, today);
     if (params.stripeCustomerId) {
       await setFieldValue(contactId, FIELD.stripeCustomerId, params.stripeCustomerId);
@@ -179,7 +197,7 @@ export async function syncTierChange(params: {
       await removeTagIfPresent(contactId, TIER_TAG[params.oldTier]);
     }
 
-    await addTag(contactId, TIER_TAG[params.newTier]);
+    await syncExactTierState(contactId, params.newTier);
     // Ensure they're re-subscribed in case they were previously unsubscribed
     await subscribeToList(contactId);
 

@@ -39,7 +39,68 @@ function formatDuration(seconds: number | null): string {
   return `${m}:${s}`;
 }
 
-const PREVIEW_COUNT = 5;
+function getWeekStart(dateStr: string): string {
+  const date = new Date(`${dateStr}T12:00:00`);
+  const day = date.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  date.setDate(date.getDate() + diff);
+  return date.toISOString().slice(0, 10);
+}
+
+function formatWeekRangeLabel(startDate: string, endDate: string): string {
+  const start = new Date(`${startDate}T12:00:00`);
+  const end = new Date(`${endDate}T12:00:00`);
+
+  const sameMonth =
+    start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
+
+  const startLabel = new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  }).format(start);
+
+  const endLabel = new Intl.DateTimeFormat("en-US", {
+    ...(sameMonth ? {} : { month: "short" }),
+    day: "numeric",
+  }).format(end);
+
+  return `${startLabel} - ${endLabel}`;
+}
+
+interface WeekGroup {
+  weekStart: string;
+  rangeLabel: string;
+  audios: MonthGroup["audios"];
+}
+
+function groupAudiosByWeek(audios: MonthGroup["audios"]): WeekGroup[] {
+  const groups = new Map<string, MonthGroup["audios"]>();
+
+  for (const audio of audios) {
+    const dateStr = audio.publish_date;
+    if (!dateStr) continue;
+    const weekStart = getWeekStart(dateStr);
+    const current = groups.get(weekStart) ?? [];
+    current.push(audio);
+    groups.set(weekStart, current);
+  }
+
+  return Array.from(groups.entries())
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([weekStart, weekAudios]) => {
+      const sortedAudios = [...weekAudios].sort((a, b) =>
+        (b.publish_date ?? "").localeCompare(a.publish_date ?? "")
+      );
+      const oldest = sortedAudios[sortedAudios.length - 1]?.publish_date ?? weekStart;
+      const newest = sortedAudios[0]?.publish_date ?? weekStart;
+
+      return {
+        weekStart,
+        rangeLabel: formatWeekRangeLabel(oldest, newest),
+        audios: sortedAudios,
+      };
+    });
+}
 
 function AudioRow({
   audio,
@@ -302,10 +363,8 @@ function MonthSection({
   listenedIds: Set<string>;
 }) {
   const [expanded, setExpanded] = useState(defaultOpen);
-  const [showAll, setShowAll] = useState(false);
-
-  const visible = showAll ? group.audios : group.audios.slice(0, PREVIEW_COUNT);
-  const hasMore = group.audios.length > PREVIEW_COUNT;
+  const weekGroups = useMemo(() => groupAudiosByWeek(group.audios), [group.audios]);
+  const weekCount = weekGroups.length;
 
   return (
     <div
@@ -335,7 +394,8 @@ function MonthSection({
               {group.monthName}
             </span>
             <span className="ml-2 text-xs text-muted-foreground">
-              {group.audios.length} practice{group.audios.length !== 1 ? "s" : ""}
+              · {group.audios.length} practice{group.audios.length !== 1 ? "s" : ""} ·{" "}
+              {weekCount} week{weekCount !== 1 ? "s" : ""}
             </span>
           </div>
         </div>
@@ -368,35 +428,94 @@ function MonthSection({
             @keyframes equalizerBar3 { from { height: 5px; } to { height: 11px; } }
           `}</style>
 
-          {visible.map((audio) => (
-            <AudioRow key={audio.id} audio={audio} listened={listenedIds.has(audio.id)} />
-          ))}
-
-          {hasMore && (
-            <button
-              type="button"
-              onClick={() => setShowAll((v) => !v)}
-              className="w-full flex items-center justify-center gap-2 px-5 py-3.5 text-xs font-semibold transition-all hover:bg-accent/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-              style={{
-                color: "var(--color-accent)",
-                borderTop: "1px solid var(--color-border)",
-              }}
-            >
-              {showAll ? (
-                <>
-                  Show less
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: "rotate(180deg)" }} aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
-                </>
-              ) : (
-                <>
-                  Show all {group.audios.length} practices
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
-                </>
-              )}
-            </button>
-          )}
+          <WeekPickerSection weekGroups={weekGroups} listenedIds={listenedIds} />
         </>
       )}
+    </div>
+  );
+}
+
+function WeekPickerSection({
+  weekGroups,
+  listenedIds,
+}: {
+  weekGroups: WeekGroup[];
+  listenedIds: Set<string>;
+}) {
+  const [selectedWeekStart, setSelectedWeekStart] = useState<string | null>(
+    weekGroups[0]?.weekStart ?? null
+  );
+
+  const activeWeek =
+    weekGroups.find((group) => group.weekStart === selectedWeekStart) ?? weekGroups[0] ?? null;
+
+  if (!activeWeek) return null;
+
+  const listenedCount = activeWeek.audios.filter((audio) => listenedIds.has(audio.id)).length;
+
+  return (
+    <div className="flex flex-col gap-4 px-4 pb-4 pt-4">
+      {weekGroups.length > 1 ? (
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground mb-2">
+            Browse by week
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {weekGroups.map((group) => {
+              const isActive = group.weekStart === activeWeek.weekStart;
+              return (
+                <button
+                  key={group.weekStart}
+                  type="button"
+                  onClick={() => setSelectedWeekStart(group.weekStart)}
+                  className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                  style={{
+                    color: isActive ? "var(--color-accent)" : "var(--color-foreground)",
+                    background: isActive
+                      ? "color-mix(in srgb, var(--color-accent) 10%, transparent)"
+                      : "var(--color-muted)",
+                    border: isActive
+                      ? "1px solid color-mix(in srgb, var(--color-accent) 22%, transparent)"
+                      : "1px solid var(--color-border)",
+                  }}
+                >
+                  <span className="text-xs font-semibold">{group.rangeLabel}</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {group.audios.length}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="rounded-2xl border border-border overflow-hidden">
+        <div className="px-5 py-3.5 bg-accent/5 border-b border-border">
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className="inline-flex items-center text-[9px] font-bold uppercase tracking-[0.16em] px-2 py-1 rounded-full"
+              style={{
+                color: "var(--color-accent)",
+                background: "color-mix(in srgb, var(--color-accent) 10%, transparent)",
+                border: "1px solid color-mix(in srgb, var(--color-accent) 18%, transparent)",
+              }}
+            >
+              {activeWeek.rangeLabel}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {activeWeek.audios.length} practice
+              {activeWeek.audios.length !== 1 ? "s" : ""} · {listenedCount} listened
+            </span>
+          </div>
+        </div>
+
+        <div>
+          {activeWeek.audios.map((audio) => (
+            <AudioRow key={audio.id} audio={audio} listened={listenedIds.has(audio.id)} />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -447,11 +566,12 @@ export function MonthlyAudioArchive({
         <h2
           id="month-archive-heading"
           className="font-heading font-semibold text-base text-foreground tracking-[-0.02em]"
+          style={{ textWrap: "balance" }}
         >
           {currentMonthName}&apos;s Daily Practices
         </h2>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Tap any day to play it inline.
+          Tap any day to play it inline. Practices are grouped by week to keep the month easy to revisit.
         </p>
         <p className="text-xs text-muted-foreground mt-1">
           {listenedCount} of {totalCount} marked listened
@@ -459,14 +579,47 @@ export function MonthlyAudioArchive({
       </div>
 
       <div className="flex flex-col gap-3">
-        {monthGroups.map((group, i) => (
-          <MonthSection
-            key={group.monthYear}
-            group={group}
-            defaultOpen={i === 0}
-            listenedIds={listenedIds}
-          />
-        ))}
+        {monthGroups.length === 1 ? (
+          <div
+            className="rounded-[1.4rem] border border-border overflow-hidden"
+            style={{ backgroundColor: "var(--color-card)" }}
+          >
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
+              <span
+                className="inline-flex items-center text-[9px] font-bold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full shrink-0"
+                style={{
+                  color: "var(--color-accent)",
+                  background: "color-mix(in srgb, var(--color-accent) 10%, transparent)",
+                  border: "1px solid color-mix(in srgb, var(--color-accent) 18%, transparent)",
+                }}
+              >
+                {monthGroups[0]?.monthName.split(" ")[0]}
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  {monthGroups[0]?.monthName}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Jump to a week, then play any day inline.
+                </p>
+              </div>
+            </div>
+
+            <WeekPickerSection
+              weekGroups={groupAudiosByWeek(monthGroups[0]?.audios ?? [])}
+              listenedIds={listenedIds}
+            />
+          </div>
+        ) : (
+          monthGroups.map((group, i) => (
+            <MonthSection
+              key={group.monthYear}
+              group={group}
+              defaultOpen={i === 0}
+              listenedIds={listenedIds}
+            />
+          ))
+        )}
       </div>
     </section>
   );

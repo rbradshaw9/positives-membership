@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { AccountClient } from "./account-client";
+import { ProfileForm } from "./profile-form";
 import { TimezoneForm } from "./timezone-form";
 import { BillingButton } from "./billing-button";
 import { PageHeader } from "@/components/member/PageHeader";
@@ -9,6 +10,8 @@ import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { AffiliateCTA } from "@/components/affiliate/AffiliateCTA";
 import { signOut } from "./actions";
 import { getPositivesPlanName } from "@/lib/plans";
+import { getScheduledBillingChange } from "@/server/services/stripe/get-scheduled-billing-change";
+import { getNextRenewalDate } from "@/server/services/stripe/get-next-renewal-date";
 
 export const metadata = {
   title: "Account — Positives",
@@ -22,8 +25,13 @@ export const metadata = {
  *   border, deeper shadows, unified status indicator.
  */
 
-export default async function AccountPage() {
+export default async function AccountPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const supabase = await createClient();
+  const resolvedSearchParams = await searchParams;
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -45,6 +53,9 @@ export default async function AccountPage() {
   const status = member?.subscription_status ?? "active";
   const memberName = member?.name?.trim() || "Member";
   const initials = memberName.charAt(0).toUpperCase();
+  const scheduledBillingChange = await getScheduledBillingChange(member?.stripe_customer_id);
+  const nextRenewalDate = await getNextRenewalDate(member?.stripe_customer_id);
+  const billingUnavailable = resolvedSearchParams.error === "billing_unavailable";
   const joinedLabel = user?.created_at
     ? new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(
         new Date(user.created_at)
@@ -65,6 +76,22 @@ export default async function AccountPage() {
       />
 
       <div className="member-container py-8 md:py-10 flex flex-col gap-8">
+        {billingUnavailable ? (
+          <SurfaceCard
+            className="border border-destructive/15 bg-destructive/5"
+            padding="md"
+          >
+            <p className="text-sm font-medium text-foreground">
+              Billing isn&apos;t available for this account yet.
+            </p>
+            <p className="mt-1 text-sm leading-body text-muted-foreground">
+              We couldn&apos;t find a connected Stripe billing account for your membership. If this
+              persists after a refresh, we should treat it as a setup issue and fix the billing
+              link before asking members to manage their subscription here.
+            </p>
+          </SurfaceCard>
+        ) : null}
+
         <SurfaceCard
           tone="dark"
           padding="lg"
@@ -75,17 +102,23 @@ export default async function AccountPage() {
               {initials}
             </div>
             <div>
-              <p className="ui-section-eyebrow mb-2 text-white/60">Member Profile</p>
+              <p className="ui-section-eyebrow mb-2 text-white/72">Member Profile</p>
               <h2
                 className="heading-balance font-heading text-2xl font-bold tracking-[-0.03em] text-white"
               >
                 {memberName}
               </h2>
-              <p className="mt-1 text-sm text-white/60">{email}</p>
-              <p className="mt-2 text-sm text-white/72">
+              <p className="mt-1 text-sm text-white/74">{email}</p>
+              <p className="mt-2 text-sm text-white/80">
                 {planName} · {status} · Member since {joinedLabel}
               </p>
-              <p className="mt-3 max-w-xl text-sm leading-body text-white/62">
+              {scheduledBillingChange ? (
+                <p className="mt-2 text-sm text-white/74">
+                  Changes to {scheduledBillingChange.nextPlanName} on{" "}
+                  {scheduledBillingChange.effectiveLabel}.
+                </p>
+              ) : null}
+              <p className="mt-3 max-w-xl text-sm leading-body text-white/74">
                 Your deeper listening history and reflections now live in My Practice, while
                 this page stays focused on account management.
               </p>
@@ -96,7 +129,7 @@ export default async function AccountPage() {
             <Button href="/practice" variant="secondary" size="sm">
               Open My Practice
             </Button>
-            <p className="text-sm text-white/56">
+            <p className="text-sm text-white/72">
               Return to your dashboard, journal, and rhythm collections without crowding
               account settings.
             </p>
@@ -105,6 +138,11 @@ export default async function AccountPage() {
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
           <div className="flex flex-col gap-6">
+            <section aria-labelledby="section-profile">
+              <SectionLabel id="section-profile">Profile</SectionLabel>
+              <ProfileForm currentName={member?.name ?? ""} email={email} />
+            </section>
+
             <section aria-labelledby="section-membership">
               <SectionLabel id="section-membership">Membership & Billing</SectionLabel>
               <SurfaceCard elevated className="surface-card--editorial">
@@ -115,10 +153,32 @@ export default async function AccountPage() {
                 <p className="mt-2 text-sm leading-body text-muted-foreground">
                   Subscription status: <span className="font-medium text-foreground">{status}</span>
                 </p>
-                <p className="mt-1 text-sm leading-body text-muted-foreground">
-                  Billing, invoices, and payment methods stay connected to this account.
-                </p>
-                <div className="mt-5">
+                <div className="mt-5 flex flex-col gap-4">
+                  {scheduledBillingChange ? (
+                    <SurfaceCard
+                      padding="sm"
+                      className="border border-secondary/12 bg-secondary/5"
+                    >
+                      <p className="text-sm font-medium text-foreground">
+                        {scheduledBillingChange.kind === "downgrade"
+                          ? "Scheduled change saved"
+                          : scheduledBillingChange.kind === "upgrade"
+                            ? "Upcoming upgrade"
+                            : "Upcoming billing change"}
+                      </p>
+                      <p className="mt-1 text-sm leading-body text-muted-foreground">
+                        You keep {scheduledBillingChange.currentPlanName} through{" "}
+                        {scheduledBillingChange.effectiveLabel}. On{" "}
+                        {scheduledBillingChange.effectiveLabel}, your membership changes to{" "}
+                        {scheduledBillingChange.nextPlanName} automatically.
+                      </p>
+                    </SurfaceCard>
+                  ) : nextRenewalDate ? (
+                    <p className="text-sm leading-body text-muted-foreground">
+                      Renews on <span className="font-medium text-foreground">{nextRenewalDate}</span>.
+                    </p>
+                  ) : null}
+
                   {hasBillingPortal ? (
                     <BillingButton />
                   ) : (
@@ -128,6 +188,12 @@ export default async function AccountPage() {
                       </p>
                     </SurfaceCard>
                   )}
+
+                  {!hasBillingPortal ? (
+                    <p className="text-sm text-muted-foreground leading-body">
+                      Membership changes will appear here once your billing setup is fully connected.
+                    </p>
+                  ) : null}
                 </div>
               </SurfaceCard>
             </section>
@@ -195,6 +261,14 @@ export default async function AccountPage() {
                     </div>
                     <p className="mt-3 text-sm leading-body text-muted-foreground">
                       Your email and password can be used anytime for a direct sign-in flow.
+                      You can also replace that password here while you&apos;re signed in.
+                    </p>
+                    <div className="mt-5 border-t border-border/70 pt-5">
+                      <AccountClient mode="change" />
+                    </div>
+                    <p className="mt-4 text-xs leading-body text-muted-foreground">
+                      If you ever get locked out, use the forgot-password link on the sign-in page
+                      and we&apos;ll email you a secure recovery link.
                     </p>
                   </SurfaceCard>
                 ) : (
@@ -202,7 +276,7 @@ export default async function AccountPage() {
                     <p className="text-sm text-muted-foreground leading-body mb-5">
                       You signed up via a magic link. Add a password so you can sign in anytime.
                     </p>
-                    <AccountClient />
+                    <AccountClient mode="create" />
                   </SurfaceCard>
                 )}
               </div>

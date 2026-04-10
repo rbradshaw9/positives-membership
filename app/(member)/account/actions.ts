@@ -1,5 +1,6 @@
 "use server";
 
+import { formatSupabaseAuthError } from "@/lib/auth/client-error";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -43,7 +44,7 @@ export async function setPassword(
   const { error: authError } = await supabase.auth.updateUser({ password });
   if (authError) {
     console.error("[Account] updateUser error:", authError.message);
-    return { error: authError.message };
+    return { error: formatSupabaseAuthError(authError.message) };
   }
 
   const { error: memberError } = await supabase
@@ -53,6 +54,53 @@ export async function setPassword(
 
   if (memberError) {
     console.error("[Account] Failed to set password_set flag:", memberError.message);
+  }
+
+  revalidatePath("/account");
+  revalidatePath("/today");
+
+  return { success: true };
+}
+
+/**
+ * updateProfile — update the member-facing display name shown across the app.
+ * Email remains the sign-in identifier for now and is intentionally read-only.
+ */
+export async function updateProfile(
+  _prev: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  const name = (formData.get("name") as string | null)?.trim();
+
+  if (!name) {
+    return { error: "Please enter your name." };
+  }
+
+  if (name.length < 2) {
+    return { error: "Name must be at least 2 characters." };
+  }
+
+  if (name.length > 80) {
+    return { error: "Name must be 80 characters or fewer." };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "You must be signed in to update your profile." };
+  }
+
+  const { error } = await supabase
+    .from("member")
+    .update({ name })
+    .eq("id", user.id);
+
+  if (error) {
+    console.error("[Account] profile update error:", error.message);
+    return { error: "Could not save your profile right now." };
   }
 
   revalidatePath("/account");

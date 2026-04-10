@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { formatSupabaseAuthError } from "@/lib/auth/client-error";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import Link from "next/link";
@@ -43,11 +44,7 @@ function LoginForm() {
     setPending(false);
 
     if (signInError) {
-      if (signInError.message.toLowerCase().includes("invalid login credentials")) {
-        setError("Incorrect email or password. Try the email link option if you've forgotten your password.");
-      } else {
-        setError(signInError.message);
-      }
+      setError(formatSupabaseAuthError(signInError.message));
       return;
     }
 
@@ -74,7 +71,7 @@ function LoginForm() {
     setPending(false);
 
     if (otpError) {
-      setError(otpError.message);
+      setError(formatSupabaseAuthError(otpError.message));
       return;
     }
     setMagicSent(true);
@@ -235,6 +232,11 @@ function LoginForm() {
                   if (e.key === "Enter") e.currentTarget.form?.requestSubmit();
                 }}
               />
+            </div>
+            <div className="flex items-center justify-end -mt-1">
+              <Link href="/forgot-password" className="text-xs text-primary hover:underline">
+                Forgot password?
+              </Link>
             </div>
             <button
               type="submit"

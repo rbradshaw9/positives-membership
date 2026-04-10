@@ -57,12 +57,25 @@ interface SuccessClientProps {
   sessionId: string | null;
 }
 
+type CheckoutContext = {
+  checkoutMode: "paid" | "trial_7_day";
+  planName: string | null;
+  subscriptionStatus: string | null;
+  trialEndDate: string | null;
+};
+
 export function SuccessClient({ sessionId }: SuccessClientProps) {
   const router = useRouter();
   const supabase = createClient();
 
   const [phase, setPhase] = useState<Phase>("setting-up");
   const [magicLinkEmail, setMagicLinkEmail] = useState<string | null>(null);
+  const [checkoutContext, setCheckoutContext] = useState<CheckoutContext>({
+    checkoutMode: "paid",
+    planName: null,
+    subscriptionStatus: null,
+    trialEndDate: null,
+  });
 
   // Stable refs so interval/timeout callbacks don't capture stale state
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -96,10 +109,13 @@ export function SuccessClient({ sessionId }: SuccessClientProps) {
     setPhase("success");
 
     const eventKey = `positives:analytics:account-activated:${sessionId ?? "unknown"}`;
+    const isTrialFlow =
+      checkoutContext.checkoutMode === "trial_7_day" ||
+      checkoutContext.subscriptionStatus === "trialing";
     if (!window.sessionStorage.getItem(eventKey)) {
       window.sessionStorage.setItem(eventKey, "1");
       track("sign_up", {
-        method: "stripe_checkout",
+        method: isTrialFlow ? "stripe_trial_checkout" : "stripe_checkout",
         source_path: "/subscribe/success",
       });
       track("account_activated", {
@@ -202,6 +218,12 @@ export function SuccessClient({ sessionId }: SuccessClientProps) {
       }
 
       const data = await res.json();
+      setCheckoutContext({
+        checkoutMode: data.checkout_mode === "trial_7_day" ? "trial_7_day" : "paid",
+        planName: data.plan_name ?? null,
+        subscriptionStatus: data.subscription_status ?? null,
+        trialEndDate: data.trial_end_date ?? null,
+      });
 
       if (data.status === "pending") {
         console.log("[Success] Token pending — continuing to poll…");
@@ -241,6 +263,10 @@ export function SuccessClient({ sessionId }: SuccessClientProps) {
     return () => stopPolling();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
+
+  const isTrialFlow =
+    checkoutContext.checkoutMode === "trial_7_day" ||
+    checkoutContext.subscriptionStatus === "trialing";
 
   // ── Shared layout wrapper ────────────────────────────────────────────────
 
@@ -295,6 +321,8 @@ export function SuccessClient({ sessionId }: SuccessClientProps) {
               ? "Signing you in…"
               : phase === "sending-link"
               ? "Sending your access link…"
+              : isTrialFlow
+              ? "Starting your free trial"
               : "Setting up your account"}
           </p>
 
@@ -324,6 +352,8 @@ export function SuccessClient({ sessionId }: SuccessClientProps) {
               ? "Establishing your session — you'll be taken straight in."
               : phase === "sending-link"
               ? "Preparing your sign-in link — check your inbox in a moment."
+              : isTrialFlow
+              ? `Your card is saved and your ${checkoutContext.planName ?? "Positives"} trial is being prepared now.`
               : "Payment confirmed. We're preparing your membership now."}
           </p>
         </div>
@@ -358,7 +388,7 @@ export function SuccessClient({ sessionId }: SuccessClientProps) {
             className="text-xs font-semibold uppercase mb-5"
             style={{ color: "#4E8C78", letterSpacing: "0.14em" }}
           >
-            Membership Active
+            {isTrialFlow ? `${checkoutContext.planName ?? "Trial"} active` : "Membership Active"}
           </p>
 
           <h1
@@ -370,7 +400,7 @@ export function SuccessClient({ sessionId }: SuccessClientProps) {
               color: "#121417",
             }}
           >
-            You&apos;re in.
+            {isTrialFlow ? `${checkoutContext.planName ?? "Trial"} started.` : "You're in."}
           </h1>
 
           <p
@@ -383,7 +413,9 @@ export function SuccessClient({ sessionId }: SuccessClientProps) {
               letterSpacing: "-0.01em",
             }}
           >
-            Taking you to your first practice now…
+            {isTrialFlow && checkoutContext.trialEndDate
+              ? `Your ${checkoutContext.planName ?? "trial"} access runs through ${checkoutContext.trialEndDate}. Taking you to your first practice now…`
+              : "Taking you to your first practice now…"}
           </p>
         </div>
       )}
@@ -431,9 +463,19 @@ export function SuccessClient({ sessionId }: SuccessClientProps) {
               color: "#121417",
             }}
           >
-            Your membership
-            <br />
-            is active.
+            {isTrialFlow ? (
+              <>
+                Your {checkoutContext.planName ?? "trial"}
+                <br />
+                is active.
+              </>
+            ) : (
+              <>
+                Your membership
+                <br />
+                is active.
+              </>
+            )}
           </h1>
 
           <p
@@ -453,6 +495,9 @@ export function SuccessClient({ sessionId }: SuccessClientProps) {
               "your email"
             )}
             . Click it to access your practice instantly — no password needed.
+            {isTrialFlow && checkoutContext.trialEndDate
+              ? ` Your ${checkoutContext.planName ?? "trial"} runs through ${checkoutContext.trialEndDate}.`
+              : ""}
           </p>
 
           <p
@@ -506,7 +551,7 @@ export function SuccessClient({ sessionId }: SuccessClientProps) {
             className="text-xs font-semibold uppercase mb-5"
             style={{ color: "#9AA0A8", letterSpacing: "0.14em" }}
           >
-            Payment Received
+            {isTrialFlow ? `${checkoutContext.planName ?? "Trial"} ready` : "Payment Received"}
           </p>
 
           <h1
@@ -518,9 +563,19 @@ export function SuccessClient({ sessionId }: SuccessClientProps) {
               color: "#121417",
             }}
           >
-            Your membership
-            <br />
-            is active.
+            {isTrialFlow ? (
+              <>
+                Your {checkoutContext.planName ?? "trial"}
+                <br />
+                is active.
+              </>
+            ) : (
+              <>
+                Your membership
+                <br />
+                is active.
+              </>
+            )}
           </h1>
 
           <p
@@ -533,8 +588,11 @@ export function SuccessClient({ sessionId }: SuccessClientProps) {
               letterSpacing: "-0.01em",
             }}
           >
-            Your payment was received and your Positives membership is now
-            active. Use the email you provided at checkout to sign in.
+            {isTrialFlow
+              ? checkoutContext.trialEndDate
+                ? `Your ${checkoutContext.planName ?? "7-day trial"} is active through ${checkoutContext.trialEndDate}. Use the email you provided at checkout to sign in.`
+                : `Your ${checkoutContext.planName ?? "7-day trial"} is active. Use the email you provided at checkout to sign in.`
+              : "Your payment was received and your Positives membership is now active. Use the email you provided at checkout to sign in."}
           </p>
 
           <a

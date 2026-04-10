@@ -6,14 +6,15 @@
  * someone who does this"), and gently introduces what's next without pressure.
  */
 
-import { B, emailWrapper, emailHeader, emailFooter, ctaButton, divider } from "../brand";
+import { B, emailWrapper, emailHeader, memberEmailFooter, ctaButton, divider } from "../brand";
 
 export type Day14EmailData = {
   firstName: string;
   dashboardUrl: string;
+  unsubscribeUrl?: string;
 };
 
-export function day14EmailHtml({ firstName, dashboardUrl }: Day14EmailData): string {
+export function day14EmailHtml({ firstName, dashboardUrl, unsubscribeUrl }: Day14EmailData): string {
   const body = `
     ${emailHeader()}
 
@@ -69,7 +70,7 @@ export function day14EmailHtml({ firstName, dashboardUrl }: Day14EmailData): str
       </td>
     </tr>
 
-    ${emailFooter()}`;
+    ${memberEmailFooter("https://positives.life/account", unsubscribeUrl)}`;
 
   return emailWrapper(body);
 }

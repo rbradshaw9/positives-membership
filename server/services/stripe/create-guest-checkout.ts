@@ -25,11 +25,23 @@ import { config } from "@/lib/config";
  * Never called from client code.
  */
 
+type CheckoutMode = "paid" | "trial_7_day";
+
+type CreateGuestCheckoutOptions = {
+  fprRefId?: string | null;
+  checkoutMode?: CheckoutMode;
+  sourcePath?: string | null;
+};
+
 export async function createGuestCheckoutSession(
   priceId: string,
-  fprRefId?: string | null
+  options: CreateGuestCheckoutOptions = {}
 ): Promise<{ url: string }> {
   const stripe = getStripe();
+  const checkoutMode = options.checkoutMode ?? "paid";
+  const trialDays = checkoutMode === "trial_7_day" ? 7 : 0;
+  const fprRefId = options.fprRefId ?? null;
+  const sourcePath = options.sourcePath?.trim() || "/join";
 
   // Resolve price — the caller must pass a valid priceId.
   // No fallback here: guest checkout always has an explicit selection.
@@ -41,6 +53,8 @@ export async function createGuestCheckoutSession(
   }
 
   const appUrl = config.app.url;
+  const normalizedSourcePath =
+    sourcePath.startsWith("/") && !sourcePath.startsWith("//") ? sourcePath : "/join";
 
   // Guard: Stripe rejects relative or placeholder URLs with an opaque
   // "Not a valid URL" error. Catch it early with an actionable message.
@@ -62,6 +76,7 @@ export async function createGuestCheckoutSession(
 
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
+    payment_method_collection: "always",
 
     // For subscription mode, Stripe always creates a customer automatically.
     // session.customer is guaranteed to be populated in the webhook.
@@ -70,7 +85,9 @@ export async function createGuestCheckoutSession(
 
     // FirstPromoter affiliate attribution:
     // When a visitor arrives via an affiliate link (?fpr=code), PricingCard
-    // reads the _fprom_track cookie and submits it as the 'fpr' form field.
+    // reads the active FP referral cookie (`_fprom_ref` in production,
+    // `_fprom_track` as a compatibility fallback) and submits it as the
+    // 'fpr' form field.
     // We embed it in Stripe metadata so the webhook can:
     //   1. Store it permanently on member.referred_by_fpr (never expires)
     //   2. Later use it to link the member as a child promoter in FP when
@@ -81,14 +98,65 @@ export async function createGuestCheckoutSession(
     metadata: {
       guest: "true",
       priceId,
+      checkoutMode,
+      sourcePath,
+      ...(trialDays > 0 ? { trialDays: String(trialDays) } : {}),
       ...(fprRefId ? { fpr: fprRefId } : {}),
     },
 
     success_url: `${appUrl}/subscribe/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${appUrl}/join`,
+    cancel_url: `${appUrl}${normalizedSourcePath}`,
+
+    ...(trialDays > 0
+      ? {
+          subscription_data: {
+            trial_period_days: trialDays,
+          },
+        }
+      : {}),
+
+    branding_settings: {
+      background_color: "#FAFAFA",
+      border_style: "rounded",
+      button_color: "#2EC4B6",
+      display_name: "Positives",
+      font_family: "montserrat",
+      icon: {
+        type: "url",
+        url: `${appUrl}/logos/png/positives-logos_positives-icon-square.png`,
+      },
+      logo: {
+        type: "url",
+        url: `${appUrl}/logos/png/positives-logos_Positives-logo-full.png`,
+      },
+    },
+
+    custom_text: {
+      after_submit: {
+        message:
+          trialDays > 0
+            ? "Your 7-day free trial starts right away, and your first daily practice will be waiting inside."
+            : "Your first daily practice will be waiting for you inside Positives right after checkout.",
+      },
+      submit: {
+        message:
+          trialDays > 0
+            ? "Start with 7 days free. Your card is saved now and billing begins automatically unless you cancel before the trial ends."
+            : "Every membership includes a 30-day money-back guarantee and immediate access to today's practice.",
+      },
+    },
+
+    locale: "auto",
 
     // Collect phone number — passed to ActiveCampaign for SMS marketing
     phone_number_collection: { enabled: true },
+
+    name_collection: {
+      individual: {
+        enabled: true,
+        optional: false,
+      },
+    },
 
     // Allow Stripe to show a promotional code field
     allow_promotion_codes: true,

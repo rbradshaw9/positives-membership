@@ -22,6 +22,7 @@ import { resend, FROM_ADDRESS, REPLY_TO } from "@/lib/email/resend";
 import { day3EmailHtml, day3EmailText } from "@/lib/email/templates/onboarding-day3";
 import { day7EmailHtml, day7EmailText } from "@/lib/email/templates/onboarding-day7";
 import { day14EmailHtml, day14EmailText } from "@/lib/email/templates/onboarding-day14";
+import { buildUnsubscribeUrl } from "@/lib/email/unsubscribe";
 import { syncOnboardingComplete } from "@/lib/activecampaign/sync";
 
 const supabase = createClient(
@@ -89,7 +90,11 @@ export async function GET(req: NextRequest) {
 
   for (const row of pending as PendingRow[]) {
     const firstName = firstNameMap.get(row.member_id) ?? row.email.split("@")[0];
-    const data = { firstName, dashboardUrl: MEMBER_HOME_URL };
+    const data = {
+      firstName,
+      dashboardUrl: MEMBER_HOME_URL,
+      unsubscribeUrl: buildUnsubscribeUrl(row.email),
+    };
 
     let payload: EmailPayload | null = null;
     switch (row.day) {

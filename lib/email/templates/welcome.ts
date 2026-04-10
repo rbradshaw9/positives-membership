@@ -5,14 +5,15 @@
  * Triggered by: Stripe checkout.session.completed → our webhook → Resend.
  */
 
-import { B, emailWrapper, emailHeader, emailFooter, ctaButton, divider } from "../brand";
+import { B, emailWrapper, emailHeader, memberEmailFooter, ctaButton, divider, infoCard } from "../brand";
 
 export type WelcomeEmailData = {
   firstName: string;
   loginUrl: string;
+  unsubscribeUrl?: string;
 };
 
-export function welcomeEmailHtml({ firstName, loginUrl }: WelcomeEmailData): string {
+export function welcomeEmailHtml({ firstName, loginUrl, unsubscribeUrl }: WelcomeEmailData): string {
   const body = `
     ${emailHeader()}
 
@@ -30,6 +31,15 @@ export function welcomeEmailHtml({ firstName, loginUrl }: WelcomeEmailData): str
           Your first daily audio is waiting for you inside.
         </p>
         ${ctaButton("Start Your Practice →", loginUrl)}
+        <div style="height:20px;"></div>
+        ${infoCard(`
+          <p style="margin:0 0 6px;font-family:${B.fontHeading};font-size:13px;font-weight:700;color:${B.foreground};letter-spacing:-0.01em;">
+            Want faster sign-in next time?
+          </p>
+          <p style="margin:0;font-family:${B.fontBody};font-size:13px;color:${B.mutedFg};line-height:1.6;">
+            After you open Positives, go to <strong style="color:${B.foreground};">Account</strong> and create your password there. For security, we don&apos;t send passwords by email.
+          </p>
+        `)}
       </td>
     </tr>
 
@@ -62,7 +72,7 @@ export function welcomeEmailHtml({ firstName, loginUrl }: WelcomeEmailData): str
       </td>
     </tr>
 
-    ${emailFooter()}`;
+    ${memberEmailFooter("https://positives.life/account", unsubscribeUrl)}`;
 
   return emailWrapper(body);
 }
@@ -74,6 +84,9 @@ Positives is a daily practice — not a course, not a program. Something you ret
 
 Your first daily audio is waiting inside:
 ${loginUrl}
+
+Want faster sign-in next time?
+After you open Positives, go to Account and create your password there. For security, we don't send passwords by email.
 
 Your practice:
 - Daily: A short audio from Dr. Paul each morning

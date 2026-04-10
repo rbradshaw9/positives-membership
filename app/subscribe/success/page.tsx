@@ -48,9 +48,9 @@ export default async function SubscribeSuccessPage({
             <Image
               src="/logos/positives-wordmark-dark.png"
               alt="Positives"
-              width={120}
+              width={89}
               height={26}
-              style={{ height: 26, width: "auto" }}
+              style={{ width: "auto" }}
               priority
             />
           </Link>

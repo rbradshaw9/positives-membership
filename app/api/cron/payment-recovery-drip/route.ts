@@ -24,6 +24,7 @@ import {
   paymentRecoveryDay7EmailText,
 } from "@/lib/email/templates/payment-recovery-day7";
 import { generateBillingToken } from "@/lib/auth/billing-token";
+import { buildUnsubscribeUrl } from "@/lib/email/unsubscribe";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -117,6 +118,7 @@ export async function GET(req: NextRequest) {
       firstName,
       amountDue: "your membership fee", // Actual amount not stored; use generic fallback
       updatePaymentUrl,
+      unsubscribeUrl: buildUnsubscribeUrl(row.email),
     };
 
     let payload: EmailPayload | null = null;

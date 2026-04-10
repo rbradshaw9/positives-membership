@@ -14,6 +14,7 @@ import { resend, FROM_ADDRESS, REPLY_TO } from "@/lib/email/resend";
 import { winbackDay1EmailHtml, winbackDay1EmailText } from "@/lib/email/templates/winback-day1";
 import { winbackDay14EmailHtml, winbackDay14EmailText } from "@/lib/email/templates/winback-day14";
 import { winbackDay30EmailHtml, winbackDay30EmailText } from "@/lib/email/templates/winback-day30";
+import { buildUnsubscribeUrl } from "@/lib/email/unsubscribe";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -74,7 +75,11 @@ export async function GET(req: NextRequest) {
 
   for (const row of pending as PendingRow[]) {
     const firstName = firstNameMap.get(row.member_id) ?? row.email.split("@")[0];
-    const data = { firstName, rejoindUrl: REJOIN_URL };
+    const data = {
+      firstName,
+      rejoindUrl: REJOIN_URL,
+      unsubscribeUrl: buildUnsubscribeUrl(row.email),
+    };
 
     let payload: EmailPayload | null = null;
     switch (row.day) {

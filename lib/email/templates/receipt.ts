@@ -5,7 +5,7 @@
  * Triggered by: Stripe invoice.payment_succeeded → our webhook → Resend.
  */
 
-import { B, emailWrapper, emailHeader, emailFooter, ctaButton } from "../brand";
+import { B, emailWrapper, emailHeader, memberEmailFooter, ctaButton } from "../brand";
 
 export type ReceiptEmailData = {
   firstName: string;
@@ -16,6 +16,7 @@ export type ReceiptEmailData = {
   nextBillingDate?: string;  // optional — omit for one-time payments
   invoiceUrl?: string;       // Stripe-hosted invoice PDF URL
   accountUrl?: string;
+  unsubscribeUrl?: string;
 };
 
 export function receiptEmailHtml({
@@ -27,6 +28,7 @@ export function receiptEmailHtml({
   nextBillingDate,
   invoiceUrl,
   accountUrl = "https://positives.life/account",
+  unsubscribeUrl,
 }: ReceiptEmailData): string {
   const body = `
     ${emailHeader()}
@@ -92,7 +94,7 @@ export function receiptEmailHtml({
       </td>
     </tr>
 
-    ${emailFooter(accountUrl)}`;
+    ${memberEmailFooter(accountUrl, unsubscribeUrl)}`;
 
   return emailWrapper(body);
 }

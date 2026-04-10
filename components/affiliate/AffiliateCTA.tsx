@@ -80,7 +80,7 @@ export function AffiliateCTA() {
         {/* CTA */}
         <div className="mt-6">
           <Link
-            href="/account/affiliate?auto_enroll=1"
+            href="/account/affiliate"
             className="btn-primary inline-flex items-center gap-2 px-5 py-2.5 text-sm"
           >
             Set up my referral link
@@ -90,6 +90,13 @@ export function AffiliateCTA() {
           </Link>
           <p className="mt-2.5 text-xs text-muted-foreground">
             Free to join · Instant setup · No approval needed
+          </p>
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            By joining, you&apos;ll agree to the{" "}
+            <Link href="/affiliate-program" className="underline underline-offset-2">
+              Affiliate Program Terms
+            </Link>
+            .
           </p>
         </div>
       </div>

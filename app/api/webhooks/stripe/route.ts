@@ -8,6 +8,7 @@ import {
   handleSubscriptionDeleted,
   handlePaymentFailed,
   handlePaymentSucceeded,
+  handleTrialWillEnd,
 } from "@/server/services/stripe/handle-subscription";
 import { handleCheckoutSessionCompleted } from "@/server/services/stripe/handle-checkout";
 
@@ -24,6 +25,7 @@ import { handleCheckoutSessionCompleted } from "@/server/services/stripe/handle-
  *   customer.subscription.created   → set status + tier from subscription
  *   customer.subscription.updated   → update status + tier
  *   customer.subscription.deleted   → mark canceled
+ *   customer.subscription.trial_will_end → send trial reminder email
  *   invoice.payment_succeeded       → send receipt email
  *   invoice.payment_failed          → mark past_due + send payment-failed email
  *
@@ -35,6 +37,7 @@ import { handleCheckoutSessionCompleted } from "@/server/services/stripe/handle-
  *   customer.subscription.created
  *   customer.subscription.updated
  *   customer.subscription.deleted
+ *   customer.subscription.trial_will_end
  *   invoice.payment_succeeded
  *   invoice.payment_failed
  */
@@ -96,6 +99,10 @@ export async function POST(request: Request) {
 
       case "customer.subscription.deleted":
         await handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
+        break;
+
+      case "customer.subscription.trial_will_end":
+        await handleTrialWillEnd(event.data.object as Stripe.Subscription);
         break;
 
       case "invoice.payment_succeeded":

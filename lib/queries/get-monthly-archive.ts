@@ -1,11 +1,12 @@
 import { getAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { getEffectiveMonthYear } from "@/lib/dates/effective-date";
 
 /**
  * lib/queries/get-monthly-archive.ts
  *
  * Fetches published monthly_practice records for the Library archive.
- * Rolling 12-month window — only months where published_at <= today.
+ * Rolling 12-month window of closed months only — the active month lives on /today.
  */
 
 export type MonthArchiveItem = {
@@ -51,11 +52,11 @@ export type MonthDetail = {
 
 export async function getMonthlyArchive(months = 12): Promise<MonthArchiveItem[]> {
   const supabase = getAdminClient();
+  const activeMonthYear = getEffectiveMonthYear();
 
-  // Get last N months (strictly published)
+  // Get last N closed months (strictly published)
   const cutoff = new Date();
   cutoff.setMonth(cutoff.getMonth() - months);
-  // Format as YYYY-MM for comparison
   const cutoffKey = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, "0")}`;
 
   const { data: practices, error } = await supabase
@@ -63,6 +64,7 @@ export async function getMonthlyArchive(months = 12): Promise<MonthArchiveItem[]
     .select("id, month_year, label, description")
     .eq("status", "published")
     .gte("month_year", cutoffKey)
+    .lt("month_year", activeMonthYear)
     .order("month_year", { ascending: false });
 
   if (error || !practices || practices.length === 0) return [];

@@ -35,6 +35,7 @@ export async function getCoachingContent(limit = 20): Promise<CoachingItem[]> {
     )
     .eq("type", "coaching_call")
     .eq("status", "published")
+    .in("tier_min", ["level_3", "level_4"])
     .order("starts_at", { ascending: false, nullsFirst: false })
     .limit(limit);
 

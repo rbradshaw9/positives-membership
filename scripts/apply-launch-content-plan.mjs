@@ -209,6 +209,7 @@ function buildContentFields(entry, type, monthYear, monthlyPracticeId, existingR
 
   row.type = type;
   row.status = status;
+  row.is_active = status === "published";
 
   maybeAssign(row, "title", entry.title?.trim(), (value) => value || null);
   maybeAssign(row, "excerpt", entry.excerpt?.trim(), (value) => value || null);
@@ -254,6 +255,7 @@ function buildContentFields(entry, type, monthYear, monthlyPracticeId, existingR
 
   if (type === "daily_audio") {
     row.publish_date = entry.publish_date;
+    row.month_year = monthYear;
   }
   if (type === "weekly_principle") {
     row.week_start = entry.week_start;

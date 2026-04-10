@@ -20,6 +20,7 @@ const supabase = createClient(
 );
 
 const RECOVERY_DAYS = [3, 7] as const;
+const RECOVERY_SEND_HOUR_UTC = 15;
 
 export async function enrollInPaymentRecoverySequence(
   memberId: string,
@@ -29,7 +30,8 @@ export async function enrollInPaymentRecoverySequence(
   const rows = RECOVERY_DAYS.map((day) => {
     const sendAt = new Date(failedAt);
     sendAt.setDate(sendAt.getDate() + day);
-    sendAt.setUTCHours(14, 0, 0, 0); // 9:00 AM ET = 14:00 UTC
+    // Match the Vercel cron window at 15:00 UTC (10:00 AM ET).
+    sendAt.setUTCHours(RECOVERY_SEND_HOUR_UTC, 0, 0, 0);
     return { member_id: memberId, email, day, send_at: sendAt.toISOString() };
   });
 

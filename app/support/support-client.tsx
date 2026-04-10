@@ -38,20 +38,19 @@ export default function SupportPage() {
           borderBottom: "1px solid rgba(221,215,207,0.55)",
         }}
       >
-        <div className="max-w-6xl mx-auto flex items-center justify-between px-8 py-4">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-3 px-5 sm:px-8 py-3.5 sm:py-4">
           <Link href="/">
             <Image
               src="/logos/positives-wordmark-dark.png"
               alt="Positives"
-              width={120}
+              width={89}
               height={26}
-              style={{ height: 26, width: "auto" }}
             />
           </Link>
-          <nav className="flex items-center gap-6" aria-label="Support page navigation">
-            <Link href="/" className="text-sm font-medium" style={{ color: "#68707A" }}>Home</Link>
-            <Link href="/faq" className="text-sm font-medium" style={{ color: "#68707A" }}>FAQ</Link>
-            <Link href="/login" className="text-sm font-medium" style={{ color: "#68707A" }}>Sign in</Link>
+          <nav className="flex items-center gap-3 sm:gap-6" aria-label="Support page navigation">
+            <Link href="/" className="text-xs sm:text-sm font-medium" style={{ color: "#68707A" }}>Home</Link>
+            <Link href="/faq" className="text-xs sm:text-sm font-medium" style={{ color: "#68707A" }}>FAQ</Link>
+            <Link href="/login" className="text-xs sm:text-sm font-medium" style={{ color: "#68707A" }}>Sign in</Link>
           </nav>
         </div>
       </header>
@@ -67,7 +66,7 @@ export default function SupportPage() {
           style={{ background: "radial-gradient(ellipse at 50% 0%, rgba(78,140,120,0.06) 0%, transparent 60%)" }}
         />
         <div
-          className="relative max-w-2xl mx-auto px-8"
+          className="relative max-w-2xl mx-auto px-5 sm:px-8"
           style={{ paddingTop: "clamp(4rem, 8vw, 7rem)", paddingBottom: "clamp(2.5rem, 4vw, 4rem)" }}
         >
           <p className="text-xs font-semibold uppercase mb-5" style={{ color: "#4E8C78", letterSpacing: "0.14em" }}>
@@ -92,7 +91,7 @@ export default function SupportPage() {
 
       {/* ─── Quick answers ───────────────────────────────────────────────── */}
       <section className="w-full" style={{ paddingBottom: "clamp(3rem, 5vw, 4rem)" }}>
-        <div className="max-w-3xl mx-auto px-8">
+        <div className="max-w-3xl mx-auto px-5 sm:px-8">
           <p className="text-xs font-semibold uppercase mb-6" style={{ color: "#9AA0A8", letterSpacing: "0.14em" }}>
             Quick answers
           </p>
@@ -100,7 +99,7 @@ export default function SupportPage() {
             {[
               {
                 title: "Cancel anytime",
-                body: "Cancel immediately from your account settings. No calls, no hoops.",
+                body: "Manage cancellation from your account settings. Your paid access stays in place through the current billing period.",
               },
               {
                 title: "30-day guarantee",
@@ -147,7 +146,7 @@ export default function SupportPage() {
 
       {/* ─── Contact Form ────────────────────────────────────────────────── */}
       <section className="w-full" style={{ paddingBottom: "clamp(5rem, 10vw, 9rem)" }}>
-        <div className="max-w-3xl mx-auto px-8">
+        <div className="max-w-3xl mx-auto px-5 sm:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-12">
             {/* Left: Direct contact */}
             <div className="lg:col-span-2">
@@ -343,9 +342,9 @@ export default function SupportPage() {
 
       {/* ─── Footer ─────────────────────────────────────────────────────── */}
       <footer className="w-full" style={{ background: "#FAFAF8", borderTop: "1px solid rgba(221,215,207,0.55)" }}>
-        <div className="max-w-6xl mx-auto px-8 py-10 flex flex-col sm:flex-row items-center justify-between gap-5">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8 py-10 flex flex-col sm:flex-row items-center justify-between gap-5">
           <div className="flex flex-wrap items-center gap-5">
-            <Image src="/logos/positives-wordmark-dark.png" alt="Positives" width={80} height={18} style={{ height: 18, width: "auto", opacity: 0.4 }} />
+            <Image src="/logos/positives-wordmark-dark.png" alt="Positives" width={62} height={18} className="opacity-40" />
             <Link href="/faq" className="text-xs" style={{ color: "#9AA0A8" }}>FAQ</Link>
             <Link href="/about" className="text-xs" style={{ color: "#9AA0A8" }}>About</Link>
             <Link href="/privacy" className="text-xs" style={{ color: "#9AA0A8" }}>Privacy</Link>

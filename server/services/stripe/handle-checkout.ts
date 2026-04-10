@@ -1,12 +1,66 @@
 import type Stripe from "stripe";
 import { getAdminClient } from "@/lib/supabase/admin";
+import { getStripe } from "@/lib/stripe/config";
 import { resend, FROM_ADDRESS, REPLY_TO } from "@/lib/email/resend";
+import { trialStartedEmailHtml, trialStartedEmailText } from "@/lib/email/templates/trial-started";
 import { welcomeEmailHtml, welcomeEmailText } from "@/lib/email/templates/welcome";
 import { syncNewMember } from "@/lib/activecampaign/sync";
 import { enrollInOnboardingSequence } from "@/lib/onboarding/enroll";
 import { trackFpSale } from "@/lib/firstpromoter/client";
 import { trackServerEvent } from "@/lib/analytics/measurement-protocol";
 import { getSubscriptionAnalyticsFromPriceId } from "@/lib/analytics/subscription";
+import { buildUnsubscribeUrl } from "@/lib/email/unsubscribe";
+import { PLAN_NAME_BY_TIER } from "@/lib/plans";
+import type { Enums } from "@/types/supabase";
+
+type SubscriptionTier = Enums<"subscription_tier">;
+type SubscriptionStatus = Enums<"subscription_status">;
+
+function mapStripeSubscriptionStatus(status: string | null | undefined): SubscriptionStatus {
+  switch (status) {
+    case "active":
+      return "active";
+    case "trialing":
+      return "trialing";
+    case "past_due":
+      return "past_due";
+    case "canceled":
+    case "unpaid":
+      return "canceled";
+    default:
+      return "inactive";
+  }
+}
+
+async function getCheckoutSubscription(
+  stripe: ReturnType<typeof getStripe>,
+  session: Stripe.Checkout.Session
+): Promise<Stripe.Subscription | null> {
+  const subscriptionId =
+    typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
+
+  if (!subscriptionId) return null;
+
+  try {
+    return await stripe.subscriptions.retrieve(subscriptionId);
+  } catch (error) {
+    console.error(
+      `[Stripe] Failed to retrieve subscription ${subscriptionId} for checkout ${session.id}: ` +
+        `${error instanceof Error ? error.message : String(error)}`
+    );
+    return null;
+  }
+}
+
+function formatStripeDate(unixSeconds: number | null | undefined): string | undefined {
+  if (!unixSeconds) return undefined;
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(unixSeconds * 1000));
+}
 
 /**
  * server/services/stripe/handle-checkout.ts
@@ -98,6 +152,9 @@ async function handleAuthFirstCheckout(
   customerId: string
 ): Promise<void> {
   const supabase = getAdminClient();
+  const stripe = getStripe();
+  const subscription = await getCheckoutSubscription(stripe, session);
+  const subscriptionStatus = mapStripeSubscriptionStatus(subscription?.status);
 
   const { data: member, error: lookupError } = await supabase
     .from("member")
@@ -114,7 +171,7 @@ async function handleAuthFirstCheckout(
   }
 
   const updates: Record<string, string> = {
-    subscription_status: "active",
+    subscription_status: subscriptionStatus,
   };
 
   if (!member.stripe_customer_id) {
@@ -148,12 +205,27 @@ async function handleGuestCheckout(
   fprRefId: string | null
 ): Promise<void> {
   const supabase = getAdminClient();
+  const stripe = getStripe();
+
+  let stripeCustomer: Stripe.Customer | null = null;
+
+  try {
+    const customer = await stripe.customers.retrieve(customerId);
+    if (!customer.deleted) {
+      stripeCustomer = customer;
+    }
+  } catch (error) {
+    console.error(
+      `[Stripe] Guest checkout — failed to retrieve customer ${customerId}: ` +
+        `${error instanceof Error ? error.message : String(error)}`
+    );
+  }
 
   // ── Step 1: Resolve email ────────────────────────────────────────────────
-  const email = session.customer_details?.email;
+  const email = session.customer_details?.email ?? stripeCustomer?.email ?? null;
   if (!email) {
     console.error(
-      `[Stripe] Guest checkout — no email in customer_details — session: ${session.id}. ` +
+      `[Stripe] Guest checkout — no email in customer_details or Stripe customer — session: ${session.id}. ` +
         `Cannot create account. Member will not receive instant access.`
     );
     return;
@@ -162,6 +234,19 @@ async function handleGuestCheckout(
   console.log(
     `[Stripe] Guest checkout — email resolved: ${email} — session: ${session.id}`
   );
+
+  const customerName =
+    session.customer_details?.name?.trim() ??
+    stripeCustomer?.name?.trim() ??
+    null;
+  const nameParts = customerName ? customerName.split(/\s+/) : [];
+  const firstName = nameParts[0] ?? "there";
+  const lastName =
+    nameParts.length > 1 ? nameParts.slice(1).join(" ") : undefined;
+  const checkoutMode = session.metadata?.checkoutMode ?? "paid";
+  const subscription = await getCheckoutSubscription(stripe, session);
+  const subscriptionStatus = mapStripeSubscriptionStatus(subscription?.status);
+  const trialEndDate = formatStripeDate(subscription?.trial_end);
 
   // ── Step 2: Get or create Supabase auth user ─────────────────────────────
   // email_confirm: true — payment is proof of email ownership.
@@ -231,8 +316,9 @@ async function handleGuestCheckout(
       {
         id: userId,
         email,
+        ...(customerName ? { name: customerName } : {}),
         stripe_customer_id: customerId,
-        subscription_status: "active",
+        subscription_status: subscriptionStatus,
         // Store FP referrer permanently — first referrer wins (never overwritten)
         ...(fprRefId ? { referred_by_fpr: fprRefId } : {}),
       },
@@ -299,42 +385,91 @@ async function handleGuestCheckout(
   const purchaseValue = (session.amount_total ?? 0) / 100;
   const currency = session.currency?.toUpperCase() ?? "USD";
   const priceId = session.metadata?.priceId ?? null;
+  const planLevel =
+    getSubscriptionAnalyticsFromPriceId(priceId).plan_level as SubscriptionTier | undefined;
+  const planName = planLevel ? PLAN_NAME_BY_TIER[planLevel] : undefined;
 
-  try {
-    await trackServerEvent({
-      name: "purchase",
-      clientSeed: customerId,
-      userId,
-      params: {
-        transaction_id: session.id,
-        value: purchaseValue,
-        currency,
-        subscription_status: "active",
-        affiliate_attributed: Boolean(fprRefId),
-        affiliate_code: fprRefId ?? undefined,
-        ...getSubscriptionAnalyticsFromPriceId(priceId),
-      },
-    });
-  } catch (analyticsError) {
-    console.error(
-      `[GA4] Failed to track purchase for ${email}: ` +
-        `${analyticsError instanceof Error ? analyticsError.message : String(analyticsError)}`
-    );
+  if (checkoutMode === "trial_7_day") {
+    try {
+      await trackServerEvent({
+        name: "trial_started",
+        clientSeed: customerId,
+        userId,
+        params: {
+          transaction_id: session.id,
+          value: 0,
+          currency,
+          subscription_status: subscriptionStatus,
+          trial_end: subscription?.trial_end ?? undefined,
+          affiliate_attributed: Boolean(fprRefId),
+          affiliate_code: fprRefId ?? undefined,
+          ...getSubscriptionAnalyticsFromPriceId(priceId),
+        },
+      });
+    } catch (analyticsError) {
+      console.error(
+        `[GA4] Failed to track trial start for ${email}: ` +
+          `${analyticsError instanceof Error ? analyticsError.message : String(analyticsError)}`
+      );
+    }
+  } else {
+    try {
+      await trackServerEvent({
+        name: "purchase",
+        clientSeed: customerId,
+        userId,
+        params: {
+          transaction_id: session.id,
+          value: purchaseValue,
+          currency,
+          subscription_status: "active",
+          affiliate_attributed: Boolean(fprRefId),
+          affiliate_code: fprRefId ?? undefined,
+          ...getSubscriptionAnalyticsFromPriceId(priceId),
+        },
+      });
+    } catch (analyticsError) {
+      console.error(
+        `[GA4] Failed to track purchase for ${email}: ` +
+          `${analyticsError instanceof Error ? analyticsError.message : String(analyticsError)}`
+      );
+    }
   }
 
   // ── Step 6: Send welcome email ───────────────────────────────────────────
   // Non-fatal — a send failure should never block the webhook response.
   try {
-    const firstName = session.customer_details?.name?.split(" ")[0] ?? "there";
-    const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://positives.life"}/auth/login?token_hash=${tokenHash}&type=email`;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://positives.life";
+    const loginUrl =
+      `${appUrl}/auth/confirm?token_hash=${encodeURIComponent(tokenHash)}` +
+      `&type=email&next=${encodeURIComponent("/today")}`;
 
     await resend.emails.send({
       from: FROM_ADDRESS,
       to: email,
       replyTo: REPLY_TO,
-      subject: "Welcome to Positives — your first practice is ready.",
-      html: welcomeEmailHtml({ firstName, loginUrl }),
-      text: welcomeEmailText({ firstName, loginUrl }),
+      subject:
+        checkoutMode === "trial_7_day"
+          ? `Your ${planName ?? "Positives"} 7-day trial is live.`
+          : "Welcome to Positives — your first practice is ready.",
+      html:
+        checkoutMode === "trial_7_day"
+          ? trialStartedEmailHtml({
+              firstName,
+              loginUrl,
+              planName,
+              trialEndDate,
+              unsubscribeUrl: buildUnsubscribeUrl(email),
+            })
+          : welcomeEmailHtml({
+              firstName,
+              loginUrl,
+              unsubscribeUrl: buildUnsubscribeUrl(email),
+            }),
+      text:
+        checkoutMode === "trial_7_day"
+          ? trialStartedEmailText({ firstName, loginUrl, planName, trialEndDate })
+          : welcomeEmailText({ firstName, loginUrl }),
     });
 
     console.log(`[Resend] Welcome email sent — userId: ${userId}, email: ${email}`);
@@ -348,12 +483,17 @@ async function handleGuestCheckout(
 
   // ── Step 7: Sync to ActiveCampaign ──────────────────────────────────────
   // Non-fatal — subscribes member to AC list and applies tier + founding_member tags.
+  const activeCampaignTier = planLevel ?? "level_1";
+
   await syncNewMember({
     email,
-    firstName: session.customer_details?.name?.split(" ")[0],
-    lastName:  session.customer_details?.name?.split(" ").slice(1).join(" ") || undefined,
-    phone:     session.customer_details?.phone ?? undefined,
-    tier:      "level_1",
+    firstName: customerName ? firstName : undefined,
+    lastName,
+    phone:
+      session.customer_details?.phone ??
+      stripeCustomer?.phone ??
+      undefined,
+    tier: activeCampaignTier,
     stripeCustomerId: customerId,
   });
 
@@ -362,7 +502,7 @@ async function handleGuestCheckout(
 
   // ── Step 8: Track FP sale (credit the referrer) ──────────────────────────
   // Non-fatal — only fires when the member arrived via an affiliate link.
-  if (fprRefId) {
+  if (fprRefId && checkoutMode !== "trial_7_day") {
     const amountDollars = (session.amount_total ?? 0) / 100;
     try {
       await trackFpSale({

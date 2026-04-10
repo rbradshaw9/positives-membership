@@ -5,13 +5,15 @@ import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { revalidateTag } from "next/cache";
 import { CACHE_TAGS } from "@/lib/cache-tags";
+import { requireAdmin } from "@/lib/auth/require-admin";
 
 /**
  * app/admin/months/actions.ts
  * Server actions for monthly_practice CRUD and daily audio assignment.
  *
  * All mutations use the service-role client (bypasses RLS — admin only).
- * requireAdmin() is enforced at the layout level.
+ * Each action explicitly checks requireAdmin() because server actions can be
+ * invoked independently of the admin layout boundary.
  */
 
 function adminClient() {
@@ -32,8 +34,7 @@ function bustContentCaches() {
   ];
   for (const tag of tags) {
     try {
-      // @ts-expect-error — unstable_cache tag revalidation
-      revalidateTag(tag);
+      revalidateTag(tag, "max");
     } catch { /* noop */ }
   }
 }
@@ -48,6 +49,7 @@ function monthLabel(monthYear: string): string {
 // ─── Create ─────────────────────────────────────────────────────────────────
 
 export async function createMonthlyPractice(formData: FormData) {
+  await requireAdmin();
   const monthYear = formData.get("month_year")?.toString().trim();
 
   if (!monthYear || !/^\d{4}-\d{2}$/.test(monthYear)) {
@@ -88,6 +90,7 @@ export async function createMonthlyPractice(formData: FormData) {
 // ─── Update ─────────────────────────────────────────────────────────────────
 
 export async function updateMonthlyPractice(formData: FormData) {
+  await requireAdmin();
   const id = formData.get("id")?.toString();
   if (!id) redirect("/admin/months?error=missing_id");
 
@@ -114,6 +117,7 @@ export async function updateMonthlyPractice(formData: FormData) {
 // ─── Publish Entire Month ───────────────────────────────────────────────────
 
 export async function publishEntireMonth(formData: FormData) {
+  await requireAdmin();
   const id = formData.get("id")?.toString();
   if (!id) redirect("/admin/months?error=missing_id");
 
@@ -132,7 +136,7 @@ export async function publishEntireMonth(formData: FormData) {
   // Set all child content to published
   const { error: contentError } = await supabase
     .from("content")
-    .update({ status: "published" })
+    .update({ status: "published", is_active: true })
     .eq("monthly_practice_id", id)
     .neq("status", "published");
 
@@ -147,6 +151,7 @@ export async function publishEntireMonth(formData: FormData) {
 // ─── Assign daily audio to a date slot ──────────────────────────────────────
 
 export async function assignDailyAudio(formData: FormData) {
+  await requireAdmin();
   const contentId = formData.get("content_id")?.toString();
   const monthId = formData.get("month_id")?.toString();
   const publishDate = formData.get("publish_date")?.toString();
@@ -177,6 +182,7 @@ export async function assignDailyAudio(formData: FormData) {
 // ─── Unassign daily audio from a date slot ──────────────────────────────────
 
 export async function unassignDailyAudio(formData: FormData) {
+  await requireAdmin();
   const contentId = formData.get("content_id")?.toString();
   const monthId = formData.get("month_id")?.toString();
 
@@ -203,6 +209,7 @@ export async function unassignDailyAudio(formData: FormData) {
 // ─── Swap / move daily audio between date slots ──────────────────────────────
 
 export async function swapDailyAudios(formData: FormData): Promise<void> {
+  await requireAdmin();
   const sourceContentId = formData.get("source_content_id")?.toString();
   const targetContentId = formData.get("target_content_id")?.toString() || null;
   const sourceDate = formData.get("source_date")?.toString();
@@ -241,6 +248,7 @@ export async function swapDailyAudios(formData: FormData): Promise<void> {
 // ─── Create or update Masterclass (monthly_theme) ───────────────────────────
 
 export async function createOrUpdateMasterclass(formData: FormData) {
+  await requireAdmin();
   const monthId = formData.get("month_id")?.toString();
   const monthYear = formData.get("month_year")?.toString();
   const existingId = formData.get("content_id")?.toString() || null;
@@ -281,6 +289,7 @@ export async function createOrUpdateMasterclass(formData: FormData) {
     month_year: monthYear,
     monthly_practice_id: monthId,
     source: "admin" as const,
+    is_active: status === "published",
     updated_at: new Date().toISOString(),
   };
 
@@ -302,6 +311,7 @@ export async function createOrUpdateMasterclass(formData: FormData) {
 // ─── Create or update Weekly Reflection ─────────────────────────────────────
 
 export async function createOrUpdateWeekly(formData: FormData) {
+  await requireAdmin();
   const monthId = formData.get("month_id")?.toString();
   const monthYear = formData.get("month_year")?.toString();
   const existingId = formData.get("content_id")?.toString() || null;
@@ -329,6 +339,7 @@ export async function createOrUpdateWeekly(formData: FormData) {
     monthly_practice_id: monthId,
     status,
     source: "admin" as const,
+    is_active: status === "published",
     updated_at: new Date().toISOString(),
   };
 
@@ -350,6 +361,7 @@ export async function createOrUpdateWeekly(formData: FormData) {
 // ─── Quick Create Daily Audio ───────────────────────────────────────────────
 
 export async function quickCreateDaily(formData: FormData) {
+  await requireAdmin();
   const monthId = formData.get("month_id")?.toString();
   const monthYear = formData.get("month_year")?.toString();
   const publishDate = formData.get("publish_date")?.toString();
@@ -375,6 +387,7 @@ export async function quickCreateDaily(formData: FormData) {
     s3_audio_key: s3Key,
     duration_seconds: durationStr ? parseInt(durationStr, 10) : null,
     status,
+    is_active: status === "published",
     source: "admin" as const,
   });
 

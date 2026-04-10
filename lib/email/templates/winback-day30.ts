@@ -6,14 +6,15 @@
  * This is the last automated email in the sequence.
  */
 
-import { B, emailWrapper, emailHeader, emailFooter, ctaButton } from "../brand";
+import { B, emailWrapper, emailHeader, memberEmailFooter, ctaButton } from "../brand";
 
 export type WinbackDay30Data = {
   firstName: string;
   rejoindUrl: string;
+  unsubscribeUrl?: string;
 };
 
-export function winbackDay30EmailHtml({ firstName, rejoindUrl }: WinbackDay30Data): string {
+export function winbackDay30EmailHtml({ firstName, rejoindUrl, unsubscribeUrl }: WinbackDay30Data): string {
   const body = `
     ${emailHeader()}
 
@@ -45,7 +46,7 @@ export function winbackDay30EmailHtml({ firstName, rejoindUrl }: WinbackDay30Dat
       </td>
     </tr>
 
-    ${emailFooter()}`;
+    ${memberEmailFooter("https://positives.life/account", unsubscribeUrl)}`;
 
   return emailWrapper(body);
 }

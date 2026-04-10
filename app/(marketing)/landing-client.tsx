@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { StickyCtaBar } from "@/components/marketing/StickyCtaBar";
+import type { PublicSessionState } from "@/lib/marketing/public-session";
 
 /* ─── Check Icon ─────────────────────────────────────────────────────────── */
 
@@ -31,7 +32,7 @@ function CheckIcon({ color = "#4E8C78" }: { color?: string }) {
 const LANDING_FAQS = [
   {
     q: "What exactly is Positives?",
-    a: "Positives is a daily practice membership built by Dr. Paul Jenkins, a licensed Clinical Psychologist with 30+ years of experience. Each day you get a short guided audio session (5–15 minutes) designed to reset your thinking and help you move through your day with more clarity and calm. Alongside that, you get a weekly mindset principle and a monthly masterclass with Dr. Paul.",
+    a: "Positives is a daily practice membership built by Dr. Paul Jenkins, a licensed Clinical Psychologist with 30+ years of experience. Each day you get a short guided audio session (5–15 minutes) designed to reset your thinking and help you move through your day with more clarity and calm. Alongside that, you get a weekly mindset principle and a monthly theme from Dr. Paul.",
   },
   {
     q: "How long are the daily sessions?",
@@ -55,7 +56,7 @@ const LANDING_FAQS = [
   },
   {
     q: "Can I cancel anytime?",
-    a: "Yes. You can cancel immediately from your account settings. No calls, no cancellation hoops, no \"please tell us why\" friction. If you want to leave, you can leave.",
+    a: "Yes. You can manage cancellation from your account settings without contacting support. If you cancel, any paid access stays in place through your current billing period.",
   },
   {
     q: "What devices does this work on?",
@@ -275,7 +276,19 @@ function AudioPlayer() {
 
 /* ─── Main Landing Page Client Component ────────────────────────────────── */
 
-export function LandingPageClient() {
+type LandingPageClientProps = {
+  session: PublicSessionState;
+  signInHref: string;
+  paidHref: string;
+  watchHref: string;
+};
+
+export function LandingPageClient({
+  session,
+  signInHref,
+  paidHref,
+  watchHref,
+}: LandingPageClientProps) {
   const heroSentinelRef = useRef<HTMLDivElement>(null);
   return (
     <div className="min-h-dvh flex flex-col overflow-x-hidden" style={{ background: "#FAFAF8" }}>
@@ -290,30 +303,29 @@ export function LandingPageClient() {
           borderBottom: "1px solid rgba(221,215,207,0.55)",
         }}
       >
-        <div className="max-w-6xl mx-auto px-8 py-4 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8 py-3 sm:py-4 flex items-center justify-between gap-3">
           <Link href="/">
             <Image
               src="/logos/positives-wordmark-dark.png"
               alt="Positives"
-              width={120}
+              width={89}
               height={26}
-              style={{ height: 26, width: "auto" }}
               priority
             />
           </Link>
-          <nav className="flex items-center gap-7" aria-label="Main navigation">
+          <nav className="flex items-center gap-3 sm:gap-7" aria-label="Main navigation">
             <Link href="#how-it-works" className="hidden md:block text-sm font-medium transition-colors hover:text-foreground" style={{ color: "#68707A" }}>
               How it Works
             </Link>
             <Link href="#dr-paul" className="hidden md:block text-sm font-medium transition-colors hover:text-foreground" style={{ color: "#68707A" }}>
               Dr. Paul
             </Link>
-            <Link href="/login" className="text-sm font-medium transition-colors" style={{ color: "#68707A" }}>
-              Sign in
+            <Link href={signInHref} className="text-xs sm:text-sm font-medium transition-colors" style={{ color: "#68707A" }}>
+              {session.signInLabel}
             </Link>
             <Link
-              href="/join"
-              className="text-sm font-semibold px-5 py-2.5 rounded-full"
+              href={paidHref}
+              className="text-xs sm:text-sm font-semibold px-4 sm:px-5 py-2 sm:py-2.5 rounded-full"
               style={{
                 background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
                 color: "#FFFFFF",
@@ -321,7 +333,7 @@ export function LandingPageClient() {
                 boxShadow: "0 4px 14px rgba(47,111,237,0.28)",
               }}
             >
-              Join
+              {session.paidShortLabel}
             </Link>
           </nav>
         </div>
@@ -338,11 +350,11 @@ export function LandingPageClient() {
           style={{ background: "radial-gradient(ellipse at 50% 0%, rgba(47,111,237,0.07) 0%, transparent 60%)" }}
         />
 
-        <div className="relative flex flex-col items-center max-w-4xl mx-auto" style={{ paddingTop: "3.5rem", paddingBottom: "4.5rem" }}>
+        <div className="relative flex flex-col items-center max-w-4xl mx-auto" style={{ paddingTop: "clamp(2.75rem, 9vw, 3.5rem)", paddingBottom: "clamp(3.5rem, 10vw, 4.5rem)" }}>
           {/* Eyebrow */}
-          <div className="flex items-center gap-2.5 mb-10">
+          <div className="flex flex-wrap items-center justify-center gap-2.5 mb-8 sm:mb-10 px-4">
             <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#4E8C78" }} />
-            <span className="text-xs font-semibold uppercase" style={{ color: "#4E8C78", letterSpacing: "0.13em" }}>
+            <span className="text-[11px] sm:text-xs font-semibold uppercase text-center" style={{ color: "#4E8C78", letterSpacing: "0.13em" }}>
               Dr. Paul Jenkins · Clinical Psychologist
             </span>
           </div>
@@ -357,11 +369,10 @@ export function LandingPageClient() {
               color: "#121417",
             }}
           >
-            <span style={{ display: "block", whiteSpace: "nowrap" }}>A few minutes each day.</span>
+            <span className="block sm:whitespace-nowrap">A few minutes each day.</span>
             <span
+              className="block sm:whitespace-nowrap"
               style={{
-                display: "block",
-                whiteSpace: "nowrap",
                 background: "linear-gradient(135deg, #2F6FED 20%, #4E8C78 100%)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
@@ -401,10 +412,10 @@ export function LandingPageClient() {
           </p>
 
           {/* CTAs */}
-          <div className="flex flex-col sm:flex-row items-center gap-4 mb-8">
+          <div className="flex flex-col sm:flex-row items-center gap-4 mb-8 w-full sm:w-auto">
             <Link
-              href="/join"
-              className="inline-flex items-center justify-center font-semibold rounded-full"
+              href={paidHref}
+              className="inline-flex w-full sm:w-auto items-center justify-center font-semibold rounded-full"
               style={{
                 background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
                 color: "#FFFFFF",
@@ -414,7 +425,7 @@ export function LandingPageClient() {
                 padding: "1rem 2.25rem",
               }}
             >
-              Start your daily practice →
+              {session.paidActionLabel}
             </Link>
             <Link href="#how-it-works" className="text-sm font-medium" style={{ color: "#68707A" }}>
               See how it works
@@ -431,12 +442,16 @@ export function LandingPageClient() {
       {/* Sentinel — marks bottom of hero for sticky mobile CTA */}
       <div ref={heroSentinelRef} aria-hidden="true" />
 
-      <StickyCtaBar sentinelRef={heroSentinelRef} />
+      <StickyCtaBar
+        sentinelRef={heroSentinelRef}
+        href={paidHref}
+        label={session.hasMemberAccess ? "Open today’s practice →" : "Start your daily practice →"}
+      />
 
       {/* ━━ 3. PROBLEM ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section className="w-full" style={{ background: "#121417", borderTop: "1px solid #1C2028" }}>
         <div
-          className="max-w-6xl mx-auto px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center"
+          className="max-w-6xl mx-auto px-5 sm:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center"
           style={{ paddingTop: "clamp(5rem, 9vw, 8rem)", paddingBottom: "clamp(5rem, 9vw, 8rem)" }}
         >
           <div>
@@ -471,7 +486,7 @@ export function LandingPageClient() {
       {/* ━━ 4. THE PRACTICE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section id="how-it-works" className="w-full" style={{ background: "#F6F3EE", borderTop: "1px solid #DDD7CF" }}>
         <div
-          className="max-w-6xl mx-auto px-8"
+          className="max-w-6xl mx-auto px-5 sm:px-8"
           style={{ paddingTop: "clamp(5rem, 9vw, 8rem)", paddingBottom: "clamp(5rem, 9vw, 8rem)" }}
         >
           <div className="max-w-2xl mb-16">
@@ -506,8 +521,8 @@ export function LandingPageClient() {
               {
                 freq: "Monthly",
                 accent: "#D98A4E",
-                title: "Monthly Masterclass",
-                desc: "Every month, Dr. Paul leads a deep-dive masterclass on one meaningful area of life — relationships, purpose, resilience, and more. This is the heart of the curriculum that ties it all together.",
+                title: "Monthly Theme",
+                desc: "Each month centers on one guiding theme from Dr. Paul. It gives the daily practice and weekly reflections a shared focus so the work feels grounded, calm, and connected.",
               },
             ].map(({ freq, accent, title, desc }) => (
               <div key={freq}>
@@ -537,7 +552,7 @@ export function LandingPageClient() {
       {/* ━━ 5. SAMPLE AUDIO ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section className="w-full text-center" style={{ background: "#FFFFFF", borderTop: "1px solid #DDD7CF" }}>
         <div
-          className="max-w-6xl mx-auto px-8"
+          className="max-w-6xl mx-auto px-5 sm:px-8"
           style={{ paddingTop: "clamp(4rem, 7vw, 6.5rem)", paddingBottom: "clamp(4rem, 7vw, 6.5rem)" }}
         >
           <p className="text-xs font-semibold uppercase mb-5" style={{ color: "#9AA0A8", letterSpacing: "0.14em" }}>
@@ -561,8 +576,8 @@ export function LandingPageClient() {
 
           <p className="mt-8 text-sm" style={{ color: "#B0A89E" }}>
             Daily sessions available to members ·{" "}
-            <Link href="/join" className="font-medium underline underline-offset-2" style={{ color: "#2F6FED" }}>
-              Start your practice
+            <Link href={paidHref} className="font-medium underline underline-offset-2" style={{ color: "#2F6FED" }}>
+              {session.hasMemberAccess ? "Open your practice" : "Start your practice"}
             </Link>
           </p>
         </div>
@@ -571,7 +586,7 @@ export function LandingPageClient() {
       {/* ━━ 6. THE SYSTEM ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section className="w-full" style={{ background: "#121417", borderTop: "1px solid #1C2028" }}>
         <div
-          className="max-w-6xl mx-auto px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center"
+          className="max-w-6xl mx-auto px-5 sm:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center"
           style={{ paddingTop: "clamp(5rem, 9vw, 8rem)", paddingBottom: "clamp(5rem, 9vw, 8rem)" }}
         >
           <div>
@@ -594,7 +609,7 @@ export function LandingPageClient() {
               </p>
             </div>
             <Link
-              href="/join"
+              href={paidHref}
               className="inline-flex items-center justify-center font-semibold rounded-full"
               style={{
                 background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
@@ -605,7 +620,7 @@ export function LandingPageClient() {
                 padding: "0.9rem 2rem",
               }}
             >
-              Start your practice →
+              {session.paidActionLabel}
             </Link>
           </div>
 
@@ -614,10 +629,10 @@ export function LandingPageClient() {
               {[
                 "Daily guided audio practices",
                 "Weekly reflections & mindset principles",
-                "Monthly masterclass with Dr. Paul",
-                "Member community",
-                "Live group sessions",
-                "Workshops and coaching opportunities",
+                "Monthly themes with Dr. Paul",
+                "Full member library",
+                "Live member events at higher levels",
+                "Weekly coaching inside Coaching Circle",
               ].map((item) => (
                 <div
                   key={item}
@@ -645,7 +660,7 @@ export function LandingPageClient() {
       {/* ━━ 7. DR. PAUL ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section id="dr-paul" className="w-full" style={{ background: "#F6F3EE", borderTop: "1px solid #DDD7CF" }}>
         <div
-          className="max-w-6xl mx-auto px-8 grid grid-cols-1 lg:grid-cols-[1fr_1.6fr] gap-12 lg:gap-20 items-center"
+          className="max-w-6xl mx-auto px-5 sm:px-8 grid grid-cols-1 lg:grid-cols-[1fr_1.6fr] gap-12 lg:gap-20 items-center"
           style={{ paddingTop: "clamp(5rem, 9vw, 8rem)", paddingBottom: "clamp(5rem, 9vw, 8rem)" }}
         >
           <div className="flex justify-center lg:justify-start">
@@ -702,7 +717,7 @@ export function LandingPageClient() {
       {/* ━━ 8. BENEFITS / THE RESULT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section className="w-full" style={{ background: "#FFFFFF", borderTop: "1px solid #DDD7CF" }}>
         <div
-          className="max-w-6xl mx-auto px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center"
+          className="max-w-6xl mx-auto px-5 sm:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center"
           style={{ paddingTop: "clamp(5rem, 9vw, 8rem)", paddingBottom: "clamp(5rem, 9vw, 8rem)" }}
         >
           <div>
@@ -749,7 +764,7 @@ export function LandingPageClient() {
       {/* ━━ 8b. TESTIMONIALS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section className="w-full" style={{ background: "#121417", borderTop: "1px solid #1C2028" }}>
         <div
-          className="max-w-6xl mx-auto px-8"
+          className="max-w-6xl mx-auto px-5 sm:px-8"
           style={{ paddingTop: "clamp(4rem, 8vw, 7rem)", paddingBottom: "clamp(4rem, 8vw, 7rem)" }}
         >
           <div className="text-center mb-12">
@@ -803,7 +818,7 @@ export function LandingPageClient() {
                 highlight: "the real deal",
               },
               {
-                quote: "I bought it for the daily audio. I stayed for the monthly masterclasses. Dr. Paul goes deep on topics I've been trying to understand for years — relationships, purpose, resilience. The content keeps getting better.",
+                quote: "I bought it for the daily audio. I stayed for the monthly themes and weekly reflections. Dr. Paul keeps bringing me back to the ideas I need most without making the practice feel heavy or overwhelming.",
                 name: "Carlos V.",
                 location: "Miami, FL",
                 highlight: "the content keeps getting better",
@@ -849,7 +864,7 @@ export function LandingPageClient() {
       {/* ━━ 9. GUARANTEE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section className="w-full" style={{ background: "#F6F3EE", borderTop: "1px solid #DDD7CF" }}>
         <div
-          className="max-w-6xl mx-auto px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center"
+          className="max-w-6xl mx-auto px-5 sm:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center"
           style={{ paddingTop: "clamp(5rem, 9vw, 8rem)", paddingBottom: "clamp(5rem, 9vw, 8rem)" }}
         >
           {/* Left */}
@@ -890,7 +905,7 @@ export function LandingPageClient() {
             </p>
             <div className="pt-2">
               <Link
-                href="/join"
+                href={paidHref}
                 className="inline-flex items-center justify-center font-semibold rounded-full"
                 style={{
                   background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
@@ -901,7 +916,7 @@ export function LandingPageClient() {
                   padding: "0.9rem 2rem",
                 }}
               >
-                Start your practice →
+                {session.paidActionLabel}
               </Link>
             </div>
           </div>
@@ -911,7 +926,7 @@ export function LandingPageClient() {
       {/* ━━ 9b. FAQ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section id="faq" className="w-full" style={{ background: "#FAFAF8", borderTop: "1px solid rgba(221,215,207,0.55)" }}>
         <div
-          className="max-w-3xl mx-auto px-8"
+          className="max-w-3xl mx-auto px-5 sm:px-8"
           style={{ paddingTop: "clamp(4rem, 8vw, 7rem)", paddingBottom: "clamp(4rem, 8vw, 7rem)" }}
         >
           <div className="text-center mb-10">
@@ -950,7 +965,7 @@ export function LandingPageClient() {
           style={{ background: "radial-gradient(ellipse at 50% -10%, rgba(47,111,237,0.18) 0%, transparent 60%)" }}
         />
         <div
-          className="relative max-w-4xl mx-auto px-8"
+          className="relative max-w-4xl mx-auto px-5 sm:px-8"
           style={{ paddingTop: "clamp(5rem, 10vw, 9rem)", paddingBottom: "clamp(5rem, 10vw, 9rem)" }}
         >
           <h2
@@ -961,15 +976,14 @@ export function LandingPageClient() {
               letterSpacing: "-0.05em",
               color: "#FFFFFF",
             }}
-          >
-            <span style={{ display: "block", whiteSpace: "nowrap" }}>A few minutes each day.</span>
-            <span
-              style={{
-                display: "block",
-                whiteSpace: "nowrap",
-                background: "linear-gradient(135deg, #6B9BF2 0%, #8FC4B5 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
+            >
+              <span className="block sm:whitespace-nowrap">A few minutes each day.</span>
+              <span
+                className="block sm:whitespace-nowrap"
+                style={{
+                  background: "linear-gradient(135deg, #6B9BF2 0%, #8FC4B5 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
                 backgroundClip: "text",
               }}
             >
@@ -978,7 +992,7 @@ export function LandingPageClient() {
           </h2>
 
           <Link
-            href="/join"
+            href={paidHref}
             className="inline-flex items-center justify-center font-semibold rounded-full"
             style={{
               background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
@@ -989,7 +1003,7 @@ export function LandingPageClient() {
               padding: "1rem 2.5rem",
             }}
           >
-            Start your daily practice →
+            {session.paidActionLabel}
           </Link>
 
           <p className="mt-5 text-sm" style={{ color: "#68707A" }}>
@@ -1001,7 +1015,7 @@ export function LandingPageClient() {
       {/* ━━ 11. FOOTER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <footer className="w-full" style={{ background: "#FAFAF8", borderTop: "1px solid rgba(221,215,207,0.55)" }}>
         <div
-          className="max-w-6xl mx-auto px-8"
+          className="max-w-6xl mx-auto px-5 sm:px-8"
           style={{ paddingTop: "2.5rem", paddingBottom: "2.5rem" }}
         >
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-10 mb-8">
@@ -1011,9 +1025,9 @@ export function LandingPageClient() {
                 <Image
                   src="/logos/positives-wordmark-dark.png"
                   alt="Positives"
-                  width={100}
+                  width={76}
                   height={22}
-                  style={{ height: 22, width: "auto", opacity: 0.45, marginBottom: "0.75rem" }}
+                  style={{ opacity: 0.45, marginBottom: "0.75rem" }}
                 />
               </Link>
               <p style={{ fontSize: "0.8rem", color: "#B0A89E", maxWidth: "220px", lineHeight: "1.65" }}>
@@ -1026,9 +1040,12 @@ export function LandingPageClient() {
               <div>
                 <p className="text-xs font-semibold uppercase mb-3" style={{ color: "#9AA0A8", letterSpacing: "0.1em" }}>Practice</p>
                 <div className="space-y-2">
-                  <Link href="/join" className="block text-sm" style={{ color: "#68707A" }}>Join</Link>
+                  <Link href={paidHref} className="block text-sm" style={{ color: "#68707A" }}>{session.paidShortLabel}</Link>
+                  <Link href={watchHref} className="block text-sm" style={{ color: "#68707A" }}>
+                    {session.hasMemberAccess ? "Today" : "Watch Dr. Paul"}
+                  </Link>
                   <Link href="#how-it-works" className="block text-sm" style={{ color: "#68707A" }}>How it works</Link>
-                  <Link href="/login" className="block text-sm" style={{ color: "#68707A" }}>Sign in</Link>
+                  <Link href={signInHref} className="block text-sm" style={{ color: "#68707A" }}>{session.signInLabel}</Link>
                 </div>
               </div>
               <div>

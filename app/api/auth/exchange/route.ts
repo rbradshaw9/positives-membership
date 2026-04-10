@@ -1,6 +1,8 @@
 import type { NextRequest } from "next/server";
 import type Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
+import { getSubscriptionAnalyticsFromPriceId } from "@/lib/analytics/subscription";
+import { PLAN_NAME_BY_TIER } from "@/lib/plans";
 import { getStripe } from "@/lib/stripe/config";
 
 /**
@@ -56,7 +58,9 @@ export async function GET(request: NextRequest) {
   let checkoutSession: Stripe.Checkout.Session;
 
   try {
-    checkoutSession = await stripe.checkout.sessions.retrieve(sessionId);
+    checkoutSession = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ["subscription"],
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error(`[Exchange] Invalid session_id: ${sessionId} — ${message}`);
@@ -68,6 +72,23 @@ export async function GET(request: NextRequest) {
 
   // ── Step 2: Extract email from checkout session ──────────────────────────
   const email = checkoutSession.customer_details?.email;
+  const subscription =
+    typeof checkoutSession.subscription === "string"
+      ? null
+      : checkoutSession.subscription;
+  const checkoutMode = checkoutSession.metadata?.checkoutMode ?? "paid";
+  const subscriptionPriceId =
+    subscription?.items.data[0]?.price?.id ?? checkoutSession.metadata?.priceId ?? null;
+  const planLevel = getSubscriptionAnalyticsFromPriceId(subscriptionPriceId).plan_level;
+  const planName = planLevel ? PLAN_NAME_BY_TIER[planLevel] : null;
+  const trialEndDate = subscription?.trial_end
+    ? new Intl.DateTimeFormat("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      }).format(new Date(subscription.trial_end * 1000))
+    : null;
+
   if (!email) {
     console.error(
       `[Exchange] No email in session: ${sessionId}. ` +
@@ -99,7 +120,14 @@ export async function GET(request: NextRequest) {
   // ── Step 4: If token not ready, tell client to keep polling ─────────────
   // Include email so the fallback magic-link sender has it without a second Stripe call.
   if (!member?.onboarding_token) {
-    return Response.json({ status: "pending", email });
+    return Response.json({
+      status: "pending",
+      email,
+      checkout_mode: checkoutMode,
+      plan_name: planName,
+      subscription_status: subscription?.status ?? null,
+      trial_end_date: trialEndDate,
+    });
   }
 
   // ── Step 5: Return token and immediately clear it ────────────────────────
@@ -122,5 +150,13 @@ export async function GET(request: NextRequest) {
 
   console.log(`[Exchange] Token exchanged for ${email} — session: ${sessionId}`);
 
-  return Response.json({ status: "ready", token_hash: tokenHash, email });
+  return Response.json({
+    status: "ready",
+    token_hash: tokenHash,
+    email,
+    checkout_mode: checkoutMode,
+    plan_name: planName,
+    subscription_status: subscription?.status ?? null,
+    trial_end_date: trialEndDate,
+  });
 }

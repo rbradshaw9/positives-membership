@@ -10,7 +10,8 @@
  * Deliverability upgrades:
  * - emailPreheader()   — hidden inbox preview text (huge open-rate impact)
  * - Mobile CSS in <head> — works in Gmail App, Apple Mail, Outlook iOS
- * - emailFooter()     — CAN-SPAM address + List-Unsubscribe link
+ * - memberEmailFooter() — CAN-SPAM address + member unsubscribe link
+ * - transactionalEmailFooter() — support/account footer without unsubscribe
  * - infoCard()        — branded highlight block for key info
  */
 
@@ -116,9 +117,9 @@ export function emailHeader(): string {
  * Includes: account link, unsubscribe link, physical mailing address.
  * Required by Gmail/Yahoo bulk sender rules (Feb 2024).
  */
-export function emailFooter(
+export function memberEmailFooter(
   accountUrl = "https://positives.life/account",
-  unsubscribeUrl = "https://positives.life/api/unsubscribe",
+  unsubscribeUrl?: string,
 ): string {
   return `
   <!-- Footer -->
@@ -130,8 +131,31 @@ export function emailFooter(
       </p>
       <p style="margin:0 0 10px;font-family:${B.fontBody};font-size:11px;color:${B.mutedFg};line-height:1.6;">
         <a href="${accountUrl}" style="color:${B.primary};text-decoration:none;font-weight:600;">Manage account</a>
-        &nbsp;&middot;&nbsp;
-        <a href="${unsubscribeUrl}" style="color:${B.mutedFg};text-decoration:underline;">Unsubscribe</a>
+        ${
+          unsubscribeUrl
+            ? `&nbsp;&middot;&nbsp;
+        <a href="${unsubscribeUrl}" style="color:${B.mutedFg};text-decoration:underline;">Unsubscribe</a>`
+            : ""
+        }
+      </p>
+      <p style="margin:0;font-family:${B.fontBody};font-size:10px;color:#A1A1AA;line-height:1.5;">
+        ${MAILING_ADDRESS}
+      </p>
+    </td>
+  </tr>`;
+}
+
+export function transactionalEmailFooter(accountUrl = "https://positives.life/account"): string {
+  return `
+  <!-- Footer -->
+  <tr>
+    <td style="background:${B.muted};border-radius:0 0 ${B.radius} ${B.radius};padding:24px 40px;text-align:center;">
+      <p style="margin:0 0 10px;font-family:${B.fontBody};font-size:12px;color:${B.mutedFg};line-height:1.7;">
+        This email is about a secure action on your Positives account.<br />
+        Questions? Reply to this email &mdash; a real human will respond.
+      </p>
+      <p style="margin:0 0 10px;font-family:${B.fontBody};font-size:11px;color:${B.mutedFg};line-height:1.6;">
+        <a href="${accountUrl}" style="color:${B.primary};text-decoration:none;font-weight:600;">Manage account</a>
       </p>
       <p style="margin:0;font-family:${B.fontBody};font-size:10px;color:#A1A1AA;line-height:1.5;">
         ${MAILING_ADDRESS}

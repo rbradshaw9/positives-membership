@@ -1,0 +1,52 @@
+{
+  "metadata": {
+    "name": "April 2026 gap fill",
+    "notes": "Placeholder daily audios to complete the opening April runway."
+  },
+  "daily_audios": [
+    {
+      "publish_date": "2026-04-03",
+      "month_year": "2026-04",
+      "title": "Placeholder — Returning to the Breath",
+      "status": "published",
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+      "duration_seconds": 360,
+      "excerpt": "Temporary seeded content to keep the April rhythm complete while final launch content is still being refined.",
+      "body": "This is placeholder daily audio content for April 3. Replace with final launch content when approved.",
+      "admin_notes": "Placeholder seed inserted to fill missing April runway coverage."
+    },
+    {
+      "publish_date": "2026-04-04",
+      "month_year": "2026-04",
+      "title": "Placeholder — Beginning Again Gently",
+      "status": "published",
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
+      "duration_seconds": 360,
+      "excerpt": "Temporary seeded content to keep the April rhythm complete while final launch content is still being refined.",
+      "body": "This is placeholder daily audio content for April 4. Replace with final launch content when approved.",
+      "admin_notes": "Placeholder seed inserted to fill missing April runway coverage."
+    },
+    {
+      "publish_date": "2026-04-05",
+      "month_year": "2026-04",
+      "title": "Placeholder — A Softer Start",
+      "status": "published",
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3",
+      "duration_seconds": 360,
+      "excerpt": "Temporary seeded content to keep the April rhythm complete while final launch content is still being refined.",
+      "body": "This is placeholder daily audio content for April 5. Replace with final launch content when approved.",
+      "admin_notes": "Placeholder seed inserted to fill missing April runway coverage."
+    },
+    {
+      "publish_date": "2026-04-06",
+      "month_year": "2026-04",
+      "title": "Placeholder — Choosing Steadiness",
+      "status": "published",
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3",
+      "duration_seconds": 360,
+      "excerpt": "Temporary seeded content to keep the April rhythm complete while final launch content is still being refined.",
+      "body": "This is placeholder daily audio content for April 6. Replace with final launch content when approved.",
+      "admin_notes": "Placeholder seed inserted to fill missing April runway coverage."
+    }
+  ]
+}

@@ -4,6 +4,7 @@ import { getAccessibleCourses } from "@/lib/queries/get-courses";
 import { getMonthlyArchive } from "@/lib/queries/get-monthly-archive";
 import { CourseCard } from "@/components/courses/CourseCard";
 import { MonthCard } from "@/components/library/MonthCard";
+import { hasActiveMemberAccess } from "@/lib/subscription/access";
 
 /**
  * app/(member)/library/page.tsx
@@ -35,7 +36,7 @@ export default async function LibraryPage() {
     .eq("id", user.id)
     .single();
 
-  if (!member || member.subscription_status !== "active") {
+  if (!member || !hasActiveMemberAccess(member.subscription_status)) {
     redirect("/account");
   }
 

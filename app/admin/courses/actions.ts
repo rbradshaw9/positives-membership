@@ -3,6 +3,7 @@
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { requireAdmin } from "@/lib/auth/require-admin";
 
 /**
  * app/admin/courses/actions.ts
@@ -53,6 +54,7 @@ export async function getLearnDashDefaults(): Promise<{
   wpPassword: string;
   configured: boolean;
 }> {
+  await requireAdmin();
   const wpUrl = process.env.LEARNDASH_WP_URL ?? "";
   const wpUser = process.env.LEARNDASH_WP_USER ?? "";
   const wpPassword = process.env.LEARNDASH_WP_APP_PASSWORD ?? "";
@@ -64,6 +66,7 @@ export async function getLearnDashDefaults(): Promise<{
  * We detect these by reading admin_notes for the pattern "Imported from LearnDash ID: XXXXX".
  */
 export async function getImportedLearnDashIds(): Promise<number[]> {
+  await requireAdmin();
   const { data } = await adminClient()
     .from("course")
     .select("admin_notes")
@@ -80,6 +83,7 @@ export async function getImportedLearnDashIds(): Promise<number[]> {
 // ─── Course CRUD ─────────────────────────────────────────────────────────────
 
 export async function createCourse(formData: FormData) {
+  await requireAdmin();
   const title = formData.get("title")?.toString().trim();
   if (!title) redirect("/admin/courses?error=title_required");
 
@@ -103,6 +107,7 @@ export async function createCourse(formData: FormData) {
 }
 
 export async function updateCourse(formData: FormData) {
+  await requireAdmin();
   const id = formData.get("id")?.toString();
   if (!id) redirect("/admin/courses?error=missing_id");
 
@@ -126,6 +131,7 @@ export async function updateCourse(formData: FormData) {
 }
 
 export async function deleteCourse(formData: FormData) {
+  await requireAdmin();
   const id = formData.get("id")?.toString();
   if (!id) return;
   await adminClient().from("course").delete().eq("id", id);
@@ -136,6 +142,7 @@ export async function deleteCourse(formData: FormData) {
 // ─── Module CRUD ─────────────────────────────────────────────────────────────
 
 export async function createModule(formData: FormData) {
+  await requireAdmin();
   const courseId = formData.get("course_id")?.toString();
   const title = formData.get("title")?.toString().trim();
   if (!courseId || !title) redirect(`/admin/courses/${courseId ?? ""}?error=missing_fields`);
@@ -158,6 +165,7 @@ export async function createModule(formData: FormData) {
 }
 
 export async function updateModule(formData: FormData) {
+  await requireAdmin();
   const moduleId = formData.get("module_id")?.toString();
   const courseId = formData.get("course_id")?.toString();
   const title = formData.get("title")?.toString().trim();
@@ -173,6 +181,7 @@ export async function updateModule(formData: FormData) {
 }
 
 export async function deleteModule(formData: FormData) {
+  await requireAdmin();
   const moduleId = formData.get("module_id")?.toString();
   const courseId = formData.get("course_id")?.toString();
   if (!moduleId) return;
@@ -184,6 +193,7 @@ export async function deleteModule(formData: FormData) {
 // ─── Lesson CRUD ─────────────────────────────────────────────────────────────
 
 export async function createLesson(formData: FormData) {
+  await requireAdmin();
   const moduleId = formData.get("module_id")?.toString();
   const courseId = formData.get("course_id")?.toString();
   const title = formData.get("title")?.toString().trim();
@@ -212,6 +222,7 @@ export async function createLesson(formData: FormData) {
 }
 
 export async function updateLesson(formData: FormData) {
+  await requireAdmin();
   const lessonId = formData.get("lesson_id")?.toString();
   const courseId = formData.get("course_id")?.toString();
   const title = formData.get("title")?.toString().trim();
@@ -236,6 +247,7 @@ export async function updateLesson(formData: FormData) {
 }
 
 export async function deleteLesson(formData: FormData) {
+  await requireAdmin();
   const lessonId = formData.get("lesson_id")?.toString();
   const courseId = formData.get("course_id")?.toString();
   if (!lessonId) return;
@@ -247,6 +259,7 @@ export async function deleteLesson(formData: FormData) {
 // ─── Session (Topic) CRUD ─────────────────────────────────────────────────────
 
 export async function createSession(formData: FormData) {
+  await requireAdmin();
   const lessonId = formData.get("lesson_id")?.toString();
   const courseId = formData.get("course_id")?.toString();
   const title = formData.get("title")?.toString().trim();
@@ -275,6 +288,7 @@ export async function createSession(formData: FormData) {
 }
 
 export async function updateSession(formData: FormData) {
+  await requireAdmin();
   const sessionId = formData.get("session_id")?.toString();
   const courseId = formData.get("course_id")?.toString();
   const title = formData.get("title")?.toString().trim();
@@ -298,6 +312,7 @@ export async function updateSession(formData: FormData) {
 }
 
 export async function deleteSession(formData: FormData) {
+  await requireAdmin();
   const sessionId = formData.get("session_id")?.toString();
   const courseId = formData.get("course_id")?.toString();
   if (!sessionId) return;
@@ -432,6 +447,7 @@ function extractResources(materialsField: string, htmlContent: string): string |
  * Us: Course → Module → Lesson → Session
  */
 export async function importFromLearnDash(formData: FormData): Promise<LearnDashImportResult> {
+  await requireAdmin();
   const wpUrl = formData.get("wp_url")?.toString().trim();
   const wpUser = formData.get("wp_user")?.toString().trim();
   const wpPassword = formData.get("wp_password")?.toString().trim();
@@ -717,6 +733,7 @@ export async function fetchLearnDashCourses(formData: FormData): Promise<{
   courses: { id: number; title: string; lessons_count: number }[];
   error: string | null;
 }> {
+  await requireAdmin();
   const wpUrl = formData.get("wp_url")?.toString().trim();
   const wpUser = formData.get("wp_user")?.toString().trim();
   const wpPassword = formData.get("wp_password")?.toString().trim();

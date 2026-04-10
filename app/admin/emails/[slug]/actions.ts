@@ -52,6 +52,7 @@ export async function sendTestEmail(slug: string, recipientEmail: string) {
   if (!template) throw new Error("Template not found");
 
   const { renderTemplateHtml, renderTemplateText } = await import("@/lib/email/render");
+  const { buildUnsubscribeUrl } = await import("@/lib/email/unsubscribe");
   const { resend, FROM_ADDRESS, REPLY_TO } = await import("@/lib/email/resend");
 
   const vars = {
@@ -61,6 +62,7 @@ export async function sendTestEmail(slug: string, recipientEmail: string) {
     nextRetryDate: "April 30, 2026",
     billingUrl: "https://positives.life/account/billing",
     rejoindUrl: "https://positives.life/join",
+    unsubscribeUrl: buildUnsubscribeUrl(recipientEmail),
   };
 
   const html = renderTemplateHtml(template, vars);

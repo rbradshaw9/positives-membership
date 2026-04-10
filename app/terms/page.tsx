@@ -1,9 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Terms of Service — Positives",
   description: "The terms and conditions for using the Positives membership platform.",
+  alternates: {
+    canonical: "/terms",
+  },
 };
 
 export default function TermsPage() {
@@ -19,20 +23,19 @@ export default function TermsPage() {
           borderBottom: "1px solid rgba(221,215,207,0.55)",
         }}
       >
-        <div className="max-w-6xl mx-auto px-8 py-4 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8 py-3.5 sm:py-4 flex items-center justify-between gap-3">
           <Link href="/">
             <Image
               src="/logos/positives-wordmark-dark.png"
               alt="Positives"
-              width={120}
+              width={89}
               height={26}
-              style={{ height: 26, width: "auto" }}
               priority
             />
           </Link>
           <Link
             href="/join"
-            className="text-sm font-semibold px-5 py-2.5 rounded-full"
+            className="text-xs sm:text-sm font-semibold px-4 sm:px-5 py-2 sm:py-2.5 rounded-full"
             style={{
               background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
               color: "#FFFFFF",
@@ -48,7 +51,7 @@ export default function TermsPage() {
       {/* Content */}
       <main className="flex-1 w-full">
         <div
-          className="max-w-3xl mx-auto px-8"
+          className="max-w-3xl mx-auto px-5 sm:px-8"
           style={{ paddingTop: "clamp(4rem, 8vw, 7rem)", paddingBottom: "clamp(4rem, 8vw, 7rem)" }}
         >
           <p className="text-xs font-semibold uppercase mb-6" style={{ color: "#9AA0A8", letterSpacing: "0.14em" }}>
@@ -77,7 +80,7 @@ export default function TermsPage() {
                 The Service
               </h2>
               <p>
-                Positives is a membership-based daily practice platform created by Dr. Paul Jenkins. It provides members with access to daily guided audio sessions, weekly reflections, monthly masterclasses, and community features. Content is made available for personal, non-commercial use only.
+                Positives is a membership-based daily practice platform created by Dr. Paul Jenkins. It provides members with access to daily guided audio sessions, weekly reflections, monthly themes, and additional live events or coaching features at higher membership levels. Content is made available for personal, non-commercial use only.
               </p>
             </section>
 
@@ -89,7 +92,7 @@ export default function TermsPage() {
                 Positives memberships are billed on a recurring monthly or annual basis depending on the plan selected at signup. By subscribing, you authorize us to charge your payment method on file automatically at the start of each billing period.
               </p>
               <ul className="space-y-2 pl-5 list-disc" style={{ color: "#68707A" }}>
-                <li>You may cancel your membership at any time through your account dashboard or by contacting support</li>
+                <li>You may manage cancellation at any time through your account dashboard</li>
                 <li>Cancellation takes effect at the end of the current billing period — you retain access until then</li>
                 <li>We reserve the right to change pricing with 30 days advance notice to existing members</li>
               </ul>
@@ -111,7 +114,7 @@ export default function TermsPage() {
                 Intellectual Property
               </h2>
               <p>
-                All content within the Positives platform — including audio sessions, masterclasses, written materials, and the Positives brand — is the exclusive intellectual property of Dr. Paul Jenkins and Positives. You may not reproduce, distribute, or create derivative works from any platform content without prior written permission.
+                All content within the Positives platform — including audio sessions, monthly themes, live event replays, written materials, and the Positives brand — is the exclusive intellectual property of Dr. Paul Jenkins and Positives. You may not reproduce, distribute, or create derivative works from any platform content without prior written permission.
               </p>
             </section>
 
@@ -173,7 +176,7 @@ export default function TermsPage() {
 
       {/* Footer */}
       <footer className="w-full" style={{ borderTop: "1px solid rgba(221,215,207,0.55)" }}>
-        <div className="max-w-6xl mx-auto px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-5">
             <Link href="/privacy" className="text-xs" style={{ color: "#9AA0A8" }}>Privacy</Link>
             <Link href="/terms" className="text-xs" style={{ color: "#9AA0A8" }}>Terms</Link>

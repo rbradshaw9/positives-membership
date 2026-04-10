@@ -1,0 +1,37 @@
+{
+  "metadata": {
+    "name": "June launch window extension"
+  },
+  "daily_audios": [
+    {
+      "publish_date": "2026-06-02",
+      "month_year": "2026-06",
+      "title": "What You Are Saying Yes To",
+      "status": "published",
+      "excerpt": "Every yes shapes a day. Intention starts by noticing where your attention is already going.",
+      "reflection_prompt": "What have you been saying yes to lately with your time, energy, or attention? Does that pattern reflect what you actually want your days to stand for?",
+      "duration_seconds": 395,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3"
+    },
+    {
+      "publish_date": "2026-06-03",
+      "month_year": "2026-06",
+      "title": "Choosing the Truer Pace",
+      "status": "published",
+      "excerpt": "A more intentional life usually feels less rushed, not more impressive.",
+      "reflection_prompt": "Where are you moving faster than your values require? What would it look like to choose the truer pace today, even in one small part of your routine?",
+      "duration_seconds": 410,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3"
+    },
+    {
+      "publish_date": "2026-06-04",
+      "month_year": "2026-06",
+      "title": "A Smaller, Clearer Promise",
+      "status": "published",
+      "excerpt": "Intention becomes believable when it turns into one honest promise you can keep.",
+      "reflection_prompt": "What is one small promise you could make to yourself today that would bring your life into closer alignment with what matters most? Make it concrete enough to keep.",
+      "duration_seconds": 425,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"
+    }
+  ]
+}

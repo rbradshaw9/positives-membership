@@ -7,7 +7,7 @@
  * Tone: calm and supportive, not alarming. Give them a clear path to fix it.
  */
 
-import { B, emailWrapper, emailHeader, emailFooter, ctaButton } from "../brand";
+import { B, emailWrapper, emailHeader, memberEmailFooter, ctaButton } from "../brand";
 
 export type PaymentFailedEmailData = {
   firstName: string;
@@ -15,6 +15,7 @@ export type PaymentFailedEmailData = {
   failureReason?: string;    // from Stripe charge.failure_message — optional
   updatePaymentUrl: string;  // Stripe customer portal URL or /account
   nextRetryDate?: string;    // optional — Stripe auto-retry date if known
+  unsubscribeUrl?: string;
 };
 
 export function paymentFailedEmailHtml({
@@ -23,6 +24,7 @@ export function paymentFailedEmailHtml({
   failureReason,
   updatePaymentUrl,
   nextRetryDate,
+  unsubscribeUrl,
 }: PaymentFailedEmailData): string {
   const body = `
     ${emailHeader()}
@@ -67,7 +69,7 @@ export function paymentFailedEmailHtml({
       </td>
     </tr>
 
-    ${emailFooter()}`;
+    ${memberEmailFooter("https://positives.life/account", unsubscribeUrl)}`;
 
   return emailWrapper(body);
 }

@@ -1,9 +1,10 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getMonthDetail } from "@/lib/queries/get-monthly-archive";
 import { getArchiveDailyAudios } from "@/lib/queries/get-monthly-daily-audios";
 import { getMonthWeeklyContent } from "@/lib/queries/get-month-weekly-content";
 import { getMemberNoteContentIds } from "@/lib/queries/get-library-content";
 import { requireActiveMember } from "@/lib/auth/require-active-member";
+import { getEffectiveMonthYear } from "@/lib/dates/effective-date";
 import { MonthlyThemeCard } from "@/components/today/MonthlyThemeCard";
 import { WeeklyArchive } from "@/components/today/WeeklyArchive";
 import { MonthlyAudioArchive } from "@/components/today/MonthlyAudioArchive";
@@ -46,8 +47,38 @@ function monthName(monthYear: string): string {
   );
 }
 
+function formatArchiveRange(startDate: string, endDate: string): string {
+  const start = new Date(`${startDate}T12:00:00`);
+  const end = new Date(`${endDate}T12:00:00`);
+
+  const sameMonth =
+    start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
+
+  const startLabel = new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  }).format(start);
+
+  const endLabel = new Intl.DateTimeFormat("en-US", {
+    ...(sameMonth ? {} : { month: "short" }),
+    day: "numeric",
+  }).format(end);
+
+  return `${startLabel} - ${endLabel}`;
+}
+
 export default async function MonthDetailPage({ params }: Props) {
   const { monthYear } = await params;
+  const activeMonthYear = getEffectiveMonthYear();
+
+  if (monthYear === activeMonthYear) {
+    redirect("/today");
+  }
+
+  if (monthYear > activeMonthYear) {
+    notFound();
+  }
+
   const member = await requireActiveMember();
 
   const detail = await getMonthDetail(monthYear);
@@ -64,6 +95,19 @@ export default async function MonthDetailPage({ params }: Props) {
 
   const currentMonth = monthName(monthYear);
   const label = practice.label;
+  const archiveRange = archiveDailyGroup?.audios.length
+    ? formatArchiveRange(
+        archiveDailyGroup.audios[archiveDailyGroup.audios.length - 1]?.publish_date ?? monthYear,
+        archiveDailyGroup.audios[0]?.publish_date ?? monthYear
+      )
+    : null;
+  const summaryItems = [
+    `${daily_count} daily practice${daily_count === 1 ? "" : "s"}`,
+    `${monthWeekly.length} weekly reflection${monthWeekly.length === 1 ? "" : "s"}`,
+    theme ? "Monthly theme included" : "Theme pending",
+  ];
+  const archiveDescription =
+    practice.description || theme?.excerpt || "A completed month you can revisit whenever you need it.";
 
   return (
     <div>
@@ -96,11 +140,9 @@ export default async function MonthDetailPage({ params }: Props) {
               <h1 className="heading-balance font-heading font-bold text-2xl md:text-3xl text-foreground tracking-[-0.03em] leading-tight">
                 {label}
               </h1>
-              {practice.description && (
-                <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-                  {practice.description}
-                </p>
-              )}
+              <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
+                {archiveDescription}
+              </p>
             </div>
 
             {/* Stats badge */}
@@ -125,11 +167,10 @@ export default async function MonthDetailPage({ params }: Props) {
       {/* ── Content — same layout as /today ─────────────────────────── */}
       <div className="member-container py-6 flex flex-col gap-8">
 
-        {/* ── Zone 1: Monthly theme + first weekly side-by-side ──────── */}
-        {(theme || monthWeekly.length > 0) && (
-          <section aria-label="This month and weekly content" className="flex flex-col gap-3">
+        {/* ── Zone 1: Monthly theme + archive summary ─────────────────── */}
+        {(theme || monthWeekly.length > 0 || daily_count > 0) && (
+          <section aria-label="This month and archive summary" className="flex flex-col gap-3">
             <div className="grid gap-5 lg:grid-cols-2">
-              {/* Monthly theme — left on desktop */}
               {theme && (
                 <div className="flex flex-col gap-2">
                   <span
@@ -146,38 +187,87 @@ export default async function MonthDetailPage({ params }: Props) {
                 </div>
               )}
 
-              {/* First weekly — right on desktop (if theme exists), or full width */}
-              {monthWeekly.length > 0 && (
-                <div className="flex flex-col gap-2">
-                  <span
-                    className="text-[10px] font-bold uppercase tracking-[0.14em]"
-                    style={{ color: "var(--color-secondary)" }}
-                  >
-                    Week 1 Reflection
-                  </span>
-                  <div
-                    className="surface-card rounded-2xl border border-border p-5 flex flex-col gap-3"
-                  >
-                    <h3 className="font-heading font-bold text-lg text-foreground">
-                      {monthWeekly[monthWeekly.length - 1].title}
-                    </h3>
-                    {monthWeekly[monthWeekly.length - 1].excerpt && (
-                      <p className="text-sm text-foreground/70 leading-relaxed">
-                        {monthWeekly[monthWeekly.length - 1].excerpt}
-                      </p>
-                    )}
-                    <Link
-                      href={`/library/${monthWeekly[monthWeekly.length - 1].id}`}
-                      className="btn-primary self-start inline-flex items-center gap-2 text-sm"
+              <div className="flex flex-col gap-2">
+                <span
+                  className="text-[10px] font-bold uppercase tracking-[0.14em]"
+                  style={{ color: "var(--color-secondary)" }}
+                >
+                  Month at a Glance
+                </span>
+                <div className="surface-card rounded-2xl border border-border p-5 flex flex-col gap-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className="inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em]"
+                      style={{
+                        color: "var(--color-secondary)",
+                        background:
+                          "color-mix(in srgb, var(--color-secondary) 10%, transparent)",
+                        border:
+                          "1px solid color-mix(in srgb, var(--color-secondary) 18%, transparent)",
+                      }}
                     >
-                      View reflection
+                      Completed month
+                    </span>
+                    {archiveRange && (
+                      <span className="text-xs text-muted-foreground">
+                        {archiveRange}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <h2
+                      className="font-heading font-bold text-lg text-foreground tracking-[-0.03em]"
+                      style={{ textWrap: "balance" }}
+                    >
+                      Revisit the month without needing to catch up.
+                    </h2>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      This archive keeps the month intact: the theme, the weekly reflections,
+                      and the daily practices that shaped it.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    {summaryItems.map((item) => (
+                      <div
+                        key={item}
+                        className="rounded-2xl border px-3.5 py-3"
+                        style={{
+                          borderColor: "var(--color-border)",
+                          background: "color-mix(in srgb, var(--color-card) 84%, white)",
+                        }}
+                      >
+                        <p className="text-xs font-semibold text-foreground/80 leading-snug">
+                          {item}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <Link
+                      href="/today"
+                      className="btn-primary inline-flex items-center gap-2 text-sm"
+                    >
+                      Go to Today
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                         <polyline points="9 18 15 12 9 6" />
                       </svg>
                     </Link>
+                    <Link
+                      href="/library"
+                      className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors hover:bg-accent/5"
+                      style={{
+                        color: "var(--color-secondary)",
+                        border: "1px solid color-mix(in srgb, var(--color-secondary) 18%, transparent)",
+                      }}
+                    >
+                      Back to Library
+                    </Link>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           </section>
         )}

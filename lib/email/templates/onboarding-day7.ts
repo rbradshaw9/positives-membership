@@ -6,14 +6,15 @@
  * surfaces the weekly principle, and introduces the library.
  */
 
-import { B, emailWrapper, emailHeader, emailFooter, ctaButton, divider } from "../brand";
+import { B, emailWrapper, emailHeader, memberEmailFooter, ctaButton, divider } from "../brand";
 
 export type Day7EmailData = {
   firstName: string;
   dashboardUrl: string;
+  unsubscribeUrl?: string;
 };
 
-export function day7EmailHtml({ firstName, dashboardUrl }: Day7EmailData): string {
+export function day7EmailHtml({ firstName, dashboardUrl, unsubscribeUrl }: Day7EmailData): string {
   const body = `
     ${emailHeader()}
 
@@ -66,7 +67,7 @@ export function day7EmailHtml({ firstName, dashboardUrl }: Day7EmailData): strin
       </td>
     </tr>
 
-    ${emailFooter()}`;
+    ${memberEmailFooter("https://positives.life/account", unsubscribeUrl)}`;
 
   return emailWrapper(body);
 }

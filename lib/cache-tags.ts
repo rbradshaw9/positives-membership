@@ -6,7 +6,7 @@
  *
  * Tags are used in two places:
  *   1. unstable_cache(..., { tags: [CACHE_TAGS.xxx] }) — registers the cache entry
- *   2. revalidateTag(CACHE_TAGS.xxx)                   — busts it on publish
+ *   2. revalidateTag(CACHE_TAGS.xxx, "max")            — busts it on publish
  *
  * All three content types are shared across all members (not per-user),
  * so a single tag covers everyone simultaneously.

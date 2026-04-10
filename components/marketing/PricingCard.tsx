@@ -15,7 +15,9 @@
  *
  * FirstPromoter affiliate tracking:
  *   When a visitor arrives via an affiliate link (?fpr=code), FP JS sets a
- *   cookie (_fprom_track) with their referral code. We read it client-side
+ *   referral cookie. On positives.life we currently observe `_fprom_ref`,
+ *   while older/local flows may still expose `_fprom_track`. We read either
+ *   cookie client-side
  *   and inject it as a hidden form input so the server action can embed it
  *   in Stripe checkout metadata. The webhook then stores it permanently on
  *   the member row for lifetime affiliate genealogy linking.
@@ -27,6 +29,7 @@
 import { useState, useTransition } from "react";
 import { getGuestCheckoutUrl } from "@/app/join/actions";
 import { track } from "@/lib/analytics/ga";
+import { getStoredFirstPromoterRefId } from "@/lib/firstpromoter/referral";
 
 type Billing = "monthly" | "annual";
 type Level = 1 | 2 | 3 | 4;
@@ -48,7 +51,7 @@ const CARDS = {
     benefits: [
       "Daily guided audio practice · fresh every morning",
       "Weekly reflections and research-backed practices",
-      "Monthly masterclass with Dr. Paul",
+      "Monthly theme with guided reflection from Dr. Paul",
       "Full member library access",
     ],
   },
@@ -58,10 +61,10 @@ const CARDS = {
     badge: "Coming Soon",
     benefits: [
       "Everything in Membership",
-      "Coach-moderated Q&A access",
-      "Quarterly live virtual events",
-      "Event replays in your library",
-      "Annual Positives event access",
+      "Member Q&A and community access",
+      "Live member events as they are scheduled",
+      "Event replays in your Events area",
+      "A simple place to find upcoming sessions",
     ],
   },
   3: {
@@ -228,24 +231,6 @@ function PricingTbd() {
   );
 }
 
-function getFirstPromoterRefId() {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  const urlParam = new URLSearchParams(window.location.search).get("fpr");
-  if (urlParam) {
-    return urlParam;
-  }
-
-  const fpCookie = document.cookie
-    .split("; ")
-    .find((row) => row.startsWith("_fprom_track="))
-    ?.split("=")[1];
-
-  return fpCookie ? decodeURIComponent(fpCookie) : null;
-}
-
 function CheckoutButton({ pending }: { pending: boolean }) {
   return (
     <button
@@ -314,7 +299,7 @@ export function PricingCard({ level, billing, priceId }: PricingCardProps) {
     e.preventDefault();
     setCheckoutError(null);
     const formData = new FormData(e.currentTarget);
-    const fpr = getFirstPromoterRefId();
+    const fpr = getStoredFirstPromoterRefId();
 
     if (fpr) {
       formData.set("fpr", fpr);

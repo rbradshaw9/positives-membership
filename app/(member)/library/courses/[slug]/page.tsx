@@ -5,6 +5,7 @@ import { getLastWatchedLesson } from "@/app/(member)/today/video-actions";
 import { CourseOutline } from "@/components/courses/CourseOutline";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { hasActiveMemberAccess } from "@/lib/subscription/access";
 
 /**
  * app/(member)/library/courses/[slug]/page.tsx
@@ -45,7 +46,7 @@ export default async function CourseDetailPage({ params }: Props) {
     .eq("id", user.id)
     .single();
 
-  if (!member || member.subscription_status !== "active") redirect("/account");
+  if (!member || !hasActiveMemberAccess(member.subscription_status)) redirect("/account");
 
   const course = await getCourseBySlug(slug, member.id);
 

@@ -13,7 +13,7 @@
  *   {{rejoindUrl}}    — rejoin / sales page URL
  */
 
-import { B, emailWrapper, emailHeader, emailFooter, ctaButton } from "./brand";
+import { B, emailWrapper, emailHeader, memberEmailFooter, ctaButton } from "./brand";
 
 export type TemplateVars = {
   firstName?: string;
@@ -22,6 +22,7 @@ export type TemplateVars = {
   nextRetryDate?: string;
   billingUrl?: string;
   rejoindUrl?: string;
+  unsubscribeUrl?: string;
 };
 
 /** Replace all known {{token}} placeholders in a string. */
@@ -32,7 +33,8 @@ function interpolate(str: string, vars: TemplateVars): string {
     .replaceAll("{{amountDue}}", vars.amountDue ?? "your membership fee")
     .replaceAll("{{nextRetryDate}}", vars.nextRetryDate ?? "")
     .replaceAll("{{billingUrl}}", vars.billingUrl ?? "https://positives.life/account/billing")
-    .replaceAll("{{rejoindUrl}}", vars.rejoindUrl ?? "https://positives.life/join");
+    .replaceAll("{{rejoindUrl}}", vars.rejoindUrl ?? "https://positives.life/join")
+    .replaceAll("{{unsubscribeUrl}}", vars.unsubscribeUrl ?? "https://positives.life/support");
 }
 
 /** Convert body text (paragraph-separated by blank lines) to HTML <p> tags. */
@@ -75,7 +77,7 @@ export function renderTemplateHtml(template: EmailTemplateRow, vars: TemplateVar
       </td>
     </tr>
 
-    ${emailFooter()}`;
+    ${memberEmailFooter("https://positives.life/account", vars.unsubscribeUrl)}`;
 
   return emailWrapper(content);
 }

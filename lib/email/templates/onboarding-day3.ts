@@ -6,14 +6,15 @@
  * weekly principle, removes friction for anyone not sure what to do next.
  */
 
-import { B, emailWrapper, emailHeader, emailFooter, ctaButton, divider } from "../brand";
+import { B, emailWrapper, emailHeader, memberEmailFooter, ctaButton, divider } from "../brand";
 
 export type Day3EmailData = {
   firstName: string;
   dashboardUrl: string;
+  unsubscribeUrl?: string;
 };
 
-export function day3EmailHtml({ firstName, dashboardUrl }: Day3EmailData): string {
+export function day3EmailHtml({ firstName, dashboardUrl, unsubscribeUrl }: Day3EmailData): string {
   const body = `
     ${emailHeader()}
 
@@ -66,7 +67,7 @@ export function day3EmailHtml({ firstName, dashboardUrl }: Day3EmailData): strin
       </td>
     </tr>
 
-    ${emailFooter()}`;
+    ${memberEmailFooter("https://positives.life/account", unsubscribeUrl)}`;
 
   return emailWrapper(body);
 }

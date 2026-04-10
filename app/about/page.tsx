@@ -6,6 +6,9 @@ export const metadata: Metadata = {
   title: "About Dr. Paul Jenkins — Positives",
   description:
     "Dr. Paul Jenkins is a licensed Clinical Psychologist with 30+ years of experience helping people build stronger mindsets, healthier relationships, and more intentional lives. Learn about the creator of Positives.",
+  alternates: {
+    canonical: "/about",
+  },
 };
 
 export default function AboutPage() {
@@ -26,9 +29,9 @@ export default function AboutPage() {
             <Image
               src="/logos/positives-wordmark-dark.png"
               alt="Positives"
-              width={120}
+              width={89}
               height={26}
-              style={{ height: 26, width: "auto" }}
+              style={{ width: "auto" }}
             />
           </Link>
           <nav className="flex items-center gap-6" aria-label="About page navigation">

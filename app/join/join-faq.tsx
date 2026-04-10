@@ -9,15 +9,15 @@ const JOIN_FAQS = [
   },
   {
     q: "Can I cancel anytime?",
-    a: "Yes. Cancel immediately from your account settings. No phone calls, no cancellation screens, no hoops. If you want to leave, you leave.",
+    a: "Yes. You can manage cancellation from your account settings without contacting support. If you cancel, any paid access stays in place through your current billing period.",
   },
   {
     q: "What's included in Membership?",
-    a: "Everything you need to start and sustain the practice: daily guided audio sessions fresh every morning, weekly mindset principles backed by research, monthly masterclass with Dr. Paul, and access to the complete member library of every past session.",
+    a: "Everything you need to start and sustain the practice: daily guided audio sessions fresh every morning, weekly mindset principles backed by research, a monthly theme from Dr. Paul, and access to the complete member library of every past session.",
   },
   {
     q: "What are the other pricing tiers?",
-    a: "Membership + Events adds live workshops and event access. Coaching Circle adds weekly group coaching and deeper implementation support. Executive Coaching is our most personalized path and begins with a Breakthrough Session.",
+    a: "Membership + Events adds live member events and event replays as they are scheduled. Coaching Circle adds weekly group coaching and replay access. Executive Coaching is our most personalized path and begins with a Breakthrough Session.",
   },
   {
     q: "Is there a free trial?",

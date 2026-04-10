@@ -43,6 +43,7 @@ export default async function MemberLayout({
       tier={member.subscription_tier}
       memberName={member.name}
       communityPreviewEnabled={config.app.communityPreviewEnabled}
+      needsPasswordSetup={showPasswordNudge}
     >
       {showPasswordNudge && <PasswordNudgeBanner />}
       {children}

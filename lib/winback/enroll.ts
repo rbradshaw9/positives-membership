@@ -16,6 +16,7 @@ const supabase = createClient(
 );
 
 const WINBACK_DAYS = [1, 14, 30] as const;
+const WINBACK_SEND_MINUTE_UTC = 30;
 
 export async function enrollInWinbackSequence(
   memberId: string,
@@ -25,7 +26,8 @@ export async function enrollInWinbackSequence(
   const rows = WINBACK_DAYS.map((day) => {
     const sendAt = new Date(canceledAt);
     sendAt.setDate(sendAt.getDate() + day);
-    sendAt.setUTCHours(14, 0, 0, 0); // 9:00 AM ET = 14:00 UTC
+    // Match the Vercel cron window at 14:30 UTC (9:30 AM ET).
+    sendAt.setUTCHours(14, WINBACK_SEND_MINUTE_UTC, 0, 0);
     return { member_id: memberId, email, day, send_at: sendAt.toISOString() };
   });
 

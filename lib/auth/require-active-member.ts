@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/supabase";
+import { hasActiveMemberAccess } from "@/lib/subscription/access";
 
 type MemberProfile = Pick<
   Tables<"member">,
@@ -19,7 +20,7 @@ type MemberProfile = Pick<
  * - Authenticated, past_due                → /account
  *   (must be able to reach billing portal to fix payment)
  * - Authenticated, canceled/inactive       → /join
- * - Authenticated, active subscription     → returns MemberProfile
+ * - Authenticated, active or trialing subscription → returns MemberProfile
  *
  * Returns password_set so the calling layout can conditionally render
  * the nudge banner without a second round-trip to Supabase.
@@ -60,11 +61,10 @@ export async function requireActiveMember(): Promise<MemberProfile> {
     redirect("/account/billing");
   }
 
-  if (member.subscription_status !== "active") {
+  if (!hasActiveMemberAccess(member.subscription_status)) {
     // Canceled or otherwise inactive — send to conversion page.
     redirect("/join");
   }
 
   return member;
 }
-

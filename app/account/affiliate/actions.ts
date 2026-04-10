@@ -32,9 +32,15 @@ export interface GetReferralLinkResult {
   affiliateId: string;
 }
 
-export async function getReferralLinkAction(): Promise<
+export async function getReferralLinkAction(
+  agreedToTerms: boolean
+): Promise<
   GetReferralLinkResult | { error: string }
 > {
+  if (!agreedToTerms) {
+    return { error: "Please agree to the Affiliate Program Terms to continue." };
+  }
+
   // ── Auth ──────────────────────────────────────────────────────────────────
   const cookieStore = await cookies();
   const supabase = createServerClient(

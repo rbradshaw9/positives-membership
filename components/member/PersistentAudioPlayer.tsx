@@ -159,7 +159,7 @@ export function PersistentAudioPlayer() {
               <p className="truncate text-sm font-semibold text-white leading-tight">
                 {currentTrack.title}
               </p>
-              <p className="truncate text-[11px] text-white/40 mt-0.5 tabular-nums">
+              <p className="mt-0.5 truncate text-[11px] tabular-nums text-white/64">
                 {formatTime(currentTime)}
                 {duration > 0 ? ` / ${formatTime(duration)}` : ""}
               </p>
@@ -180,7 +180,7 @@ export function PersistentAudioPlayer() {
             <button
               type="button"
               onClick={toggleMini}
-              className="shrink-0 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-white/50 transition-colors hover:bg-white/10 hover:text-white"
+              className="shrink-0 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-white/68 transition-colors hover:bg-white/10 hover:text-white"
               aria-label="Expand player"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
@@ -194,7 +194,7 @@ export function PersistentAudioPlayer() {
             <button
               type="button"
               onClick={clearTrack}
-              className="shrink-0 flex h-9 w-9 items-center justify-center rounded-full border border-white/8 text-white/35 transition-colors hover:bg-white/10 hover:text-white"
+              className="shrink-0 flex h-9 w-9 items-center justify-center rounded-full border border-white/8 text-white/62 transition-colors hover:bg-white/10 hover:text-white"
               aria-label="Close player"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
@@ -229,7 +229,7 @@ export function PersistentAudioPlayer() {
               background: `linear-gradient(to right, var(--color-player-bar) ${progress * 100}%, var(--color-player-track) ${progress * 100}%)`,
             }}
           />
-          <div className="mt-1 flex justify-between text-[11px] tabular-nums text-white/45">
+          <div className="mt-1 flex justify-between text-[11px] tabular-nums text-white/64">
             <span>{formatTime(currentTime)}</span>
             <span>{duration > 0 ? formatTime(duration) : currentTrack.durationLabel}</span>
           </div>
@@ -238,7 +238,7 @@ export function PersistentAudioPlayer() {
         <div className="flex items-center gap-3">
           {/* Track info */}
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-white/42">
+            <p className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-white/62">
               {currentTrack.subtitle ?? "Positives"}
             </p>
             <p className="mt-1 truncate text-sm font-semibold text-white md:text-base">
@@ -298,7 +298,7 @@ export function PersistentAudioPlayer() {
           <button
             type="button"
             onClick={toggleMini}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/8 text-white/45 transition-colors hover:bg-white/10 hover:text-white"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/8 text-white/62 transition-colors hover:bg-white/10 hover:text-white"
             aria-label="Minimize player"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
@@ -312,7 +312,7 @@ export function PersistentAudioPlayer() {
           <button
             type="button"
             onClick={clearTrack}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/8 text-white/45 transition-colors hover:bg-white/10 hover:text-white"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/8 text-white/62 transition-colors hover:bg-white/10 hover:text-white"
             aria-label="Close player"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"

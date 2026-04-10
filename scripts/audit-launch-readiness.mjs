@@ -74,6 +74,11 @@ function getMonthYearFromDate(date) {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
+function isAuditFixtureRow(row) {
+  const title = row?.title ?? "";
+  return title.startsWith("E2E ");
+}
+
 async function main() {
   const today = startOfUtcDay(new Date());
   const windowStart = formatDateOnly(today);
@@ -107,8 +112,8 @@ async function main() {
     throw new Error(`[audit] Failed to load launch window content: ${windowError.message}`);
   }
 
-  const publishedRows = publishedContent ?? [];
-  const windowContent = windowRows ?? [];
+  const publishedRows = (publishedContent ?? []).filter((row) => !isAuditFixtureRow(row));
+  const windowContent = (windowRows ?? []).filter((row) => !isAuditFixtureRow(row));
 
   const audioBlockers = publishedRows.filter(
     (row) =>

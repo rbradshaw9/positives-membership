@@ -13,7 +13,7 @@ import { useMemberAudio } from "@/components/member/audio/MemberAudioProvider";
  *
  * In live mode (Today page): currentWeekStart is passed to exclude the active
  * week (already shown in the "This Week" zone above).
- * In archive mode (practice/[monthYear]): no exclusion — all weeks shown.
+ * In archive mode (library/months/[monthYear]): no exclusion — all weeks shown.
  */
 
 interface WeeklyArchiveProps {
@@ -47,8 +47,7 @@ function WeekCard({ week }: { week: MonthWeeklyContent }) {
   const playing = isCurrentTrack(week.id) && isPlaying;
   const loaded = isCurrentTrack(week.id);
 
-  function handlePlayClick(e: React.MouseEvent) {
-    e.stopPropagation();
+  function handlePlayClick() {
     if (loaded) {
       togglePlayback();
     } else {
@@ -77,12 +76,7 @@ function WeekCard({ week }: { week: MonthWeeklyContent }) {
       }}
     >
       {/* ── Card header / toggle ─────────────────────────── */}
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-start gap-3 px-5 py-4 text-left transition-colors hover:bg-accent/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-        aria-expanded={expanded}
-      >
+      <div className="flex items-start gap-3 px-5 py-4">
         {/* Play button (if audio) */}
         {hasAudio && (
           <button
@@ -127,62 +121,69 @@ function WeekCard({ week }: { week: MonthWeeklyContent }) {
           </button>
         )}
 
-        {/* Text content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span
-              className="text-[9px] font-bold uppercase tracking-[0.16em]"
-              style={{ color: "var(--color-secondary)" }}
-            >
-              Week of {formatWeekLabel(week.week_start)}
-            </span>
-            {hasVideo && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="flex-1 min-w-0 flex items-start gap-3 text-left transition-colors hover:bg-accent/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 rounded-xl -mx-2 px-2 py-1"
+          aria-expanded={expanded}
+        >
+          {/* Text content */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
               <span
-                className="text-[9px] font-bold uppercase tracking-[0.12em] px-1.5 py-0.5 rounded-full"
-                style={{
-                  color: "var(--color-accent)",
-                  background: "color-mix(in srgb, var(--color-accent) 10%, transparent)",
-                }}
+                className="text-[9px] font-bold uppercase tracking-[0.16em]"
+                style={{ color: "var(--color-secondary)" }}
               >
-                Video
+                Week of {formatWeekLabel(week.week_start)}
               </span>
-            )}
-            {week.duration_seconds && (
-              <span className="text-[10px] font-mono text-muted-foreground">
-                {formatDuration(week.duration_seconds)}
-              </span>
+              {hasVideo && (
+                <span
+                  className="text-[9px] font-bold uppercase tracking-[0.12em] px-1.5 py-0.5 rounded-full"
+                  style={{
+                    color: "var(--color-accent)",
+                    background: "color-mix(in srgb, var(--color-accent) 10%, transparent)",
+                  }}
+                >
+                  Video
+                </span>
+              )}
+              {week.duration_seconds && (
+                <span className="text-[10px] font-mono text-muted-foreground">
+                  {formatDuration(week.duration_seconds)}
+                </span>
+              )}
+            </div>
+            <p className="text-sm font-semibold text-foreground leading-snug">
+              {week.title}
+            </p>
+            {week.excerpt && (
+              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
+                {week.excerpt}
+              </p>
             )}
           </div>
-          <p className="text-sm font-semibold text-foreground leading-snug">
-            {week.title}
-          </p>
-          {week.excerpt && (
-            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
-              {week.excerpt}
-            </p>
-          )}
-        </div>
 
-        {/* Chevron */}
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="var(--color-muted-fg)"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="shrink-0 mt-1"
-          style={{
-            transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
-            transition: "transform 200ms ease",
-          }}
-          aria-hidden="true"
-        >
-          <path d="M6 9l6 6 6-6" />
-        </svg>
-      </button>
+          {/* Chevron */}
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="var(--color-muted-fg)"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="shrink-0 mt-1"
+            style={{
+              transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform 200ms ease",
+            }}
+            aria-hidden="true"
+          >
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </button>
+      </div>
 
       {/* ── Expanded: reflection prompt + body ──────────── */}
       {expanded && (week.reflection_prompt || week.body || week.description) && (

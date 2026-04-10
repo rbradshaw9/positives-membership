@@ -15,7 +15,11 @@ import { useFormStatus } from "react-dom";
 type State = { error?: string; success?: true };
 const initial: State = {};
 
-function SubmitButton() {
+type AccountClientProps = {
+  mode?: "create" | "change";
+};
+
+function SubmitButton({ mode }: { mode: "create" | "change" }) {
   const { pending } = useFormStatus();
   return (
     <button
@@ -24,13 +28,14 @@ function SubmitButton() {
       id="account-set-password-submit"
       className="btn-primary w-full"
     >
-      {pending ? "Saving…" : "Set password"}
+      {pending ? "Saving…" : mode === "change" ? "Update password" : "Create password"}
     </button>
   );
 }
 
-export function AccountClient() {
+export function AccountClient({ mode = "create" }: AccountClientProps) {
   const [state, action] = useActionState<State, FormData>(setPassword, initial);
+  const isChangeMode = mode === "change";
 
   if (state.success) {
     return (
@@ -51,10 +56,12 @@ export function AccountClient() {
           </svg>
         </div>
         <p className="font-heading font-bold text-xl tracking-[-0.025em] text-foreground mb-1.5">
-          Password set.
+          {isChangeMode ? "Password updated." : "Password set."}
         </p>
         <p className="text-sm text-muted-foreground leading-body">
-          You can now sign in with your email and password anytime.
+          {isChangeMode
+            ? "Your new password is active now. Use it the next time you sign in."
+            : "You can now sign in with your email and password anytime."}
         </p>
       </div>
     );
@@ -109,7 +116,7 @@ export function AccountClient() {
         </p>
       )}
 
-      <SubmitButton />
+      <SubmitButton mode={mode} />
     </form>
   );
 }

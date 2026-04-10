@@ -6,13 +6,14 @@
  * This is the gentle follow-up — still supportive, clear CTA, no shame.
  */
 
-import { B, emailWrapper, emailHeader, emailFooter, ctaButton } from "../brand";
+import { B, emailWrapper, emailHeader, memberEmailFooter, ctaButton } from "../brand";
 
 export type PaymentRecoveryDay3Data = {
   firstName: string;
   amountDue: string;         // pre-formatted, e.g. "$37.00"
   updatePaymentUrl: string;  // Signed billing portal URL (1-click, no login)
   nextRetryDate?: string;
+  unsubscribeUrl?: string;
 };
 
 export function paymentRecoveryDay3EmailHtml({
@@ -20,6 +21,7 @@ export function paymentRecoveryDay3EmailHtml({
   amountDue,
   updatePaymentUrl,
   nextRetryDate,
+  unsubscribeUrl,
 }: PaymentRecoveryDay3Data): string {
   const body = `
     ${emailHeader()}
@@ -62,7 +64,7 @@ export function paymentRecoveryDay3EmailHtml({
       </td>
     </tr>
 
-    ${emailFooter()}`;
+    ${memberEmailFooter("https://positives.life/account", unsubscribeUrl)}`;
 
   return emailWrapper(body);
 }

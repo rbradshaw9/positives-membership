@@ -5,11 +5,15 @@ import { config } from "@/lib/config";
 import { Logo } from "@/components/marketing/Logo";
 import { PricingToggle } from "@/components/marketing/PricingToggle";
 import { JoinPageFaq } from "./join-faq";
+import { hasActiveMemberAccess } from "@/lib/subscription/access";
 
 export const metadata = {
   title: "Join Positives — Start Your Practice",
   description:
-    "Start your Positives practice from $37/month. Daily guided audio, weekly principles, and monthly masterclasses with Dr. Paul Jenkins.",
+    "Start your Positives practice from $37/month. Daily guided audio, weekly principles, and monthly themes with Dr. Paul Jenkins.",
+  alternates: {
+    canonical: "/join",
+  },
 };
 
 function JoinPageNav() {
@@ -23,13 +27,13 @@ function JoinPageNav() {
         borderBottom: "1px solid rgba(221,215,207,0.55)",
       }}
     >
-      <div className="max-w-6xl mx-auto flex items-center justify-between px-8 py-4">
+      <div className="max-w-6xl mx-auto flex items-center justify-between gap-3 px-5 sm:px-8 py-3.5 sm:py-4">
         <Logo href="/" kind="full" height={28} />
-        <nav className="flex items-center gap-6" aria-label="Join page navigation">
-          <Link href="/" className="text-sm font-medium" style={{ color: "#68707A" }}>
+        <nav className="flex items-center gap-3 sm:gap-6" aria-label="Join page navigation">
+          <Link href="/" className="text-xs sm:text-sm font-medium" style={{ color: "#68707A" }}>
             Home
           </Link>
-          <Link href="/login" className="text-sm font-medium" style={{ color: "#68707A" }}>
+          <Link href="/login" className="text-xs sm:text-sm font-medium" style={{ color: "#68707A" }}>
             Sign in
           </Link>
         </nav>
@@ -68,7 +72,7 @@ export default async function JoinPage({
       .eq("id", user.id)
       .single();
 
-    if (member?.subscription_status === "active") {
+    if (hasActiveMemberAccess(member?.subscription_status)) {
       redirect("/today");
     }
   }
@@ -86,7 +90,7 @@ export default async function JoinPage({
     return (
       <div className="min-h-dvh flex flex-col" style={{ background: "#FAFAF8" }}>
         <JoinPageNav />
-        <div className="flex-1 flex flex-col items-center justify-center px-6 py-16">
+        <div className="flex-1 flex flex-col items-center justify-center px-5 sm:px-6 py-16">
           <div className="w-full max-w-sm text-center">
             <div
               className="rounded-3xl p-10 mb-6"
@@ -149,7 +153,7 @@ export default async function JoinPage({
 
       {/* ━━ 1. PRICING INTRO ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section
-        className="relative w-full text-center px-6 overflow-hidden"
+        className="relative w-full text-center px-5 sm:px-6 overflow-hidden"
         style={{ background: "#FAFAF8" }}
       >
         <div
@@ -215,7 +219,7 @@ export default async function JoinPage({
       {/* ━━ 2. PRICING TOGGLE + CARDS + AUTH GATE ━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section
         id="start"
-        className="w-full px-6"
+        className="w-full px-5 sm:px-6"
         style={{
           paddingBottom: "clamp(4rem, 7vw, 6rem)",
           background: "#FAFAF8",
@@ -243,7 +247,7 @@ export default async function JoinPage({
         style={{ background: "#121417", borderTop: "1px solid #1C2028" }}
       >
         <div
-          className="max-w-6xl mx-auto px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center"
+          className="max-w-6xl mx-auto px-5 sm:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center"
           style={{ paddingTop: "clamp(5rem, 9vw, 8rem)", paddingBottom: "clamp(5rem, 9vw, 8rem)" }}
         >
           <div>
@@ -285,9 +289,9 @@ export default async function JoinPage({
             {[
               { label: "Daily guided audio practice", sub: "Fresh every morning" },
               { label: "Weekly mindset principles", sub: "Backed by research" },
-              { label: "Monthly masterclass with Dr. Paul", sub: "Live + replay" },
+              { label: "Monthly theme from Dr. Paul", sub: "Guides the month" },
               { label: "Complete member library", sub: "Every past session" },
-              { label: "Live sessions & workshops", sub: "As new levels launch" },
+              { label: "Live events & coaching", sub: "At higher membership levels" },
             ].map(({ label, sub }) => (
               <div
                 key={label}
@@ -330,7 +334,7 @@ export default async function JoinPage({
         style={{ background: "#F6F3EE", borderTop: "1px solid #DDD7CF" }}
       >
         <div
-          className="max-w-6xl mx-auto px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center"
+          className="max-w-6xl mx-auto px-5 sm:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center"
           style={{ paddingTop: "clamp(5rem, 9vw, 8rem)", paddingBottom: "clamp(5rem, 9vw, 8rem)" }}
         >
           <div>
@@ -394,7 +398,7 @@ export default async function JoinPage({
       {/* ━━ 4. FAQ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section className="w-full" style={{ background: "#FAFAF8", borderTop: "1px solid rgba(221,215,207,0.55)" }}>
         <div
-          className="max-w-3xl mx-auto px-8"
+          className="max-w-3xl mx-auto px-5 sm:px-8"
           style={{ paddingTop: "clamp(4rem, 8vw, 7rem)", paddingBottom: "clamp(4rem, 8vw, 7rem)" }}
         >
           <div className="text-center mb-10">
@@ -436,7 +440,7 @@ export default async function JoinPage({
           style={{ background: "radial-gradient(ellipse at 50% -10%, rgba(47,111,237,0.18) 0%, transparent 60%)" }}
         />
         <div
-          className="relative max-w-4xl mx-auto px-8"
+          className="relative max-w-4xl mx-auto px-5 sm:px-8"
           style={{ paddingTop: "clamp(5rem, 10vw, 9rem)", paddingBottom: "clamp(5rem, 10vw, 9rem)" }}
         >
           <h2
@@ -448,11 +452,10 @@ export default async function JoinPage({
               color: "#FFFFFF",
             }}
           >
-            <span style={{ display: "block", whiteSpace: "nowrap" }}>A few minutes each day.</span>
+            <span className="block sm:whitespace-nowrap">A few minutes each day.</span>
             <span
+              className="block sm:whitespace-nowrap"
               style={{
-                display: "block",
-                whiteSpace: "nowrap",
                 background: "linear-gradient(135deg, #6B9BF2 0%, #8FC4B5 100%)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
@@ -489,7 +492,7 @@ export default async function JoinPage({
         className="w-full"
         style={{ background: "#FAFAF8", borderTop: "1px solid rgba(221,215,207,0.55)" }}
       >
-        <div className="max-w-6xl mx-auto px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-5">
             <Logo href="/" kind="full" height={22} className="opacity-45" />
             <Link href="/about" className="text-xs" style={{ color: "#9AA0A8" }}>About Dr. Paul</Link>

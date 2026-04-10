@@ -9,7 +9,7 @@ import { useState, useRef } from "react";
 const FAQS = [
   {
     q: "What exactly is Positives?",
-    a: "Positives is a daily practice membership built by Dr. Paul Jenkins, a licensed Clinical Psychologist with 30+ years of experience. Each morning you get a short guided audio session (5–15 minutes) designed to reset your thinking and help you move through your day with more clarity and calm. Alongside that, you get a weekly mindset principle and a monthly masterclass with Dr. Paul.",
+    a: "Positives is a daily practice membership built by Dr. Paul Jenkins, a licensed Clinical Psychologist with 30+ years of experience. Each morning you get a short guided audio session (5–15 minutes) designed to reset your thinking and help you move through your day with more clarity and calm. Alongside that, you get a weekly mindset principle and a monthly theme from Dr. Paul.",
   },
   {
     q: "How long are the daily sessions?",
@@ -29,7 +29,7 @@ const FAQS = [
   },
   {
     q: "Can I cancel anytime?",
-    a: "Yes. You can cancel immediately from your account settings. No calls, no cancellation hoops, no \"please tell us why\" friction. If you want to leave, you can leave.",
+    a: "Yes. You can manage cancellation from your account settings without contacting support. If you cancel, any paid access stays in place through your current billing period.",
   },
   {
     q: "What devices does this work on?",
@@ -45,7 +45,7 @@ const FAQS = [
   },
   {
     q: "What do the other pricing tiers include?",
-    a: "Membership is the foundation. Membership + Events adds live workshops and event access. Coaching Circle adds weekly group coaching and deeper implementation support. Executive Coaching is the highest-touch option and begins with a Breakthrough Session.",
+    a: "Membership is the foundation. Membership + Events adds Q&A/community access, live member events, and event replays as they are published. Coaching Circle adds weekly group coaching and replay access. Executive Coaching is the highest-touch option and begins with a Breakthrough Session.",
   },
 ];
 
@@ -120,19 +120,18 @@ export default function FaqPage() {
           borderBottom: "1px solid rgba(221,215,207,0.55)",
         }}
       >
-        <div className="max-w-6xl mx-auto flex items-center justify-between px-8 py-4">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-3 px-5 sm:px-8 py-3.5 sm:py-4">
           <Link href="/">
             <Image
               src="/logos/positives-wordmark-dark.png"
               alt="Positives"
-              width={120}
+              width={89}
               height={26}
-              style={{ height: 26, width: "auto" }}
             />
           </Link>
-          <nav className="flex items-center gap-6" aria-label="FAQ page navigation">
-            <Link href="/" className="text-sm font-medium" style={{ color: "#68707A" }}>Home</Link>
-            <Link href="/join" className="text-sm font-semibold px-5 py-2.5 rounded-full" style={{ background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)", color: "#FFFFFF" }}>
+          <nav className="flex items-center gap-3 sm:gap-6" aria-label="FAQ page navigation">
+            <Link href="/" className="text-xs sm:text-sm font-medium" style={{ color: "#68707A" }}>Home</Link>
+            <Link href="/join" className="text-xs sm:text-sm font-semibold px-4 sm:px-5 py-2 sm:py-2.5 rounded-full" style={{ background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)", color: "#FFFFFF" }}>
               Join
             </Link>
           </nav>
@@ -150,7 +149,7 @@ export default function FaqPage() {
           style={{ background: "radial-gradient(ellipse at 50% 0%, rgba(47,111,237,0.06) 0%, transparent 60%)" }}
         />
         <div
-          className="relative max-w-2xl mx-auto px-8"
+          className="relative max-w-2xl mx-auto px-5 sm:px-8"
           style={{ paddingTop: "clamp(4rem, 8vw, 7rem)", paddingBottom: "clamp(3rem, 5vw, 4rem)" }}
         >
           <p className="text-xs font-semibold uppercase mb-5" style={{ color: "#4E8C78", letterSpacing: "0.14em" }}>
@@ -181,7 +180,7 @@ export default function FaqPage() {
         className="w-full"
         style={{ paddingBottom: "clamp(5rem, 10vw, 9rem)" }}
       >
-        <div className="max-w-3xl mx-auto px-8">
+        <div className="max-w-3xl mx-auto px-5 sm:px-8">
           {FAQS.map((faq) => (
             <FaqItem key={faq.q} q={faq.q} a={faq.a} />
           ))}
@@ -194,7 +193,7 @@ export default function FaqPage() {
         style={{ background: "#121417", borderTop: "1px solid #1C2028" }}
       >
         <div
-          className="max-w-2xl mx-auto px-8"
+          className="max-w-2xl mx-auto px-5 sm:px-8"
           style={{ paddingTop: "clamp(4rem, 7vw, 6rem)", paddingBottom: "clamp(4rem, 7vw, 6rem)" }}
         >
           <h2
@@ -246,9 +245,9 @@ export default function FaqPage() {
 
       {/* ─── Footer ─────────────────────────────────────────────────────── */}
       <footer className="w-full" style={{ background: "#FAFAF8", borderTop: "1px solid rgba(221,215,207,0.55)" }}>
-        <div className="max-w-6xl mx-auto px-8 py-10 flex flex-col sm:flex-row items-center justify-between gap-5">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8 py-10 flex flex-col sm:flex-row items-center justify-between gap-5">
           <div className="flex flex-wrap items-center gap-5">
-            <Image src="/logos/positives-wordmark-dark.png" alt="Positives" width={80} height={18} style={{ height: 18, width: "auto", opacity: 0.4 }} />
+            <Image src="/logos/positives-wordmark-dark.png" alt="Positives" width={62} height={18} className="opacity-40" />
             <Link href="/about" className="text-xs" style={{ color: "#9AA0A8" }}>About</Link>
             <Link href="/support" className="text-xs" style={{ color: "#9AA0A8" }}>Support</Link>
             <Link href="/privacy" className="text-xs" style={{ color: "#9AA0A8" }}>Privacy</Link>

@@ -132,7 +132,7 @@ a {
   text-decoration: none;
 }
 
-img, svg, video {
+img:not([data-nimg]), svg, video {
   display: block;
   max-width: 100%;
 }
@@ -1907,4 +1907,3 @@ select.admin-select:focus,
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
-

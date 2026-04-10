@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCourseLesson } from "@/lib/queries/get-courses";
 import { LessonViewer } from "@/components/courses/LessonViewer";
 import type { Metadata } from "next";
+import { hasActiveMemberAccess } from "@/lib/subscription/access";
 
 /**
  * app/(member)/library/courses/[slug]/[lessonId]/page.tsx
@@ -37,7 +38,7 @@ export default async function LessonPage({ params }: Props) {
     .eq("id", user.id)
     .single();
 
-  if (!member || member.subscription_status !== "active") redirect("/account");
+  if (!member || !hasActiveMemberAccess(member.subscription_status)) redirect("/account");
 
   const lesson = await getCourseLesson(lessonId, member.id);
 

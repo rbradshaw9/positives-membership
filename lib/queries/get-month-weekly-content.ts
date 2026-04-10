@@ -12,7 +12,7 @@ import type { Tables } from "@/types/supabase";
  *
  * Used by:
  *   - today/page.tsx → weekly archive section (excludes current week)
- *   - practice/[monthYear]/page.tsx → all weeks for archive view
+ *   - library/months/[monthYear]/page.tsx → all weeks for archive view
  */
 
 export type MonthWeeklyContent = Pick<

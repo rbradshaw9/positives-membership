@@ -11,6 +11,7 @@ interface MemberShellClientProps {
   tier: string | null;
   memberName?: string | null;
   communityPreviewEnabled?: boolean;
+  needsPasswordSetup?: boolean;
   children: React.ReactNode;
 }
 
@@ -19,6 +20,7 @@ export function MemberShellClient({
   tier,
   memberName,
   communityPreviewEnabled = false,
+  needsPasswordSetup = false,
   children,
 }: MemberShellClientProps) {
   return (
@@ -34,7 +36,7 @@ export function MemberShellClient({
         <PersistentAudioPlayer />
         {/* WelcomeModal self-activates from ?welcome=1 — no-ops otherwise */}
         <Suspense fallback={null}>
-          <WelcomeModal />
+          <WelcomeModal needsPasswordSetup={needsPasswordSetup} />
         </Suspense>
       </div>
     </MemberAudioProvider>

@@ -8,6 +8,7 @@ import {
   mediaColumnsFromParsed,
 } from "@/lib/media/parse-media-url";
 import { CACHE_TAGS } from "@/lib/cache-tags";
+import { requireAdmin } from "@/lib/auth/require-admin";
 
 /**
  * app/admin/content/actions.ts
@@ -17,7 +18,8 @@ import { CACHE_TAGS } from "@/lib/cache-tags";
  * download_url) and media URL auto-detection for Weekly/Monthly types.
  *
  * All mutations use the service-role client (bypasses RLS — admin only).
- * requireAdmin() is enforced at the layout level.
+ * Each action explicitly checks requireAdmin() because server actions can be
+ * invoked independently of the admin layout boundary.
  */
 
 type ContentInput = {
@@ -102,6 +104,7 @@ function buildRow(input: ContentInput) {
       }
     })(),
     status: input.status,
+    is_active: input.status === "published",
     publish_date: input.publish_date || null,
     week_start: input.week_start || null,
     month_year: input.month_year || null,
@@ -171,6 +174,7 @@ async function resolveMonthlyPracticeId(
 
 /** Create a new content record */
 export async function createContent(formData: FormData) {
+  await requireAdmin();
   const input = parseFormData(formData);
 
   if (!input.title) {
@@ -199,6 +203,7 @@ export async function createContent(formData: FormData) {
 
 /** Update an existing content record */
 export async function updateContent(formData: FormData) {
+  await requireAdmin();
   const input = parseFormData(formData);
 
   if (!input.id) redirect("/admin/content?error=missing_id");
@@ -229,6 +234,7 @@ export async function updateContent(formData: FormData) {
 
 /** Toggle status between published ↔ draft (quick publish) */
 export async function togglePublish(formData: FormData) {
+  await requireAdmin();
   const id = formData.get("id")?.toString();
   const current = formData.get("current_status")?.toString();
 

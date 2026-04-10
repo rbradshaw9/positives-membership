@@ -2,8 +2,8 @@
   "metadata": {
     "name": "Level 1 launch runway — fully populated",
     "window_start": "2026-04-07",
-    "window_end": "2026-06-01",
-    "notes": "Placeholder audio uses SoundHelix MP3s. Replace castos_episode_url values with real Castos URLs before live launch. All status values set to published."
+    "window_end": "2026-06-04",
+    "notes": "Placeholder audio uses SoundHelix MP3s. Replace castos_episode_url values with real Castos URLs before live launch. All status values set to published. For the final June 2-4 runway extension, pair this template with scripts/launch-content-plan.june-window-extension.json."
   },
   "months": [
     {

@@ -5,8 +5,7 @@ import type { Tables } from "@/types/supabase";
  * lib/queries/get-monthly-daily-audios.ts
  *
  * Returns all published daily_audio entries up to (but not including) today,
- * grouped by month_year. Covers the current month's past days AND any prior
- * complete months — so the archive shows March in full plus April days so far.
+ * grouped by month_year. Covers the current month's past days only.
  *
  * Results are sorted newest-first within each month. The "exclude date" is
  * today's date so today's audio (shown separately at the top) isn't repeated.
@@ -44,7 +43,7 @@ export async function getMonthlyDailyAudios(
   const supabase = await createClient();
 
   // Scope to current month only — the /today page is a "living document"
-  // for the current month. Past months are accessed via /practice/[monthYear].
+  // for the current month. Closed months are accessed via /library/months/[monthYear].
   const currentMonthYear = excludeDate.slice(0, 7); // "2026-04"
   const monthStart = `${currentMonthYear}-01`;
 
@@ -101,7 +100,7 @@ export async function getMonthlyDailyAudios(
 /**
  * getArchiveDailyAudios — fetches ALL published daily_audio content for a
  * specific month_year (e.g. "2026-03"). Returns a single MonthGroup.
- * Used by the /practice/[monthYear] archive route.
+ * Used by the /library/months/[monthYear] archive route.
  *
  * Unlike getMonthlyDailyAudios, this does not exclude today and uses the
  * month_year field directly for a precise month boundary.
@@ -134,4 +133,3 @@ export async function getArchiveDailyAudios(
     audios: data,
   };
 }
-

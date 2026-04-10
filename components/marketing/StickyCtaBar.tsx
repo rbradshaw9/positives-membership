@@ -14,9 +14,11 @@ import { useEffect, useState } from "react";
 interface StickyCtaBarProps {
   /** Ref to the sentinel element at the bottom of the hero section */
   sentinelRef: React.RefObject<HTMLDivElement | null>;
+  href: string;
+  label: string;
 }
 
-export function StickyCtaBar({ sentinelRef }: StickyCtaBarProps) {
+export function StickyCtaBar({ sentinelRef, href, label }: StickyCtaBarProps) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -53,7 +55,7 @@ export function StickyCtaBar({ sentinelRef }: StickyCtaBarProps) {
       `}</style>
       <div className="flex items-center gap-3 px-5 py-3">
         <Link
-          href="/join"
+          href={href}
           className="flex-1 flex items-center justify-center font-semibold rounded-full text-sm"
           style={{
             background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
@@ -63,7 +65,7 @@ export function StickyCtaBar({ sentinelRef }: StickyCtaBarProps) {
             boxShadow: "0 4px 18px rgba(47,111,237,0.35)",
           }}
         >
-          Start your daily practice →
+          {label}
         </Link>
         <div className="text-right flex-shrink-0">
           <p className="text-xs font-medium" style={{ color: "#FFFFFF", lineHeight: "1.3" }}>From $37/mo</p>

@@ -1,9 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Privacy Policy — Positives",
   description: "How Positives collects, uses, and protects your personal information.",
+  alternates: {
+    canonical: "/privacy",
+  },
 };
 
 export default function PrivacyPage() {
@@ -19,20 +23,19 @@ export default function PrivacyPage() {
           borderBottom: "1px solid rgba(221,215,207,0.55)",
         }}
       >
-        <div className="max-w-6xl mx-auto px-8 py-4 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8 py-3.5 sm:py-4 flex items-center justify-between gap-3">
           <Link href="/">
             <Image
               src="/logos/positives-wordmark-dark.png"
               alt="Positives"
-              width={120}
+              width={89}
               height={26}
-              style={{ height: 26, width: "auto" }}
               priority
             />
           </Link>
           <Link
             href="/join"
-            className="text-sm font-semibold px-5 py-2.5 rounded-full"
+            className="text-xs sm:text-sm font-semibold px-4 sm:px-5 py-2 sm:py-2.5 rounded-full"
             style={{
               background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
               color: "#FFFFFF",
@@ -48,7 +51,7 @@ export default function PrivacyPage() {
       {/* Content */}
       <main className="flex-1 w-full">
         <div
-          className="max-w-3xl mx-auto px-8"
+          className="max-w-3xl mx-auto px-5 sm:px-8"
           style={{ paddingTop: "clamp(4rem, 8vw, 7rem)", paddingBottom: "clamp(4rem, 8vw, 7rem)" }}
         >
           <p className="text-xs font-semibold uppercase mb-6" style={{ color: "#9AA0A8", letterSpacing: "0.14em" }}>
@@ -174,7 +177,7 @@ export default function PrivacyPage() {
 
       {/* Footer */}
       <footer className="w-full" style={{ borderTop: "1px solid rgba(221,215,207,0.55)" }}>
-        <div className="max-w-6xl mx-auto px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-5">
             <Link href="/privacy" className="text-xs" style={{ color: "#9AA0A8" }}>Privacy</Link>
             <Link href="/terms" className="text-xs" style={{ color: "#9AA0A8" }}>Terms</Link>
