@@ -31,7 +31,7 @@ function loadEnv(path) {
 loadEnv(envPath);
 
 const args = new Set(process.argv.slice(2));
-const partialMode = args.has("--partial") || args.has("--offline");
+const partialMode = args.has("--partial");
 
 const REQUIRED_FILES = [
   "proxy.ts",
