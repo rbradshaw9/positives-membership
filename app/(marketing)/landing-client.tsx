@@ -3,6 +3,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import { PublicSiteFooter } from "@/components/marketing/PublicSiteFooter";
+import { PublicSiteHeader } from "@/components/marketing/PublicSiteHeader";
 import { StickyCtaBar } from "@/components/marketing/StickyCtaBar";
 import type { PublicSessionState } from "@/lib/marketing/public-session";
 
@@ -52,7 +54,7 @@ const LANDING_FAQS = [
   },
   {
     q: "Is there a free trial?",
-    a: "There's no free trial, but every membership includes an unconditional 30-day money-back guarantee. If the practice doesn't meaningfully improve your days within 30 days, email us and we'll refund you in full — no questions asked.",
+    a: "Yes. Positives now offers a 7-day free trial through our trial-first offer path, and every paid membership also includes a 30-day money-back guarantee. If the practice doesn't meaningfully improve your days within 30 days of paying, email us and we'll refund you in full — no questions asked.",
   },
   {
     q: "Can I cancel anytime?",
@@ -68,7 +70,7 @@ const LANDING_FAQS = [
   },
   {
     q: "What do the other pricing tiers include?",
-    a: "Membership is the foundation. Membership + Events adds live workshops and event access. Coaching Circle adds weekly group coaching and deeper implementation support. Executive Coaching is the highest-touch option and begins with a Breakthrough Session.",
+    a: "Membership is the foundation. Membership + Events adds live member events plus replay access as those sessions are published. Coaching Circle adds weekly live coaching and replay access. Executive Coaching is the highest-touch option and begins with a Breakthrough Session.",
   },
 ];
 
@@ -294,50 +296,16 @@ export function LandingPageClient({
     <div className="min-h-dvh flex flex-col overflow-x-hidden" style={{ background: "#FAFAF8" }}>
 
       {/* ━━ 1. NAV ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <header
-        className="sticky top-0 z-50 w-full"
-        style={{
-          background: "rgba(250,250,248,0.90)",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-          borderBottom: "1px solid rgba(221,215,207,0.55)",
-        }}
-      >
-        <div className="max-w-6xl mx-auto px-5 sm:px-8 py-3 sm:py-4 flex items-center justify-between gap-3">
-          <Link href="/">
-            <Image
-              src="/logos/positives-wordmark-dark.png"
-              alt="Positives"
-              width={89}
-              height={26}
-              priority
-            />
-          </Link>
-          <nav className="flex items-center gap-3 sm:gap-7" aria-label="Main navigation">
-            <Link href="#how-it-works" className="hidden md:block text-sm font-medium transition-colors hover:text-foreground" style={{ color: "#68707A" }}>
-              How it Works
-            </Link>
-            <Link href="#dr-paul" className="hidden md:block text-sm font-medium transition-colors hover:text-foreground" style={{ color: "#68707A" }}>
-              Dr. Paul
-            </Link>
-            <Link href={signInHref} className="text-xs sm:text-sm font-medium transition-colors" style={{ color: "#68707A" }}>
-              {session.signInLabel}
-            </Link>
-            <Link
-              href={paidHref}
-              className="text-xs sm:text-sm font-semibold px-4 sm:px-5 py-2 sm:py-2.5 rounded-full"
-              style={{
-                background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
-                color: "#FFFFFF",
-                letterSpacing: "-0.01em",
-                boxShadow: "0 4px 14px rgba(47,111,237,0.28)",
-              }}
-            >
-              {session.paidShortLabel}
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <PublicSiteHeader
+        signInHref={signInHref}
+        signInLabel={session.signInLabel}
+        primaryCtaHref={paidHref}
+        primaryCtaLabel={session.paidShortLabel}
+        navLinks={[
+          { href: "#how-it-works", label: "How it Works", hiddenOnMobile: true },
+          { href: "#dr-paul", label: "Dr. Paul", hiddenOnMobile: true },
+        ]}
+      />
 
       {/* ━━ 2. HERO ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section
@@ -350,7 +318,7 @@ export function LandingPageClient({
           style={{ background: "radial-gradient(ellipse at 50% 0%, rgba(47,111,237,0.07) 0%, transparent 60%)" }}
         />
 
-        <div className="relative flex flex-col items-center max-w-4xl mx-auto" style={{ paddingTop: "clamp(2.75rem, 9vw, 3.5rem)", paddingBottom: "clamp(3.5rem, 10vw, 4.5rem)" }}>
+        <div className="relative flex flex-col items-center max-w-4xl mx-auto" style={{ paddingTop: "clamp(2.5rem, 7vw, 3rem)", paddingBottom: "clamp(3.25rem, 9vw, 4.25rem)" }}>
           {/* Eyebrow */}
           <div className="flex flex-wrap items-center justify-center gap-2.5 mb-8 sm:mb-10 px-4">
             <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#4E8C78" }} />
@@ -1013,72 +981,7 @@ export function LandingPageClient({
       </section>
 
       {/* ━━ 11. FOOTER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <footer className="w-full" style={{ background: "#FAFAF8", borderTop: "1px solid rgba(221,215,207,0.55)" }}>
-        <div
-          className="max-w-6xl mx-auto px-5 sm:px-8"
-          style={{ paddingTop: "2.5rem", paddingBottom: "2.5rem" }}
-        >
-          <div className="flex flex-col md:flex-row md:items-start justify-between gap-10 mb-8">
-            {/* Brand */}
-            <div>
-              <Link href="/">
-                <Image
-                  src="/logos/positives-wordmark-dark.png"
-                  alt="Positives"
-                  width={76}
-                  height={22}
-                  style={{ opacity: 0.45, marginBottom: "0.75rem" }}
-                />
-              </Link>
-              <p style={{ fontSize: "0.8rem", color: "#B0A89E", maxWidth: "220px", lineHeight: "1.65" }}>
-                A daily mindset practice by Dr. Paul Jenkins, Clinical Psychologist.
-              </p>
-            </div>
-
-            {/* Links */}
-            <div className="flex flex-wrap gap-x-12 gap-y-6">
-              <div>
-                <p className="text-xs font-semibold uppercase mb-3" style={{ color: "#9AA0A8", letterSpacing: "0.1em" }}>Practice</p>
-                <div className="space-y-2">
-                  <Link href={paidHref} className="block text-sm" style={{ color: "#68707A" }}>{session.paidShortLabel}</Link>
-                  <Link href={watchHref} className="block text-sm" style={{ color: "#68707A" }}>
-                    {session.hasMemberAccess ? "Today" : "Watch Dr. Paul"}
-                  </Link>
-                  <Link href="#how-it-works" className="block text-sm" style={{ color: "#68707A" }}>How it works</Link>
-                  <Link href={signInHref} className="block text-sm" style={{ color: "#68707A" }}>{session.signInLabel}</Link>
-                </div>
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase mb-3" style={{ color: "#9AA0A8", letterSpacing: "0.1em" }}>Learn</p>
-                <div className="space-y-2">
-                  <Link href="/about" className="block text-sm" style={{ color: "#68707A" }}>About Dr. Paul</Link>
-                  <Link href="/#faq" className="block text-sm" style={{ color: "#68707A" }}>FAQ</Link>
-                </div>
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase mb-3" style={{ color: "#9AA0A8", letterSpacing: "0.1em" }}>Help</p>
-                <div className="space-y-2">
-                  <Link href="/support" className="block text-sm" style={{ color: "#68707A" }}>Support</Link>
-                  <Link href="/privacy" className="block text-sm" style={{ color: "#68707A" }}>Privacy</Link>
-                  <Link href="/terms" className="block text-sm" style={{ color: "#68707A" }}>Terms</Link>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div
-            className="flex flex-col sm:flex-row items-center justify-between gap-3"
-            style={{ borderTop: "1px solid rgba(221,215,207,0.55)", paddingTop: "1.25rem" }}
-          >
-            <span className="text-xs" style={{ color: "#C4BDB5" }}>
-              © {new Date().getFullYear()} Positives. All rights reserved.
-            </span>
-            <p className="text-xs" style={{ color: "#C4BDB5" }}>
-              From $37/month · Cancel anytime · 30-day guarantee
-            </p>
-          </div>
-        </div>
-      </footer>
+      <PublicSiteFooter paidHref={paidHref} watchHref={watchHref} session={session} />
     </div>
   );
 }

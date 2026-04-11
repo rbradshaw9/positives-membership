@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getPublicSessionState } from "@/lib/marketing/public-session";
 import FaqClient from "./faq-client";
 
 export const metadata: Metadata = {
@@ -10,6 +11,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default function FaqPage() {
-  return <FaqClient />;
+export default async function FaqPage() {
+  const session = await getPublicSessionState();
+
+  return <FaqClient session={session} />;
 }

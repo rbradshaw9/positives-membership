@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import Image from "next/image";
+import { PublicSiteFooter } from "@/components/marketing/PublicSiteFooter";
+import { PublicSiteHeader } from "@/components/marketing/PublicSiteHeader";
+import { getPublicSessionState } from "@/lib/marketing/public-session";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — Positives",
@@ -10,43 +11,22 @@ export const metadata: Metadata = {
   },
 };
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  const session = await getPublicSessionState();
+
   return (
     <div className="min-h-dvh flex flex-col" style={{ background: "#FAFAF8" }}>
-      {/* Nav */}
-      <header
-        className="sticky top-0 z-50 w-full"
-        style={{
-          background: "rgba(250,250,248,0.90)",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-          borderBottom: "1px solid rgba(221,215,207,0.55)",
-        }}
-      >
-        <div className="max-w-6xl mx-auto px-5 sm:px-8 py-3.5 sm:py-4 flex items-center justify-between gap-3">
-          <Link href="/">
-            <Image
-              src="/logos/positives-wordmark-dark.png"
-              alt="Positives"
-              width={89}
-              height={26}
-              priority
-            />
-          </Link>
-          <Link
-            href="/join"
-            className="text-xs sm:text-sm font-semibold px-4 sm:px-5 py-2 sm:py-2.5 rounded-full"
-            style={{
-              background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
-              color: "#FFFFFF",
-              letterSpacing: "-0.01em",
-              boxShadow: "0 4px 14px rgba(47,111,237,0.28)",
-            }}
-          >
-            Join
-          </Link>
-        </div>
-      </header>
+      <PublicSiteHeader
+        signInHref={session.signInHref}
+        signInLabel={session.signInLabel}
+        navLinks={[
+          { href: "/", label: "Home" },
+          { href: "/faq", label: "FAQ", hiddenOnMobile: true },
+          { href: "/support", label: "Support", hiddenOnMobile: true },
+        ]}
+        primaryCtaHref={session.paidHref}
+        primaryCtaLabel={session.paidShortLabel}
+      />
 
       {/* Content */}
       <main className="flex-1 w-full">
@@ -175,16 +155,7 @@ export default function PrivacyPage() {
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="w-full" style={{ borderTop: "1px solid rgba(221,215,207,0.55)" }}>
-        <div className="max-w-6xl mx-auto px-5 sm:px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-5">
-            <Link href="/privacy" className="text-xs" style={{ color: "#9AA0A8" }}>Privacy</Link>
-            <Link href="/terms" className="text-xs" style={{ color: "#9AA0A8" }}>Terms</Link>
-          </div>
-          <span className="text-xs" style={{ color: "#C4BDB5" }}>© {new Date().getFullYear()} Positives</span>
-        </div>
-      </footer>
+      <PublicSiteFooter paidHref={session.paidHref} watchHref={session.watchHref} session={session} />
     </div>
   );
 }

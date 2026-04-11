@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { config } from "@/lib/config";
-import { Logo } from "@/components/marketing/Logo";
+import { PublicSiteFooter } from "@/components/marketing/PublicSiteFooter";
+import { PublicSiteHeader } from "@/components/marketing/PublicSiteHeader";
 import { appendPublicTrackingParams, type PublicSearchParams } from "@/lib/marketing/public-query-params";
 import { getPublicSessionState } from "@/lib/marketing/public-session";
 import { TrialPageClient, type TrialPlanOption } from "./trial-page-client";
@@ -15,23 +15,41 @@ export const metadata: Metadata = {
   },
 };
 
-const BENEFITS = [
+const FIRST_WEEK = [
   {
-    eyebrow: "Daily",
-    title: "A grounded start every morning",
-    body: "Each day opens with a short audio from Dr. Paul so you can reset before the world gets loud.",
+    eyebrow: "Daily rhythm",
+    title: "Start each morning from a steadier place",
+    body: "The daily audio gives you something calm and useful to return to before the day gets noisy.",
   },
   {
-    eyebrow: "Weekly",
-    title: "A simple frame for the week ahead",
-    body: "Your weekly principle gives the whole week one clear idea to return to when you need it.",
+    eyebrow: "Clear structure",
+    title: "Know what to come back to all week",
+    body: "The weekly reflection and monthly theme keep the practice connected without turning it into a course.",
   },
   {
-    eyebrow: "Monthly",
-    title: "A deeper theme tying it all together",
-    body: "Each month carries one bigger focus so your practice feels connected instead of random.",
+    eyebrow: "Real access",
+    title: "Choose the level you actually want to experience",
+    body: "Membership, Membership + Events, and Coaching Circle all start as real Stripe-backed trials, not watered-down previews.",
   },
-];
+] as const;
+
+const TRIAL_STEPS = [
+  {
+    step: "01",
+    title: "Choose the level that fits you now",
+    body: "Start with core Membership, add live Events, or step into Coaching Circle if you already know you want deeper support.",
+  },
+  {
+    step: "02",
+    title: "Use it fully for the next 7 days",
+    body: "You get the actual level you chose right away, including events or coaching access when that tier includes them.",
+  },
+  {
+    step: "03",
+    title: "Keep it only if the rhythm helps",
+    body: "Stripe stores the card now and starts billing on day 8 unless you cancel first from the billing center in your account.",
+  },
+] as const;
 
 const TRIAL_PLANS: TrialPlanOption[] = [
   {
@@ -80,38 +98,15 @@ export default async function TryPage({
 
   return (
     <div className="min-h-dvh" style={{ background: "#F6F3EE" }}>
-      <header
-        className="sticky top-0 z-50 w-full"
-        style={{
-          background: "rgba(246,243,238,0.9)",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-          borderBottom: "1px solid rgba(221,215,207,0.65)",
-        }}
-        >
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-5 py-3 sm:px-8 sm:py-4">
-          <Logo kind="wordmark" height={24} />
-          <div className="flex items-center gap-3">
-            <Link href={signInHref} className="text-sm font-medium" style={{ color: "#68707A" }}>
-              {session.signInLabel}
-            </Link>
-            <Link
-              href={paidHref}
-              className="rounded-full px-4 py-2 text-sm font-semibold sm:px-5 sm:py-2.5"
-              style={{
-                background: "#FFFFFF",
-                color: "#121417",
-                border: "1px solid rgba(18,20,23,0.12)",
-              }}
-            >
-              {session.hasMemberAccess ? "Open Today" : "View paid options"}
-            </Link>
-          </div>
-        </div>
-      </header>
+      <PublicSiteHeader
+        signInHref={signInHref}
+        signInLabel={session.signInLabel}
+        primaryCtaHref={paidHref}
+        primaryCtaLabel={session.hasMemberAccess ? "Open Today" : "View paid options"}
+      />
 
       <main>
-        <section className="relative overflow-hidden">
+        <section className="relative overflow-hidden border-b" style={{ borderColor: "rgba(221,215,207,0.72)" }}>
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-0"
@@ -121,29 +116,94 @@ export default async function TryPage({
             }}
           />
 
-          <div className="relative mx-auto grid max-w-6xl gap-12 px-5 py-14 sm:px-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-center lg:py-20">
+          <div className="relative mx-auto grid max-w-6xl gap-12 px-5 py-14 sm:px-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:items-start lg:py-20">
             <div>
               <p
                 className="mb-4 text-xs font-semibold uppercase"
                 style={{ color: "#4E8C78", letterSpacing: "0.14em" }}
               >
-                7-day trial · choose your level
+                7-day free trial
               </p>
 
               <h1
                 className="font-heading text-4xl font-bold tracking-[-0.05em] text-foreground sm:text-5xl lg:text-6xl"
-                style={{ lineHeight: "1.02", textWrap: "balance" }}
+                style={{ lineHeight: "1.02", textWrap: "balance", maxWidth: "12ch" }}
               >
-                Try Positives free for 7 days and feel the rhythm before you commit.
+                Try the Positives rhythm before you pay for it.
               </h1>
 
               <p
                 className="mt-5 max-w-2xl text-base sm:text-lg"
                 style={{ color: "#68707A", lineHeight: "1.78", letterSpacing: "-0.01em" }}
               >
-                This is a real Stripe subscription trial, not a stripped-down preview. Choose the
-                level that fits you, start with full access right away, and let the first week show
-                you whether the rhythm belongs in your life.
+                This page is built for the person arriving through an affiliate, partner,
+                recommendation, webinar, or warmer introduction. Choose the level that fits you,
+                start right away, and let the first week show you whether Positives belongs in your
+                life.
+              </p>
+
+              <div className="mt-8 grid gap-4 sm:grid-cols-3">
+                {[
+                  "Real access to the level you choose",
+                  "No stripped-down preview experience",
+                  "Cancel in Stripe before billing starts",
+                ].map((item) => (
+                  <div
+                    key={item}
+                    className="rounded-[1.5rem] border px-4 py-4"
+                    style={{
+                      background: "#FFFFFF",
+                      borderColor: "rgba(221,215,207,0.8)",
+                      boxShadow: "0 8px 24px rgba(18,20,23,0.04)",
+                    }}
+                  >
+                    <p className="text-sm" style={{ color: "#3F4650", lineHeight: "1.7", textWrap: "balance" }}>
+                      {item}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <div
+                className="mt-8 rounded-[1.75rem] border p-5 sm:p-6"
+                style={{
+                  background: "linear-gradient(180deg, rgba(47,111,237,0.05) 0%, rgba(78,140,120,0.05) 100%)",
+                  borderColor: "rgba(47,111,237,0.16)",
+                }}
+              >
+                <p className="text-xs font-semibold uppercase" style={{ color: "#2F6FED", letterSpacing: "0.14em" }}>
+                  Why this offer works
+                </p>
+                <p className="mt-3 text-sm" style={{ color: "#4A5360", lineHeight: "1.8" }}>
+                  A daily practice is hard to understand from copy alone. Seven days is enough to
+                  feel the tone, the rhythm, and whether you actually want to keep coming back.
+                </p>
+              </div>
+            </div>
+
+            <aside
+              className="rounded-[2rem] border p-6 sm:p-7"
+              style={{
+                background: "#FFFFFF",
+                borderColor: "rgba(221,215,207,0.8)",
+                boxShadow: "0 24px 80px rgba(18,20,23,0.08)",
+              }}
+            >
+              <p
+                className="text-xs font-semibold uppercase"
+                style={{ color: "#4E8C78", letterSpacing: "0.14em" }}
+              >
+                Choose your 7-day access level
+              </p>
+              <h2
+                className="mt-4 font-heading text-3xl font-bold tracking-[-0.045em] text-foreground"
+                style={{ lineHeight: "1.08", textWrap: "balance" }}
+              >
+                Start with the level that matches the kind of support you want.
+              </h2>
+              <p className="mt-4 text-sm" style={{ color: "#68707A", lineHeight: "1.8" }}>
+                Pick the version of Positives you want to experience first. The trial stays tied to
+                that level, and Stripe only begins billing on day 8 if you decide to stay.
               </p>
 
               <TrialPageClient
@@ -152,58 +212,6 @@ export default async function TryPage({
                 memberHref="/today"
                 paidHref={paidHref}
               />
-            </div>
-
-            <aside
-              className="rounded-[2rem] border p-6 sm:p-7"
-              style={{
-                background: "#10151D",
-                borderColor: "rgba(18,20,23,0.08)",
-                boxShadow: "0 24px 80px rgba(18,20,23,0.12)",
-              }}
-            >
-              <p
-                className="text-xs font-semibold uppercase"
-                style={{ color: "#7DB3F7", letterSpacing: "0.14em" }}
-              >
-                What happens after day 7
-              </p>
-
-              <div className="mt-5 space-y-4">
-                {[
-                  "You choose Membership, Membership + Events, or Coaching Circle before checkout.",
-                  "Stripe keeps that same subscription running in the background from day one.",
-                  "On day 8, billing starts automatically for the level you chose unless you cancel first.",
-                  "You can cancel the trial anytime from the billing center inside your account.",
-                ].map((item) => (
-                  <div key={item} className="flex items-start gap-3">
-                    <div
-                      className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
-                      style={{ background: "rgba(255,255,255,0.08)" }}
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#7DB3F7" strokeWidth="2">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    </div>
-                    <p className="text-sm" style={{ color: "rgba(255,255,255,0.72)", lineHeight: "1.75" }}>
-                      {item}
-                    </p>
-                  </div>
-                ))}
-              </div>
-
-              <div
-                className="mt-8 rounded-[1.5rem] border p-5"
-                style={{ borderColor: "rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}
-              >
-                <p className="text-xs font-semibold uppercase" style={{ color: "#9AA0A8", letterSpacing: "0.12em" }}>
-                  Better fit for
-                </p>
-                <p className="mt-3 text-sm" style={{ color: "rgba(255,255,255,0.72)", lineHeight: "1.72" }}>
-                  Someone who wants to experience the Positives rhythm before paying, especially if
-                  they found it through an affiliate, creator, webinar, or colder introduction.
-                </p>
-              </div>
             </aside>
           </div>
         </section>
@@ -215,18 +223,18 @@ export default async function TryPage({
                 className="text-xs font-semibold uppercase"
                 style={{ color: "#9AA0A8", letterSpacing: "0.14em" }}
               >
-                Inside the trial
+                What the first week gives you
               </p>
               <h2
                 className="mt-4 font-heading text-3xl font-bold tracking-[-0.05em] text-foreground sm:text-4xl"
                 style={{ lineHeight: "1.04", textWrap: "balance" }}
               >
-                Enough access to know whether this rhythm belongs in your life.
+                Enough real use to know whether this is a rhythm you want to keep.
               </h2>
             </div>
 
             <div className="mt-10 grid gap-5 lg:grid-cols-3">
-              {BENEFITS.map((benefit) => (
+              {FIRST_WEEK.map((benefit) => (
                 <article
                   key={benefit.title}
                   className="rounded-[1.75rem] border p-6"
@@ -257,64 +265,98 @@ export default async function TryPage({
           </div>
         </section>
 
-        <section>
-          <div className="mx-auto max-w-6xl px-5 py-14 sm:px-8 lg:py-20">
-            <div className="grid gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-start">
-              <div>
-                <p
-                  className="text-xs font-semibold uppercase"
-                  style={{ color: "#9AA0A8", letterSpacing: "0.14em" }}
-                >
-                  Trial FAQ
-                </p>
-                <h2
-                  className="mt-4 font-heading text-3xl font-bold tracking-[-0.05em] text-foreground sm:text-4xl"
-                  style={{ lineHeight: "1.04", textWrap: "balance" }}
-                >
-                  Clear terms. No sneaky edges.
-                </h2>
-              </div>
+        <section
+          className="border-b"
+          style={{ background: "#121417", borderColor: "rgba(255,255,255,0.06)" }}
+        >
+          <div className="mx-auto grid max-w-6xl gap-10 px-5 py-14 sm:px-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-start lg:py-18">
+            <div>
+              <p
+                className="text-xs font-semibold uppercase"
+                style={{ color: "#7DB3F7", letterSpacing: "0.14em" }}
+              >
+                How the trial works
+              </p>
+              <h2
+                className="mt-4 font-heading text-3xl font-bold tracking-[-0.045em] text-white sm:text-4xl"
+                style={{ lineHeight: "1.08", textWrap: "balance" }}
+              >
+                Simple terms. Real access. No awkward surprise on day 8.
+              </h2>
+            </div>
 
-              <div className="space-y-4">
-                {[
-                  [
-                    "When do I get billed?",
-                    "Your card is collected today, but Stripe does not charge you until the 7-day trial finishes. The amount depends on the level you choose.",
-                  ],
-                  [
-                    "Do I need a card to start?",
-                    "Yes. This is a real Stripe subscription trial so it can continue automatically if you decide to stay.",
-                  ],
-                  [
-                    "How do I cancel before billing starts?",
-                    "Open the billing center from your account and cancel there. The cancellation is handled by Stripe and takes effect before the trial converts.",
-                  ],
-                  [
-                    "Can I start with Events or Coaching?",
-                    "Yes. In this funnel you can start a 7-day trial of Membership, Membership + Events, or Coaching Circle and keep that same level if you stay in.",
-                  ],
-                ].map(([question, answer]) => (
-                  <article
-                    key={question}
-                    className="rounded-[1.5rem] border p-5 sm:p-6"
-                    style={{ background: "#FFFFFF", borderColor: "rgba(221,215,207,0.8)" }}
+            <div className="grid gap-4">
+              {TRIAL_STEPS.map((item) => (
+                <article
+                  key={item.step}
+                  className="rounded-[1.75rem] border p-5 sm:p-6"
+                  style={{
+                    borderColor: "rgba(255,255,255,0.08)",
+                    background: "rgba(255,255,255,0.03)",
+                  }}
+                >
+                  <p
+                    className="text-xs font-semibold uppercase"
+                    style={{ color: "#7DB3F7", letterSpacing: "0.14em" }}
                   >
-                    <h3
-                      className="font-heading text-xl font-bold tracking-[-0.03em] text-foreground"
-                      style={{ textWrap: "balance" }}
-                    >
-                      {question}
-                    </h3>
-                    <p className="mt-3 text-sm" style={{ color: "#68707A", lineHeight: "1.8" }}>
-                      {answer}
-                    </p>
-                  </article>
-                ))}
-              </div>
+                    Step {item.step}
+                  </p>
+                  <h3
+                    className="mt-3 font-heading text-2xl font-bold tracking-[-0.04em] text-white"
+                    style={{ lineHeight: "1.08", textWrap: "balance" }}
+                  >
+                    {item.title}
+                  </h3>
+                  <p className="mt-3 text-sm" style={{ color: "rgba(255,255,255,0.72)", lineHeight: "1.8" }}>
+                    {item.body}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div className="mx-auto max-w-4xl px-5 py-16 text-center sm:px-8 lg:py-20">
+            <p
+              className="text-xs font-semibold uppercase"
+              style={{ color: "#4E8C78", letterSpacing: "0.14em" }}
+            >
+              A warmer way in
+            </p>
+            <h2
+              className="mx-auto mt-4 max-w-3xl font-heading text-3xl font-bold tracking-[-0.045em] text-foreground sm:text-4xl"
+              style={{ lineHeight: "1.08", textWrap: "balance" }}
+            >
+              This page exists for the person who wants to feel the practice first.
+            </h2>
+            <p
+              className="mx-auto mt-5 max-w-3xl text-base"
+              style={{ color: "#68707A", lineHeight: "1.8", letterSpacing: "-0.01em" }}
+            >
+              Some people are ready to buy right away. Some want a week of real use before they
+              decide. This trial is for that second path.
+            </p>
+
+            <div
+              className="mx-auto mt-8 rounded-[1.75rem] border p-5 sm:p-6"
+              style={{
+                maxWidth: "42rem",
+                background: "#FFFFFF",
+                borderColor: "rgba(221,215,207,0.8)",
+                boxShadow: "0 10px 30px rgba(18,20,23,0.05)",
+              }}
+            >
+              <p className="text-sm" style={{ color: "#4A5360", lineHeight: "1.8" }}>
+                Card required today. Stripe stores it now and begins billing on day 8 for the
+                level you choose unless you cancel first in the billing center.
+              </p>
             </div>
           </div>
         </section>
       </main>
+
+      <PublicSiteFooter paidHref={paidHref} watchHref={session.watchHref} session={session} />
     </div>
   );
 }

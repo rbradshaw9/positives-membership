@@ -2,9 +2,10 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { config } from "@/lib/config";
-import { Logo } from "@/components/marketing/Logo";
+import { PublicSiteFooter } from "@/components/marketing/PublicSiteFooter";
+import { PublicSiteHeader } from "@/components/marketing/PublicSiteHeader";
 import { PricingToggle } from "@/components/marketing/PricingToggle";
-import { JoinPageFaq } from "./join-faq";
+import { getPublicSessionState } from "@/lib/marketing/public-session";
 import { hasActiveMemberAccess } from "@/lib/subscription/access";
 
 export const metadata = {
@@ -15,32 +16,6 @@ export const metadata = {
     canonical: "/join",
   },
 };
-
-function JoinPageNav() {
-  return (
-    <header
-      className="sticky top-0 z-50 w-full"
-      style={{
-        background: "rgba(250,250,248,0.90)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        borderBottom: "1px solid rgba(221,215,207,0.55)",
-      }}
-    >
-      <div className="max-w-6xl mx-auto flex items-center justify-between gap-3 px-5 sm:px-8 py-3.5 sm:py-4">
-        <Logo href="/" kind="full" height={28} />
-        <nav className="flex items-center gap-3 sm:gap-6" aria-label="Join page navigation">
-          <Link href="/" className="text-xs sm:text-sm font-medium" style={{ color: "#68707A" }}>
-            Home
-          </Link>
-          <Link href="/login" className="text-xs sm:text-sm font-medium" style={{ color: "#68707A" }}>
-            Sign in
-          </Link>
-        </nav>
-      </div>
-    </header>
-  );
-}
 
 /**
  * app/join/page.tsx
@@ -58,6 +33,7 @@ export default async function JoinPage({
   searchParams: Promise<{ step?: string; email?: string; error?: string }>;
 }) {
   const { step, email: emailParam, error: errorParam } = await searchParams;
+  const publicSession = await getPublicSessionState();
 
   // ── Active member redirect ────────────────────────────────────────────────
   const supabase = await createClient();
@@ -89,7 +65,11 @@ export default async function JoinPage({
   if (step === "check-email") {
     return (
       <div className="min-h-dvh flex flex-col" style={{ background: "#FAFAF8" }}>
-        <JoinPageNav />
+        <PublicSiteHeader
+          signInHref={publicSession.signInHref}
+          signInLabel={publicSession.signInLabel}
+          navLinks={[{ href: "/", label: "Home" }]}
+        />
         <div className="flex-1 flex flex-col items-center justify-center px-5 sm:px-6 py-16">
           <div className="w-full max-w-sm text-center">
             <div
@@ -149,7 +129,11 @@ export default async function JoinPage({
   // ── Main join page ────────────────────────────────────────────────────────
   return (
     <div className="min-h-dvh flex flex-col overflow-x-hidden" style={{ background: "#FAFAF8" }}>
-      <JoinPageNav />
+      <PublicSiteHeader
+        signInHref={publicSession.signInHref}
+        signInLabel={publicSession.signInLabel}
+        navLinks={[{ href: "/", label: "Home" }]}
+      />
 
       {/* ━━ 1. PRICING INTRO ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section
@@ -165,12 +149,6 @@ export default async function JoinPage({
           className="relative max-w-4xl mx-auto"
           style={{ paddingTop: "clamp(2rem, 4vw, 3.5rem)", paddingBottom: "clamp(1.5rem, 2.5vw, 2.5rem)" }}
         >
-          <p
-            className="text-xs font-semibold uppercase mb-4"
-            style={{ color: "#4E8C78", letterSpacing: "0.14em" }}
-          >
-            Dr. Paul Jenkins · Clinical Psychologist
-          </p>
           <h1
             className="font-heading font-bold mb-4"
             style={{
@@ -179,7 +157,7 @@ export default async function JoinPage({
               lineHeight: "1.06",
               color: "#121417",
               textWrap: "balance",
-              maxWidth: "16ch",
+              maxWidth: "19ch",
               marginInline: "auto",
             }}
           >
@@ -191,8 +169,9 @@ export default async function JoinPage({
               fontSize: "clamp(0.95rem, 1.5vw, 1.05rem)",
               color: "#68707A",
               lineHeight: "1.68",
-              maxWidth: "700px",
+              maxWidth: "820px",
               letterSpacing: "-0.01em",
+              textWrap: "balance",
             }}
           >
             Start with the daily practice, add live events, or step into deeper coaching support
@@ -204,7 +183,7 @@ export default async function JoinPage({
               fontSize: "0.85rem",
               color: "#9AA0A8",
               letterSpacing: "-0.01em",
-              maxWidth: "780px",
+              maxWidth: "860px",
               marginInline: "auto",
               lineHeight: "1.6",
               textWrap: "balance",
@@ -395,40 +374,6 @@ export default async function JoinPage({
         </div>
       </section>
 
-      {/* ━━ 4. FAQ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <section className="w-full" style={{ background: "#FAFAF8", borderTop: "1px solid rgba(221,215,207,0.55)" }}>
-        <div
-          className="max-w-3xl mx-auto px-5 sm:px-8"
-          style={{ paddingTop: "clamp(4rem, 8vw, 7rem)", paddingBottom: "clamp(4rem, 8vw, 7rem)" }}
-        >
-          <div className="text-center mb-10">
-            <p className="text-xs font-semibold uppercase mb-4" style={{ color: "#4E8C78", letterSpacing: "0.14em" }}>
-              FAQ
-            </p>
-            <h2
-              className="font-heading font-bold"
-              style={{
-                fontSize: "clamp(1.75rem, 3.5vw, 2.75rem)",
-                letterSpacing: "-0.04em",
-                lineHeight: "1.1",
-                color: "#121417",
-              }}
-            >
-              Questions before you join.
-            </h2>
-          </div>
-
-          <JoinPageFaq />
-
-          <p className="text-center mt-8 text-sm" style={{ color: "#9AA0A8" }}>
-            More questions?{" "}
-            <a href="/faq" style={{ color: "#2F6FED", textDecoration: "underline" }}>See all FAQs →</a>
-            {" "}&middot;{" "}
-            <a href="/support" style={{ color: "#2F6FED", textDecoration: "underline" }}>Contact support →</a>
-          </p>
-        </div>
-      </section>
-
       {/* ━━ 5. FINAL CTA ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section
         className="relative w-full text-center overflow-hidden"
@@ -487,25 +432,11 @@ export default async function JoinPage({
         </div>
       </section>
 
-      {/* ━━ FOOTER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <footer
-        className="w-full"
-        style={{ background: "#FAFAF8", borderTop: "1px solid rgba(221,215,207,0.55)" }}
-      >
-        <div className="max-w-6xl mx-auto px-5 sm:px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-5">
-            <Logo href="/" kind="full" height={22} className="opacity-45" />
-            <Link href="/about" className="text-xs" style={{ color: "#9AA0A8" }}>About Dr. Paul</Link>
-            <Link href="/faq" className="text-xs" style={{ color: "#9AA0A8" }}>FAQ</Link>
-            <Link href="/support" className="text-xs" style={{ color: "#9AA0A8" }}>Support</Link>
-            <Link href="/privacy" className="text-xs" style={{ color: "#9AA0A8" }}>Privacy</Link>
-            <Link href="/terms" className="text-xs" style={{ color: "#9AA0A8" }}>Terms</Link>
-          </div>
-          <span className="text-xs" style={{ color: "#C4BDB5" }}>
-            © {new Date().getFullYear()} Positives
-          </span>
-        </div>
-      </footer>
+      <PublicSiteFooter
+        paidHref={publicSession.paidHref}
+        watchHref={publicSession.watchHref}
+        session={publicSession}
+      />
     </div>
   );
 }

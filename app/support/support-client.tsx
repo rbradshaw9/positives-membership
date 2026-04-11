@@ -1,14 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useActionState, useEffect } from "react";
+import { PublicSiteFooter } from "@/components/marketing/PublicSiteFooter";
+import { PublicSiteHeader } from "@/components/marketing/PublicSiteHeader";
+import type { PublicSessionState } from "@/lib/marketing/public-session";
 import { submitSupportForm, type SupportFormState } from "./actions";
 import { track } from "@/lib/analytics/ga";
 
 const initial: SupportFormState = { status: "idle" };
 
-export default function SupportPage() {
+export default function SupportPage({
+  session,
+}: {
+  session: Pick<
+    PublicSessionState,
+    "hasMemberAccess" | "paidHref" | "paidShortLabel" | "signInHref" | "signInLabel" | "watchHref"
+  >;
+}) {
   const [state, formAction, isPending] = useActionState(submitSupportForm, initial);
 
   useEffect(() => {
@@ -28,32 +37,17 @@ export default function SupportPage() {
 
   return (
     <div className="min-h-dvh" style={{ background: "#FAFAF8" }}>
-      {/* ─── Nav ─────────────────────────────────────────────────────────── */}
-      <header
-        className="sticky top-0 z-50 w-full"
-        style={{
-          background: "rgba(250,250,248,0.90)",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-          borderBottom: "1px solid rgba(221,215,207,0.55)",
-        }}
-      >
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-3 px-5 sm:px-8 py-3.5 sm:py-4">
-          <Link href="/">
-            <Image
-              src="/logos/positives-wordmark-dark.png"
-              alt="Positives"
-              width={89}
-              height={26}
-            />
-          </Link>
-          <nav className="flex items-center gap-3 sm:gap-6" aria-label="Support page navigation">
-            <Link href="/" className="text-xs sm:text-sm font-medium" style={{ color: "#68707A" }}>Home</Link>
-            <Link href="/faq" className="text-xs sm:text-sm font-medium" style={{ color: "#68707A" }}>FAQ</Link>
-            <Link href="/login" className="text-xs sm:text-sm font-medium" style={{ color: "#68707A" }}>Sign in</Link>
-          </nav>
-        </div>
-      </header>
+      <PublicSiteHeader
+        signInHref={session.signInHref}
+        signInLabel={session.signInLabel}
+        navLinks={[
+          { href: "/", label: "Home" },
+          { href: "/faq", label: "FAQ" },
+          { href: "/about", label: "About", hiddenOnMobile: true },
+        ]}
+        primaryCtaHref={session.paidHref}
+        primaryCtaLabel={session.paidShortLabel}
+      />
 
       {/* ─── Hero ────────────────────────────────────────────────────────── */}
       <section
@@ -340,21 +334,7 @@ export default function SupportPage() {
         </div>
       </section>
 
-      {/* ─── Footer ─────────────────────────────────────────────────────── */}
-      <footer className="w-full" style={{ background: "#FAFAF8", borderTop: "1px solid rgba(221,215,207,0.55)" }}>
-        <div className="max-w-6xl mx-auto px-5 sm:px-8 py-10 flex flex-col sm:flex-row items-center justify-between gap-5">
-          <div className="flex flex-wrap items-center gap-5">
-            <Image src="/logos/positives-wordmark-dark.png" alt="Positives" width={62} height={18} className="opacity-40" />
-            <Link href="/faq" className="text-xs" style={{ color: "#9AA0A8" }}>FAQ</Link>
-            <Link href="/about" className="text-xs" style={{ color: "#9AA0A8" }}>About</Link>
-            <Link href="/privacy" className="text-xs" style={{ color: "#9AA0A8" }}>Privacy</Link>
-            <Link href="/terms" className="text-xs" style={{ color: "#9AA0A8" }}>Terms</Link>
-          </div>
-          <span className="text-xs" style={{ color: "#C4BDB5" }}>
-            © {new Date().getFullYear()} Positives
-          </span>
-        </div>
-      </footer>
+      <PublicSiteFooter paidHref={session.paidHref} watchHref={session.watchHref} session={session} />
     </div>
   );
 }

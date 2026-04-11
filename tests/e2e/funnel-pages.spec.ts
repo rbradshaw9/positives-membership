@@ -17,11 +17,7 @@ const FUNNEL_ROUTES = [
   },
   {
     pathname: "/try",
-    heading: "Try Positives free for 7 days and feel the rhythm before you commit.",
-  },
-  {
-    pathname: "/with/april-webinar",
-    heading: "If the April webinar resonated, this is the daily practice that keeps it alive.",
+    heading: "Try the Positives rhythm before you pay for it.",
   },
 ] as const;
 
@@ -71,10 +67,10 @@ test("logged-in members can browse public funnel pages without being forced away
 test("partner and funnel links preserve attribution parameters", async ({ page }) => {
   let response = await page.goto("/with/april-webinar?fpr=ryan32&utm_source=partner&utm_campaign=april");
   await expectHealthyResponse("/with/april-webinar", response);
-  await expect(page.getByRole("link", { name: "Start 7-day free trial →" })).toHaveAttribute(
-    "href",
-    /\/try\?fpr=ryan32&utm_source=partner&utm_campaign=april/
-  );
+  await expect(page).toHaveURL(/\/try\?fpr=ryan32&utm_source=partner&utm_campaign=april/);
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Try the Positives rhythm before you pay for it." })
+  ).toBeVisible();
 
   response = await page.goto("/watch?fpr=ryan32&utm_medium=email");
   await expectHealthyResponse("/watch", response);

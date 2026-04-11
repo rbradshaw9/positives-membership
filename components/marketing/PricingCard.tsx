@@ -62,7 +62,7 @@ const CARDS = {
     benefits: [
       "Everything in Membership",
       "Member Q&A and community access",
-      "Live member events as they are scheduled",
+      "Live member events",
       "Event replays in your Events area",
       "A simple place to find upcoming sessions",
     ],
@@ -280,8 +280,7 @@ export function PricingCard({ level, billing, priceId }: PricingCardProps) {
   const card = CARDS[level];
   const isLive = !!priceId; // card is live when a real Stripe price ID is configured
   const isHighlighted = level === 1; // Level 1 gets the elevated visual treatment
-  const badgeLabel =
-    level === 1 ? card.badge : isLive ? "Now Available" : card.badge;
+  const badgeLabel = level === 1 || !isLive ? card.badge : null;
 
   const pricingData = PRICING[level as keyof typeof PRICING];
 
@@ -360,23 +359,19 @@ export function PricingCard({ level, billing, priceId }: PricingCardProps) {
           >
             {card.title}
           </h3>
-          <span
-            className="flex-shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full"
-            style={{
-              background:
-                isHighlighted || isLive
-                  ? "rgba(78,140,120,0.12)"
-                  : "rgba(18,20,23,0.06)",
-              color:
-                isHighlighted || isLive
-                  ? "#4E8C78"
-                  : "#9AA0A8",
-              letterSpacing: "0.02em",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {badgeLabel}
-          </span>
+          {badgeLabel ? (
+            <span
+              className="flex-shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full"
+              style={{
+                background: isHighlighted ? "rgba(78,140,120,0.12)" : "rgba(18,20,23,0.06)",
+                color: isHighlighted ? "#4E8C78" : "#9AA0A8",
+                letterSpacing: "0.02em",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {badgeLabel}
+            </span>
+          ) : null}
         </div>
         <p style={{ fontSize: "0.875rem", color: "#9AA0A8", lineHeight: 1.5 }}>{card.tagline}</p>
       </div>

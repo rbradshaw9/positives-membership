@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import Image from "next/image";
-import Link from "next/link";
+import { PublicSiteFooter } from "@/components/marketing/PublicSiteFooter";
+import { PublicSiteHeader } from "@/components/marketing/PublicSiteHeader";
+import { getPublicSessionState } from "@/lib/marketing/public-session";
 
 export const metadata: Metadata = {
   title: "Affiliate Program Terms — Positives",
@@ -36,7 +37,8 @@ function Section({
   );
 }
 
-export default function AffiliateProgramPage() {
+export default async function AffiliateProgramPage() {
+  const session = await getPublicSessionState();
   const lastUpdated = new Date().toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
@@ -45,53 +47,17 @@ export default function AffiliateProgramPage() {
 
   return (
     <div className="min-h-dvh flex flex-col" style={{ background: "#FAFAF8" }}>
-      <header
-        className="sticky top-0 z-50 w-full"
-        style={{
-          background: "rgba(250,250,248,0.90)",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-          borderBottom: "1px solid rgba(221,215,207,0.55)",
-        }}
-      >
-        <div className="max-w-6xl mx-auto px-8 py-4 flex items-center justify-between">
-          <Link href="/">
-            <Image
-              src="/logos/positives-wordmark-dark.png"
-              alt="Positives"
-              width={89}
-              height={26}
-              style={{ width: "auto" }}
-              priority
-            />
-          </Link>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/support"
-              className="text-sm font-semibold px-4 py-2 rounded-full"
-              style={{
-                color: "#5A6472",
-                background: "rgba(255,255,255,0.78)",
-                border: "1px solid rgba(221,215,207,0.8)",
-              }}
-            >
-              Support
-            </Link>
-            <Link
-              href="/join"
-              className="text-sm font-semibold px-5 py-2.5 rounded-full"
-              style={{
-                background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
-                color: "#FFFFFF",
-                letterSpacing: "-0.01em",
-                boxShadow: "0 4px 14px rgba(47,111,237,0.28)",
-              }}
-            >
-              Join
-            </Link>
-          </div>
-        </div>
-      </header>
+      <PublicSiteHeader
+        signInHref={session.signInHref}
+        signInLabel={session.signInLabel}
+        navLinks={[
+          { href: "/", label: "Home" },
+          { href: "/support", label: "Support" },
+          { href: "/faq", label: "FAQ", hiddenOnMobile: true },
+        ]}
+        primaryCtaHref={session.paidHref}
+        primaryCtaLabel={session.paidShortLabel}
+      />
 
       <main className="flex-1 w-full">
         <div
@@ -265,28 +231,7 @@ export default function AffiliateProgramPage() {
         </div>
       </main>
 
-      <footer className="w-full" style={{ borderTop: "1px solid rgba(221,215,207,0.55)" }}>
-        <div className="max-w-6xl mx-auto px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-5">
-            <Link href="/privacy" className="text-xs" style={{ color: "#9AA0A8" }}>
-              Privacy
-            </Link>
-            <Link href="/terms" className="text-xs" style={{ color: "#9AA0A8" }}>
-              Terms
-            </Link>
-            <Link
-              href="/affiliate-program"
-              className="text-xs"
-              style={{ color: "#9AA0A8" }}
-            >
-              Affiliate Terms
-            </Link>
-          </div>
-          <span className="text-xs" style={{ color: "#C4BDB5" }}>
-            © {new Date().getFullYear()} Positives
-          </span>
-        </div>
-      </footer>
+      <PublicSiteFooter paidHref={session.paidHref} watchHref={session.watchHref} session={session} />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Logo } from "@/components/marketing/Logo";
+import { PublicSiteFooter } from "@/components/marketing/PublicSiteFooter";
+import { PublicSiteHeader } from "@/components/marketing/PublicSiteHeader";
 import { appendPublicTrackingParams, type PublicSearchParams } from "@/lib/marketing/public-query-params";
 import { getPublicSessionState } from "@/lib/marketing/public-session";
 
@@ -66,36 +67,12 @@ export default async function WatchPage({
 
   return (
     <div className="min-h-dvh" style={{ background: "#F6F3EE" }}>
-      <header
-        className="sticky top-0 z-50 w-full"
-        style={{
-          background: "rgba(246,243,238,0.88)",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-          borderBottom: "1px solid rgba(221,215,207,0.65)",
-        }}
-      >
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-5 py-3 sm:px-8 sm:py-4">
-          <Logo kind="wordmark" height={24} />
-          <div className="flex items-center gap-3">
-            <Link href={signInHref} className="text-sm font-medium" style={{ color: "#68707A" }}>
-              {session.signInLabel}
-            </Link>
-            <Link
-              href={paidHref}
-              className="rounded-full px-4 py-2 text-sm font-semibold sm:px-5 sm:py-2.5"
-              style={{
-                background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
-                color: "#FFFFFF",
-                boxShadow: "0 4px 14px rgba(47,111,237,0.28)",
-                letterSpacing: "-0.01em",
-              }}
-            >
-              {session.hasMemberAccess ? "Open Today" : "Join Positives"}
-            </Link>
-          </div>
-        </div>
-      </header>
+      <PublicSiteHeader
+        signInHref={signInHref}
+        signInLabel={session.signInLabel}
+        primaryCtaHref={paidHref}
+        primaryCtaLabel={session.hasMemberAccess ? "Open Today" : "Join Positives"}
+      />
 
       <main>
         <section
@@ -335,7 +312,7 @@ export default async function WatchPage({
               </p>
               <h2
                 className="mt-4 font-heading text-3xl font-bold tracking-[-0.045em] text-white sm:text-4xl"
-                style={{ lineHeight: "1.08", textWrap: "balance" }}
+                style={{ lineHeight: "1.08", textWrap: "balance", color: "#FFFFFF" }}
               >
                 It helps people stop reacting all day and start returning to themselves on purpose.
               </h2>
@@ -362,13 +339,13 @@ export default async function WatchPage({
               Join when you are ready
             </p>
             <h2
-              className="mx-auto mt-4 max-w-2xl font-heading text-3xl font-bold tracking-[-0.045em] text-foreground sm:text-4xl"
+              className="mx-auto mt-4 max-w-3xl font-heading text-3xl font-bold tracking-[-0.045em] text-foreground sm:text-4xl"
               style={{ lineHeight: "1.08", textWrap: "balance" }}
             >
               Start with the level that fits you today and come back to the practice tomorrow.
             </h2>
             <p
-              className="mx-auto mt-5 max-w-2xl text-base"
+              className="mx-auto mt-5 max-w-3xl text-base"
               style={{ color: "#68707A", lineHeight: "1.8", letterSpacing: "-0.01em" }}
             >
               The simplest next step is to choose your membership level. The paid offer stays the
@@ -400,6 +377,8 @@ export default async function WatchPage({
           </div>
         </section>
       </main>
+
+      <PublicSiteFooter paidHref={paidHref} watchHref={session.watchHref} session={session} />
     </div>
   );
 }

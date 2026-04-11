@@ -94,6 +94,47 @@ test("public launch routes render their key entry surfaces", async ({ page }) =>
   }
 });
 
+test("public info pages reuse the shared marketing shell", async ({ page }) => {
+  const infoRoutes = [
+    {
+      pathname: "/about",
+      heading: "Dr. Paul Jenkins",
+    },
+    {
+      pathname: "/faq",
+      heading: "Questions, answered.",
+    },
+    {
+      pathname: "/support",
+      heading: "We're here to help.",
+    },
+    {
+      pathname: "/privacy",
+      heading: "Privacy Policy",
+    },
+    {
+      pathname: "/terms",
+      heading: "Terms of Service",
+    },
+    {
+      pathname: "/affiliate-program",
+      heading: "Positives Affiliate Program Terms",
+    },
+  ] as const;
+
+  for (const route of infoRoutes) {
+    const response = await page.goto(route.pathname);
+    await expectHealthyResponse(route.pathname, response);
+    await expect(page.getByRole("heading", { level: 1, name: route.heading })).toBeVisible();
+    await expect(
+      page.getByLabel("Public site navigation").getByRole("link", { name: "Sign in" })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("contentinfo").getByText("From $37/month · Cancel anytime · 30-day guarantee")
+    ).toBeVisible();
+  }
+});
+
 test("core signed-in launch routes stay available across member tiers", async ({ page }) => {
   await loginWithPassword(page, {
     email: MEMBER_EMAIL,
