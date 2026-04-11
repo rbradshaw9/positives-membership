@@ -55,6 +55,7 @@ export async function submitSupportForm(
       keyParts: [clientIp, email],
       maxHits: 4,
       windowSeconds: 60 * 60,
+      onError: "deny",
     });
 
     if (!guard.allowed) {

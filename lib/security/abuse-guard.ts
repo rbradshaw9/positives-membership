@@ -9,6 +9,7 @@ type AbuseGuardInput = {
   keyParts: Array<string | null | undefined>;
   maxHits: number;
   windowSeconds: number;
+  onError?: "allow" | "deny";
 };
 
 type AbuseGuardResult = {
@@ -55,6 +56,7 @@ export async function checkAbuseGuard({
   keyParts,
   maxHits,
   windowSeconds,
+  onError = "allow",
 }: AbuseGuardInput): Promise<AbuseGuardResult> {
   const normalizedParts = normalizeKeyParts(keyParts);
   const hashedBucket = hashAbuseKey([scope, ...normalizedParts].join("|"));
@@ -75,7 +77,7 @@ export async function checkAbuseGuard({
   if (error) {
     console.error(`[abuse-guard] ${scope} RPC failed:`, error.message);
     return {
-      allowed: true,
+      allowed: onError === "allow",
       retryAfterSeconds: 0,
       hitCount: 0,
     };
