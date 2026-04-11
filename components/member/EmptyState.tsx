@@ -15,8 +15,23 @@ interface EmptyStateProps {
   title: string;
   subtitle?: string;
   action?: React.ReactNode;
+  className?: string;
 }
 
-export function EmptyState({ icon, title, subtitle, action }: EmptyStateProps) {
-  return <EmptyStateCard icon={icon} title={title} subtitle={subtitle} action={action} />;
+export function EmptyState({
+  icon,
+  title,
+  subtitle,
+  action,
+  className,
+}: EmptyStateProps) {
+  return (
+    <EmptyStateCard
+      icon={icon}
+      title={title}
+      subtitle={subtitle}
+      action={action}
+      className={className}
+    />
+  );
 }

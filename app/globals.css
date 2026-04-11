@@ -227,6 +227,16 @@ select.admin-input {
   --color-muted-fg: rgba(255,255,255,0.55);
 }
 
+.surface-card--glass-dark {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.08);
+  color: #fff;
+  box-shadow: none;
+  backdrop-filter: blur(12px);
+  --color-foreground: #ffffff;
+  --color-muted-fg: rgba(255,255,255,0.68);
+}
+
 .ui-section-eyebrow {
   font-size: 0.6875rem;
   font-weight: 700;
@@ -405,6 +415,14 @@ select.admin-input {
   border-radius: var(--radius);
   padding: 1.125rem 1rem;
   box-shadow: var(--shadow-soft);
+}
+
+.stat-card--dark {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.08);
+  box-shadow: none;
+  --color-foreground: #ffffff;
+  --color-muted-fg: rgba(255,255,255,0.72);
 }
 
 .stat-card__value {

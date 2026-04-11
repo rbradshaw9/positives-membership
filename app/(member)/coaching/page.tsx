@@ -6,6 +6,7 @@ import { UpcomingCallCard } from "@/components/coaching/UpcomingCallCard";
 import { CoachingReplayCard } from "@/components/coaching/CoachingReplayCard";
 import { PageHeader } from "@/components/member/PageHeader";
 import { EmptyState } from "@/components/member/EmptyState";
+import { Button } from "@/components/ui/Button";
 
 /**
  * app/(member)/coaching/page.tsx
@@ -46,6 +47,7 @@ export default async function CoachingPage() {
   const nextCall = upcoming.sort(
     (a, b) => new Date(a.starts_at!).getTime() - new Date(b.starts_at!).getTime()
   )[0] ?? null;
+  const hasReplayLibrary = replays.length > 0;
 
   return (
     <div>
@@ -58,7 +60,7 @@ export default async function CoachingPage() {
 
       <div className="member-container py-8 md:py-10">
         {/* Upcoming call */}
-        <section className="mb-10">
+        <section className={hasReplayLibrary ? "mb-6" : "mb-10"}>
           {nextCall ? (
             <UpcomingCallCard
               title={nextCall.title}
@@ -85,14 +87,26 @@ export default async function CoachingPage() {
                 </svg>
               }
               title="No upcoming call scheduled"
-              subtitle="Check back soon — a call will be added when it's scheduled."
+              subtitle={
+                hasReplayLibrary
+                  ? "Nothing new is on the calendar right now, but you can still revisit past calls below."
+                  : "Check back soon — a call will be added when it's scheduled."
+              }
+              action={
+                hasReplayLibrary ? (
+                  <Button href="#coaching-replays" variant="secondary">
+                    Browse replays
+                  </Button>
+                ) : undefined
+              }
+              className={hasReplayLibrary ? "max-w-xl" : undefined}
             />
           )}
         </section>
 
         {/* Replays */}
         {replays.length > 0 && (
-          <section>
+          <section id="coaching-replays">
             <h2
               className="text-xs font-semibold uppercase tracking-widest mb-4"
               style={{ color: "var(--color-muted-fg)" }}

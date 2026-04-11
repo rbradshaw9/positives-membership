@@ -188,14 +188,29 @@ export default async function PracticePage({
             </div>
 
             <div className="grid grid-cols-3 gap-3 md:min-w-[360px]">
-              <StatCard label="Streak" value={summary.practiceStreak} subtext="days in rhythm" />
-              <StatCard label="Listens" value={summary.listenCount} subtext="completed inside Positives" />
-              <StatCard label="Notes" value={summary.journalCount} subtext="private reflections saved" />
+              <StatCard
+                label="Streak"
+                value={summary.practiceStreak}
+                subtext="days in rhythm"
+                tone="dark"
+              />
+              <StatCard
+                label="Listens"
+                value={summary.listenCount}
+                subtext="completed inside Positives"
+                tone="dark"
+              />
+              <StatCard
+                label="Notes"
+                value={summary.journalCount}
+                subtext="private reflections saved"
+                tone="dark"
+              />
             </div>
           </div>
 
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-            <SurfaceCard elevated className="bg-white/5 text-white shadow-none ring-1 ring-white/8">
+            <SurfaceCard tone="glass-dark" elevated>
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/64">
                 {hasHeatmapActivity ? "Practice History" : "Start Your Rhythm"}
               </p>
@@ -256,7 +271,7 @@ export default async function PracticePage({
               )}
             </SurfaceCard>
 
-            <SurfaceCard elevated className="bg-white/5 text-white shadow-none ring-1 ring-white/8">
+            <SurfaceCard tone="glass-dark" elevated>
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/64">
                 Quick Links
               </p>

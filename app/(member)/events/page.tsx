@@ -66,7 +66,7 @@ export default async function EventsPage() {
       />
 
       <div className="member-container py-8 md:py-10">
-        <section className="mb-10">
+        <section className={hasReplayLibrary ? "mb-6" : "mb-10"}>
           {nextEvent ? (
             <UpcomingEventCard
               title={nextEvent.title}
@@ -103,15 +103,14 @@ export default async function EventsPage() {
               action={
                 <div className="flex flex-wrap items-center justify-center gap-3">
                   {hasReplayLibrary ? (
-                    <Button href="#event-replays">
-                      Browse replays
-                    </Button>
+                    <Button href="#event-replays">Browse replays</Button>
                   ) : null}
                   <Button href="/community" variant="secondary">
                     Open Q&A
                   </Button>
                 </div>
               }
+              className={hasReplayLibrary ? "max-w-xl" : undefined}
             />
           )}
         </section>
