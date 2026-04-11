@@ -37,5 +37,19 @@ export async function getEventContent(limit = 20): Promise<EventItem[]> {
     return [];
   }
 
-  return (data ?? []).filter((item) => !shouldHideFromMembers(item));
+  const now = Date.now();
+
+  return (data ?? []).filter((item) => {
+    if (shouldHideFromMembers(item)) return false;
+
+    const startsAtTime = item.starts_at ? new Date(item.starts_at).getTime() : null;
+    const isUpcoming = startsAtTime ? startsAtTime > now : false;
+    const hasReplayMedia = Boolean(item.vimeo_video_id || item.youtube_video_id);
+
+    if (isUpcoming) {
+      return Boolean(item.join_url);
+    }
+
+    return hasReplayMedia;
+  });
 }
