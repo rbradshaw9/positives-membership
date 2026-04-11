@@ -29,7 +29,7 @@ export const config = {
     get adminEmails() {
       return optional("ADMIN_EMAILS")
         .split(",")
-        .map((e) => e.trim())
+        .map((e) => e.trim().toLowerCase())
         .filter(Boolean);
     },
   },

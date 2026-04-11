@@ -22,7 +22,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-async function suppressEmail(email: string): Promise<void> {
+async function suppressEmail(email: string): Promise<{ memberUpdateError: boolean }> {
   const normalizedEmail = email.trim().toLowerCase();
 
   // 1. Add to Resend contact suppression
@@ -39,12 +39,18 @@ async function suppressEmail(email: string): Promise<void> {
   }
 
   // 2. Record in our DB so cron jobs skip this address
-  await supabase
+  const { error } = await supabase
     .from("member")
     .update({ email_unsubscribed: true })
     .eq("email", normalizedEmail);
 
+  if (error) {
+    console.error("[unsubscribe] failed to persist email_unsubscribed:", error.message);
+  }
+
   await syncMarketingPreference({ email: normalizedEmail, subscribe: false });
+
+  return { memberUpdateError: Boolean(error) };
 }
 
 function verifyRequest(req: NextRequest) {
@@ -98,7 +104,21 @@ export async function GET(req: NextRequest) {
   const verification = verifyRequest(req);
 
   if (verification.ok) {
-    await suppressEmail(verification.email);
+    const result = await suppressEmail(verification.email);
+
+    if (result.memberUpdateError) {
+      const html = renderResponseHtml({
+        title: "We received your unsubscribe request — Positives",
+        body: `
+    <h1>We got your request.</h1>
+    <p>We could not fully confirm the unsubscribe in our app records just yet. Please reply to support@positives.life and we’ll make sure <strong>${verification.email.replace(/</g, "&lt;")}</strong> is removed from optional marketing emails.</p>`,
+      });
+
+      return new NextResponse(html, {
+        status: 500,
+        headers: { "Content-Type": "text/html" },
+      });
+    }
 
     const html = renderResponseHtml({
       title: "Unsubscribed — Positives",
@@ -133,6 +153,11 @@ export async function POST(req: NextRequest) {
     return new NextResponse(null, { status: 400 });
   }
 
-  await suppressEmail(verification.email);
+  const result = await suppressEmail(verification.email);
+
+  if (result.memberUpdateError) {
+    return new NextResponse(null, { status: 500 });
+  }
+
   return new NextResponse(null, { status: 200 });
 }

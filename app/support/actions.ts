@@ -66,8 +66,7 @@ export async function submitSupportForm(
     }
 
     const supabase = getAdminClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any).from("support_submissions").insert({
+    const { error } = await supabase.from("support_submissions").insert({
       name,
       email: email.toLowerCase(),
       subject,
