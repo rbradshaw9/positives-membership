@@ -12,7 +12,7 @@ type BeforeInstallPromptEvent = Event & {
 
 const DISMISS_KEY = "positives:install-prompt-dismissed-at";
 const DISMISS_COOLDOWN_MS = 1000 * 60 * 60 * 24 * 14;
-const HIGH_INTENT_ROUTES = new Set(["/today", "/practice"]);
+const HIGH_INTENT_ROUTES = new Set(["/today", "/practice", "/account"]);
 
 function wasDismissedRecently() {
   if (typeof window === "undefined") return false;
