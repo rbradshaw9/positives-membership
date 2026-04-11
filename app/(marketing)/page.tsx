@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { appendPublicTrackingParams, type PublicSearchParams } from "@/lib/marketing/public-query-params";
-import { getPublicSessionState } from "@/lib/marketing/public-session";
+import { ANONYMOUS_PUBLIC_SESSION_STATE } from "@/lib/marketing/public-session";
 import { LandingPageClient } from "./landing-client";
 
 export const metadata: Metadata = {
@@ -12,20 +11,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function LandingPage({
-  searchParams,
-}: {
-  searchParams: Promise<PublicSearchParams>;
-}) {
-  const session = await getPublicSessionState();
-  const resolvedSearchParams = await searchParams;
+export default function LandingPage() {
+  const session = ANONYMOUS_PUBLIC_SESSION_STATE;
 
   return (
     <LandingPageClient
       session={session}
       signInHref={session.signInHref}
-      paidHref={appendPublicTrackingParams(session.paidHref, resolvedSearchParams)}
-      watchHref={appendPublicTrackingParams(session.watchHref, resolvedSearchParams)}
+      paidHref={session.paidHref}
+      watchHref={session.watchHref}
     />
   );
 }

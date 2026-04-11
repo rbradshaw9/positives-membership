@@ -9,6 +9,10 @@ import Link from "next/link";
 import { createClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/lib/auth/require-admin";
 
+export const metadata = {
+  title: "Emails — Positives Admin",
+};
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,

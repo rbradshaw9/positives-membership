@@ -10,11 +10,11 @@ import urllib.request
 from urllib.parse import urlencode
 
 
-WORKSPACE_GID = "1121814557377551"
-TEAM_GID = "1173498758723192"
-PROJECT_NAME = "Positives Finish Roadmap"
-PROJECT_GID = "1214005103885510"
-USER_GID = "1207836522534256"
+WORKSPACE_GID = os.environ.get("ASANA_WORKSPACE_GID", "1121814557377551")
+TEAM_GID = os.environ.get("ASANA_TEAM_GID", "1173498758723192")
+PROJECT_NAME = os.environ.get("ASANA_PROJECT_NAME", "Positives Finish Roadmap")
+PROJECT_GID = os.environ.get("ASANA_PROJECT_GID", "1214005103885510")
+USER_GID = os.environ.get("ASANA_ASSIGNEE_GID", "1207836522534256")
 CSV_PATH = pathlib.Path("docs/reports/2026-04-10-positives-asana-import.csv")
 
 COMPLETED_SECTION_NAME = "Completed / Already Built"

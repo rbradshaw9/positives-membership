@@ -15,6 +15,20 @@ export type PublicSessionState = {
   watchHref: string;
 };
 
+export const ANONYMOUS_PUBLIC_SESSION_STATE: PublicSessionState = {
+  isAuthenticated: false,
+  hasMemberAccess: false,
+  signInHref: "/login",
+  signInLabel: "Sign in",
+  paidHref: "/join",
+  paidShortLabel: "Join",
+  paidActionLabel: "Start your daily practice →",
+  paidSecondaryLabel: "See pricing and levels",
+  trialHref: "/try",
+  trialActionLabel: "Start 7-day free trial →",
+  watchHref: "/watch",
+};
+
 export async function getPublicSessionState(): Promise<PublicSessionState> {
   const supabase = await createClient();
   const {
@@ -22,19 +36,7 @@ export async function getPublicSessionState(): Promise<PublicSessionState> {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return {
-      isAuthenticated: false,
-      hasMemberAccess: false,
-      signInHref: "/login",
-      signInLabel: "Sign in",
-      paidHref: "/join",
-      paidShortLabel: "Join",
-      paidActionLabel: "Start your daily practice →",
-      paidSecondaryLabel: "See pricing and levels",
-      trialHref: "/try",
-      trialActionLabel: "Start 7-day free trial →",
-      watchHref: "/watch",
-    };
+    return ANONYMOUS_PUBLIC_SESSION_STATE;
   }
 
   const { data: member } = await supabase

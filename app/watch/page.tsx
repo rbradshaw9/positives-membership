@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PublicSiteFooter } from "@/components/marketing/PublicSiteFooter";
 import { PublicSiteHeader } from "@/components/marketing/PublicSiteHeader";
-import { appendPublicTrackingParams, type PublicSearchParams } from "@/lib/marketing/public-query-params";
-import { getPublicSessionState } from "@/lib/marketing/public-session";
+import { ANONYMOUS_PUBLIC_SESSION_STATE } from "@/lib/marketing/public-session";
+import { PublicTrackedLink } from "@/components/marketing/PublicTrackedLink";
 
 export const metadata: Metadata = {
   title: "Watch Dr. Paul — Positives",
@@ -54,15 +54,10 @@ function ValuePill({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default async function WatchPage({
-  searchParams,
-}: {
-  searchParams: Promise<PublicSearchParams>;
-}) {
-  const session = await getPublicSessionState();
-  const resolvedSearchParams = await searchParams;
+export default function WatchPage() {
+  const session = ANONYMOUS_PUBLIC_SESSION_STATE;
   const signInHref = session.signInHref;
-  const paidHref = appendPublicTrackingParams(session.paidHref, resolvedSearchParams);
+  const paidHref = session.paidHref;
   const embed = getVideoEmbed(process.env.NEXT_PUBLIC_VSL_EMBED_URL);
 
   return (
@@ -116,7 +111,7 @@ export default async function WatchPage({
               </p>
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <Link
+                <PublicTrackedLink
                   href={paidHref}
                   className="inline-flex items-center justify-center rounded-full px-6 py-3.5 text-sm font-semibold"
                   style={{
@@ -127,8 +122,8 @@ export default async function WatchPage({
                   }}
                 >
                   {session.hasMemberAccess ? "Open today's practice →" : "Join Positives →"}
-                </Link>
-                <Link
+                </PublicTrackedLink>
+                <PublicTrackedLink
                   href={paidHref}
                   className="inline-flex items-center justify-center rounded-full border px-6 py-3.5 text-sm font-semibold"
                   style={{
@@ -138,7 +133,7 @@ export default async function WatchPage({
                   }}
                 >
                   {session.paidSecondaryLabel}
-                </Link>
+                </PublicTrackedLink>
               </div>
 
               <p className="mt-4 text-sm" style={{ color: "#9AA0A8" }}>
@@ -354,7 +349,7 @@ export default async function WatchPage({
             </p>
 
             <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Link
+              <PublicTrackedLink
                 href={paidHref}
                 className="inline-flex items-center justify-center rounded-full px-6 py-3.5 text-sm font-semibold"
                 style={{
@@ -365,7 +360,7 @@ export default async function WatchPage({
                 }}
               >
                 {session.hasMemberAccess ? "Open your member dashboard →" : "Choose your level →"}
-              </Link>
+              </PublicTrackedLink>
               <Link href="/faq" className="text-sm font-medium" style={{ color: "#68707A" }}>
                 Read the FAQ
               </Link>

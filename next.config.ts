@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
   // Tree-shake large packages — only the imports actually used end up in the bundle.
   // MuxPlayer and Tiptap are the two heaviest dependencies on member/admin pages.
   experimental: {
+    globalNotFound: true,
     optimizePackageImports: [
       "@tiptap/react",
       "@tiptap/starter-kit",

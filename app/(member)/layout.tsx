@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireActiveMember } from "@/lib/auth/require-active-member";
 import { PasswordNudgeBanner } from "@/components/member/PasswordNudgeBanner";
 import { MemberShellClient } from "@/components/member/MemberShellClient";
+import { ServiceWorkerRegistration } from "@/components/platform/ServiceWorkerRegistration";
 import { config } from "@/lib/config";
 import { isStreakActive } from "@/lib/streak/compute-streak";
 import { getEffectiveDate } from "@/lib/dates/effective-date";
@@ -45,6 +46,7 @@ export default async function MemberLayout({
       communityPreviewEnabled={config.app.communityPreviewEnabled}
       needsPasswordSetup={showPasswordNudge}
     >
+      <ServiceWorkerRegistration />
       {showPasswordNudge && <PasswordNudgeBanner />}
       {children}
     </MemberShellClient>

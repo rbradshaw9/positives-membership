@@ -24,6 +24,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/today") ||
     pathname.startsWith("/library") ||
     pathname.startsWith("/practice") ||
+    pathname.startsWith("/events") ||
     pathname.startsWith("/community") ||
     pathname.startsWith("/coaching") ||
     pathname.startsWith("/journal") ||
@@ -53,9 +54,9 @@ export const config = {
      * Match all request paths except:
      * - _next/static (static files)
      * - _next/image (image optimization API)
-     * - favicon.ico, sitemap.xml, robots.txt
+     * - favicon.ico, sitemap.xml, robots.txt, manifest.webmanifest, sw.js
      * - public directory assets
      */
-    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|manifest.webmanifest|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

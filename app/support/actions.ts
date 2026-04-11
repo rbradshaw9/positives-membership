@@ -1,5 +1,7 @@
 "use server";
 
+import { headers } from "next/headers";
+import { checkAbuseGuard, getClientIp } from "@/lib/security/abuse-guard";
 import { getAdminClient } from "@/lib/supabase/admin";
 
 export type SupportFormState =
@@ -11,10 +13,19 @@ export async function submitSupportForm(
   _prev: SupportFormState,
   formData: FormData
 ): Promise<SupportFormState> {
+  const startedAtRaw = formData.get("started_at")?.toString().trim() ?? "";
+  const botTrap = formData.get("website")?.toString().trim() ?? "";
   const name = formData.get("name")?.toString().trim() ?? "";
   const email = formData.get("email")?.toString().trim() ?? "";
-  const subject = formData.get("subject")?.toString().trim() ?? "general";
+  const subjectRaw = formData.get("subject")?.toString().trim() ?? "general";
   const message = formData.get("message")?.toString().trim() ?? "";
+  const subject = ["general", "billing", "technical", "feedback", "cancellation"].includes(subjectRaw)
+    ? subjectRaw
+    : "general";
+
+  if (botTrap) {
+    return { status: "sent" };
+  }
 
   if (!name || !email || !message) {
     return { status: "error", message: "Please fill in all required fields." };
@@ -24,12 +35,41 @@ export async function submitSupportForm(
     return { status: "error", message: "Please enter a valid email address." };
   }
 
+  if (message.length > 5000) {
+    return {
+      status: "error",
+      message: "Please keep your message under 5,000 characters.",
+    };
+  }
+
+  const startedAt = Number(startedAtRaw);
+  if (!Number.isFinite(startedAt) || Date.now() - startedAt < 1500) {
+    return { status: "sent" };
+  }
+
   try {
+    const headerList = await headers();
+    const clientIp = getClientIp(headerList);
+    const guard = await checkAbuseGuard({
+      scope: "support_form",
+      keyParts: [clientIp, email],
+      maxHits: 4,
+      windowSeconds: 60 * 60,
+    });
+
+    if (!guard.allowed) {
+      return {
+        status: "error",
+        message:
+          "We already received a recent message from this address. Please wait a bit before sending another, or email support@positives.life if it’s urgent.",
+      };
+    }
+
     const supabase = getAdminClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any).from("support_submissions").insert({
       name,
-      email,
+      email: email.toLowerCase(),
       subject,
       message,
     });

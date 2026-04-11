@@ -47,6 +47,33 @@ function stripHtml(html: string): string {
     .trim();
 }
 
+async function fetchJsonWithTimeout<T>(
+  input: string,
+  init: RequestInit,
+  timeoutMs = 12000
+): Promise<{ ok: boolean; status: number; statusText: string; data: T | null }> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(input, {
+      ...init,
+      signal: controller.signal,
+    });
+
+    const data = response.ok ? ((await response.json()) as T) : null;
+
+    return {
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      data,
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 /** Returns pre-configured LearnDash credentials from env vars (server-only). */
 export async function getLearnDashDefaults(): Promise<{
   wpUrl: string;
@@ -334,10 +361,20 @@ export type LearnDashImportResult = {
 
 /** Try v2, fall back to v1 */
 async function detectLdApiVersion(baseUrl: string, headers: Record<string, string>): Promise<string> {
-  const v2 = await fetch(`${baseUrl}/wp-json/ldlms/v2/sfwd-courses?per_page=1`, { headers }).catch(() => null);
+  const v2 = await fetchJsonWithTimeout<unknown[]>(
+    `${baseUrl}/wp-json/ldlms/v2/sfwd-courses?per_page=1`,
+    { headers },
+    8000
+  ).catch(() => null);
   if (v2?.ok) return "v2";
-  const v1 = await fetch(`${baseUrl}/wp-json/ldlms/v1/sfwd-courses?per_page=1`, { headers }).catch(() => null);
+
+  const v1 = await fetchJsonWithTimeout<unknown[]>(
+    `${baseUrl}/wp-json/ldlms/v1/sfwd-courses?per_page=1`,
+    { headers },
+    8000
+  ).catch(() => null);
   if (v1?.ok) return "v1";
+
   return "v1";
 }
 
@@ -472,10 +509,13 @@ export async function importFromLearnDash(formData: FormData): Promise<LearnDash
   const authHeader = `Basic ${Buffer.from(`${wpUser}:${wpPassword}`).toString("base64")}`;
   const hdrs = { Authorization: authHeader, "Content-Type": "application/json" };
 
-  async function ldGet(path: string) {
-    const res = await fetch(`${baseUrl}/wp-json/ldlms/${apiVer}${path}`, { headers: hdrs });
-    if (!res.ok) throw new Error(`${res.status} ${res.statusText} at ${path}`);
-    return res.json();
+  async function ldGet<T = Record<string, unknown>>(path: string): Promise<T> {
+    const res = await fetchJsonWithTimeout<unknown>(
+      `${baseUrl}/wp-json/ldlms/${apiVer}${path}`,
+      { headers: hdrs }
+    );
+    if (!res.ok || !res.data) throw new Error(`${res.status} ${res.statusText} at ${path}`);
+    return res.data as T;
   }
 
   let apiVer: string;
@@ -486,19 +526,26 @@ export async function importFromLearnDash(formData: FormData): Promise<LearnDash
     // Fetch courses to import
     let courseIds = selectedCourseIds;
     if (courseIds.length === 0) {
-      const all = await ldGet("/sfwd-courses?per_page=100");
+      const all = await ldGet<Array<{ id: number }>>("/sfwd-courses?per_page=100");
       courseIds = all.map((c: { id: number }) => String(c.id));
     }
 
     for (const ldCourseId of courseIds) {
       try {
         // ── Fetch course details ──────────────────────────────────────────────
-        const ldCourse = await ldGet(`/sfwd-courses/${ldCourseId}`);
-        const courseTitle = decodeHtmlEntities(ldCourse.title?.rendered || ldCourse.title || "Untitled Course");
-        const courseDesc = ldCourse.excerpt?.rendered
-          ? stripHtml(decodeHtmlEntities(ldCourse.excerpt.rendered))
-          : ldCourse.content?.rendered
-            ? stripHtml(decodeHtmlEntities(ldCourse.content.rendered)).slice(0, 500)
+        const ldCourse = await ldGet<Record<string, unknown>>(`/sfwd-courses/${ldCourseId}`);
+        const courseTitleField = ldCourse.title as { rendered?: string } | string | undefined;
+        const courseExcerptField = ldCourse.excerpt as { rendered?: string } | undefined;
+        const courseContentField = ldCourse.content as { rendered?: string } | undefined;
+        const courseTitle = decodeHtmlEntities(
+          (typeof courseTitleField === "string"
+            ? courseTitleField
+            : courseTitleField?.rendered) || "Untitled Course"
+        );
+        const courseDesc = courseExcerptField?.rendered
+          ? stripHtml(decodeHtmlEntities(courseExcerptField.rendered))
+          : courseContentField?.rendered
+            ? stripHtml(decodeHtmlEntities(courseContentField.rendered)).slice(0, 500)
             : null;
 
         // ── Create course ─────────────────────────────────────────────────────
@@ -521,7 +568,11 @@ export async function importFromLearnDash(formData: FormData): Promise<LearnDash
         result.coursesImported++;
 
         // ── Fetch course steps (section/lesson hierarchy) ─────────────────────
-        const steps = await ldGet(`/sfwd-courses/${ldCourseId}/steps`);
+        const steps = await ldGet<{
+          h?: { "sfwd-lessons"?: Record<string, Record<string, unknown>> };
+          t?: { "sfwd-lessons"?: string[]; "sfwd-topic"?: string[] };
+          sections?: { heading: string; lesson_ids?: number[] }[];
+        }>(`/sfwd-courses/${ldCourseId}/steps`);
         // steps.h = { "sfwd-lessons": { lessonId: { "sfwd-topic": [...], ... }, ... } }
         // steps.t = { "sfwd-lessons": [...ids], "sfwd-topic": [...ids] }
 
@@ -662,7 +713,7 @@ export async function importFromLearnDash(formData: FormData): Promise<LearnDash
             for (let ti = 0; ti < step.topicIds.length; ti++) {
               const topicId = step.topicIds[ti];
               try {
-                const ldTopic = await ldGet(`/sfwd-topic/${topicId}`);
+                const ldTopic = await ldGet<Record<string, unknown>>(`/sfwd-topic/${topicId}`);
 
                 const topicTitle = decodeHtmlEntities(
                   (ldTopic.title as { rendered?: string })?.rendered || String(ldTopic.title || "Untitled Topic")
@@ -749,25 +800,31 @@ export async function fetchLearnDashCourses(formData: FormData): Promise<{
   try {
     const apiVer = await detectLdApiVersion(baseUrl, hdrs);
 
-    const res = await fetch(`${baseUrl}/wp-json/ldlms/${apiVer}/sfwd-courses?per_page=100`, { headers: hdrs });
-    if (!res.ok) {
+    const res = await fetchJsonWithTimeout<Array<{ id: number; title: { rendered: string } }>>(
+      `${baseUrl}/wp-json/ldlms/${apiVer}/sfwd-courses?per_page=100`,
+      { headers: hdrs }
+    );
+    if (!res.ok || !res.data) {
       return { courses: [], error: `Connection failed: ${res.status} ${res.statusText}. Check URL and credentials.` };
     }
 
-    const data = await res.json();
-
     const courses = await Promise.all(
-      data.map(async (c: { id: number; title: { rendered: string } }) => {
+      res.data.map(async (c: { id: number; title: { rendered: string } }) => {
         let lessonsCount = 0;
         try {
-          const stepsRes = await fetch(
+          const stepsRes = await fetchJsonWithTimeout<{
+            t?: {
+              "sfwd-lessons"?: unknown[];
+              "sfwd-topic"?: unknown[];
+            };
+          }>(
             `${baseUrl}/wp-json/ldlms/${apiVer}/sfwd-courses/${c.id}/steps`,
-            { headers: hdrs }
+            { headers: hdrs },
+            8000
           );
-          if (stepsRes.ok) {
-            const steps = await stepsRes.json();
-            const lessons = steps?.t?.["sfwd-lessons"] ?? [];
-            const topics = steps?.t?.["sfwd-topic"] ?? [];
+          if (stepsRes.ok && stepsRes.data) {
+            const lessons = stepsRes.data.t?.["sfwd-lessons"] ?? [];
+            const topics = stepsRes.data.t?.["sfwd-topic"] ?? [];
             lessonsCount = lessons.length + topics.length;
           }
         } catch { /* fallback 0 */ }
@@ -782,6 +839,13 @@ export async function fetchLearnDashCourses(formData: FormData): Promise<{
 
     return { courses, error: null };
   } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      return {
+        courses: [],
+        error: "Connection timed out. Check the LearnDash URL, credentials, or site availability and try again.",
+      };
+    }
+
     return { courses: [], error: `Connection error: ${err instanceof Error ? err.message : String(err)}` };
   }
 }

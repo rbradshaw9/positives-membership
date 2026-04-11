@@ -42,6 +42,17 @@ export const config = {
     get serviceRoleKey() { return required("SUPABASE_SERVICE_ROLE_KEY"); },
   },
 
+  security: {
+    /**
+     * Server-only secret used to hash abuse-guard keys before storing them.
+     * Falls back to the Supabase service role key so the guard works without
+     * extra launch setup, but can be overridden later with a dedicated secret.
+     */
+    get abuseGuardSecret() {
+      return optional("ABUSE_GUARD_SECRET", process.env.SUPABASE_SERVICE_ROLE_KEY ?? "");
+    },
+  },
+
   stripe: {
     /** Server-only */
     get secretKey() { return required("STRIPE_SECRET_KEY"); },

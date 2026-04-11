@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getPublicSessionState } from "@/lib/marketing/public-session";
+import { ANONYMOUS_PUBLIC_SESSION_STATE } from "@/lib/marketing/public-session";
 import SupportClient from "./support-client";
 
 export const metadata: Metadata = {
@@ -11,8 +11,6 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function SupportPage() {
-  const session = await getPublicSessionState();
-
-  return <SupportClient session={session} />;
+export default function SupportPage() {
+  return <SupportClient session={ANONYMOUS_PUBLIC_SESSION_STATE} />;
 }

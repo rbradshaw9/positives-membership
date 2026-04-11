@@ -4,10 +4,17 @@
  * Used by the landing page (/).
  * /join and /login have their own full-page layouts (no shared wrapper needed).
  */
+import { PublicGrowthScriptsSlot } from "@/components/analytics/PublicGrowthScriptsSlot";
+
 export default function MarketingLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return (
+    <>
+      <PublicGrowthScriptsSlot />
+      {children}
+    </>
+  );
 }

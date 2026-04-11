@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { PublicSiteFooter } from "@/components/marketing/PublicSiteFooter";
 import { PublicSiteHeader } from "@/components/marketing/PublicSiteHeader";
-import { getPublicSessionState } from "@/lib/marketing/public-session";
+import { ANONYMOUS_PUBLIC_SESSION_STATE } from "@/lib/marketing/public-session";
 
 export const metadata: Metadata = {
   title: "Affiliate Program Terms — Positives",
@@ -37,8 +37,8 @@ function Section({
   );
 }
 
-export default async function AffiliateProgramPage() {
-  const session = await getPublicSessionState();
+export default function AffiliateProgramPage() {
+  const session = ANONYMOUS_PUBLIC_SESSION_STATE;
   const lastUpdated = new Date().toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",

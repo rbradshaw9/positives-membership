@@ -1,9 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { Montserrat, Poppins } from "next/font/google";
-import { FirstPromoterScripts } from "@/components/analytics/FirstPromoterScripts";
 import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
-import { ReferralCapture } from "@/components/analytics/ReferralCapture";
 import { config } from "@/lib/config";
 import "./globals.css";
 
@@ -25,6 +23,16 @@ export const metadata: Metadata = {
   description:
     "Positives is a practice-based membership platform for daily grounding, emotional resilience, and personal growth. Members return to it — they don't complete it.",
   metadataBase: new URL(config.app.url),
+  applicationName: "Positives",
+  appleWebApp: {
+    capable: true,
+    title: "Positives",
+    statusBarStyle: "default",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#121417",
 };
 
 export default function RootLayout({
@@ -41,17 +49,11 @@ export default function RootLayout({
     >
       <head />
       <body className="h-full antialiased bg-background text-foreground">
-        <Suspense fallback={null}>
-          <FirstPromoterScripts />
-        </Suspense>
         {gaMeasurementId ? (
           <Suspense fallback={null}>
             <GoogleAnalytics measurementId={gaMeasurementId} />
           </Suspense>
         ) : null}
-        <Suspense fallback={null}>
-          <ReferralCapture />
-        </Suspense>
         {children}
       </body>
     </html>

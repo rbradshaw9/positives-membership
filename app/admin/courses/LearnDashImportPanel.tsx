@@ -28,39 +28,44 @@ export function LearnDashImportPanel() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<LearnDashImportResult | null>(null);
   const [preConfigured, setPreConfigured] = useState(false);
+  const [isBootstrapping, setIsBootstrapping] = useState(true);
 
   // Auto-connect if env vars are set
   useEffect(() => {
     startTransition(async () => {
-      const [defaults, alreadyImported] = await Promise.all([
-        getLearnDashDefaults(),
-        getImportedLearnDashIds(),
-      ]);
-      setImportedIds(new Set(alreadyImported));
+      try {
+        const [defaults, alreadyImported] = await Promise.all([
+          getLearnDashDefaults(),
+          getImportedLearnDashIds(),
+        ]);
+        setImportedIds(new Set(alreadyImported));
 
-      if (defaults.configured) {
-        setWpUrl(defaults.wpUrl);
-        setWpUser(defaults.wpUser);
-        setWpPassword(defaults.wpPassword);
-        setPreConfigured(true);
+        if (defaults.configured) {
+          setWpUrl(defaults.wpUrl);
+          setWpUser(defaults.wpUser);
+          setWpPassword(defaults.wpPassword);
+          setPreConfigured(true);
 
-        const fd = new FormData();
-        fd.append("wp_url", defaults.wpUrl);
-        fd.append("wp_user", defaults.wpUser);
-        fd.append("wp_password", defaults.wpPassword);
-        const res = await fetchLearnDashCourses(fd);
-        if (!res.error && res.courses.length > 0) {
-          setCourses(res.courses);
-          // Pre-select only courses not yet imported
-          setSelectedIds(new Set(
-            res.courses
-              .filter((c) => !alreadyImported.includes(c.id))
-              .map((c) => c.id)
-          ));
-          setStep("select");
-        } else if (res.error) {
-          setError(res.error);
+          const fd = new FormData();
+          fd.append("wp_url", defaults.wpUrl);
+          fd.append("wp_user", defaults.wpUser);
+          fd.append("wp_password", defaults.wpPassword);
+          const res = await fetchLearnDashCourses(fd);
+          if (!res.error && res.courses.length > 0) {
+            setCourses(res.courses);
+            // Pre-select only courses not yet imported
+            setSelectedIds(new Set(
+              res.courses
+                .filter((c) => !alreadyImported.includes(c.id))
+                .map((c) => c.id)
+            ));
+            setStep("select");
+          } else if (res.error) {
+            setError(res.error);
+          }
         }
+      } finally {
+        setIsBootstrapping(false);
       }
     });
   }, []);
@@ -144,15 +149,32 @@ export function LearnDashImportPanel() {
         {/* ── Step 1: Connect (only shown when not pre-configured) ── */}
         {step === "connect" && (
           <>
-            {isPending ? (
-              <p style={{ fontSize: "0.8125rem", color: "var(--color-muted-fg)" }}>Connecting to LearnDash…</p>
-            ) : preConfigured ? (
-              <p style={{ fontSize: "0.8125rem", color: "#22c55e" }}>✅ Connected via environment configuration.</p>
+            {isBootstrapping ? (
+              <p style={{ fontSize: "0.8125rem", color: "var(--color-muted-fg)" }}>
+                Checking saved LearnDash connection…
+              </p>
+            ) : isPending ? (
+              <p style={{ fontSize: "0.8125rem", color: "var(--color-muted-fg)" }}>
+                Connecting to LearnDash…
+              </p>
             ) : (
+              <p style={{ fontSize: "0.8125rem", color: "var(--color-muted-fg)", marginBottom: "1rem", lineHeight: 1.6 }}>
+                Connect to your WordPress site running LearnDash.
+              </p>
+            )}
+
+            {!isBootstrapping && !isPending && preConfigured && (
+              <div
+                className="admin-banner admin-banner--success"
+                style={{ marginTop: "0.75rem", marginBottom: "0.75rem" }}
+              >
+                Saved LearnDash connection found. Review the details below and retry if the course
+                list did not load automatically.
+              </div>
+            )}
+
+            {!isBootstrapping && !isPending && (
               <>
-                <p style={{ fontSize: "0.8125rem", color: "var(--color-muted-fg)", marginBottom: "1rem", lineHeight: 1.6 }}>
-                  Connect to your WordPress site running LearnDash.
-                </p>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
                   <div className="admin-form-field" style={{ gridColumn: "1 / -1" }}>
                     <label className="admin-label">WordPress URL <span className="admin-label__required">*</span></label>
@@ -169,7 +191,7 @@ export function LearnDashImportPanel() {
                 </div>
                 {error && <div className="admin-banner admin-banner--error" style={{ marginTop: "0.75rem" }}>{error}</div>}
                 <button type="button" onClick={handleConnect} disabled={isPending || !wpUrl || !wpUser || !wpPassword} className="admin-btn admin-btn--primary" style={{ marginTop: "0.75rem" }}>
-                  Connect &amp; Browse Courses
+                  {preConfigured ? "Retry Saved Connection" : "Connect &amp; Browse Courses"}
                 </button>
               </>
             )}

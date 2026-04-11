@@ -3,6 +3,7 @@ import type Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import { getSubscriptionAnalyticsFromPriceId } from "@/lib/analytics/subscription";
 import { PLAN_NAME_BY_TIER } from "@/lib/plans";
+import { checkAbuseGuard, getClientIp } from "@/lib/security/abuse-guard";
 import { getStripe } from "@/lib/stripe/config";
 
 /**
@@ -43,13 +44,68 @@ function getAdminClient() {
   );
 }
 
+function jsonNoStore(body: unknown, init?: ResponseInit) {
+  const headers = new Headers(init?.headers);
+  headers.set("Cache-Control", "no-store");
+  return Response.json(body, {
+    ...init,
+    headers,
+  });
+}
+
 export async function GET(request: NextRequest) {
   const sessionId = request.nextUrl.searchParams.get("session_id");
 
   if (!sessionId) {
-    return Response.json(
+    return jsonNoStore(
       { error: "Missing session_id query parameter." },
       { status: 400 }
+    );
+  }
+
+  if (sessionId.length > 255) {
+    return jsonNoStore(
+      { error: "Invalid checkout session." },
+      { status: 400 }
+    );
+  }
+
+  const clientIp = getClientIp(request.headers);
+  const ipGuard = await checkAbuseGuard({
+    scope: "auth_exchange_ip",
+    keyParts: [clientIp],
+    maxHits: 120,
+    windowSeconds: 10 * 60,
+  });
+
+  if (!ipGuard.allowed) {
+    return jsonNoStore(
+      { error: "Too many requests. Please wait a minute and try again." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(ipGuard.retryAfterSeconds),
+        },
+      }
+    );
+  }
+
+  const sessionGuard = await checkAbuseGuard({
+    scope: "auth_exchange_session",
+    keyParts: [clientIp, sessionId],
+    maxHits: 50,
+    windowSeconds: 10 * 60,
+  });
+
+  if (!sessionGuard.allowed) {
+    return jsonNoStore(
+      { error: "Too many setup attempts. Please wait a minute and try again." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(sessionGuard.retryAfterSeconds),
+        },
+      }
     );
   }
 
@@ -64,7 +120,7 @@ export async function GET(request: NextRequest) {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error(`[Exchange] Invalid session_id: ${sessionId} — ${message}`);
-    return Response.json(
+    return jsonNoStore(
       { error: "Invalid or expired checkout session." },
       { status: 400 }
     );
@@ -94,7 +150,7 @@ export async function GET(request: NextRequest) {
       `[Exchange] No email in session: ${sessionId}. ` +
         `Session status: ${checkoutSession.status}`
     );
-    return Response.json(
+    return jsonNoStore(
       { error: "No email associated with this checkout session." },
       { status: 400 }
     );
@@ -114,13 +170,13 @@ export async function GET(request: NextRequest) {
     console.error(
       `[Exchange] DB error looking up member for ${email}: ${memberError.message}`
     );
-    return Response.json({ error: "Internal error." }, { status: 500 });
+    return jsonNoStore({ error: "Internal error." }, { status: 500 });
   }
 
   // ── Step 4: If token not ready, tell client to keep polling ─────────────
   // Include email so the fallback magic-link sender has it without a second Stripe call.
   if (!member?.onboarding_token) {
-    return Response.json({
+    return jsonNoStore({
       status: "pending",
       email,
       checkout_mode: checkoutMode,
@@ -150,7 +206,7 @@ export async function GET(request: NextRequest) {
 
   console.log(`[Exchange] Token exchanged for ${email} — session: ${sessionId}`);
 
-  return Response.json({
+  return jsonNoStore({
     status: "ready",
     token_hash: tokenHash,
     email,

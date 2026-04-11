@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { PublicSiteFooter } from "@/components/marketing/PublicSiteFooter";
 import { PublicSiteHeader } from "@/components/marketing/PublicSiteHeader";
 import { StickyCtaBar } from "@/components/marketing/StickyCtaBar";
+import { useSearchParams } from "next/navigation";
+import { appendPublicTrackingParamsFromEntries } from "@/lib/marketing/public-query-params";
 import type { PublicSessionState } from "@/lib/marketing/public-session";
 
 /* ─── Check Icon ─────────────────────────────────────────────────────────── */
@@ -285,13 +287,14 @@ type LandingPageClientProps = {
   watchHref: string;
 };
 
-export function LandingPageClient({
+function LandingPageShell({
   session,
   signInHref,
   paidHref,
   watchHref,
 }: LandingPageClientProps) {
   const heroSentinelRef = useRef<HTMLDivElement>(null);
+
   return (
     <div className="min-h-dvh flex flex-col overflow-x-hidden" style={{ background: "#FAFAF8" }}>
 
@@ -983,5 +986,27 @@ export function LandingPageClient({
       {/* ━━ 11. FOOTER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <PublicSiteFooter paidHref={paidHref} watchHref={watchHref} session={session} />
     </div>
+  );
+}
+
+function LandingPageTrackedShell(props: LandingPageClientProps) {
+  const searchParams = useSearchParams();
+  const paidHref = appendPublicTrackingParamsFromEntries(
+    props.paidHref,
+    searchParams.entries()
+  );
+  const watchHref = appendPublicTrackingParamsFromEntries(
+    props.watchHref,
+    searchParams.entries()
+  );
+
+  return <LandingPageShell {...props} paidHref={paidHref} watchHref={watchHref} />;
+}
+
+export function LandingPageClient(props: LandingPageClientProps) {
+  return (
+    <Suspense fallback={<LandingPageShell {...props} />}>
+      <LandingPageTrackedShell {...props} />
+    </Suspense>
   );
 }

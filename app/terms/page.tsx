@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { PublicSiteFooter } from "@/components/marketing/PublicSiteFooter";
 import { PublicSiteHeader } from "@/components/marketing/PublicSiteHeader";
-import { getPublicSessionState } from "@/lib/marketing/public-session";
+import { ANONYMOUS_PUBLIC_SESSION_STATE } from "@/lib/marketing/public-session";
 
 export const metadata: Metadata = {
   title: "Terms of Service — Positives",
@@ -11,8 +11,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function TermsPage() {
-  const session = await getPublicSessionState();
+export default function TermsPage() {
+  const session = ANONYMOUS_PUBLIC_SESSION_STATE;
 
   return (
     <div className="min-h-dvh flex flex-col" style={{ background: "#FAFAF8" }}>

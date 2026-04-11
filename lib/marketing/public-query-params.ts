@@ -43,3 +43,24 @@ export function appendPublicTrackingParams(
 
   return `${href}${href.includes("?") ? "&" : "?"}${query}`;
 }
+
+export function appendPublicTrackingParamsFromEntries(
+  href: string,
+  entries?: Iterable<[string, string]>
+) {
+  if (!entries || href.startsWith("/today") || href.startsWith("/login")) {
+    return href;
+  }
+
+  const params = new URLSearchParams();
+
+  for (const [key, value] of entries) {
+    if (!PRESERVED_PUBLIC_QUERY_KEYS.has(key) || !value) continue;
+    params.append(key, value);
+  }
+
+  const query = params.toString();
+  if (!query) return href;
+
+  return `${href}${href.includes("?") ? "&" : "?"}${query}`;
+}

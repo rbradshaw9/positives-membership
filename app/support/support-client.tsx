@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { PublicSiteFooter } from "@/components/marketing/PublicSiteFooter";
 import { PublicSiteHeader } from "@/components/marketing/PublicSiteHeader";
 import type { PublicSessionState } from "@/lib/marketing/public-session";
@@ -19,6 +19,7 @@ export default function SupportPage({
   >;
 }) {
   const [state, formAction, isPending] = useActionState(submitSupportForm, initial);
+  const [startedAt] = useState(() => Date.now().toString());
 
   useEffect(() => {
     if (state.status === "sent") {
@@ -227,6 +228,27 @@ export default function SupportPage({
                     boxShadow: "0 4px 24px rgba(18,20,23,0.06)",
                   }}
                 >
+                  <input type="hidden" name="started_at" value={startedAt} />
+                  <div
+                    aria-hidden="true"
+                    style={{
+                      position: "absolute",
+                      left: "-9999px",
+                      width: "1px",
+                      height: "1px",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <label htmlFor="support-website">Website</label>
+                    <input
+                      id="support-website"
+                      name="website"
+                      type="text"
+                      tabIndex={-1}
+                      autoComplete="off"
+                    />
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div>
                       <label htmlFor="support-name" className="block text-sm font-medium mb-1.5" style={{ color: "#121417" }}>
@@ -327,6 +349,10 @@ export default function SupportPage({
                   >
                     {isPending ? "Sending…" : "Send message →"}
                   </button>
+
+                  <p className="text-xs" style={{ color: "#9AA0A8", lineHeight: "1.6" }}>
+                    This form is protected against spam so replies stay fast for real members.
+                  </p>
                 </form>
               )}
             </div>
