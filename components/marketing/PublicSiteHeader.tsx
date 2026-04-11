@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { Logo } from "@/components/marketing/Logo";
+import { PublicTrackedLink } from "@/components/marketing/PublicTrackedLink";
 
 type PublicHeaderLink = {
   href: string;
@@ -37,22 +37,22 @@ export function PublicSiteHeader({
 
         <nav className="flex items-center gap-3 sm:gap-6" aria-label="Public site navigation">
           {navLinks.map((link) => (
-            <Link
+            <PublicTrackedLink
               key={`${link.href}-${link.label}`}
               href={link.href}
               className={`${link.hiddenOnMobile ? "hidden md:block" : ""} text-xs sm:text-sm font-medium`}
               style={{ color: "#68707A" }}
             >
               {link.label}
-            </Link>
+            </PublicTrackedLink>
           ))}
 
-          <Link href={signInHref} className="text-xs sm:text-sm font-medium" style={{ color: "#68707A" }}>
+          <PublicTrackedLink href={signInHref} className="text-xs sm:text-sm font-medium" style={{ color: "#68707A" }}>
             {signInLabel}
-          </Link>
+          </PublicTrackedLink>
 
           {primaryCtaHref && primaryCtaLabel ? (
-            <Link
+            <PublicTrackedLink
               href={primaryCtaHref}
               className="rounded-full px-4 py-2 text-xs font-semibold sm:px-5 sm:py-2.5 sm:text-sm"
               style={{
@@ -63,7 +63,7 @@ export function PublicSiteHeader({
               }}
             >
               {primaryCtaLabel}
-            </Link>
+            </PublicTrackedLink>
           ) : null}
         </nav>
       </div>

@@ -65,7 +65,7 @@ export async function getReferralLinkAction(
   const admin = getAdminClient();
   const { data: member } = await admin
     .from("member")
-    .select("name, fp_promoter_id, fp_ref_id, referred_by_fpr")
+    .select("name, fp_promoter_id, fp_ref_id, referred_by_fpr, email_unsubscribed")
     .eq("id", user.id)
     .single();
 
@@ -132,6 +132,7 @@ export async function getReferralLinkAction(
     email: user.email,
     referralToken: refId,
     affiliateId: String(promoterId),
+    subscribeToMarketing: !member?.email_unsubscribed,
   });
 
   return {

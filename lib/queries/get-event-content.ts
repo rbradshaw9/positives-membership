@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { shouldHideFromMembers } from "@/lib/content/member-content-visibility";
 import type { Tables } from "@/types/supabase";
 
 export type EventItem = Pick<
@@ -14,6 +15,7 @@ export type EventItem = Pick<
   | "join_url"
   | "status"
   | "tier_min"
+  | "tags"
 >;
 
 export async function getEventContent(limit = 20): Promise<EventItem[]> {
@@ -22,7 +24,7 @@ export async function getEventContent(limit = 20): Promise<EventItem[]> {
   const { data, error } = await supabase
     .from("content")
     .select(
-      "id, title, excerpt, description, starts_at, duration_seconds, vimeo_video_id, youtube_video_id, join_url, status, tier_min"
+      "id, title, excerpt, description, starts_at, duration_seconds, vimeo_video_id, youtube_video_id, join_url, status, tier_min, tags"
     )
     .eq("type", "coaching_call")
     .eq("status", "published")
@@ -35,5 +37,5 @@ export async function getEventContent(limit = 20): Promise<EventItem[]> {
     return [];
   }
 
-  return data ?? [];
+  return (data ?? []).filter((item) => !shouldHideFromMembers(item));
 }

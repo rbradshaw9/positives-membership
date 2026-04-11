@@ -1,8 +1,8 @@
-import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
 import { PublicSiteFooter } from "@/components/marketing/PublicSiteFooter";
 import { PublicSiteHeader } from "@/components/marketing/PublicSiteHeader";
+import { PublicTrackedLink } from "@/components/marketing/PublicTrackedLink";
 import { ANONYMOUS_PUBLIC_SESSION_STATE } from "@/lib/marketing/public-session";
 
 export const metadata: Metadata = {
@@ -105,7 +105,7 @@ export default function AboutPage() {
               ))}
             </div>
 
-            <Link
+            <PublicTrackedLink
               href="/join"
               className="inline-flex items-center justify-center font-semibold rounded-full"
               style={{
@@ -118,7 +118,7 @@ export default function AboutPage() {
               }}
             >
               Join the practice →
-            </Link>
+            </PublicTrackedLink>
           </div>
 
           {/* Photo */}
@@ -363,7 +363,7 @@ export default function AboutPage() {
             ))}
           </div>
 
-          <Link
+          <PublicTrackedLink
             href="/join"
             className="inline-flex items-center justify-center font-semibold rounded-full"
             style={{
@@ -376,7 +376,7 @@ export default function AboutPage() {
             }}
           >
             Start the practice →
-          </Link>
+          </PublicTrackedLink>
           <p className="mt-4 text-sm" style={{ color: "#4A5360" }}>
             From $37/month · Cancel anytime · 30-day guarantee
           </p>

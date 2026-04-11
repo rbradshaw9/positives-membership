@@ -15,6 +15,7 @@
     "test:e2e": "npm run seed:users && playwright test"
   },
   "dependencies": {
+    "@sentry/nextjs": "^10.48.0",
     "@supabase/ssr": "^0.10.0",
     "@supabase/supabase-js": "^2.101.0",
     "@tiptap/core": "^3.22.0",

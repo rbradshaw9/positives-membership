@@ -25,8 +25,10 @@ import { createClient } from "@/lib/supabase/client";
 
 export function WelcomeModal({
   needsPasswordSetup = false,
+  marketingOptedOut = false,
 }: {
   needsPasswordSetup?: boolean;
+  marketingOptedOut?: boolean;
 }) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -353,6 +355,38 @@ export function WelcomeModal({
               </div>
             ))}
           </div>
+
+          {!isPasswordReminder && marketingOptedOut ? (
+            <div className="px-8 pb-2">
+              <div
+                className="rounded-3xl border px-5 py-4"
+                style={{
+                  borderColor: "rgba(176,149,110,0.18)",
+                  background: "rgba(176,149,110,0.08)",
+                }}
+              >
+                <p
+                  className="text-[11px] font-semibold uppercase"
+                  style={{ color: "#B0956E", letterSpacing: "0.14em" }}
+                >
+                  Email preference
+                </p>
+                <p className="mt-2 text-sm leading-body" style={{ color: "#6B635A" }}>
+                  Optional practice emails are currently off for this account. You can turn them
+                  back on anytime in{" "}
+                  <Link
+                    href="/account"
+                    onClick={dismiss}
+                    className="font-semibold underline underline-offset-4"
+                    style={{ color: "#121417" }}
+                  >
+                    Account
+                  </Link>
+                  .
+                </p>
+              </div>
+            </div>
+          ) : null}
 
           {/* ── CTAs ── */}
           <div className="px-8 pt-5 pb-8 flex flex-col gap-3">

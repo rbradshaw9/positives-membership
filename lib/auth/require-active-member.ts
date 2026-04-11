@@ -5,7 +5,13 @@ import { hasActiveMemberAccess } from "@/lib/subscription/access";
 
 type MemberProfile = Pick<
   Tables<"member">,
-  "id" | "email" | "name" | "subscription_status" | "subscription_tier" | "password_set"
+  | "id"
+  | "email"
+  | "name"
+  | "subscription_status"
+  | "subscription_tier"
+  | "password_set"
+  | "email_unsubscribed"
 >;
 
 
@@ -42,7 +48,7 @@ export async function requireActiveMember(): Promise<MemberProfile> {
 
   const { data, error: memberError } = await supabase
     .from("member")
-    .select("id, email, name, subscription_status, subscription_tier, password_set")
+    .select("id, email, name, subscription_status, subscription_tier, password_set, email_unsubscribed")
     .eq("id", user.id)
     .single();
 

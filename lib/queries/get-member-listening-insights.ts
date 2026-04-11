@@ -1,4 +1,5 @@
 import { checkTierAccess } from "@/lib/auth/check-tier-access";
+import { shouldHideFromMembers } from "@/lib/content/member-content-visibility";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/supabase";
 
@@ -132,6 +133,7 @@ export async function getMemberListeningInsights(
 
     for (const item of knownContent ?? []) {
       if (!checkTierAccess(memberTier, item.tier_min)) continue;
+      if (shouldHideFromMembers(item)) continue;
       contentById.set(item.id, item);
     }
   }
@@ -183,6 +185,7 @@ export async function getMemberListeningInsights(
 
     const match = (data ?? []).find((item) => {
       if (excludedIds.has(item.id)) return false;
+      if (shouldHideFromMembers(item)) return false;
       return checkTierAccess(memberTier, item.tier_min);
     });
 

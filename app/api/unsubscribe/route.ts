@@ -14,6 +14,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { resend } from "@/lib/email/resend";
+import { syncMarketingPreference } from "@/lib/activecampaign/sync";
 import { verifyUnsubscribeToken } from "@/lib/email/unsubscribe";
 
 const supabase = createClient(
@@ -42,6 +43,8 @@ async function suppressEmail(email: string): Promise<void> {
     .from("member")
     .update({ email_unsubscribed: true })
     .eq("email", normalizedEmail);
+
+  await syncMarketingPreference({ email: normalizedEmail, subscribe: false });
 }
 
 function verifyRequest(req: NextRequest) {

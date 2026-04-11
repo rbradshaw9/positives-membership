@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useState, useRef } from "react";
 import { PublicSiteFooter } from "@/components/marketing/PublicSiteFooter";
 import { PublicSiteHeader } from "@/components/marketing/PublicSiteHeader";
+import { PublicTrackedLink } from "@/components/marketing/PublicTrackedLink";
 import type { PublicSessionState } from "@/lib/marketing/public-session";
 
 /* ─── FAQ Accordion ──────────────────────────────────────────────────────── */
@@ -161,9 +161,9 @@ export default function FaqPage({
           </h1>
           <p style={{ fontSize: "1.05rem", color: "#68707A", lineHeight: "1.72" }}>
             Everything you need to know about Positives before you join. Can&apos;t find your answer?{" "}
-            <Link href="/support" style={{ color: "#2F6FED", textDecoration: "underline" }}>
+            <PublicTrackedLink href="/support" style={{ color: "#2F6FED", textDecoration: "underline" }}>
               Reach out to us.
-            </Link>
+            </PublicTrackedLink>
           </p>
         </div>
       </section>
@@ -204,7 +204,7 @@ export default function FaqPage({
             We&apos;re happy to help. Reach out and we typically respond within one business day.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
+            <PublicTrackedLink
               href="/support"
               className="inline-flex items-center justify-center font-semibold rounded-full"
               style={{
@@ -217,8 +217,8 @@ export default function FaqPage({
               }}
             >
               Contact support →
-            </Link>
-            <Link
+            </PublicTrackedLink>
+            <PublicTrackedLink
               href="/join"
               className="inline-flex items-center justify-center font-semibold rounded-full"
               style={{
@@ -231,7 +231,7 @@ export default function FaqPage({
               }}
             >
               Join Positives →
-            </Link>
+            </PublicTrackedLink>
           </div>
         </div>
       </section>

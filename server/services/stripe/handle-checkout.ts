@@ -247,6 +247,7 @@ async function handleGuestCheckout(
   const subscription = await getCheckoutSubscription(stripe, session);
   const subscriptionStatus = mapStripeSubscriptionStatus(subscription?.status);
   const trialEndDate = formatStripeDate(subscription?.trial_end);
+  let marketingSuppressed = false;
 
   // ── Step 2: Get or create Supabase auth user ─────────────────────────────
   // email_confirm: true — payment is proof of email ownership.
@@ -280,7 +281,7 @@ async function handleGuestCheckout(
 
     const { data: memberRow, error: memberLookupError } = await supabase
       .from("member")
-      .select("id")
+      .select("id, email_unsubscribed")
       .eq("email", email)
       .maybeSingle();
 
@@ -292,6 +293,7 @@ async function handleGuestCheckout(
     }
 
     userId = memberRow.id;
+    marketingSuppressed = Boolean(memberRow.email_unsubscribed);
     console.log(
       `[Stripe] Existing user resolved from member table — userId: ${userId}, email: ${email}`
     );
@@ -482,7 +484,7 @@ async function handleGuestCheckout(
   }
 
   // ── Step 7: Sync to ActiveCampaign ──────────────────────────────────────
-  // Non-fatal — subscribes member to AC list and applies tier + founding_member tags.
+  // Non-fatal — respects prior marketing opt-outs for returning purchasers.
   const activeCampaignTier = planLevel ?? "level_1";
 
   await syncNewMember({
@@ -495,10 +497,13 @@ async function handleGuestCheckout(
       undefined,
     tier: activeCampaignTier,
     stripeCustomerId: customerId,
+    subscribeToMarketing: !marketingSuppressed,
   });
 
-  // Queue drip emails for days 3, 7, 14
-  await enrollInOnboardingSequence(userId, email);
+  // Respect prior marketing opt-outs on returning purchasers.
+  if (!marketingSuppressed) {
+    await enrollInOnboardingSequence(userId, email);
+  }
 
   // ── Step 8: Track FP sale (credit the referrer) ──────────────────────────
   // Non-fatal — only fires when the member arrived via an affiliate link.

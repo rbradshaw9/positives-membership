@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { shouldHideFromMembers } from "@/lib/content/member-content-visibility";
 import type { Tables } from "@/types/supabase";
 
 /**
@@ -23,6 +24,7 @@ export type CoachingItem = Pick<
   | "youtube_video_id"
   | "join_url"
   | "status"
+  | "tags"
 >;
 
 export async function getCoachingContent(limit = 20): Promise<CoachingItem[]> {
@@ -31,7 +33,7 @@ export async function getCoachingContent(limit = 20): Promise<CoachingItem[]> {
   const { data, error } = await supabase
     .from("content")
     .select(
-      "id, title, excerpt, description, starts_at, duration_seconds, vimeo_video_id, youtube_video_id, join_url, status"
+      "id, title, excerpt, description, starts_at, duration_seconds, vimeo_video_id, youtube_video_id, join_url, status, tags"
     )
     .eq("type", "coaching_call")
     .eq("status", "published")
@@ -44,5 +46,5 @@ export async function getCoachingContent(limit = 20): Promise<CoachingItem[]> {
     return [];
   }
 
-  return data ?? [];
+  return (data ?? []).filter((item) => !shouldHideFromMembers(item));
 }

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { AccountClient } from "./account-client";
+import { EmailPreferencesForm } from "./email-preferences-form";
 import { ProfileForm } from "./profile-form";
 import { TimezoneForm } from "./timezone-form";
 import { BillingButton } from "./billing-button";
@@ -39,7 +40,7 @@ export default async function AccountPage({
   const { data: member } = await supabase
     .from("member")
     .select(
-      "email, name, password_set, subscription_tier, subscription_status, stripe_customer_id, timezone, fp_ref_id, fp_promoter_id"
+      "email, name, password_set, subscription_tier, subscription_status, stripe_customer_id, timezone, fp_ref_id, fp_promoter_id, email_unsubscribed"
     )
     .eq("id", user!.id)
     .single();
@@ -201,6 +202,11 @@ export default async function AccountPage({
             <section aria-labelledby="section-timezone">
               <SectionLabel id="section-timezone">Timezone</SectionLabel>
               <TimezoneForm currentTimezone={timezone} />
+            </section>
+
+            <section aria-labelledby="section-email-preferences">
+              <SectionLabel id="section-email-preferences">Email Preferences</SectionLabel>
+              <EmailPreferencesForm email={email} subscribedToMarketing={!member?.email_unsubscribed} />
             </section>
 
             <section aria-labelledby="section-referral">

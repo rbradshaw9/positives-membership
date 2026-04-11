@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { Logo } from "@/components/marketing/Logo";
+import { PublicTrackedLink } from "@/components/marketing/PublicTrackedLink";
 import type { PublicSessionState } from "@/lib/marketing/public-session";
 
 interface PublicSiteFooterProps {
@@ -39,18 +39,18 @@ export function PublicSiteFooter({
                 Practice
               </p>
               <div className="space-y-2">
-                <Link href={paidHref} className="block text-sm" style={{ color: "#68707A" }}>
+                <PublicTrackedLink href={paidHref} className="block text-sm" style={{ color: "#68707A" }}>
                   {session.paidShortLabel}
-                </Link>
-                <Link href={watchHref} className="block text-sm" style={{ color: "#68707A" }}>
+                </PublicTrackedLink>
+                <PublicTrackedLink href={watchHref} className="block text-sm" style={{ color: "#68707A" }}>
                   {session.hasMemberAccess ? "Today" : "Watch Dr. Paul"}
-                </Link>
-                <Link href="/#how-it-works" className="block text-sm" style={{ color: "#68707A" }}>
+                </PublicTrackedLink>
+                <PublicTrackedLink href="/#how-it-works" className="block text-sm" style={{ color: "#68707A" }}>
                   How it works
-                </Link>
-                <Link href={session.signInHref} className="block text-sm" style={{ color: "#68707A" }}>
+                </PublicTrackedLink>
+                <PublicTrackedLink href={session.signInHref} className="block text-sm" style={{ color: "#68707A" }}>
                   {session.signInLabel}
-                </Link>
+                </PublicTrackedLink>
               </div>
             </div>
 
@@ -59,12 +59,12 @@ export function PublicSiteFooter({
                 Learn
               </p>
               <div className="space-y-2">
-                <Link href="/about" className="block text-sm" style={{ color: "#68707A" }}>
+                <PublicTrackedLink href="/about" className="block text-sm" style={{ color: "#68707A" }}>
                   About Dr. Paul
-                </Link>
-                <Link href="/faq" className="block text-sm" style={{ color: "#68707A" }}>
+                </PublicTrackedLink>
+                <PublicTrackedLink href="/faq" className="block text-sm" style={{ color: "#68707A" }}>
                   FAQ
-                </Link>
+                </PublicTrackedLink>
               </div>
             </div>
 
@@ -73,15 +73,15 @@ export function PublicSiteFooter({
                 Help
               </p>
               <div className="space-y-2">
-                <Link href="/support" className="block text-sm" style={{ color: "#68707A" }}>
+                <PublicTrackedLink href="/support" className="block text-sm" style={{ color: "#68707A" }}>
                   Support
-                </Link>
-                <Link href="/privacy" className="block text-sm" style={{ color: "#68707A" }}>
+                </PublicTrackedLink>
+                <PublicTrackedLink href="/privacy" className="block text-sm" style={{ color: "#68707A" }}>
                   Privacy
-                </Link>
-                <Link href="/terms" className="block text-sm" style={{ color: "#68707A" }}>
+                </PublicTrackedLink>
+                <PublicTrackedLink href="/terms" className="block text-sm" style={{ color: "#68707A" }}>
                   Terms
-                </Link>
+                </PublicTrackedLink>
               </div>
             </div>
           </div>

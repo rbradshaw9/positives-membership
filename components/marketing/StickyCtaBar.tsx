@@ -53,24 +53,26 @@ export function StickyCtaBar({ sentinelRef, href, label }: StickyCtaBarProps) {
           to   { transform: translateY(0);    opacity: 1; }
         }
       `}</style>
-      <div className="flex items-center gap-3 px-5 py-3">
+      <div className="flex flex-col gap-2 px-4 py-3">
         <Link
           href={href}
-          className="flex-1 flex items-center justify-center font-semibold rounded-full text-sm"
+          className="flex items-center justify-center font-semibold rounded-full text-sm"
           style={{
             background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
             color: "#FFFFFF",
-            padding: "0.8rem 1.5rem",
+            padding: "0.9rem 1.25rem",
             letterSpacing: "-0.01em",
             boxShadow: "0 4px 18px rgba(47,111,237,0.35)",
           }}
         >
           {label}
         </Link>
-        <div className="text-right flex-shrink-0">
-          <p className="text-xs font-medium" style={{ color: "#FFFFFF", lineHeight: "1.3" }}>From $37/mo</p>
-          <p className="text-xs" style={{ color: "rgba(255,255,255,0.5)", lineHeight: "1.3" }}>Cancel anytime</p>
-        </div>
+        <p
+          className="text-center text-[11px] font-medium"
+          style={{ color: "rgba(255,255,255,0.72)", lineHeight: "1.35" }}
+        >
+          From $37/month · Cancel anytime · 30-day guarantee
+        </p>
       </div>
     </div>
   );

@@ -98,6 +98,17 @@ async function subscribeToList(contactId: string): Promise<void> {
   });
 }
 
+/** Mark a contact as unsubscribed on the Positives Members list. */
+async function unsubscribeFromList(contactId: string): Promise<void> {
+  await ac.post("/contactLists", {
+    contactList: {
+      list: LIST_ID,
+      contact: contactId,
+      status: 2, // 2 = unsubscribed
+    },
+  });
+}
+
 /** Add a tag to a contact by tag ID. */
 async function addTag(contactId: string, tagId: number): Promise<void> {
   await ac.post("/contactTags", {
@@ -141,7 +152,7 @@ async function syncExactTierState(
 
 /**
  * Called on checkout.session.completed.
- * Creates/updates the contact in AC, subscribes them to the list,
+ * Creates/updates the contact in AC, optionally subscribes them to the list,
  * applies their tier tag, and applies founding_member.
  */
 export async function syncNewMember(params: {
@@ -151,6 +162,7 @@ export async function syncNewMember(params: {
   phone?: string;
   tier: SubscriptionTier;
   stripeCustomerId?: string;
+  subscribeToMarketing?: boolean;
 }): Promise<void> {
   if (!acIsConfigured()) return;
 
@@ -162,7 +174,9 @@ export async function syncNewMember(params: {
       phone:     params.phone,
     });
 
-    await subscribeToList(contactId);
+    if (params.subscribeToMarketing ?? true) {
+      await subscribeToList(contactId);
+    }
     await syncExactTierState(contactId, params.tier);
     await addTag(contactId, TAG.founding_member);
 
@@ -182,11 +196,14 @@ export async function syncNewMember(params: {
 /**
  * Called on customer.subscription.updated.
  * Removes the old tier tag and applies the new one.
+ * By default, this does not silently re-subscribe contacts who previously
+ * opted out of marketing.
  */
 export async function syncTierChange(params: {
   email: string;
   oldTier: SubscriptionTier | null;
   newTier: SubscriptionTier;
+  subscribeToMarketing?: boolean;
 }): Promise<void> {
   if (!acIsConfigured()) return;
 
@@ -198,8 +215,10 @@ export async function syncTierChange(params: {
     }
 
     await syncExactTierState(contactId, params.newTier);
-    // Ensure they're re-subscribed in case they were previously unsubscribed
-    await subscribeToList(contactId);
+
+    if (params.subscribeToMarketing ?? false) {
+      await subscribeToList(contactId);
+    }
 
     console.log(`[AC] Tier updated — ${params.email}: ${params.oldTier ?? "?"} → ${params.newTier}`);
   } catch (err) {
@@ -306,6 +325,7 @@ export async function syncAffiliate(params: {
   email: string;
   referralToken: string;
   affiliateId: string;
+  subscribeToMarketing?: boolean;
 }): Promise<void> {
   if (!acIsConfigured()) return;
 
@@ -314,9 +334,9 @@ export async function syncAffiliate(params: {
     const referralLink = `https://positives.life?fpr=${params.referralToken}`;
     const portalUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://positives.life"}/account/affiliate/portal`;
 
-    // Ensure the contact is on the Positives Members list — required for
-    // merge tags to resolve correctly in AC email templates.
-    await subscribeToList(contactId);
+    if (params.subscribeToMarketing ?? false) {
+      await subscribeToList(contactId);
+    }
 
     // Set affiliate custom fields so they are available in AC email templates
     await setFieldValue(contactId, FIELD.affiliateLink,   referralLink);
@@ -329,5 +349,33 @@ export async function syncAffiliate(params: {
     console.log(`[AC] Affiliate synced — ${params.email}, token: ${params.referralToken}`);
   } catch (err) {
     console.error("[AC] syncAffiliate failed (non-fatal):", err);
+  }
+}
+
+/**
+ * Called when a member explicitly changes their marketing preference.
+ * This keeps ActiveCampaign's list status aligned with the product's
+ * `member.email_unsubscribed` flag.
+ */
+export async function syncMarketingPreference(params: {
+  email: string;
+  subscribe: boolean;
+}): Promise<void> {
+  if (!acIsConfigured()) return;
+
+  try {
+    const contactId = await syncContact({ email: params.email });
+
+    if (params.subscribe) {
+      await subscribeToList(contactId);
+    } else {
+      await unsubscribeFromList(contactId);
+    }
+
+    console.log(
+      `[AC] Marketing preference updated — ${params.email}: ${params.subscribe ? "subscribed" : "unsubscribed"}`
+    );
+  } catch (err) {
+    console.error("[AC] syncMarketingPreference failed (non-fatal):", err);
   }
 }

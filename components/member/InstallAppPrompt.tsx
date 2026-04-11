@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
 type InstallPlatform = "ios" | "android" | null;
 
@@ -9,7 +10,21 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 };
 
-const DISMISS_KEY = "positives:install-prompt-dismissed";
+const DISMISS_KEY = "positives:install-prompt-dismissed-at";
+const DISMISS_COOLDOWN_MS = 1000 * 60 * 60 * 24 * 14;
+const HIGH_INTENT_ROUTES = new Set(["/today", "/practice"]);
+
+function wasDismissedRecently() {
+  if (typeof window === "undefined") return false;
+
+  const raw = window.localStorage.getItem(DISMISS_KEY);
+  if (!raw) return false;
+
+  const dismissedAt = Number(raw);
+  if (!Number.isFinite(dismissedAt)) return false;
+
+  return Date.now() - dismissedAt < DISMISS_COOLDOWN_MS;
+}
 
 function isStandaloneMode() {
   if (typeof window === "undefined") return false;
@@ -34,6 +49,7 @@ function detectInstallPlatform(): InstallPlatform {
 }
 
 export function InstallAppPrompt() {
+  const pathname = usePathname();
   const [platform, setPlatform] = useState<InstallPlatform>(() => {
     if (typeof window === "undefined" || isStandaloneMode()) {
       return null;
@@ -47,7 +63,7 @@ export function InstallAppPrompt() {
       return true;
     }
 
-    if (window.localStorage.getItem(DISMISS_KEY) === "1") {
+    if (wasDismissedRecently()) {
       return true;
     }
 
@@ -60,7 +76,7 @@ export function InstallAppPrompt() {
       return;
     }
 
-    if (window.localStorage.getItem(DISMISS_KEY) === "1") {
+    if (wasDismissedRecently()) {
       return;
     }
 
@@ -87,7 +103,9 @@ export function InstallAppPrompt() {
     };
   }, []);
 
-  if (dismissed || !platform || isStandaloneMode()) {
+  const shouldRenderOnRoute = pathname ? HIGH_INTENT_ROUTES.has(pathname) : false;
+
+  if (dismissed || !platform || isStandaloneMode() || !shouldRenderOnRoute) {
     return null;
   }
 
@@ -108,12 +126,12 @@ export function InstallAppPrompt() {
       return;
     }
 
-    window.localStorage.setItem(DISMISS_KEY, "1");
+    window.localStorage.setItem(DISMISS_KEY, String(Date.now()));
     setDismissed(true);
   }
 
   function handleDismiss() {
-    window.localStorage.setItem(DISMISS_KEY, "1");
+    window.localStorage.setItem(DISMISS_KEY, String(Date.now()));
     setDismissed(true);
   }
 

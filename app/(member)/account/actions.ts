@@ -1,6 +1,7 @@
 "use server";
 
 import { formatSupabaseAuthError } from "@/lib/auth/client-error";
+import { syncMarketingPreference } from "@/lib/activecampaign/sync";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -144,6 +145,39 @@ export async function updateTimezone(
     console.error("[Account] timezone update error:", error.message);
     return { error: "Could not save timezone." };
   }
+
+  revalidatePath("/account");
+  return { success: true };
+}
+
+export async function updateMarketingPreference(
+  _prev: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  const subscribe = formData.get("subscribe") === "true";
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "You must be signed in to update email preferences." };
+  }
+
+  const { data: member, error: memberError } = await supabase
+    .from("member")
+    .update({ email_unsubscribed: !subscribe })
+    .eq("id", user.id)
+    .select("email")
+    .single();
+
+  if (memberError || !member?.email) {
+    console.error("[Account] marketing preference update error:", memberError?.message);
+    return { error: "Could not update your email preference right now." };
+  }
+
+  await syncMarketingPreference({ email: member.email, subscribe });
 
   revalidatePath("/account");
   return { success: true };

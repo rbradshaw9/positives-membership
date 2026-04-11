@@ -55,8 +55,9 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization API)
      * - favicon.ico, sitemap.xml, robots.txt, manifest.webmanifest, sw.js
+     * - Sentry tunnel route
      * - public directory assets
      */
-    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|manifest.webmanifest|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!monitoring|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|manifest.webmanifest|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

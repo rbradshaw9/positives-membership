@@ -62,18 +62,30 @@ export async function GET(req: NextRequest) {
   const memberIds = [...new Set((pending as PendingRow[]).map((r) => r.member_id))];
   const { data: members } = await supabase
     .from("member")
-    .select("id, name")
+    .select("id, name, email_unsubscribed")
     .in("id", memberIds);
 
   const firstNameMap = new Map<string, string>();
-  (members ?? []).forEach((m: { id: string; name: string | null }) => {
+  const unsubscribedMemberIds = new Set<string>();
+  (members ?? []).forEach((m: { id: string; name: string | null; email_unsubscribed?: boolean | null }) => {
     if (m.name) firstNameMap.set(m.id, m.name.split(" ")[0]);
+    if (m.email_unsubscribed) unsubscribedMemberIds.add(m.id);
   });
 
   let sent = 0;
   let failed = 0;
 
   for (const row of pending as PendingRow[]) {
+    if (unsubscribedMemberIds.has(row.member_id)) {
+      await supabase
+        .from("winback_sequence")
+        .update({ sent_at: new Date().toISOString() })
+        .eq("id", row.id);
+
+      console.log(`[Cron/Winback] Skipped day-${row.day} email for ${row.email} — member opted out of marketing`);
+      continue;
+    }
+
     const firstName = firstNameMap.get(row.member_id) ?? row.email.split("@")[0];
     const data = {
       firstName,

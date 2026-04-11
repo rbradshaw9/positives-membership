@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
 import { PublicSiteFooter } from "@/components/marketing/PublicSiteFooter";
 import { PublicSiteHeader } from "@/components/marketing/PublicSiteHeader";
+import { PublicTrackedLink } from "@/components/marketing/PublicTrackedLink";
 import type { PublicSessionState } from "@/lib/marketing/public-session";
 import { submitSupportForm, type SupportFormState } from "./actions";
 import { track } from "@/lib/analytics/ga";
@@ -132,9 +132,9 @@ export default function SupportPage({
           </div>
           <p className="mt-5 text-sm" style={{ color: "#9AA0A8" }}>
             Have a different question?{" "}
-            <Link href="/faq" style={{ color: "#2F6FED", textDecoration: "underline" }}>
+            <PublicTrackedLink href="/faq" style={{ color: "#2F6FED", textDecoration: "underline" }}>
               Browse the full FAQ →
-            </Link>
+            </PublicTrackedLink>
           </p>
         </div>
       </section>
@@ -168,20 +168,20 @@ export default function SupportPage({
                 <div>
                   <p className="font-medium mb-3" style={{ fontSize: "0.9rem", color: "#121417" }}>More resources</p>
                   <div className="space-y-2">
-                    <Link
+                    <PublicTrackedLink
                       href="/faq"
                       className="block text-sm transition-colors hover:opacity-80"
                       style={{ color: "#2F6FED" }}
                     >
                       Browse the FAQ →
-                    </Link>
-                    <Link
+                    </PublicTrackedLink>
+                    <PublicTrackedLink
                       href="/about"
                       className="block text-sm transition-colors hover:opacity-80"
                       style={{ color: "#2F6FED" }}
                     >
                       About Dr. Paul →
-                    </Link>
+                    </PublicTrackedLink>
                   </div>
                 </div>
               </div>

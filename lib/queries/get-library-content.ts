@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { shouldHideFromMembers } from "@/lib/content/member-content-visibility";
 import type { Tables } from "@/types/supabase";
 
 /**
@@ -29,6 +30,7 @@ export type LibraryItem = Pick<
   | "week_start"
   | "month_year"
   | "duration_seconds"
+  | "tags"
 >;
 
 export type ContentTypeFilter =
@@ -49,7 +51,7 @@ export async function getLibraryContent(
   let query = supabase
     .from("content")
     .select(
-      "id, type, title, excerpt, description, download_url, resource_links, vimeo_video_id, youtube_video_id, castos_episode_url, s3_audio_key, publish_date, week_start, month_year, duration_seconds"
+      "id, type, title, excerpt, description, download_url, resource_links, vimeo_video_id, youtube_video_id, castos_episode_url, s3_audio_key, publish_date, week_start, month_year, duration_seconds, tags"
     )
     .eq("status", "published")
     .order("created_at", { ascending: false })
@@ -83,7 +85,7 @@ export async function getLibraryContent(
     return [];
   }
 
-  return data ?? [];
+  return (data ?? []).filter((item) => !shouldHideFromMembers(item));
 }
 
 /**

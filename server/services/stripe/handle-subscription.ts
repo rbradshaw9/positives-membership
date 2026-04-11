@@ -126,7 +126,7 @@ async function updateMemberSubscription(
   // First verify the member row exists — a zero-row update is otherwise silent.
   const { data: existing, error: lookupError } = await supabase
     .from("member")
-    .select("id, email, subscription_tier, subscription_status, referred_by_fpr")
+    .select("id, email, subscription_tier, subscription_status, referred_by_fpr, email_unsubscribed")
     .eq("stripe_customer_id", customerId)
     .maybeSingle();
 

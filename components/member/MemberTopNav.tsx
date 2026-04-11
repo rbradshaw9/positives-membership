@@ -12,7 +12,7 @@ const BASE_NAV_ITEMS = [
   { href: "/library", label: "Library" },
   { href: "/practice", label: "My Practice", mobileLabel: "Practice" },
 ] as const;
-const COMMUNITY_NAV_ITEM = { href: "/community", label: "Community", mobileLabel: "Q&A" } as const;
+const COMMUNITY_NAV_ITEM = { href: "/community", label: "Q&A", mobileLabel: "Q&A" } as const;
 const EVENTS_NAV_ITEM = { href: "/events", label: "Events", mobileLabel: "Events" } as const;
 type NavItem = { href: string; label: string; mobileLabel?: string };
 

@@ -24,6 +24,7 @@ export default async function MemberLayout({
   const member = await requireActiveMember();
 
   const showPasswordNudge = member.password_set === false;
+  const marketingOptedOut = member.email_unsubscribed === true;
 
   const supabase = await createClient();
   const { data: streakRow } = await supabase
@@ -45,6 +46,7 @@ export default async function MemberLayout({
       memberName={member.name}
       communityPreviewEnabled={config.app.communityPreviewEnabled}
       needsPasswordSetup={showPasswordNudge}
+      marketingOptedOut={marketingOptedOut}
     >
       <ServiceWorkerRegistration />
       {showPasswordNudge && <PasswordNudgeBanner />}
