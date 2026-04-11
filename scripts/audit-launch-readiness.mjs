@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { createClient } from "@supabase/supabase-js";
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 
@@ -30,13 +30,81 @@ function loadEnv(path) {
 
 loadEnv(envPath);
 
+const args = new Set(process.argv.slice(2));
+const partialMode = args.has("--partial") || args.has("--offline");
+
+const REQUIRED_FILES = [
+  "proxy.ts",
+  "app/layout.tsx",
+  "app/(marketing)/page.tsx",
+  "app/join/page.tsx",
+  "app/watch/page.tsx",
+  "app/try/page.tsx",
+  "app/(member)/today/page.tsx",
+  "app/(member)/account/page.tsx",
+  "app/api/webhooks/stripe/route.ts",
+  "app/api/stripe/billing-portal/route.ts",
+  "app/manifest.ts",
+  "app/robots.ts",
+  "app/sitemap.ts",
+];
+
+const RECOMMENDED_SCRIPTS = [
+  "build",
+  "lint",
+  "test:e2e",
+  "audit:launch",
+];
+
+function runStaticChecks() {
+  const packageJsonPath = resolve(__dirname, "../package.json");
+  const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
+  const scripts = packageJson.scripts ?? {};
+
+  const missingFiles = REQUIRED_FILES.filter((path) => !existsSync(resolve(__dirname, "..", path)));
+  const missingScripts = RECOMMENDED_SCRIPTS.filter((name) => !(name in scripts));
+
+  console.log("\n[launch-audit] Static readiness checks\n");
+  console.log(`Critical files present: ${REQUIRED_FILES.length - missingFiles.length}/${REQUIRED_FILES.length}`);
+  console.log(`Recommended scripts present: ${RECOMMENDED_SCRIPTS.length - missingScripts.length}/${RECOMMENDED_SCRIPTS.length}`);
+
+  if (missingFiles.length > 0) {
+    console.log("\n[missing critical files]");
+    for (const file of missingFiles) {
+      console.log(`- ${file}`);
+    }
+  }
+
+  if (missingScripts.length > 0) {
+    console.log("\n[missing recommended scripts]");
+    for (const script of missingScripts) {
+      console.log(`- ${script}`);
+    }
+  }
+
+  return {
+    hasBlockers: missingFiles.length > 0,
+  };
+}
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !serviceKey) {
+  const staticResult = runStaticChecks();
+
+  if (partialMode) {
+    console.log("");
+    console.warn(
+      "[launch-audit] Partial mode: skipping database-backed checks because Supabase env vars are unavailable."
+    );
+    process.exit(staticResult.hasBlockers ? 1 : 0);
+  }
+
   console.error(
     "[audit] Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.\n" +
-      "        Make sure .env.local exists and contains these values."
+      "        Make sure .env.local exists and contains these values,\n" +
+      "        or run `npm run audit:launch -- --partial` for static-only checks."
   );
   process.exit(1);
 }
@@ -80,6 +148,16 @@ function isAuditFixtureRow(row) {
 }
 
 async function main() {
+  const staticResult = runStaticChecks();
+
+  if (partialMode) {
+    console.log("");
+    console.warn(
+      "[launch-audit] Partial mode: skipping database-backed checks by request."
+    );
+    process.exit(staticResult.hasBlockers ? 1 : 0);
+  }
+
   const today = startOfUtcDay(new Date());
   const windowStart = formatDateOnly(today);
   const windowEnd = formatDateOnly(addDays(today, 55));
@@ -221,6 +299,7 @@ async function main() {
   }
 
   const hasBlockers =
+    staticResult.hasBlockers ||
     audioBlockers.length > 0 ||
     missingAudioRows.length > 0 ||
     missingDailyDates.length > 0 ||
