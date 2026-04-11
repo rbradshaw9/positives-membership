@@ -1,23 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
-import { Montserrat, Poppins } from "next/font/google";
 import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
+import { montserrat, poppins } from "@/app/fonts";
 import { config } from "@/lib/config";
 import "./globals.css";
-
-const montserrat = Montserrat({
-  subsets: ["latin"],
-  variable: "--font-montserrat",
-  display: "swap",
-});
-
-const poppins = Poppins({
-  subsets: ["latin"],
-  variable: "--font-poppins",
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-  preload: false,
-});
 
 export const metadata: Metadata = {
   title: "Positives — A Daily Practice for Calm, Clarity & Resilience",

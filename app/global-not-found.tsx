@@ -1,20 +1,7 @@
 import type { Metadata } from "next";
-import { Montserrat, Poppins } from "next/font/google";
+import { montserrat, poppins } from "@/app/fonts";
 import { NotFoundExperience } from "@/components/marketing/NotFoundExperience";
 import "./globals.css";
-
-const montserrat = Montserrat({
-  subsets: ["latin"],
-  variable: "--font-montserrat",
-  display: "swap",
-});
-
-const poppins = Poppins({
-  subsets: ["latin"],
-  variable: "--font-poppins",
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "404 — Page Not Found | Positives",
