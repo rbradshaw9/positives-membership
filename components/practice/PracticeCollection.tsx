@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Button } from "@/components/ui/Button";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { TypeBadge } from "@/components/member/TypeBadge";
 
@@ -96,11 +97,20 @@ export function PracticeCollection({
           ))}
         </div>
       ) : (
-        <SurfaceCard elevated className="text-center">
+        <SurfaceCard elevated className="surface-card--editorial text-center">
           <p className="font-medium text-foreground">Nothing here yet</p>
           <p className="mt-2 text-sm leading-body text-muted-foreground">
-            New published practices in this rhythm will appear here automatically.
+            New published practices in this rhythm will appear here automatically. Until then,
+            Home and the full library are still the best places to keep moving.
           </p>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+            <Button href="/today" size="sm">
+              Go to Home
+            </Button>
+            <Button href="/library" variant="secondary" size="sm">
+              Open library
+            </Button>
+          </div>
         </SurfaceCard>
       )}
     </section>

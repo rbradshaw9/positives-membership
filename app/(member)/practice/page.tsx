@@ -147,6 +147,8 @@ export default async function PracticePage({
   const enrichedWeekly = buildItems(weeklyItems.slice(0, 4), noteContentIds);
   const enrichedMonthly = buildItems(monthlyItems.slice(0, 4), noteContentIds);
   const coachingAccess = checkTierAccess(member.subscription_tier, "level_3");
+  const hasHeatmapActivity = summary.heatmap.some((cell) => cell.state !== "none");
+  const hasRecentlyCompleted = listeningInsights.recentlyCompleted.length > 0;
 
   return (
     <div>
@@ -186,27 +188,72 @@ export default async function PracticePage({
             </div>
 
             <div className="grid grid-cols-3 gap-3 md:min-w-[360px]">
-              <StatCard label="Streak" value={summary.practiceStreak} />
-              <StatCard label="Listens" value={summary.listenCount} />
-              <StatCard label="Notes" value={summary.journalCount} />
+              <StatCard label="Streak" value={summary.practiceStreak} subtext="days in rhythm" />
+              <StatCard label="Listens" value={summary.listenCount} subtext="completed inside Positives" />
+              <StatCard label="Notes" value={summary.journalCount} subtext="private reflections saved" />
             </div>
           </div>
 
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
             <SurfaceCard elevated className="bg-white/5 text-white shadow-none ring-1 ring-white/8">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/64">
-                Practice History
+                {hasHeatmapActivity ? "Practice History" : "Start Your Rhythm"}
               </p>
-              <h2 className="mt-3 text-xl font-semibold tracking-[-0.03em] text-white">
-                Last 10 weeks
-              </h2>
-              <p className="mt-2 max-w-2xl text-sm leading-body text-white/74">
-                Your activity map is based on completed listening inside Positives, so this view
-                reflects real practice rather than browsing.
-              </p>
-              <div className="mt-5">
-                <PracticeHeatmap values={summary.heatmap} />
-              </div>
+              {hasHeatmapActivity ? (
+                <>
+                  <h2 className="mt-3 text-xl font-semibold tracking-[-0.03em] text-white">
+                    Last 10 weeks
+                  </h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-body text-white/74">
+                    Your activity map is based on completed listening inside Positives, so this view
+                    reflects real practice rather than browsing.
+                  </p>
+                  <div className="mt-5">
+                    <PracticeHeatmap values={summary.heatmap} />
+                  </div>
+                </>
+              ) : (
+                <div className="mt-4 space-y-4">
+                  <p className="max-w-2xl text-sm leading-body text-white/78">
+                    Once you start listening here, this space will turn into a real rhythm view with
+                    progress, recent completions, and a clearer sense of momentum.
+                  </p>
+
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    {[
+                      {
+                        title: "Start today",
+                        body: "Use Home when you want the clearest next step without deciding what to play.",
+                      },
+                      {
+                        title: "Save a note",
+                        body: "A short reflection is enough to make this space feel more personal right away.",
+                      },
+                      {
+                        title: "Revisit later",
+                        body: "When you come back, My Practice becomes the calmer archive of what is already landing.",
+                      },
+                    ].map((step) => (
+                      <div
+                        key={step.title}
+                        className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4"
+                      >
+                        <p className="text-sm font-semibold text-white">{step.title}</p>
+                        <p className="mt-1 text-sm leading-body text-white/68">{step.body}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex flex-wrap gap-3">
+                    <Button href="/today" size="sm">
+                      Start today&apos;s practice
+                    </Button>
+                    <Button href="/library" variant="secondary" size="sm">
+                      Browse the library
+                    </Button>
+                  </div>
+                </div>
+              )}
             </SurfaceCard>
 
             <SurfaceCard elevated className="bg-white/5 text-white shadow-none ring-1 ring-white/8">
@@ -281,9 +328,9 @@ export default async function PracticePage({
           />
         )}
 
-        {(listeningInsights.recentlyCompleted.length > 0 || suggestedNext) && (
+        {(hasRecentlyCompleted || suggestedNext) && (
           <section className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-            {listeningInsights.recentlyCompleted.length > 0 && (
+            {hasRecentlyCompleted && (
               <article className="surface-card surface-card--editorial p-5 md:p-6">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div>
@@ -343,7 +390,14 @@ export default async function PracticePage({
             )}
 
             {suggestedNext && (
-              <article className="surface-card surface-card--tint surface-card--editorial p-5 md:p-6">
+              <article
+                className={[
+                  "surface-card surface-card--tint surface-card--editorial p-5 md:p-6",
+                  hasRecentlyCompleted ? "" : "lg:col-span-2",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
                 <p className="ui-section-eyebrow mb-2">Next Recommended Practice</p>
                 <h2 className="heading-balance font-heading text-xl font-semibold tracking-[-0.02em] text-foreground">
                   {suggestedNext.title}
