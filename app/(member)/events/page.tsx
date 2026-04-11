@@ -55,6 +55,7 @@ export default async function EventsPage() {
     upcoming.sort(
       (a, b) => new Date(a.starts_at!).getTime() - new Date(b.starts_at!).getTime()
     )[0] ?? null;
+  const hasReplayLibrary = replays.length > 0;
 
   return (
     <div>
@@ -94,18 +95,29 @@ export default async function EventsPage() {
                 </svg>
               }
               title="No live event is scheduled yet"
-              subtitle="Check back soon. New workshops and member sessions will show up here as soon as they are scheduled."
+              subtitle={
+                hasReplayLibrary
+                  ? "Nothing new is on the calendar right now, but you can still revisit past events below while the next live session is being scheduled."
+                  : "Nothing new is on the calendar right now. New workshops and member sessions will show up here as soon as they are scheduled."
+              }
               action={
-                <Button href="/community" variant="secondary">
-                  Open Q&A
-                </Button>
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                  {hasReplayLibrary ? (
+                    <Button href="#event-replays">
+                      Browse replays
+                    </Button>
+                  ) : null}
+                  <Button href="/community" variant="secondary">
+                    Open Q&A
+                  </Button>
+                </div>
               }
             />
           )}
         </section>
 
         {replays.length > 0 ? (
-          <section>
+          <section id="event-replays">
             <h2
               className="mb-4 text-xs font-semibold uppercase tracking-widest"
               style={{ color: "var(--color-muted-fg)" }}

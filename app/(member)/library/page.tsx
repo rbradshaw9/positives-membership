@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { getAccessibleCourses } from "@/lib/queries/get-courses";
 import { getMonthlyArchive } from "@/lib/queries/get-monthly-archive";
+import { EmptyState } from "@/components/member/EmptyState";
 import { CourseCard } from "@/components/courses/CourseCard";
 import { MonthCard } from "@/components/library/MonthCard";
 import { hasActiveMemberAccess } from "@/lib/subscription/access";
@@ -80,14 +81,8 @@ export default async function LibraryPage() {
               ))}
             </div>
           ) : (
-            <div
-              className="flex flex-col items-center justify-center py-14 rounded-2xl border border-dashed text-center"
-              style={{ borderColor: "var(--color-border)" }}
-            >
-              <div
-                className="w-12 h-12 rounded-full flex items-center justify-center mb-4"
-                style={{ background: "color-mix(in srgb, var(--color-primary) 10%, transparent)" }}
-              >
+            <EmptyState
+              icon={
                 <svg
                   width="24" height="24" viewBox="0 0 24 24"
                   fill="none" stroke="currentColor" strokeWidth="1.5"
@@ -98,12 +93,10 @@ export default async function LibraryPage() {
                   <path d="M2 17l10 5 10-5" />
                   <path d="M2 12l10 5 10-5" />
                 </svg>
-              </div>
-              <p className="font-semibold text-foreground mb-1">No courses yet</p>
-              <p className="text-sm text-muted-foreground max-w-xs">
-                Courses included with your membership will appear here as they&apos;re published.
-              </p>
-            </div>
+              }
+              title="No courses yet"
+              subtitle="Courses included with your membership will appear here as they are published."
+            />
           )}
         </section>
 
@@ -128,13 +121,23 @@ export default async function LibraryPage() {
               ))}
             </div>
           ) : (
-            <div
-              className="flex flex-col items-center justify-center py-14 rounded-2xl border border-dashed text-center"
-              style={{ borderColor: "var(--color-border)" }}
-            >
-              <p className="font-semibold text-foreground mb-1">No archive yet</p>
-              <p className="text-sm text-muted-foreground">Past monthly content will appear here as it&apos;s published.</p>
-            </div>
+            <EmptyState
+              icon={
+                <svg
+                  width="24" height="24" viewBox="0 0 24 24"
+                  fill="none" stroke="currentColor" strokeWidth="1.5"
+                  style={{ color: "var(--color-primary)" }}
+                  aria-hidden="true"
+                >
+                  <path d="M3 6h18" />
+                  <path d="M8 6V4h8v2" />
+                  <rect x="4" y="6" width="16" height="14" rx="2" />
+                </svg>
+              }
+              title="No archive yet"
+              subtitle="Past monthly content will appear here once a full month has been completed and archived."
+              action={<a href="/today" className="btn-primary inline-flex items-center">Go to Today</a>}
+            />
           )}
         </section>
       </div>

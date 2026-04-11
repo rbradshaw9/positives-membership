@@ -10,6 +10,7 @@ import { config } from "@/lib/config";
 import { CommunityThreadHero } from "@/components/community/CommunityThreadHero";
 import { CommunityComposerCard } from "@/components/community/CommunityComposerCard";
 import { CommunityPostCard } from "@/components/community/CommunityPostCard";
+import { EmptyState } from "@/components/member/EmptyState";
 import { PageHeader } from "@/components/member/PageHeader";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { Button } from "@/components/ui/Button";
@@ -76,15 +77,26 @@ export default async function CommunityPage() {
           hero
         />
         <div className="member-container py-10">
-          <SurfaceCard padding="lg" className="surface-card--editorial text-center max-w-xl mx-auto">
-            <h2 className="heading-balance font-heading text-xl font-semibold tracking-[-0.02em] text-foreground">
-              No active thread yet
-            </h2>
-            <p className="mt-3 text-sm leading-[1.75] text-muted-foreground">
-              A new discussion thread opens each week when the weekly principle
-              is published. Check back soon.
-            </p>
-          </SurfaceCard>
+          <EmptyState
+            icon={
+              <svg
+                width="28"
+                height="28"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+            }
+            title="No active thread yet"
+            subtitle="A new discussion thread opens when the weekly principle is published. Until then, the best place to stay in rhythm is today’s practice."
+            action={<Button href="/today">Go to Today</Button>}
+          />
         </div>
       </div>
     );
@@ -147,12 +159,25 @@ export default async function CommunityPage() {
 
         {/* Feed */}
         {posts.length === 0 ? (
-          <SurfaceCard padding="lg" className="surface-card--editorial text-center">
-            <p className="font-medium text-foreground">No posts yet this week</p>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Be the first to share a reflection or ask a question.
-            </p>
-          </SurfaceCard>
+          <EmptyState
+            icon={
+              <svg
+                width="28"
+                height="28"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+            }
+            title="No posts yet this week"
+            subtitle="Be the first to share a reflection or ask a question. A short note about how the weekly principle landed for you is enough."
+          />
         ) : (
           <div className="flex flex-col gap-4">
             {posts.map((post) => (

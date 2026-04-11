@@ -95,6 +95,7 @@ export default async function MonthDetailPage({ params }: Props) {
 
   const currentMonth = monthName(monthYear);
   const label = practice.label;
+  const themeHasVideo = Boolean(theme?.vimeo_video_id || theme?.youtube_video_id);
   const archiveRange = archiveDailyGroup?.audios.length
     ? formatArchiveRange(
         archiveDailyGroup.audios[archiveDailyGroup.audios.length - 1]?.publish_date ?? monthYear,
@@ -170,7 +171,7 @@ export default async function MonthDetailPage({ params }: Props) {
         {/* ── Zone 1: Monthly theme + archive summary ─────────────────── */}
         {(theme || monthWeekly.length > 0 || daily_count > 0) && (
           <section aria-label="This month and archive summary" className="flex flex-col gap-3">
-            <div className="grid gap-5 lg:grid-cols-2">
+            <div className={["grid gap-5", theme && themeHasVideo ? "lg:grid-cols-2" : ""].filter(Boolean).join(" ")}>
               {theme && (
                 <div className="flex flex-col gap-2">
                   <span
