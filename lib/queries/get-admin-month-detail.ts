@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { hasPlaceholderSignals } from "@/lib/content/member-content-visibility";
 
 /**
  * lib/queries/get-admin-month-detail.ts
@@ -98,11 +99,11 @@ export async function getAdminMonthDetail(
   // 2. Fetch all child content
   const { data: contentRows } = await supabase
     .from("content")
-    .select("id, title, status, type, publish_date, week_start, excerpt")
+    .select("id, title, status, type, publish_date, week_start, excerpt, description, tags")
     .eq("monthly_practice_id", monthId)
     .order("publish_date", { ascending: true });
 
-  const content = contentRows ?? [];
+  const content = (contentRows ?? []).filter((row) => !hasPlaceholderSignals(row));
   const contentIds = content.map((c) => c.id);
 
   // 3. Per-item activity stats (listen + view events)
@@ -231,7 +232,7 @@ export async function getUnassignedDailyAudios(): Promise<
 
   const { data, error } = await supabase
     .from("content")
-    .select("id, title, created_at")
+    .select("id, title, created_at, excerpt, description, tags")
     .eq("type", "daily_audio")
     .is("monthly_practice_id", null)
     .order("created_at", { ascending: false })
@@ -242,5 +243,7 @@ export async function getUnassignedDailyAudios(): Promise<
     return [];
   }
 
-  return data ?? [];
+  return (data ?? [])
+    .filter((row) => !hasPlaceholderSignals(row))
+    .map(({ id, title, created_at }) => ({ id, title, created_at }));
 }

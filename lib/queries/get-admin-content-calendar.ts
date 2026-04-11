@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { hasPlaceholderSignals } from "@/lib/content/member-content-visibility";
 import { getEffectiveDate } from "@/lib/dates/effective-date";
 import {
   addDays,
@@ -142,7 +143,9 @@ export async function getAdminContentCalendar(
     console.error("[getAdminContentCalendar] Supabase query error:", error.message);
   }
 
-  const rows = ((data ?? []) as CalendarContentRow[]).sort(comparePriority);
+  const rows = ((data ?? []) as CalendarContentRow[])
+    .filter((row) => !hasPlaceholderSignals(row))
+    .sort(comparePriority);
 
   const dailyByDate = new Map<string, CalendarContentRow[]>();
   const weeklyByStart = new Map<string, CalendarContentRow[]>();

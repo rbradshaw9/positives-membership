@@ -16,9 +16,21 @@ const PLACEHOLDER_PATTERNS = [
   /^e2e\b/i,
 ] as const;
 
-function matchesPlaceholderText(value: string | null | undefined) {
+export function matchesPlaceholderText(value: string | null | undefined) {
   if (!value) return false;
   return PLACEHOLDER_PATTERNS.some((pattern) => pattern.test(value));
+}
+
+export function hasPlaceholderSignals(candidate: Pick<
+  VisibilityCandidate,
+  "title" | "excerpt" | "description" | "tags"
+>) {
+  return (
+    matchesPlaceholderText(candidate.title) ||
+    matchesPlaceholderText(candidate.excerpt) ||
+    matchesPlaceholderText(candidate.description) ||
+    (candidate.tags ?? []).some((tag) => matchesPlaceholderText(tag))
+  );
 }
 
 function isFutureDay(value: string | null | undefined, effectiveDate: string) {
@@ -34,15 +46,7 @@ function isFutureMonth(value: string | null | undefined, effectiveMonthYear: str
 }
 
 export function shouldHideFromMembers(candidate: VisibilityCandidate) {
-  if (
-    matchesPlaceholderText(candidate.title) ||
-    matchesPlaceholderText(candidate.excerpt) ||
-    matchesPlaceholderText(candidate.description)
-  ) {
-    return true;
-  }
-
-  if ((candidate.tags ?? []).some((tag) => matchesPlaceholderText(tag))) {
+  if (hasPlaceholderSignals(candidate)) {
     return true;
   }
 
