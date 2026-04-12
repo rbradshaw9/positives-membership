@@ -15,7 +15,7 @@ export default function SupportPage({
 }: {
   session: Pick<
     PublicSessionState,
-    "hasMemberAccess" | "paidHref" | "paidShortLabel" | "signInHref" | "signInLabel" | "watchHref"
+    "paidHref" | "paidShortLabel" | "signInHref" | "signInLabel"
   >;
 }) {
   const [state, formAction, isPending] = useActionState(submitSupportForm, initial);
@@ -360,7 +360,7 @@ export default function SupportPage({
         </div>
       </section>
 
-      <PublicSiteFooter paidHref={session.paidHref} watchHref={session.watchHref} session={session} />
+      <PublicSiteFooter paidHref={session.paidHref} session={session} />
     </div>
   );
 }

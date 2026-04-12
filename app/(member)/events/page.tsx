@@ -65,8 +65,8 @@ export default async function EventsPage() {
         hero
       />
 
-      <div className="member-container py-8 md:py-10">
-        <section className={hasReplayLibrary ? "mb-6" : "mb-10"}>
+      <div className="member-container py-6 md:py-8">
+        <section className={hasReplayLibrary ? "mb-6" : "mb-4"}>
           {nextEvent ? (
             <UpcomingEventCard
               title={nextEvent.title}

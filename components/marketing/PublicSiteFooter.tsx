@@ -4,16 +4,14 @@ import type { PublicSessionState } from "@/lib/marketing/public-session";
 
 interface PublicSiteFooterProps {
   paidHref: string;
-  watchHref: string;
   session: Pick<
     PublicSessionState,
-    "hasMemberAccess" | "paidShortLabel" | "signInHref" | "signInLabel"
+    "paidShortLabel" | "signInHref" | "signInLabel"
   >;
 }
 
 export function PublicSiteFooter({
   paidHref,
-  watchHref,
   session,
 }: PublicSiteFooterProps) {
   return (
@@ -51,13 +49,6 @@ export function PublicSiteFooter({
                   style={{ color: "#4F5760", lineHeight: "1.65" }}
                 >
                   {session.paidShortLabel}
-                </PublicTrackedLink>
-                <PublicTrackedLink
-                  href={watchHref}
-                  className="block py-0.5 text-[0.95rem]"
-                  style={{ color: "#4F5760", lineHeight: "1.65" }}
-                >
-                  {session.hasMemberAccess ? "Today" : "Watch Dr. Paul"}
                 </PublicTrackedLink>
                 <PublicTrackedLink
                   href="/#how-it-works"

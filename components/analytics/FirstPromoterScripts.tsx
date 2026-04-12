@@ -11,13 +11,9 @@ function shouldLoadFirstPromoter(pathname: string | null) {
   return (
     pathname === "/" ||
     pathname === "/join" ||
-    pathname === "/about" ||
-    pathname === "/faq" ||
-    pathname === "/support" ||
-    pathname === "/privacy" ||
-    pathname === "/terms" ||
-    pathname === "/affiliate-program" ||
-    pathname === "/contact" ||
+    pathname === "/try" ||
+    pathname === "/watch" ||
+    pathname.startsWith("/with/") ||
     pathname === "/subscribe/success"
   );
 }

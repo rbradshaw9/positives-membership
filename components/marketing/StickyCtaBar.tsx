@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
+import { PublicTrackedLink } from "@/components/marketing/PublicTrackedLink";
 
 /**
  * components/marketing/StickyCtaBar.tsx
@@ -12,17 +12,17 @@ import { useEffect, useState } from "react";
  */
 
 interface StickyCtaBarProps {
-  /** Ref to the sentinel element at the bottom of the hero section */
-  sentinelRef: React.RefObject<HTMLDivElement | null>;
+  /** Element id of the sentinel at the bottom of the hero section */
+  sentinelId: string;
   href: string;
   label: string;
 }
 
-export function StickyCtaBar({ sentinelRef, href, label }: StickyCtaBarProps) {
+export function StickyCtaBar({ sentinelId, href, label }: StickyCtaBarProps) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const el = sentinelRef.current;
+    const el = document.getElementById(sentinelId);
     if (!el) return;
 
     const observer = new IntersectionObserver(
@@ -31,7 +31,7 @@ export function StickyCtaBar({ sentinelRef, href, label }: StickyCtaBarProps) {
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [sentinelRef]);
+  }, [sentinelId]);
 
   if (!visible) return null;
 
@@ -54,7 +54,7 @@ export function StickyCtaBar({ sentinelRef, href, label }: StickyCtaBarProps) {
         }
       `}</style>
       <div className="flex flex-col gap-2 px-4 py-3">
-        <Link
+        <PublicTrackedLink
           href={href}
           className="flex items-center justify-center font-semibold rounded-full text-sm"
           style={{
@@ -66,7 +66,7 @@ export function StickyCtaBar({ sentinelRef, href, label }: StickyCtaBarProps) {
           }}
         >
           {label}
-        </Link>
+        </PublicTrackedLink>
         <p
           className="text-center text-[11px] font-medium"
           style={{ color: "rgba(255,255,255,0.72)", lineHeight: "1.35" }}

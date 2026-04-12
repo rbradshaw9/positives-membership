@@ -270,7 +270,7 @@ export default async function JoinPage({
               { label: "Weekly mindset principles", sub: "Backed by research" },
               { label: "Monthly theme from Dr. Paul", sub: "Guides the month" },
               { label: "Complete member library", sub: "Every past session" },
-              { label: "Live events & coaching", sub: "At higher membership levels" },
+              { label: "Live events & coaching", sub: "With Membership + Events and Coaching Circle" },
             ].map(({ label, sub }) => (
               <div
                 key={label}
@@ -434,7 +434,6 @@ export default async function JoinPage({
 
       <PublicSiteFooter
         paidHref={publicSession.paidHref}
-        watchHref={publicSession.watchHref}
         session={publicSession}
       />
     </div>

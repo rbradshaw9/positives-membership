@@ -57,26 +57,26 @@ const CARDS = {
   },
   2: {
     title: "Membership + Events",
-    tagline: "Everything in Membership, plus live interaction and event access.",
-    badge: "Coming Soon",
+    tagline: "Everything in Membership, plus live events and replay access.",
+    badge: "Live now",
     benefits: [
       "Everything in Membership",
-      "Member Q&A and community access",
       "Live member events",
       "Event replays in your Events area",
-      "A simple place to find upcoming sessions",
+      "A simple place to find upcoming sessions and replays",
+      "A stronger weekly rhythm beyond the daily practice",
     ],
   },
   3: {
     title: "Coaching Circle",
-    tagline: "Everything in Membership + Events, plus weekly coaching support.",
-    badge: "Coming Soon",
+    tagline: "Everything in Membership + Events, plus weekly group coaching.",
+    badge: "Live now",
     benefits: [
       "Everything in Membership + Events",
       "Weekly group coaching sessions",
       "Coaching session replays",
-      "Implementation support from certified coaches",
       "A deeper accountability rhythm",
+      "A higher-touch path when you want more support",
     ],
   },
   4: {
@@ -280,7 +280,8 @@ export function PricingCard({ level, billing, priceId }: PricingCardProps) {
   const card = CARDS[level];
   const isLive = !!priceId; // card is live when a real Stripe price ID is configured
   const isHighlighted = level === 1; // Level 1 gets the elevated visual treatment
-  const badgeLabel = level === 1 || !isLive ? card.badge : null;
+  const badgeLabel = isLive || level === 1 ? card.badge : "Coming soon";
+  const emphasizeBadge = isHighlighted || isLive;
 
   const pricingData = PRICING[level as keyof typeof PRICING];
 
@@ -363,8 +364,8 @@ export function PricingCard({ level, billing, priceId }: PricingCardProps) {
             <span
               className="flex-shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full"
               style={{
-                background: isHighlighted ? "rgba(78,140,120,0.12)" : "rgba(18,20,23,0.06)",
-                color: isHighlighted ? "#4E8C78" : "#9AA0A8",
+                background: emphasizeBadge ? "rgba(78,140,120,0.12)" : "rgba(18,20,23,0.06)",
+                color: emphasizeBadge ? "#4E8C78" : "#9AA0A8",
                 letterSpacing: "0.02em",
                 whiteSpace: "nowrap",
               }}

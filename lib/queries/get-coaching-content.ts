@@ -1,4 +1,6 @@
-import { createClient } from "@/lib/supabase/server";
+import { unstable_cache } from "next/cache";
+import { getAdminClient } from "@/lib/supabase/admin";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import { shouldHideFromMembers } from "@/lib/content/member-content-visibility";
 import type { Tables } from "@/types/supabase";
 
@@ -27,8 +29,8 @@ export type CoachingItem = Pick<
   | "tags"
 >;
 
-export async function getCoachingContent(limit = 20): Promise<CoachingItem[]> {
-  const supabase = await createClient();
+async function fetchCoachingContent(limit: number): Promise<CoachingItem[]> {
+  const supabase = getAdminClient();
 
   const { data, error } = await supabase
     .from("content")
@@ -61,4 +63,11 @@ export async function getCoachingContent(limit = 20): Promise<CoachingItem[]> {
 
     return hasReplayMedia;
   });
+}
+
+export async function getCoachingContent(limit = 20): Promise<CoachingItem[]> {
+  return unstable_cache(() => fetchCoachingContent(limit), ["coaching-content", String(limit)], {
+    tags: [CACHE_TAGS.coachingContent],
+    revalidate: 60 * 10,
+  })();
 }

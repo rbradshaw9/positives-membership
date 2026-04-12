@@ -356,7 +356,7 @@ export default async function TryPage({
         </section>
       </main>
 
-      <PublicSiteFooter paidHref={paidHref} watchHref={session.watchHref} session={session} />
+      <PublicSiteFooter paidHref={paidHref} session={session} />
     </div>
   );
 }

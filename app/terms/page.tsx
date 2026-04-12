@@ -60,7 +60,7 @@ export default function TermsPage() {
                 The Service
               </h2>
               <p>
-                Positives is a membership-based daily practice platform created by Dr. Paul Jenkins. It provides members with access to daily guided audio sessions, weekly reflections, monthly themes, and additional live events or coaching features at higher membership levels. Content is made available for personal, non-commercial use only.
+                Positives is a membership-based daily practice platform created by Dr. Paul Jenkins. It provides members with access to daily guided audio sessions, weekly reflections, monthly themes, and additional live events or coaching features depending on the membership level selected. Content is made available for personal, non-commercial use only.
               </p>
             </section>
 
@@ -154,7 +154,7 @@ export default function TermsPage() {
         </div>
       </main>
 
-      <PublicSiteFooter paidHref={session.paidHref} watchHref={session.watchHref} session={session} />
+      <PublicSiteFooter paidHref={session.paidHref} session={session} />
     </div>
   );
 }

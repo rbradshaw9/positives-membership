@@ -1,4 +1,6 @@
-import { createClient } from "@/lib/supabase/server";
+import { unstable_cache } from "next/cache";
+import { getAdminClient } from "@/lib/supabase/admin";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import { shouldHideFromMembers } from "@/lib/content/member-content-visibility";
 import type { Tables } from "@/types/supabase";
 
@@ -18,8 +20,8 @@ export type EventItem = Pick<
   | "tags"
 >;
 
-export async function getEventContent(limit = 20): Promise<EventItem[]> {
-  const supabase = await createClient();
+async function fetchEventContent(limit: number): Promise<EventItem[]> {
+  const supabase = getAdminClient();
 
   const { data, error } = await supabase
     .from("content")
@@ -52,4 +54,11 @@ export async function getEventContent(limit = 20): Promise<EventItem[]> {
 
     return hasReplayMedia;
   });
+}
+
+export async function getEventContent(limit = 20): Promise<EventItem[]> {
+  return unstable_cache(() => fetchEventContent(limit), ["event-content", String(limit)], {
+    tags: [CACHE_TAGS.coachingContent],
+    revalidate: 60 * 10,
+  })();
 }

@@ -47,7 +47,7 @@ const FAQS = [
   },
   {
     q: "What do the other pricing tiers include?",
-    a: "Membership is the foundation. Membership + Events adds Q&A/community access, live member events, and event replays as they are published. Coaching Circle adds weekly group coaching and replay access. Executive Coaching is the highest-touch option and begins with a Breakthrough Session.",
+    a: "Membership is the foundation. Membership + Events adds live member events plus replay access as those sessions are published. Coaching Circle adds weekly group coaching and replay access. Executive Coaching is the highest-touch option and begins with a Breakthrough Session.",
   },
 ];
 
@@ -114,7 +114,7 @@ export default function FaqPage({
 }: {
   session: Pick<
     PublicSessionState,
-    "hasMemberAccess" | "paidHref" | "paidShortLabel" | "signInHref" | "signInLabel" | "watchHref"
+    "paidHref" | "paidShortLabel" | "signInHref" | "signInLabel"
   >;
 }) {
   return (
@@ -236,7 +236,7 @@ export default function FaqPage({
         </div>
       </section>
 
-      <PublicSiteFooter paidHref={session.paidHref} watchHref={session.watchHref} session={session} />
+      <PublicSiteFooter paidHref={session.paidHref} session={session} />
     </div>
   );
 }

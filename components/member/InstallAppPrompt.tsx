@@ -12,7 +12,7 @@ type BeforeInstallPromptEvent = Event & {
 
 const DISMISS_KEY = "positives:install-prompt-dismissed-at";
 const DISMISS_COOLDOWN_MS = 1000 * 60 * 60 * 24 * 14;
-const HIGH_INTENT_ROUTES = new Set(["/today", "/practice", "/account"]);
+const HIGH_INTENT_ROUTES = new Set(["/today", "/practice", "/account", "/library", "/events", "/coaching"]);
 
 function wasDismissedRecently() {
   if (typeof window === "undefined") return false;
@@ -103,7 +103,9 @@ export function InstallAppPrompt() {
     };
   }, []);
 
-  const shouldRenderOnRoute = pathname ? HIGH_INTENT_ROUTES.has(pathname) : false;
+  const shouldRenderOnRoute = pathname
+    ? [...HIGH_INTENT_ROUTES].some((route) => pathname === route || pathname.startsWith(route + "/"))
+    : false;
 
   if (dismissed || !platform || isStandaloneMode() || !shouldRenderOnRoute) {
     return null;

@@ -231,7 +231,7 @@ export default function AffiliateProgramPage() {
         </div>
       </main>
 
-      <PublicSiteFooter paidHref={session.paidHref} watchHref={session.watchHref} session={session} />
+      <PublicSiteFooter paidHref={session.paidHref} session={session} />
     </div>
   );
 }

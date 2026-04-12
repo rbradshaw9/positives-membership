@@ -58,9 +58,9 @@ export default async function CoachingPage() {
         hero
       />
 
-      <div className="member-container py-8 md:py-10">
+      <div className="member-container py-6 md:py-8">
         {/* Upcoming call */}
-        <section className={hasReplayLibrary ? "mb-6" : "mb-10"}>
+        <section className={hasReplayLibrary ? "mb-6" : "mb-4"}>
           {nextCall ? (
             <UpcomingCallCard
               title={nextCall.title}

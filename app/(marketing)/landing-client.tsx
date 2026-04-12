@@ -1,13 +1,11 @@
-"use client";
-
 import Link from "next/link";
 import Image from "next/image";
-import { Suspense, useEffect, useRef, useState } from "react";
 import { PublicSiteFooter } from "@/components/marketing/PublicSiteFooter";
 import { PublicSiteHeader } from "@/components/marketing/PublicSiteHeader";
 import { StickyCtaBar } from "@/components/marketing/StickyCtaBar";
-import { useSearchParams } from "next/navigation";
-import { appendPublicTrackingParamsFromEntries } from "@/lib/marketing/public-query-params";
+import { PublicTrackedLink } from "@/components/marketing/PublicTrackedLink";
+import { LandingAudioPlayer } from "@/components/marketing/LandingAudioPlayer";
+import { LandingFaq } from "@/components/marketing/LandingFaq";
 import type { PublicSessionState } from "@/lib/marketing/public-session";
 
 /* ─── Check Icon ─────────────────────────────────────────────────────────── */
@@ -31,270 +29,19 @@ function CheckIcon({ color = "#4E8C78" }: { color?: string }) {
   );
 }
 
-/* ─── Landing FAQ Accordion ──────────────────────────────────────────────── */
-
-const LANDING_FAQS = [
-  {
-    q: "What exactly is Positives?",
-    a: "Positives is a daily practice membership built by Dr. Paul Jenkins, a licensed Clinical Psychologist with 30+ years of experience. Each day you get a short guided audio session (5–15 minutes) designed to reset your thinking and help you move through your day with more clarity and calm. Alongside that, you get a weekly mindset principle and a monthly theme from Dr. Paul.",
-  },
-  {
-    q: "How long are the daily sessions?",
-    a: "Most daily sessions are 5–15 minutes. They're designed to fit before work, during lunch, or whenever suits your rhythm. You don't need to block off a long window — a few focused minutes is the whole idea.",
-  },
-  {
-    q: "How is Positives different from a meditation app?",
-    a: "Meditation apps train you to sit still. Positives trains you to think differently — the kind of mindset work that changes how you respond to stress, make decisions, and show up in relationships. Dr. Paul's approach is backed by 30+ years of clinical psychology, not just breathwork.",
-  },
-  {
-    q: "Is this the same as the Live on Purpose podcast?",
-    a: "No — the Live on Purpose Radio podcast is Dr. Paul's free, public show. Positives is a private daily practice created specifically for members. The content goes deeper, is more personal, and is designed to be experienced daily rather than occasionally.",
-  },
-  {
-    q: "What if I miss a day?",
-    a: "Every session is always available in your member library. You can listen at any pace, skip days, or circle back. There's no streak requirement or guilt mechanic — Positives is a practice, not a course with a deadline.",
-  },
-  {
-    q: "Is there a free trial?",
-    a: "Yes. Positives now offers a 7-day free trial through our trial-first offer path, and every paid membership also includes a 30-day money-back guarantee. If the practice doesn't meaningfully improve your days within 30 days of paying, email us and we'll refund you in full — no questions asked.",
-  },
-  {
-    q: "Can I cancel anytime?",
-    a: "Yes. You can manage cancellation from your account settings without contacting support. If you cancel, any paid access stays in place through your current billing period.",
-  },
-  {
-    q: "What devices does this work on?",
-    a: "Positives works in any modern web browser on any device — phone, tablet, desktop. No app download required. A mobile app is on the roadmap.",
-  },
-  {
-    q: "What is the 'Founding Member' rate?",
-    a: "The founding member rate ($37/month or $370/year, down from the standard $97/month) is a special price for early members who join during our launch. Your rate stays locked in permanently — when we raise prices for new members, yours doesn't change.",
-  },
-  {
-    q: "What do the other pricing tiers include?",
-    a: "Membership is the foundation. Membership + Events adds live member events plus replay access as those sessions are published. Coaching Circle adds weekly live coaching and replay access. Executive Coaching is the highest-touch option and begins with a Breakthrough Session.",
-  },
-];
-
-function LandingFaq() {
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
-  return (
-    <div>
-      {LANDING_FAQS.map((faq, i) => (
-        <div key={faq.q} style={{ borderBottom: "1px solid rgba(221,215,207,0.7)" }}>
-          <button
-            onClick={() => setOpenIndex(openIndex === i ? null : i)}
-            className="w-full flex items-center justify-between text-left gap-4 py-5"
-            aria-expanded={openIndex === i}
-          >
-            <span className="font-medium" style={{ fontSize: "1rem", color: "#121417", lineHeight: "1.5", letterSpacing: "-0.01em" }}>
-              {faq.q}
-            </span>
-            <span
-              className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center"
-              style={{
-                background: openIndex === i ? "rgba(47,111,237,0.1)" : "rgba(18,20,23,0.06)",
-                transform: openIndex === i ? "rotate(45deg)" : "none",
-                transition: "transform 0.2s ease",
-              }}
-              aria-hidden="true"
-            >
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={openIndex === i ? "#2F6FED" : "#68707A"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-            </span>
-          </button>
-          <div style={{ overflow: "hidden", maxHeight: openIndex === i ? "300px" : 0, transition: "max-height 0.3s ease" }}>
-            <p style={{ fontSize: "0.975rem", color: "#68707A", lineHeight: "1.78", paddingBottom: "1.25rem" }}>
-              {faq.a}
-            </p>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ─── Audio Player ───────────────────────────────────────────────────────── */
-
-const SAMPLE_AUDIO_URL =
-  "https://media.blubrry.com/liveonpurpose/traffic.libsyn.com/liveonpurpose/692_mixdown.mp3";
-
-function AudioPlayer() {
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const [playing, setPlaying] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [loading, setLoading] = useState(false);
-
-  function fmt(s: number) {
-    const m = Math.floor(s / 60);
-    const sec = Math.floor(s % 60);
-    return `${m}:${sec.toString().padStart(2, "0")}`;
-  }
-
-  function toggle() {
-    const a = audioRef.current;
-    if (!a) return;
-    if (playing) {
-      a.pause();
-      setPlaying(false);
-    } else {
-      setLoading(true);
-      a.play()
-        .then(() => { setPlaying(true); setLoading(false); })
-        .catch(() => setLoading(false));
-    }
-  }
-
-  useEffect(() => {
-    const a = audioRef.current;
-    if (!a) return;
-    const onTime = () => {
-      setCurrentTime(a.currentTime);
-      setProgress(a.duration ? (a.currentTime / a.duration) * 100 : 0);
-    };
-    const onLoaded = () => setDuration(a.duration);
-    const onEnded = () => { setPlaying(false); setProgress(0); setCurrentTime(0); };
-    a.addEventListener("timeupdate", onTime);
-    a.addEventListener("loadedmetadata", onLoaded);
-    a.addEventListener("ended", onEnded);
-    return () => {
-      a.removeEventListener("timeupdate", onTime);
-      a.removeEventListener("loadedmetadata", onLoaded);
-      a.removeEventListener("ended", onEnded);
-    };
-  }, []);
-
-  function seek(e: React.MouseEvent<HTMLDivElement>) {
-    const a = audioRef.current;
-    if (!a || !a.duration) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const pct = (e.clientX - rect.left) / rect.width;
-    a.currentTime = pct * a.duration;
-  }
-
-  const bars = [2,3,5,7,9,11,14,12,10,13,15,11,9,12,14,11,8,10,12,9,7,10,13,10,8,6,9,11,8,6,4,3,5,7,9,6,4,3];
-  const playedBars = Math.round((progress / 100) * bars.length);
-
-  return (
-    <div
-      className="w-full max-w-lg mx-auto rounded-3xl"
-      style={{
-        background: "#FFFFFF",
-        border: "1px solid #DDD7CF",
-        boxShadow: "0 20px 60px rgba(18,20,23,0.08), 0 4px 16px rgba(18,20,23,0.04)",
-        overflow: "hidden",
-      }}
-    >
-      <audio ref={audioRef} src={SAMPLE_AUDIO_URL} preload="none" />
-
-      {/* Header */}
-      <div className="px-8 pt-8 pb-6" style={{ borderBottom: "1px solid #F1EEE8" }}>
-        <p className="text-xs font-semibold uppercase mb-2" style={{ color: "#4E8C78", letterSpacing: "0.12em" }}>
-          Sample · Dr. Paul Jenkins
-        </p>
-        <p
-          className="font-heading font-bold"
-          style={{ fontSize: "1.15rem", color: "#121417", letterSpacing: "-0.03em", lineHeight: "1.3" }}
-        >
-          Responding vs. Reacting
-        </p>
-        <p className="text-sm mt-1" style={{ color: "#9AA0A8" }}>
-          Live On Purpose · Podcast Episode
-        </p>
-      </div>
-
-      {/* Controls */}
-      <div className="px-8 py-7">
-        {/* Waveform bars */}
-        <div className="flex items-center gap-0.5 h-10 mb-4" aria-hidden="true">
-          {bars.map((h, i) => (
-            <div
-              key={i}
-              className="flex-1 rounded-full transition-colors duration-100"
-              style={{
-                height: `${h * 2.4}px`,
-                background: i < playedBars ? "rgba(47,111,237,0.85)" : "rgba(18,20,23,0.09)",
-              }}
-            />
-          ))}
-        </div>
-
-        {/* Progress bar */}
-        <div
-          className="w-full rounded-full overflow-hidden mb-4 cursor-pointer"
-          style={{ height: "4px", background: "rgba(18,20,23,0.07)" }}
-          onClick={seek}
-        >
-          <div
-            className="h-full rounded-full"
-            style={{ width: `${progress}%`, background: "#2F6FED", transition: "width 0.1s linear" }}
-          />
-        </div>
-
-        {/* Time */}
-        <div className="flex items-center justify-between mb-6">
-          <span className="text-xs font-medium tabular-nums" style={{ color: "#2F6FED" }}>
-            {fmt(currentTime)}
-          </span>
-          <span className="text-xs tabular-nums" style={{ color: "#9AA0A8" }}>
-            {duration > 0 ? fmt(duration) : "--:--"}
-          </span>
-        </div>
-
-        {/* Play/Pause */}
-        <div className="flex justify-center">
-          <button
-            type="button"
-            onClick={toggle}
-            aria-label={playing ? "Pause" : "Play sample"}
-            className="w-14 h-14 rounded-full flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
-            style={{
-              background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
-              boxShadow: "0 8px 24px rgba(47,111,237,0.35)",
-            }}
-          >
-            {loading ? (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFF" strokeWidth="2.5" strokeLinecap="round" className="animate-spin">
-                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-              </svg>
-            ) : playing ? (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="#FFFFFF" aria-hidden="true">
-                <rect x="6" y="4" width="4" height="16" />
-                <rect x="14" y="4" width="4" height="16" />
-              </svg>
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="#FFFFFF" aria-hidden="true">
-                <path d="M5 3l14 9-14 9V3z" />
-              </svg>
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Main Landing Page Client Component ────────────────────────────────── */
+/* ─── Main Landing Page Shell ───────────────────────────────────────────── */
 
 type LandingPageClientProps = {
   session: PublicSessionState;
   signInHref: string;
   paidHref: string;
-  watchHref: string;
 };
 
 function LandingPageShell({
   session,
   signInHref,
   paidHref,
-  watchHref,
 }: LandingPageClientProps) {
-  const heroSentinelRef = useRef<HTMLDivElement>(null);
-
   return (
     <div className="min-h-dvh flex flex-col overflow-x-hidden" style={{ background: "#FAFAF8" }}>
 
@@ -322,13 +69,7 @@ function LandingPageShell({
         />
 
         <div className="relative flex flex-col items-center max-w-4xl mx-auto" style={{ paddingTop: "clamp(2.5rem, 7vw, 3rem)", paddingBottom: "clamp(3.25rem, 9vw, 4.25rem)" }}>
-          {/* Eyebrow */}
-          <div className="flex flex-wrap items-center justify-center gap-2.5 mb-8 sm:mb-10 px-4">
-            <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#4E8C78" }} />
-            <span className="text-[11px] sm:text-xs font-semibold uppercase text-center" style={{ color: "#4E8C78", letterSpacing: "0.13em" }}>
-              Dr. Paul Jenkins · Clinical Psychologist
-            </span>
-          </div>
+          {/* Eyebrow — credential tag removed per launch polish; subtext carries the framing */}
 
           {/* Headline */}
           <h1
@@ -361,7 +102,7 @@ function LandingPageShell({
               fontSize: "clamp(1.05rem, 1.8vw, 1.2rem)",
               color: "#68707A",
               lineHeight: "1.72",
-              maxWidth: "520px",
+              maxWidth: "640px",
               letterSpacing: "-0.01em",
             }}
           >
@@ -384,7 +125,7 @@ function LandingPageShell({
 
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row items-center gap-4 mb-8 w-full sm:w-auto">
-            <Link
+            <PublicTrackedLink
               href={paidHref}
               className="inline-flex w-full sm:w-auto items-center justify-center font-semibold rounded-full"
               style={{
@@ -397,7 +138,7 @@ function LandingPageShell({
               }}
             >
               {session.paidActionLabel}
-            </Link>
+            </PublicTrackedLink>
             <Link href="#how-it-works" className="text-sm font-medium" style={{ color: "#68707A" }}>
               See how it works
             </Link>
@@ -411,10 +152,10 @@ function LandingPageShell({
       </section>
 
       {/* Sentinel — marks bottom of hero for sticky mobile CTA */}
-      <div ref={heroSentinelRef} aria-hidden="true" />
+      <div id="landing-hero-sentinel" aria-hidden="true" />
 
       <StickyCtaBar
-        sentinelRef={heroSentinelRef}
+        sentinelId="landing-hero-sentinel"
         href={paidHref}
         label={session.hasMemberAccess ? "Open today’s practice →" : "Start your daily practice →"}
       />
@@ -464,12 +205,24 @@ function LandingPageShell({
             <p className="text-xs font-semibold uppercase mb-5" style={{ color: "#9AA0A8", letterSpacing: "0.14em" }}>
               The practice
             </p>
-            <h2
-              className="font-heading font-bold mb-5"
-              style={{ fontSize: "clamp(2.2rem, 4.5vw, 4rem)", letterSpacing: "-0.045em", lineHeight: "1.06", color: "#121417" }}
-            >
-              A simple practice that builds real change.
-            </h2>
+            <div className="flex items-start gap-4 mb-5">
+              <div
+                className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center mt-1"
+                style={{ background: "linear-gradient(135deg, rgba(47,111,237,0.10) 0%, rgba(78,140,120,0.10) 100%)", border: "1px solid rgba(78,140,120,0.18)" }}
+                aria-hidden="true"
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4E8C78" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 8v4l3 3" />
+                </svg>
+              </div>
+              <h2
+                className="font-heading font-bold"
+                style={{ fontSize: "clamp(2.2rem, 4.5vw, 4rem)", letterSpacing: "-0.045em", lineHeight: "1.06", color: "#121417" }}
+              >
+                A simple practice that builds real change.
+              </h2>
+            </div>
             <p style={{ fontSize: "1.05rem", color: "#68707A", lineHeight: "1.72" }}>
               Positives isn&apos;t about motivation. It&apos;s about building a mindset practice that works — every single day.
             </p>
@@ -521,7 +274,15 @@ function LandingPageShell({
       </section>
 
       {/* ━━ 5. SAMPLE AUDIO ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <section className="w-full text-center" style={{ background: "#FFFFFF", borderTop: "1px solid #DDD7CF" }}>
+      <section
+        className="w-full text-center relative overflow-hidden"
+        style={{ background: "#F6F3EE", borderTop: "1px solid #DDD7CF" }}
+      >
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: "radial-gradient(ellipse at 50% 0%, rgba(78,140,120,0.07) 0%, transparent 65%)" }}
+        />
         <div
           className="max-w-6xl mx-auto px-5 sm:px-8"
           style={{ paddingTop: "clamp(4rem, 7vw, 6.5rem)", paddingBottom: "clamp(4rem, 7vw, 6.5rem)" }}
@@ -543,13 +304,13 @@ function LandingPageShell({
             thinking can shift your entire day.
           </p>
 
-          <AudioPlayer />
+          <LandingAudioPlayer />
 
           <p className="mt-8 text-sm" style={{ color: "#B0A89E" }}>
             Daily sessions available to members ·{" "}
-            <Link href={paidHref} className="font-medium underline underline-offset-2" style={{ color: "#2F6FED" }}>
+            <PublicTrackedLink href={paidHref} className="font-medium underline underline-offset-2" style={{ color: "#2F6FED" }}>
               {session.hasMemberAccess ? "Open your practice" : "Start your practice"}
-            </Link>
+            </PublicTrackedLink>
           </p>
         </div>
       </section>
@@ -579,7 +340,7 @@ function LandingPageShell({
                 relationships, clearer purpose, and a more intentional life.
               </p>
             </div>
-            <Link
+            <PublicTrackedLink
               href={paidHref}
               className="inline-flex items-center justify-center font-semibold rounded-full"
               style={{
@@ -592,7 +353,7 @@ function LandingPageShell({
               }}
             >
               {session.paidActionLabel}
-            </Link>
+            </PublicTrackedLink>
           </div>
 
           <div>
@@ -602,7 +363,7 @@ function LandingPageShell({
                 "Weekly reflections & mindset principles",
                 "Monthly themes with Dr. Paul",
                 "Full member library",
-                "Live member events at higher levels",
+                "Live member events with Membership + Events",
                 "Weekly coaching inside Coaching Circle",
               ].map((item) => (
                 <div
@@ -667,7 +428,7 @@ function LandingPageShell({
                 Through his work with families, leaders, and communities, he has helped thousands of people develop the mindset skills that make life calmer, clearer, and more meaningful.
               </p>
               <p style={{ fontSize: "1.05rem", color: "#68707A", lineHeight: "1.78" }}>
-                Positives brings the most powerful ideas from that work into a simple daily practice anyone can follow.
+                Positives brings the most practical ideas from that work into a simple daily practice anyone can follow, including the kind of mindset habits that help you save and enrich your most important relationships.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -835,7 +596,7 @@ function LandingPageShell({
       {/* ━━ 9. GUARANTEE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section className="w-full" style={{ background: "#F6F3EE", borderTop: "1px solid #DDD7CF" }}>
         <div
-          className="max-w-6xl mx-auto px-5 sm:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center"
+          className="max-w-6xl mx-auto px-5 sm:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-start"
           style={{ paddingTop: "clamp(5rem, 9vw, 8rem)", paddingBottom: "clamp(5rem, 9vw, 8rem)" }}
         >
           {/* Left */}
@@ -875,7 +636,7 @@ function LandingPageShell({
               We believe the practice will speak for itself. This guarantee just means there&apos;s nothing to risk.
             </p>
             <div className="pt-2">
-              <Link
+              <PublicTrackedLink
                 href={paidHref}
                 className="inline-flex items-center justify-center font-semibold rounded-full"
                 style={{
@@ -888,7 +649,7 @@ function LandingPageShell({
                 }}
               >
                 {session.paidActionLabel}
-              </Link>
+              </PublicTrackedLink>
             </div>
           </div>
         </div>
@@ -921,9 +682,9 @@ function LandingPageShell({
 
           <p className="text-center mt-8 text-sm" style={{ color: "#9AA0A8" }}>
             Still have questions?{" "}
-            <Link href="/support" style={{ color: "#2F6FED", textDecoration: "underline" }}>
+            <PublicTrackedLink href="/support" style={{ color: "#2F6FED", textDecoration: "underline" }}>
               Contact support →
-            </Link>
+            </PublicTrackedLink>
           </p>
         </div>
       </section>
@@ -962,7 +723,7 @@ function LandingPageShell({
             </span>
           </h2>
 
-          <Link
+          <PublicTrackedLink
             href={paidHref}
             className="inline-flex items-center justify-center font-semibold rounded-full"
             style={{
@@ -975,7 +736,7 @@ function LandingPageShell({
             }}
           >
             {session.paidActionLabel}
-          </Link>
+          </PublicTrackedLink>
 
           <p className="mt-5 text-sm" style={{ color: "#68707A" }}>
             From $37/month · Cancel anytime · 30-day guarantee
@@ -984,29 +745,11 @@ function LandingPageShell({
       </section>
 
       {/* ━━ 11. FOOTER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <PublicSiteFooter paidHref={paidHref} watchHref={watchHref} session={session} />
+      <PublicSiteFooter paidHref={paidHref} session={session} />
     </div>
   );
 }
 
-function LandingPageTrackedShell(props: LandingPageClientProps) {
-  const searchParams = useSearchParams();
-  const paidHref = appendPublicTrackingParamsFromEntries(
-    props.paidHref,
-    searchParams.entries()
-  );
-  const watchHref = appendPublicTrackingParamsFromEntries(
-    props.watchHref,
-    searchParams.entries()
-  );
-
-  return <LandingPageShell {...props} paidHref={paidHref} watchHref={watchHref} />;
-}
-
 export function LandingPageClient(props: LandingPageClientProps) {
-  return (
-    <Suspense fallback={<LandingPageShell {...props} />}>
-      <LandingPageTrackedShell {...props} />
-    </Suspense>
-  );
+  return <LandingPageShell {...props} />;
 }

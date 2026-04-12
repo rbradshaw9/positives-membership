@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { montserrat, poppins } from "@/app/fonts";
 import { config } from "@/lib/config";
 import "./globals.css";
@@ -33,6 +34,7 @@ export default function RootLayout({
       <head />
       <body className="h-full antialiased bg-background text-foreground">
         {children}
+        <SpeedInsights />
       </body>
     </html>
   );
