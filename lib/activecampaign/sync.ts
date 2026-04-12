@@ -17,7 +17,7 @@
  *   onboarding_complete → 8
  *
  * List IDs:
- *   Positives Members → 3
+ *   Positives Audience → 3
  */
 
 import { ac, acIsConfigured } from "./client";
@@ -49,9 +49,9 @@ const FIELD = {
   membershipTier:    2,
   memberSince:       3,
   stripeCustomerId:  4,
-  affiliateLink:     5,  // previously rewardfulLink
-  affiliateToken:    6,  // previously rewardfulToken
-  affiliatePortal:   7,  // previously rewardfulPortal
+  affiliateLink:     5,  // legacy perstag still uses Rewardful naming
+  affiliateToken:    6,  // legacy perstag still uses Rewardful naming
+  affiliatePortal:   7,  // legacy perstag still uses Rewardful naming
   billingLink:       9, // Signed billing recovery URL for payment-failed emails
 } as const;
 
