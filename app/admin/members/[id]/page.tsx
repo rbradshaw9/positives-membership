@@ -62,6 +62,7 @@ const CONTENT_EVENT_TYPES = new Set([
   "monthly_viewed",
   "note_created",
   "note_updated",
+  "note_deleted",
   "event_attended",
   "qa_submitted",
   "qa_viewed",
@@ -75,6 +76,7 @@ const EVENT_LABEL: Record<string, string> = {
   monthly_viewed: "Monthly theme viewed",
   note_created: "Note created",
   note_updated: "Note updated",
+  note_deleted: "Note deleted",
   journal_opened: "Journal opened",
   event_attended: "Event attended",
   qa_submitted: "Question submitted",
@@ -92,6 +94,7 @@ const EVENT_DOT_COLOR: Record<string, string> = {
   monthly_viewed: "#fbbf24",
   note_created: "#a78bfa",
   note_updated: "#c4b5fd",
+  note_deleted: "#f87171",
   milestone_reached: "#facc15",
 };
 
@@ -132,6 +135,13 @@ function formatRelativeDate(iso: string | null): string {
   if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
   if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo ago`;
   return `${Math.floor(diffDays / 365)}y ago`;
+}
+
+function getDaysSince(iso: string | null): number | null {
+  if (!iso) return null;
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return null;
+  return Math.floor((Date.now() - then) / (1000 * 60 * 60 * 24));
 }
 
 // ─────────────────────────────────────────────────
@@ -198,6 +208,56 @@ export default async function AdminMemberDetailPage({
   const stripeUrl = member.stripe_customer_id
     ? `https://dashboard.stripe.com/customers/${member.stripe_customer_id}`
     : null;
+  const daysSincePractice = getDaysSince(member.last_practiced_at);
+  const supportFlags = [
+    !member.stripe_customer_id
+      ? {
+          tone: "warning",
+          title: "Missing Stripe customer link",
+          body:
+            "There is no direct billing handoff yet. Check the original checkout and webhook trail before trying to resolve billing from admin.",
+        }
+      : null,
+    member.subscription_status === "past_due"
+      ? {
+          tone: "warning",
+          title: "Billing needs attention",
+          body:
+            "The member is marked past due. Use the Stripe Dashboard to inspect payment retries, invoices, and saved payment methods.",
+        }
+      : null,
+    member.subscription_status === "canceled"
+      ? {
+          tone: "info",
+          title: "Canceled membership",
+          body: member.subscription_end_date
+            ? `Access is set to end on ${formatDate(member.subscription_end_date)}. Double-check whether any follow-up is needed before that date.`
+            : "This membership is canceled. Confirm whether support needs to clarify access timing or billing history.",
+        }
+      : null,
+    !member.password_set
+      ? {
+          tone: "info",
+          title: "Password not set",
+          body:
+            "This member is still relying on magic-link access. If they are confused about sign-in, route them through the password reset flow.",
+        }
+      : null,
+    daysSincePractice === null
+      ? {
+          tone: "info",
+          title: "No practice activity yet",
+          body:
+            "The member has not logged any practice yet. If this is a recent signup, that may be normal. Otherwise it may signal onboarding friction.",
+        }
+      : daysSincePractice >= 14
+        ? {
+            tone: "warning",
+            title: "Member may be drifting",
+            body: `No recorded practice for ${daysSincePractice} day${daysSincePractice === 1 ? "" : "s"}. If support reaches out, start with re-engagement rather than billing assumptions.`,
+          }
+        : null,
+  ].filter(Boolean) as { tone: "warning" | "info"; title: string; body: string }[];
 
   return (
     <div style={{ maxWidth: "48rem", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
@@ -329,6 +389,62 @@ export default async function AdminMemberDetailPage({
         </div>
       </div>
 
+      {supportFlags.length > 0 && (
+        <div className="admin-section">
+          <div className="admin-section__header">
+            <p className="admin-section__title">Support flags</p>
+          </div>
+          <div className="admin-section__body">
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(14rem, 1fr))",
+                gap: "0.875rem",
+              }}
+            >
+              {supportFlags.map((flag) => (
+                <div
+                  key={flag.title}
+                  style={{
+                    borderRadius: "0.875rem",
+                    padding: "1rem",
+                    border:
+                      flag.tone === "warning"
+                        ? "1px solid rgba(245,158,11,0.24)"
+                        : "1px solid rgba(68,168,216,0.22)",
+                    background:
+                      flag.tone === "warning"
+                        ? "rgba(245,158,11,0.06)"
+                        : "rgba(68,168,216,0.06)",
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: "0.8125rem",
+                      fontWeight: 700,
+                      color:
+                        flag.tone === "warning" ? "#b45309" : "#0369a1",
+                      marginBottom: "0.35rem",
+                    }}
+                  >
+                    {flag.title}
+                  </p>
+                  <p
+                    style={{
+                      fontSize: "0.75rem",
+                      lineHeight: 1.6,
+                      color: "var(--color-muted-fg)",
+                    }}
+                  >
+                    {flag.body}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Profile ────────────────────────────────────────────────────────── */}
       <div className="admin-section">
         <div className="admin-section__header">
@@ -424,7 +540,7 @@ export default async function AdminMemberDetailPage({
         <span style={{ fontSize: "1rem", flexShrink: 0, marginTop: "0.05rem" }}>ℹ</span>
         <span>
           Billing is managed exclusively in Stripe. To change a subscription,
-          issue a refund, or cancel, use the{" "}
+          issue a refund, or cancel, use{" "}
           {stripeUrl ? (
             <a
               href={stripeUrl}
@@ -438,9 +554,11 @@ export default async function AdminMemberDetailPage({
               Stripe Dashboard ↗
             </a>
           ) : (
-            "Stripe Dashboard"
+            "the Stripe Dashboard once this member has a linked customer"
           )}
-          .
+          {stripeUrl
+            ? "."
+            : ". If this member should already have billing access, review the checkout/webhook trail before trying to support them from admin."}
         </span>
       </div>
 

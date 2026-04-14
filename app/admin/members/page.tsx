@@ -2,6 +2,8 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import {
   getMemberList,
+  type MemberBillingFilter,
+  type MemberPasswordFilter,
   type MemberStatusFilter,
   type MemberTierFilter,
 } from "@/lib/queries/get-admin-members";
@@ -92,6 +94,18 @@ const TIER_FILTERS: { label: string; value: MemberTierFilter }[] = [
   { label: PLAN_NAME_BY_TIER.level_4, value: "level_4" },
 ];
 
+const BILLING_FILTERS: { label: string; value: MemberBillingFilter }[] = [
+  { label: "All billing links", value: "" },
+  { label: "Stripe linked", value: "linked" },
+  { label: "Stripe missing", value: "missing" },
+];
+
+const PASSWORD_FILTERS: { label: string; value: MemberPasswordFilter }[] = [
+  { label: "All password states", value: "" },
+  { label: "Password set", value: "set" },
+  { label: "Password missing", value: "missing" },
+];
+
 // ─────────────────────────────────────────────────
 // Page
 // ─────────────────────────────────────────────────
@@ -100,6 +114,8 @@ type SearchParams = Promise<{
   search?: string;
   status?: string;
   tier?: string;
+  billing?: string;
+  password?: string;
   page?: string;
 }>;
 
@@ -114,9 +130,18 @@ export default async function AdminMembersPage({
   const search = params.search ?? "";
   const status = (params.status ?? "") as MemberStatusFilter;
   const tier = (params.tier ?? "") as MemberTierFilter;
+  const billing = (params.billing ?? "") as MemberBillingFilter;
+  const password = (params.password ?? "") as MemberPasswordFilter;
   const page = Math.max(1, parseInt(params.page ?? "1", 10));
 
-  const { members, total } = await getMemberList({ search, status, tier, page });
+  const { members, total } = await getMemberList({
+    search,
+    status,
+    tier,
+    billing,
+    password,
+    page,
+  });
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
@@ -125,6 +150,8 @@ export default async function AdminMembersPage({
     if (search) q.set("search", search);
     if (status) q.set("status", status);
     if (tier) q.set("tier", tier);
+    if (billing) q.set("billing", billing);
+    if (password) q.set("password", password);
     q.set("page", String(page));
     for (const [k, v] of Object.entries(overrides)) {
       if (v) q.set(k, v);
@@ -148,6 +175,10 @@ export default async function AdminMembersPage({
             {search ? ` matching "${search}"` : ""}
             {status ? ` · ${STATUS_LABEL[status] ?? status}` : ""}
             {tier ? ` · ${TIER_LABEL[tier] ?? tier}` : ""}
+            {billing === "missing" ? " · missing Stripe link" : ""}
+            {billing === "linked" ? " · Stripe linked" : ""}
+            {password === "missing" ? " · password missing" : ""}
+            {password === "set" ? " · password set" : ""}
           </p>
         </div>
       </div>
@@ -187,11 +218,33 @@ export default async function AdminMembersPage({
           </select>
         </div>
 
+        <div className="admin-search-bar__field">
+          <label className="admin-search-bar__label">Billing</label>
+          <select name="billing" defaultValue={billing}>
+            {BILLING_FILTERS.map((f) => (
+              <option key={f.value} value={f.value}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="admin-search-bar__field">
+          <label className="admin-search-bar__label">Password</label>
+          <select name="password" defaultValue={password}>
+            {PASSWORD_FILTERS.map((f) => (
+              <option key={f.value} value={f.value}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <button type="submit" className="admin-btn admin-btn--primary">
           Filter
         </button>
 
-        {(search || status || tier) && (
+        {(search || status || tier || billing || password) && (
           <Link href="/admin/members" className="admin-btn admin-btn--outline">
             Clear
           </Link>
@@ -207,9 +260,9 @@ export default async function AdminMembersPage({
           <p style={{ fontSize: "0.875rem", color: "var(--color-muted-fg)", marginBottom: "0.375rem" }}>
             No members found
           </p>
-          {(search || status || tier) && (
+          {(search || status || tier || billing || password) && (
             <p style={{ fontSize: "0.75rem", color: "var(--color-muted-fg)" }}>
-              Try adjusting the filters.
+              Try clearing one or more filters, or search by a different email or name.
             </p>
           )}
         </div>
@@ -256,6 +309,25 @@ export default async function AdminMembersPage({
                         {member.name}
                       </span>
                     )}
+                    <div
+                      style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: "0.35rem",
+                        marginTop: "0.35rem",
+                      }}
+                    >
+                      {!member.stripe_customer_id && (
+                        <span className="admin-badge admin-badge--past-due">
+                          No Stripe link
+                        </span>
+                      )}
+                      {!member.password_set && (
+                        <span className="admin-badge admin-badge--draft">
+                          Password missing
+                        </span>
+                      )}
+                    </div>
                   </td>
 
                   {/* Status */}

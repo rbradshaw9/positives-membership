@@ -3,6 +3,7 @@ import { JournalList } from "@/components/journal/JournalList";
 import { NewJournalEntryButton } from "@/components/journal/NewJournalEntryButton";
 import { PageHeader } from "@/components/member/PageHeader";
 import { EmptyState } from "@/components/member/EmptyState";
+import { SurfaceCard } from "@/components/ui/SurfaceCard";
 
 /**
  * app/(member)/journal/page.tsx
@@ -13,8 +14,8 @@ import { EmptyState } from "@/components/member/EmptyState";
  */
 
 export const metadata = {
-  title: "Your Notes — Positives",
-  description: "Your personal reflections and notes from your practice.",
+  title: "Notes & Reflections — Positives",
+  description: "Private reflections, quick notes, and gentle reminders from your practice.",
 };
 
 export default async function JournalPage() {
@@ -24,13 +25,24 @@ export default async function JournalPage() {
     <div>
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
       <PageHeader
-        title="Your Notes"
-        subtitle="Reflections from your practice, in your own words."
+        title="Notes & Reflections"
+        subtitle="A private place for quick thoughts after listening, moments you want to remember, and notes to yourself."
         hero
         right={<NewJournalEntryButton />}
       />
 
       <div className="member-container py-8 md:py-10">
+        <SurfaceCard tone="tint" className="surface-card--editorial mb-6">
+          <p className="ui-section-eyebrow mb-2">A quiet place to return</p>
+          <h2 className="member-card-title heading-balance">
+            Save a thought while it is still fresh.
+          </h2>
+          <p className="member-body-copy mt-2 max-w-3xl">
+            Capture a quick reflection after a practice, jot down something you do not want
+            to lose, or add a private note that is just for you. A few sentences is enough.
+          </p>
+        </SurfaceCard>
+
         {notes.length === 0 ? (
           <EmptyState
             icon={
@@ -50,7 +62,7 @@ export default async function JournalPage() {
               </svg>
             }
             title="No notes yet"
-            subtitle="Your reflections will appear here after you write your first note."
+            subtitle="Your reflections will appear here after you write your first note. Start with a quick private thought or a few lines after today's practice."
             action={<NewJournalEntryButton />}
           />
         ) : (

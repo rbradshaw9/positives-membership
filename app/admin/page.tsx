@@ -6,6 +6,7 @@
 
 import Link from "next/link";
 import { getContentReadiness } from "@/lib/queries/get-content-readiness";
+import { getAdminMemberOpsSnapshot } from "@/lib/queries/get-admin-members";
 import type { ReadinessAlert } from "@/lib/queries/get-content-readiness";
 
 export const metadata = {
@@ -90,7 +91,45 @@ const tiles = [
 ];
 
 export default async function AdminPage() {
-  const alerts = await getContentReadiness();
+  const [alerts, memberOps] = await Promise.all([
+    getContentReadiness(),
+    getAdminMemberOpsSnapshot(),
+  ]);
+
+  const quickActions = [
+    {
+      href: "/admin/content/calendar",
+      title: "Review content gaps",
+      detail:
+        alerts.length > 0
+          ? `${alerts.length} readiness alert${alerts.length === 1 ? "" : "s"} surfaced today`
+          : "No immediate content blockers surfaced today",
+    },
+    {
+      href: "/admin/members?status=past_due",
+      title: "Support past-due members",
+      detail:
+        memberOps.pastDue > 0
+          ? `${memberOps.pastDue} member${memberOps.pastDue === 1 ? "" : "s"} need billing attention`
+          : "No members are currently marked past due",
+    },
+    {
+      href: "/admin/members?billing=missing",
+      title: "Check missing Stripe links",
+      detail:
+        memberOps.missingStripe > 0
+          ? `${memberOps.missingStripe} member${memberOps.missingStripe === 1 ? "" : "s"} lack a Stripe customer link`
+          : "All current members appear to have Stripe linkage",
+    },
+    {
+      href: "/admin/members?password=missing",
+      title: "Review password setup",
+      detail:
+        memberOps.missingPassword > 0
+          ? `${memberOps.missingPassword} member${memberOps.missingPassword === 1 ? "" : "s"} still rely on magic links only`
+          : "No current members are missing password setup",
+    },
+  ];
 
   return (
     <div>
@@ -103,8 +142,60 @@ export default async function AdminPage() {
         </p>
       </div>
 
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(11rem, 1fr))",
+          gap: "0.875rem",
+          marginBottom: "1.5rem",
+        }}
+      >
+        {[
+          {
+            icon: "👥",
+            value: memberOps.total,
+            label: "Total members",
+            sub: `${memberOps.active} active · ${memberOps.trialing} trialing`,
+          },
+          {
+            icon: "🧾",
+            value: memberOps.pastDue,
+            label: "Past due",
+            sub:
+              memberOps.pastDue > 0
+                ? "Needs billing follow-up"
+                : "No billing issues surfaced",
+          },
+          {
+            icon: "🔗",
+            value: memberOps.missingStripe,
+            label: "Missing Stripe link",
+            sub:
+              memberOps.missingStripe > 0
+                ? "Check signup/webhook trail"
+                : "Billing linkage looks healthy",
+          },
+          {
+            icon: "🔐",
+            value: memberOps.missingPassword,
+            label: "No password set",
+            sub:
+              memberOps.missingPassword > 0
+                ? "Still magic-link only"
+                : "Members have password access",
+          },
+        ].map((stat) => (
+          <div key={stat.label} className="admin-stat-card">
+            <div className="admin-stat-card__icon">{stat.icon}</div>
+            <div className="admin-stat-card__value">{stat.value}</div>
+            <div className="admin-stat-card__label">{stat.label}</div>
+            <div className="admin-stat-card__delta">{stat.sub}</div>
+          </div>
+        ))}
+      </div>
+
       {/* ── Readiness Alerts ─────────────────────────────────────────────── */}
-      {alerts.length > 0 && (
+      {alerts.length > 0 ? (
         <div
           style={{
             display: "flex",
@@ -159,7 +250,68 @@ export default async function AdminPage() {
             );
           })}
         </div>
+      ) : (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: "0.625rem",
+            marginBottom: "1.5rem",
+            padding: "0.875rem 1rem",
+            borderRadius: "0.875rem",
+            border: "1px solid rgba(34,197,94,0.16)",
+            background: "rgba(34,197,94,0.06)",
+            color: "#15803d",
+          }}
+        >
+          <span style={{ fontSize: "1rem", lineHeight: 1 }}>✓</span>
+          <div>
+            <p
+              style={{
+                fontSize: "0.8125rem",
+                fontWeight: 700,
+                marginBottom: "0.2rem",
+              }}
+            >
+              No immediate content readiness blockers surfaced today
+            </p>
+            <p style={{ fontSize: "0.75rem", opacity: 0.9 }}>
+              The calendar and month workspaces still matter, but there are no
+              urgent missing-content alerts in the current audit window.
+            </p>
+          </div>
+        </div>
       )}
+
+      <div className="admin-section" style={{ marginBottom: "1.5rem" }}>
+        <div className="admin-section__header">
+          <p className="admin-section__title">Operational focus</p>
+        </div>
+        <div className="admin-section__body">
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(15rem, 1fr))",
+              gap: "0.875rem",
+            }}
+          >
+            {quickActions.map((action) => (
+              <Link
+                key={action.href}
+                href={action.href}
+                className="admin-feature-tile"
+                style={{ padding: "1rem 1.125rem", gap: "0.5rem" }}
+              >
+                <p className="admin-feature-tile__title">{action.title}</p>
+                <p className="admin-feature-tile__desc">{action.detail}</p>
+                <span className="admin-feature-tile__status admin-feature-tile__status--live">
+                  Open
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* Quick links */}
       <div

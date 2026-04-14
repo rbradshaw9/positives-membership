@@ -4,8 +4,8 @@ import type { Metadata } from "next";
 import { requireActiveMember } from "@/lib/auth/require-active-member";
 import { checkTierAccess } from "@/lib/auth/check-tier-access";
 import { getLibraryItem } from "@/lib/queries/get-library-item";
+import { getMemberNoteCounts } from "@/lib/queries/get-library-content";
 import { resolveAudioUrl } from "@/lib/media/resolve-audio-url";
-import { getNoteForContent } from "@/app/(member)/notes/actions";
 import { MarkdownBody } from "@/components/content/MarkdownBody";
 import { TypeBadge } from "@/components/member/TypeBadge";
 import { VideoEmbed } from "@/components/media/VideoEmbed";
@@ -91,9 +91,8 @@ export default async function LibraryItemPage({ params }: Props) {
     notFound();
   }
 
-  // Check existing note (server-side to avoid flash)
-  const existingNote = await getNoteForContent(id);
-  const hasNote = !!existingNote;
+  const noteCounts = await getMemberNoteCounts(member.id, [id]);
+  const noteCount = noteCounts[id] ?? 0;
 
   const hasVideo = !!(item.vimeo_video_id || item.youtube_video_id);
   const hasBody = !!(item.body || item.description);
@@ -203,7 +202,7 @@ export default async function LibraryItemPage({ params }: Props) {
             contentId={item.id}
             contentTitle={item.title}
             reflectionPrompt={item.reflection_prompt}
-            initialHasNote={hasNote}
+            initialNoteCount={noteCount}
           />
         </SurfaceCard>
       </article>

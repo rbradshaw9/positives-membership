@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { NoteSheet } from "@/components/notes/NoteSheet";
-import { getNoteForContent } from "@/app/(member)/notes/actions";
 
 /**
  * components/library/LibraryReflectSection.tsx
@@ -16,31 +15,24 @@ interface LibraryReflectSectionProps {
   contentId: string;
   contentTitle: string;
   reflectionPrompt?: string | null;
-  initialHasNote?: boolean;
+  initialNoteCount?: number;
 }
 
 export function LibraryReflectSection({
   contentId,
   contentTitle,
   reflectionPrompt,
-  initialHasNote = false,
+  initialNoteCount = 0,
 }: LibraryReflectSectionProps) {
   const [noteOpen, setNoteOpen] = useState(false);
-  const [existingNote, setExistingNote] = useState("");
-  const [noteExists, setNoteExists] = useState(initialHasNote);
-  const [loadingNote, setLoadingNote] = useState(false);
+  const [noteCount, setNoteCount] = useState(initialNoteCount);
 
-  async function handleOpenNote() {
-    setLoadingNote(true);
-    const existing = await getNoteForContent(contentId);
-    setExistingNote(existing?.entry_text ?? "");
-    setLoadingNote(false);
+  function handleOpenNote() {
     setNoteOpen(true);
   }
 
-  function handleNoteSaved(_isNew: boolean, savedText: string) {
-    setNoteExists(true);
-    setExistingNote(savedText);
+  function handleNoteSaved(result: { isNew: boolean }) {
+    setNoteCount((prev) => prev + (result.isNew ? 1 : 0));
   }
 
   return (
@@ -67,10 +59,9 @@ export function LibraryReflectSection({
       <button
         type="button"
         onClick={handleOpenNote}
-        disabled={loadingNote}
-        className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full text-sm font-semibold transition-all disabled:opacity-40"
+        className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full text-sm font-semibold transition-all"
         style={{
-          background: noteExists
+          background: noteCount > 0
             ? "color-mix(in srgb, var(--color-secondary) 14%, transparent)"
             : "linear-gradient(135deg, color-mix(in srgb, var(--color-secondary) 16%, transparent) 0%, color-mix(in srgb, var(--color-secondary) 10%, transparent) 100%)",
           color: "var(--color-secondary)",
@@ -93,22 +84,27 @@ export function LibraryReflectSection({
           <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
         </svg>
         <span>
-          {loadingNote ? "Loading…" : noteExists ? "View or edit note" : "Reflect on this"}
+          {noteCount > 0 ? "Add another reflection" : "Reflect on this"}
         </span>
-        {noteExists && (
+        {noteCount > 0 && (
           <span
             className="w-2 h-2 rounded-full bg-secondary/70 inline-block"
-            aria-label="Note exists"
+            aria-label="Reflection exists"
           />
         )}
       </button>
+      <p className="mt-3 text-sm text-muted-foreground">
+        {noteCount > 0
+          ? `${noteCount} reflection${noteCount === 1 ? "" : "s"} already saved for this practice. Add another when something new stands out.`
+          : "A few sentences is enough. This stays private to you."}
+      </p>
 
       <NoteSheet
         isOpen={noteOpen}
         onClose={() => setNoteOpen(false)}
         contentId={contentId}
         contentTitle={contentTitle}
-        initialText={existingNote}
+        existingReflectionCount={noteCount}
         onSaved={handleNoteSaved}
       />
     </>

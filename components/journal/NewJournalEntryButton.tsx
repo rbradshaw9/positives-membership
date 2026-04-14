@@ -24,7 +24,7 @@ export function NewJournalEntryButton() {
         type="button"
         onClick={() => setIsOpen(true)}
         className="btn-primary"
-        aria-label="Write a new journal entry"
+        aria-label="Write a new note"
       >
         <svg
           width="13"
@@ -47,7 +47,6 @@ export function NewJournalEntryButton() {
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
         contentId={null}
-        contentTitle="Free-form entry"
         onSaved={() => {
           setIsOpen(false);
           startTransition(() => {

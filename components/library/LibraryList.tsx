@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { NoteSheet } from "@/components/notes/NoteSheet";
 import { ResourceLinks } from "@/components/media/ResourceLinks";
-import { getNoteForContent } from "@/app/(member)/notes/actions";
 import { TypeBadge } from "@/components/member/TypeBadge";
 import type { Json } from "@/types/supabase";
 
@@ -31,7 +30,7 @@ type EnrichedLibraryItem = {
   duration_seconds: number | null;
   typeLabel: string;
   dateContext: string | null;
-  hasNote: boolean;
+  noteCount: number;
 };
 
 interface LibraryListProps {
@@ -63,25 +62,26 @@ export function LibraryList({ items }: LibraryListProps) {
   const [activeNote, setActiveNote] = useState<{
     contentId: string;
     contentTitle: string;
-    initialText: string;
+    existingReflectionCount: number;
   } | null>(null);
-  const [noteHasMap, setNoteHasMap] = useState<Record<string, boolean>>(() => {
-    const map: Record<string, boolean> = {};
-    items.forEach((i) => { map[i.id] = i.hasNote; });
+  const [noteCountMap, setNoteCountMap] = useState<Record<string, number>>(() => {
+    const map: Record<string, number> = {};
+    items.forEach((i) => { map[i.id] = i.noteCount; });
     return map;
   });
 
-  async function openNote(item: EnrichedLibraryItem) {
-    const existing = await getNoteForContent(item.id);
+  function openNote(item: EnrichedLibraryItem) {
     setActiveNote({
       contentId: item.id,
       contentTitle: item.title,
-      initialText: existing?.entry_text ?? "",
+      existingReflectionCount: noteCountMap[item.id] ?? 0,
     });
   }
 
-  function handleNoteSaved(contentId: string) {
-    setNoteHasMap((prev) => ({ ...prev, [contentId]: true }));
+  function handleNoteSaved(contentId: string, result: { isNew: boolean }) {
+    if (result.isNew) {
+      setNoteCountMap((prev) => ({ ...prev, [contentId]: (prev[contentId] ?? 0) + 1 }));
+    }
     setActiveNote(null);
   }
 
@@ -194,8 +194,10 @@ export function LibraryList({ items }: LibraryListProps) {
                       <path d="M12 20h9" />
                       <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
                     </svg>
-                    <span>{noteHasMap[item.id] ? "View note" : "Reflect"}</span>
-                    {noteHasMap[item.id] && (
+                    <span>
+                      {(noteCountMap[item.id] ?? 0) > 0 ? "Add reflection" : "Reflect"}
+                    </span>
+                    {(noteCountMap[item.id] ?? 0) > 0 && (
                       <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary/80" />
                     )}
                   </button>
@@ -222,8 +224,8 @@ export function LibraryList({ items }: LibraryListProps) {
           onClose={() => setActiveNote(null)}
           contentId={activeNote.contentId}
           contentTitle={activeNote.contentTitle}
-          initialText={activeNote.initialText}
-          onSaved={() => handleNoteSaved(activeNote.contentId)}
+          existingReflectionCount={activeNote.existingReflectionCount}
+          onSaved={(result) => handleNoteSaved(activeNote.contentId, result)}
         />
       )}
     </>

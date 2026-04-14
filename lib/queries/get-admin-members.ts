@@ -26,6 +26,7 @@ export type AdminMemberRow = Pick<
   | "subscription_tier"
   | "practice_streak"
   | "last_practiced_at"
+  | "password_set"
   | "created_at"
   | "stripe_customer_id"
 >;
@@ -56,14 +57,38 @@ export type MemberTierFilter =
   | "level_4"
   | "";
 
+export type MemberBillingFilter = "linked" | "missing" | "";
+
+export type MemberPasswordFilter = "set" | "missing" | "";
+
 export type MemberListFilters = {
   search?: string;
   status?: MemberStatusFilter;
   tier?: MemberTierFilter;
+  billing?: MemberBillingFilter;
+  password?: MemberPasswordFilter;
   page?: number;
 };
 
 const PAGE_SIZE = 30;
+
+async function countMembers(builder: PromiseLike<{ count: number | null; error: { message: string } | null }>) {
+  const { count, error } = await builder;
+  if (error) {
+    console.error("[countMembers] Supabase error:", error.message);
+    return 0;
+  }
+
+  return count ?? 0;
+}
+
+function countMemberRows() {
+  const supabase = getAdminClient();
+  return supabase.from("member").select("id", {
+    count: "exact",
+    head: true,
+  });
+}
 
 // ─────────────────────────────────────────────────
 // getMemberList
@@ -86,7 +111,7 @@ export async function getMemberList(filters: MemberListFilters = {}): Promise<{
   let query = supabase
     .from("member")
     .select(
-      "id, email, name, subscription_status, subscription_tier, practice_streak, last_practiced_at, created_at, stripe_customer_id",
+      "id, email, name, subscription_status, subscription_tier, practice_streak, last_practiced_at, password_set, created_at, stripe_customer_id",
       { count: "exact" }
     )
     .order("created_at", { ascending: false })
@@ -109,6 +134,22 @@ export async function getMemberList(filters: MemberListFilters = {}): Promise<{
     query = query.eq("subscription_tier", filters.tier);
   }
 
+  if (filters.billing === "linked") {
+    query = query.not("stripe_customer_id", "is", null);
+  }
+
+  if (filters.billing === "missing") {
+    query = query.is("stripe_customer_id", null);
+  }
+
+  if (filters.password === "set") {
+    query = query.eq("password_set", true);
+  }
+
+  if (filters.password === "missing") {
+    query = query.eq("password_set", false);
+  }
+
   const { data, count, error } = await query;
 
   if (error) {
@@ -119,6 +160,40 @@ export async function getMemberList(filters: MemberListFilters = {}): Promise<{
   return {
     members: (data ?? []) as AdminMemberRow[],
     total: count ?? 0,
+  };
+}
+
+export async function getAdminMemberOpsSnapshot(): Promise<{
+  total: number;
+  active: number;
+  pastDue: number;
+  trialing: number;
+  missingStripe: number;
+  missingPassword: number;
+}> {
+  const [
+    total,
+    active,
+    pastDue,
+    trialing,
+    missingStripe,
+    missingPassword,
+  ] = await Promise.all([
+    countMembers(countMemberRows()),
+    countMembers(countMemberRows().eq("subscription_status", "active")),
+    countMembers(countMemberRows().eq("subscription_status", "past_due")),
+    countMembers(countMemberRows().eq("subscription_status", "trialing")),
+    countMembers(countMemberRows().is("stripe_customer_id", null)),
+    countMembers(countMemberRows().eq("password_set", false)),
+  ]);
+
+  return {
+    total,
+    active,
+    pastDue,
+    trialing,
+    missingStripe,
+    missingPassword,
   };
 }
 

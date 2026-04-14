@@ -4,7 +4,6 @@ import { useState } from "react";
 import type { TodayContent } from "@/lib/queries/get-today-content";
 import { AudioPlayer } from "@/components/today/AudioPlayer";
 import { NoteSheet } from "@/components/notes/NoteSheet";
-import { getNoteForContent } from "@/app/(member)/notes/actions";
 
 /**
  * components/today/DailyPracticeCard.tsx
@@ -20,7 +19,7 @@ import { getNoteForContent } from "@/app/(member)/notes/actions";
 interface DailyPracticeCardProps {
   content: TodayContent | null;
   audioUrl: string | null;
-  initialHasNote?: boolean;
+  initialNoteCount?: number;
   /** Whether the member has already listened today (server-derived) */
   hasListened?: boolean;
   /**
@@ -40,31 +39,24 @@ function formatDuration(seconds: number | null): string {
 export function DailyPracticeCard({
   content,
   audioUrl,
-  initialHasNote = false,
+  initialNoteCount = 0,
   hasListened = false,
   todayLabel,
 }: DailyPracticeCardProps) {
   const [noteOpen, setNoteOpen] = useState(false);
-  const [existingNote, setExistingNote] = useState("");
-  const [noteExists, setNoteExists] = useState(initialHasNote);
-  const [loadingNote, setLoadingNote] = useState(false);
+  const [noteCount, setNoteCount] = useState(initialNoteCount);
   const [listened, setListened] = useState(hasListened);
 
   const hasContent = content !== null;
   const duration = hasContent ? formatDuration(content.duration_seconds) : "—";
 
-  async function handleOpenNote() {
+  function handleOpenNote() {
     if (!content) return;
-    setLoadingNote(true);
-    const existing = await getNoteForContent(content.id);
-    setExistingNote(existing?.entry_text ?? "");
-    setLoadingNote(false);
     setNoteOpen(true);
   }
 
-  function handleNoteSaved(_isNew: boolean, savedText: string) {
-    setNoteExists(true);
-    setExistingNote(savedText);
+  function handleNoteSaved(result: { isNew: boolean }) {
+    setNoteCount((prev) => prev + (result.isNew ? 1 : 0));
   }
 
   return (
@@ -217,11 +209,10 @@ export function DailyPracticeCard({
                 <button
                   type="button"
                   onClick={handleOpenNote}
-                  disabled={loadingNote}
                   className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold transition-all disabled:opacity-40 hover:bg-white/12"
                   style={{
-                    color: noteExists ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.7)",
-                    background: noteExists ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.07)",
+                    color: noteCount > 0 ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.7)",
+                    background: noteCount > 0 ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.07)",
                     border: "1px solid rgba(255,255,255,0.14)",
                   }}
                 >
@@ -231,25 +222,30 @@ export function DailyPracticeCard({
                     <path d="M12 20h9" />
                     <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
                   </svg>
-                  {loadingNote ? "Loading…" : noteExists ? "View reflection" : "Reflect"}
-                  {noteExists && (
+                  {noteCount > 0 ? "Add another reflection" : "Reflect on this"}
+                  {noteCount > 0 && (
                     <span className="w-1.5 h-1.5 rounded-full inline-block"
                       style={{ background: "rgba(255,255,255,0.5)" }}
-                      aria-label="Note exists" />
+                      aria-label="Reflection exists" />
                   )}
                 </button>
+                <p className="mt-2 text-xs" style={{ color: "rgba(255,255,255,0.48)" }}>
+                  {noteCount > 0
+                    ? `${noteCount} reflection${noteCount === 1 ? "" : "s"} saved for this practice`
+                    : "Save a private reflection if something stands out."}
+                </p>
               </div>
             </>
           )}
         </div>
       </article>
 
-      <NoteSheet
+        <NoteSheet
         isOpen={noteOpen}
         onClose={() => setNoteOpen(false)}
         contentId={content?.id ?? null}
         contentTitle={content?.title}
-        initialText={existingNote}
+        existingReflectionCount={noteCount}
         onSaved={handleNoteSaved}
       />
     </>

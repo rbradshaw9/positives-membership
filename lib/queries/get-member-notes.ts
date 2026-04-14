@@ -16,6 +16,7 @@ export type MemberNote = {
   content_id: string | null;
   content_title: string | null;
   content_type: string | null;
+  is_freeform: boolean;
 };
 
 export async function getMemberNotes(): Promise<MemberNote[]> {
@@ -60,6 +61,7 @@ export async function getMemberNotes(): Promise<MemberNote[]> {
       content_id: row.content_id,
       content_title: content?.title ?? null,
       content_type: content?.type ?? null,
+      is_freeform: row.content_id == null,
     };
   });
 }

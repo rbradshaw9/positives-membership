@@ -6,7 +6,6 @@ import { NoteSheet } from "@/components/notes/NoteSheet";
 import { AudioPlayer } from "@/components/today/AudioPlayer";
 import { ResourceLinks } from "@/components/media/ResourceLinks";
 import { MarkdownBody } from "@/components/content/MarkdownBody";
-import { getNoteForContent } from "@/app/(member)/notes/actions";
 import { trackWeeklyViewed } from "@/app/(member)/today/engagement-actions";
 import { stripCmsPreamble } from "@/lib/content/strip-cms-preamble";
 
@@ -22,18 +21,16 @@ import { stripCmsPreamble } from "@/lib/content/strip-cms-preamble";
 interface WeeklyPrincipleCardProps {
   content: WeeklyContent | null;
   audioUrl: string | null;
-  initialHasNote?: boolean;
+  initialNoteCount?: number;
 }
 
 export function WeeklyPrincipleCard({
   content,
   audioUrl,
-  initialHasNote = false,
+  initialNoteCount = 0,
 }: WeeklyPrincipleCardProps) {
   const [noteOpen, setNoteOpen] = useState(false);
-  const [existingNote, setExistingNote] = useState("");
-  const [noteExists, setNoteExists] = useState(initialHasNote);
-  const [loadingNote, setLoadingNote] = useState(false);
+  const [noteCount, setNoteCount] = useState(initialNoteCount);
   const trackFired = useRef(false);
 
   function fireTrack() {
@@ -42,19 +39,14 @@ export function WeeklyPrincipleCard({
     void trackWeeklyViewed(content.id);
   }
 
-  async function handleOpenNote() {
+  function handleOpenNote() {
     if (!content) return;
     fireTrack();
-    setLoadingNote(true);
-    const existing = await getNoteForContent(content.id);
-    setExistingNote(existing?.entry_text ?? "");
-    setLoadingNote(false);
     setNoteOpen(true);
   }
 
-  function handleNoteSaved(_isNew: boolean, savedText: string) {
-    setNoteExists(true);
-    setExistingNote(savedText);
+  function handleNoteSaved(result: { isNew: boolean }) {
+    setNoteCount((prev) => prev + (result.isNew ? 1 : 0));
   }
 
   // Weekly card is reflection-first: no video. Monthly owns the video.
@@ -180,10 +172,9 @@ export function WeeklyPrincipleCard({
               <button
                 type="button"
                 onClick={handleOpenNote}
-                disabled={loadingNote}
-                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all disabled:opacity-40"
+                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all"
                 style={{
-                  background: noteExists
+                  background: noteCount > 0
                     ? "color-mix(in srgb, var(--color-secondary) 12%, transparent)"
                     : "color-mix(in srgb, var(--color-secondary) 10%, transparent)",
                   color: "var(--color-secondary)",
@@ -204,16 +195,19 @@ export function WeeklyPrincipleCard({
                   <path d="M12 20h9" />
                   <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
                 </svg>
-                <span>
-                  {loadingNote ? "Loading…" : noteExists ? "View note" : "Reflect"}
-                </span>
-                {noteExists && (
+                <span>{noteCount > 0 ? "Add another reflection" : "Reflect on this"}</span>
+                {noteCount > 0 && (
                   <span
                     className="w-1.5 h-1.5 rounded-full bg-secondary/70 inline-block"
-                    aria-label="Note exists"
+                    aria-label="Reflection exists"
                   />
                 )}
               </button>
+              <p className="text-xs text-foreground/45">
+                {noteCount > 0
+                  ? `${noteCount} reflection${noteCount === 1 ? "" : "s"} saved for this week`
+                  : "Capture a private thought while this week's principle is fresh."}
+              </p>
             </div>
           </div>
         )}
@@ -224,7 +218,7 @@ export function WeeklyPrincipleCard({
         onClose={() => setNoteOpen(false)}
         contentId={content?.id ?? null}
         contentTitle={content?.title}
-        initialText={existingNote}
+        existingReflectionCount={noteCount}
         onSaved={handleNoteSaved}
       />
     </>

@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getMonthDetail } from "@/lib/queries/get-monthly-archive";
 import { getArchiveDailyAudios } from "@/lib/queries/get-monthly-daily-audios";
 import { getMonthWeeklyContent } from "@/lib/queries/get-month-weekly-content";
-import { getMemberNoteContentIds } from "@/lib/queries/get-library-content";
+import { getMemberNoteCounts } from "@/lib/queries/get-library-content";
 import { requireActiveMember } from "@/lib/auth/require-active-member";
 import { getEffectiveMonthYear } from "@/lib/dates/effective-date";
 import { MonthlyThemeCard } from "@/components/today/MonthlyThemeCard";
@@ -87,10 +87,10 @@ export default async function MonthDetailPage({ params }: Props) {
   const { practice, theme, daily_count } = detail;
 
   // Fetch the rich data needed by the /today-style components
-  const [monthWeekly, archiveDailyGroup, noteContentIds] = await Promise.all([
+  const [monthWeekly, archiveDailyGroup, noteCounts] = await Promise.all([
     getMonthWeeklyContent(monthYear),
     getArchiveDailyAudios(monthYear),
-    theme ? getMemberNoteContentIds(member.id) : Promise.resolve(new Set<string>()),
+    theme ? getMemberNoteCounts(member.id, [theme.id]) : Promise.resolve<Record<string, number>>({}),
   ]);
 
   const currentMonth = monthName(monthYear);
@@ -182,7 +182,7 @@ export default async function MonthDetailPage({ params }: Props) {
                   </span>
                   <MonthlyThemeCard
                     content={theme as import("@/lib/queries/get-monthly-content").MonthlyContent}
-                    initialHasNote={theme ? noteContentIds.has(theme.id) : false}
+                    initialNoteCount={theme ? (noteCounts[theme.id] ?? 0) : 0}
                     viewerUserId={member.id}
                   />
                 </div>

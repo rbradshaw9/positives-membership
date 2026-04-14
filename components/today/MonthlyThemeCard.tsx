@@ -6,7 +6,6 @@ import { NoteSheet } from "@/components/notes/NoteSheet";
 import { VideoEmbed } from "@/components/media/VideoEmbed";
 import { ResourceLinks } from "@/components/media/ResourceLinks";
 import { MarkdownBody } from "@/components/content/MarkdownBody";
-import { getNoteForContent } from "@/app/(member)/notes/actions";
 import { trackMonthlyViewed } from "@/app/(member)/today/engagement-actions";
 import { stripCmsPreamble } from "@/lib/content/strip-cms-preamble";
 
@@ -21,7 +20,7 @@ import { stripCmsPreamble } from "@/lib/content/strip-cms-preamble";
 
 interface MonthlyThemeCardProps {
   content: MonthlyContent | null;
-  initialHasNote?: boolean;
+  initialNoteCount?: number;
   viewerUserId?: string | null;
 }
 
@@ -31,12 +30,10 @@ function currentMonthName(): string {
 
 export function MonthlyThemeCard({
   content,
-  initialHasNote = false,
+  initialNoteCount = 0,
 }: MonthlyThemeCardProps) {
   const [noteOpen, setNoteOpen] = useState(false);
-  const [existingNote, setExistingNote] = useState("");
-  const [noteExists, setNoteExists] = useState(initialHasNote);
-  const [loadingNote, setLoadingNote] = useState(false);
+  const [noteCount, setNoteCount] = useState(initialNoteCount);
   const trackFired = useRef(false);
 
   function fireTrack() {
@@ -45,19 +42,14 @@ export function MonthlyThemeCard({
     void trackMonthlyViewed(content.id);
   }
 
-  async function handleOpenNote() {
+  function handleOpenNote() {
     if (!content) return;
     fireTrack();
-    setLoadingNote(true);
-    const existing = await getNoteForContent(content.id);
-    setExistingNote(existing?.entry_text ?? "");
-    setLoadingNote(false);
     setNoteOpen(true);
   }
 
-  function handleNoteSaved(_isNew: boolean, savedText: string) {
-    setNoteExists(true);
-    setExistingNote(savedText);
+  function handleNoteSaved(result: { isNew: boolean }) {
+    setNoteCount((prev) => prev + (result.isNew ? 1 : 0));
   }
 
   const hasVideo = !!(content?.vimeo_video_id || content?.youtube_video_id);
@@ -178,10 +170,9 @@ export function MonthlyThemeCard({
               <button
                 type="button"
                 onClick={handleOpenNote}
-                disabled={loadingNote}
-                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all disabled:opacity-40"
+                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all"
                 style={{
-                  background: noteExists
+                  background: noteCount > 0
                     ? "color-mix(in srgb, var(--color-accent) 12%, transparent)"
                     : "color-mix(in srgb, var(--color-accent) 10%, transparent)",
                   color: "var(--color-accent)",
@@ -202,16 +193,19 @@ export function MonthlyThemeCard({
                   <path d="M12 20h9" />
                   <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
                 </svg>
-                <span>
-                  {loadingNote ? "Loading…" : noteExists ? "View note" : "Reflect"}
-                </span>
-                {noteExists && (
+                <span>{noteCount > 0 ? "Add another reflection" : "Reflect on this"}</span>
+                {noteCount > 0 && (
                   <span
                     className="w-1.5 h-1.5 rounded-full bg-accent/70 inline-block"
-                    aria-label="Note exists"
+                    aria-label="Reflection exists"
                   />
                 )}
               </button>
+              <p className="text-xs text-foreground/45">
+                {noteCount > 0
+                  ? `${noteCount} reflection${noteCount === 1 ? "" : "s"} saved for this theme`
+                  : "Use this space for a private note about what this month's theme is surfacing."}
+              </p>
             </div>
           </div>
         )}
@@ -222,7 +216,7 @@ export function MonthlyThemeCard({
         onClose={() => setNoteOpen(false)}
         contentId={content?.id ?? null}
         contentTitle={content?.title}
-        initialText={existingNote}
+        existingReflectionCount={noteCount}
         onSaved={handleNoteSaved}
       />
     </>

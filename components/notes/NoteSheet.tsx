@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef, useTransition } from "react";
-import { saveNote, logJournalOpened } from "@/app/(member)/notes/actions";
+import {
+  createJournalEntry,
+  deleteJournalEntry,
+  logJournalOpened,
+  updateJournalEntry,
+} from "@/app/(member)/notes/actions";
 
 /**
  * components/notes/NoteSheet.tsx
@@ -23,24 +28,33 @@ interface NoteSheetProps {
   isOpen: boolean;
   onClose: () => void;
   contentId: string | null;
+  noteId?: string | null;
   contentTitle?: string;
   initialText?: string;
-  onSaved?: (isNew: boolean, savedText: string) => void;
+  existingReflectionCount?: number;
+  onSaved?: (result: { noteId: string; isNew: boolean; savedText: string }) => void;
+  onDeleted?: (noteId: string) => void;
 }
 
 export function NoteSheet({
   isOpen,
   onClose,
   contentId,
+  noteId = null,
   contentTitle,
   initialText = "",
+  existingReflectionCount = 0,
   onSaved,
+  onDeleted,
 }: NoteSheetProps) {
   const [text, setText] = useState(initialText);
-  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveState, setSaveState] = useState<
+    "idle" | "saving" | "saved" | "deleting" | "error"
+  >("idle");
   const [, startTransition] = useTransition();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const eventFiredRef = useRef(false);
+  const isEditing = Boolean(noteId);
 
   // Sync initialText when sheet opens with different content
   useEffect(() => {
@@ -90,11 +104,17 @@ export function NoteSheet({
     if (!text.trim()) return;
     setSaveState("saving");
 
-    const result = await saveNote(contentId, text);
+    const result = isEditing
+      ? await updateJournalEntry(noteId!, text)
+      : await createJournalEntry(contentId, text);
 
     if (result.ok) {
       setSaveState("saved");
-      onSaved?.(result.isNew, text.trim());
+      onSaved?.({
+        noteId: result.noteId,
+        isNew: result.isNew,
+        savedText: text.trim(),
+      });
       setTimeout(() => {
         onClose();
         setSaveState("idle");
@@ -103,6 +123,25 @@ export function NoteSheet({
       setSaveState("error");
       setTimeout(() => setSaveState("idle"), 3000);
     }
+  }
+
+  async function handleDelete() {
+    if (!noteId) return;
+    const confirmed = window.confirm("Delete this note? This can’t be undone.");
+    if (!confirmed) return;
+
+    setSaveState("deleting");
+    const result = await deleteJournalEntry(noteId);
+
+    if (result.ok) {
+      onDeleted?.(noteId);
+      onClose();
+      setSaveState("idle");
+      return;
+    }
+
+    setSaveState("error");
+    setTimeout(() => setSaveState("idle"), 3000);
   }
 
   function handleCancel() {
@@ -118,11 +157,22 @@ export function NoteSheet({
       ? "Saving…"
       : saveState === "saved"
         ? "Saved ✓"
-        : initialText
-          ? "Update note"
-          : "Save note";
+        : saveState === "deleting"
+          ? "Deleting…"
+          : isEditing
+            ? "Update note"
+            : contentId
+              ? "Save reflection"
+              : "Save note";
 
-  const headerTitle = contentTitle ? `Note — ${contentTitle}` : "Note";
+  const headerTitle = isEditing ? "Edit note" : contentId ? "New reflection" : "New note";
+  const helperText = isEditing
+    ? "This stays private to you. Come back whenever you want to add more."
+    : contentId
+      ? existingReflectionCount > 0
+        ? `You already have ${existingReflectionCount} reflection${existingReflectionCount === 1 ? "" : "s"} on this practice. This will add another.`
+        : "A few sentences is enough. Save a quick reflection while it is still fresh."
+      : "A private place for quick thoughts, reminders, or anything you want to return to later.";
 
   return (
     <>
@@ -150,12 +200,15 @@ export function NoteSheet({
       >
         <NoteSheetContent
           headerTitle={headerTitle}
+          contentTitle={contentTitle}
+          helperText={helperText}
           text={text}
           setText={setText}
           saveLabel={saveLabel}
           saveState={saveState}
           onSave={handleSave}
           onCancel={handleCancel}
+          onDelete={isEditing ? handleDelete : undefined}
           textareaRef={textareaRef}
         />
       </aside>
@@ -185,12 +238,15 @@ export function NoteSheet({
         </div>
         <NoteSheetContent
           headerTitle={headerTitle}
+          contentTitle={contentTitle}
+          helperText={helperText}
           text={text}
           setText={setText}
           saveLabel={saveLabel}
           saveState={saveState}
           onSave={handleSave}
           onCancel={handleCancel}
+          onDelete={isEditing ? handleDelete : undefined}
           textareaRef={textareaRef}
         />
       </aside>
@@ -202,23 +258,29 @@ export function NoteSheet({
 
 interface ContentProps {
   headerTitle: string;
+  contentTitle?: string;
+  helperText: string;
   text: string;
   setText: (v: string) => void;
   saveLabel: string;
-  saveState: "idle" | "saving" | "saved" | "error";
+  saveState: "idle" | "saving" | "saved" | "deleting" | "error";
   onSave: () => void;
   onCancel: () => void;
+  onDelete?: () => void;
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
 }
 
 function NoteSheetContent({
   headerTitle,
+  contentTitle,
+  helperText,
   text,
   setText,
   saveLabel,
   saveState,
   onSave,
   onCancel,
+  onDelete,
   textareaRef,
 }: ContentProps) {
   return (
@@ -241,7 +303,12 @@ function NoteSheetContent({
             <path d="M12 20h9" />
             <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
           </svg>
-          <p className="text-sm font-medium text-foreground truncate">{headerTitle}</p>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-foreground truncate">{headerTitle}</p>
+            {contentTitle && (
+              <p className="mt-0.5 text-xs text-muted-foreground truncate">{contentTitle}</p>
+            )}
+          </div>
         </div>
         <button
           type="button"
@@ -255,6 +322,8 @@ function NoteSheetContent({
           </svg>
         </button>
       </div>
+
+      <p className="text-sm leading-body text-muted-foreground">{helperText}</p>
 
       {/* Textarea — warm writing surface */}
       <textarea
@@ -285,6 +354,17 @@ function NoteSheetContent({
         className="flex gap-3 flex-shrink-0"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
+        {onDelete && (
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={saveState === "saving" || saveState === "deleting"}
+            className="rounded-full border border-destructive/20 bg-destructive/6 px-4 py-2.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
+          >
+            Delete
+          </button>
+        )}
+
         {/* Cancel — ghost treatment */}
         <button
           type="button"
@@ -298,7 +378,12 @@ function NoteSheetContent({
         <button
           type="button"
           onClick={onSave}
-          disabled={!text.trim() || saveState === "saving" || saveState === "saved"}
+          disabled={
+            !text.trim() ||
+            saveState === "saving" ||
+            saveState === "saved" ||
+            saveState === "deleting"
+          }
           className={
             saveState === "saved"
               ? "flex-1 py-2.5 rounded-full text-sm font-medium bg-success text-white"

@@ -1245,6 +1245,7 @@ export type Database = {
         | "monthly_viewed"
         | "note_created"
         | "note_updated"
+        | "note_deleted"
         | "journal_opened"
         | "event_attended"
         | "qa_submitted"
@@ -1408,6 +1409,7 @@ export const Constants = {
         "monthly_viewed",
         "note_created",
         "note_updated",
+        "note_deleted",
         "journal_opened",
         "event_attended",
         "qa_submitted",

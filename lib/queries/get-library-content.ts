@@ -120,3 +120,39 @@ export async function getMemberNoteContentIds(memberId: string): Promise<Set<str
 
   return new Set((data ?? []).map((r) => r.content_id as string));
 }
+
+/**
+ * getMemberNoteCounts — returns the number of reflections a member has for
+ * each content item. Used by Today and Library surfaces to show additive
+ * reflection language without loading note bodies.
+ */
+export async function getMemberNoteCounts(
+  memberId: string,
+  contentIds?: string[]
+): Promise<Record<string, number>> {
+  const supabase = await createClient();
+
+  let query = supabase
+    .from("journal")
+    .select("content_id")
+    .eq("member_id", memberId)
+    .not("content_id", "is", null);
+
+  if (contentIds && contentIds.length > 0) {
+    query = query.in("content_id", contentIds);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("[getMemberNoteCounts] error:", error.message);
+    return {};
+  }
+
+  return (data ?? []).reduce<Record<string, number>>((acc, row) => {
+    const contentId = row.content_id as string | null;
+    if (!contentId) return acc;
+    acc[contentId] = (acc[contentId] ?? 0) + 1;
+    return acc;
+  }, {});
+}

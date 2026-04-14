@@ -5,7 +5,7 @@ import { getMonthlyContent } from "@/lib/queries/get-monthly-content";
 import { getMonthlyDailyAudios } from "@/lib/queries/get-monthly-daily-audios";
 import { getMonthWeeklyContent } from "@/lib/queries/get-month-weekly-content";
 import { resolveAudioUrl } from "@/lib/media/resolve-audio-url";
-import { getMemberNoteContentIds } from "@/lib/queries/get-library-content";
+import { getMemberNoteCounts } from "@/lib/queries/get-library-content";
 import { getEffectiveDate, getEffectiveMonthYear } from "@/lib/dates/effective-date";
 import { getGreeting } from "@/lib/greeting";
 import { requireActiveMember } from "@/lib/auth/require-active-member";
@@ -81,10 +81,10 @@ export default async function TodayPage() {
           .then(({ data }) => new Set((data ?? []).map((row) => row.content_id).filter(Boolean)))
       : Promise.resolve(new Set<string>());
 
-  const [noteContentIds, listenedToday, listenedArchiveIds] = await Promise.all([
+  const [noteCounts, listenedToday, listenedArchiveIds] = await Promise.all([
     contentIds.length > 0
-      ? getMemberNoteContentIds(member.id)
-      : Promise.resolve(new Set<string>()),
+      ? getMemberNoteCounts(member.id, contentIds)
+      : Promise.resolve<Record<string, number>>({}),
     todayContent
       ? supabase
           .from("activity_event")
@@ -167,7 +167,7 @@ export default async function TodayPage() {
           audioUrl={dailyAudioUrl}
           todayLabel={todayLabel}
           hasListened={listenedToday}
-          initialHasNote={todayContent ? noteContentIds.has(todayContent.id) : false}
+          initialNoteCount={todayContent ? (noteCounts[todayContent.id] ?? 0) : 0}
         />
 
         {/* ── Zone 2: Monthly theme + Weekly reflection ─────────────── */}
@@ -183,9 +183,7 @@ export default async function TodayPage() {
               </span>
               <MonthlyThemeCard
                 content={monthlyContent}
-                initialHasNote={
-                  monthlyContent ? noteContentIds.has(monthlyContent.id) : false
-                }
+                initialNoteCount={monthlyContent ? (noteCounts[monthlyContent.id] ?? 0) : 0}
                 viewerUserId={member.id}
               />
             </div>
@@ -201,9 +199,7 @@ export default async function TodayPage() {
               <WeeklyPrincipleCard
                 content={weeklyContent}
                 audioUrl={weeklyAudioUrl}
-                initialHasNote={
-                  weeklyContent ? noteContentIds.has(weeklyContent.id) : false
-                }
+                initialNoteCount={weeklyContent ? (noteCounts[weeklyContent.id] ?? 0) : 0}
               />
             </div>
           </div>
