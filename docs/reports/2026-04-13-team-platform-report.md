@@ -199,7 +199,7 @@ These are the platform/tooling costs we should expect to discuss. Where exact bi
 
 | Tool | Current planning assumption | Monthly | Annual | Notes |
 | --- | --- | ---: | ---: | --- |
-| Resend | likely Free or Pro depending on volume | $0 to $20 | $0 to $240 | Good chance this stays low early; Pro becomes relevant if transactional email volume grows. |
+| Postmark | low-volume transactional | $15 to $16.50 | $180 to $198 | Typical entry pricing for low-volume transactional delivery. |
 | ActiveCampaign Starter | around 7,500 contacts | $109 | $1,308 | User-supplied current pricing for the 7,500-contact band, billed annually. |
 | ActiveCampaign Plus | around 7,500 contacts | $127 | $1,524 | User-supplied current pricing for the 7,500-contact band, billed annually. |
 | ActiveCampaign Pro | around 7,500 contacts | $289 | $3,468 | User-supplied current pricing for the 7,500-contact band, billed annually. |
@@ -209,8 +209,8 @@ These are the platform/tooling costs we should expect to discuss. Where exact bi
 
 If we exclude Stripe transaction fees and exclude any unverified ActiveCampaign number, the most defensible current baseline is:
 
-- **Monthly baseline:** about **$169/month**
-- **Annual baseline:** about **$2,028/year**
+- **Monthly baseline:** about **$185/month**
+- **Annual baseline:** about **$2,220/year**
 
 That baseline is:
 
@@ -218,11 +218,7 @@ That baseline is:
 - Supabase Pro `25`
 - FirstPromoter Business `99`
 - Vimeo Standard `25`
-
-If Resend is on Pro, that moves to:
-
-- **Monthly baseline with Resend Pro:** about **$189/month**
-- **Annual baseline with Resend Pro:** about **$2,268/year**
+- Postmark `15–16.50`
 
 ### Baseline plus ActiveCampaign scenarios
 
@@ -230,15 +226,10 @@ If we include ActiveCampaign at roughly 7,500 contacts, the likely planning rang
 
 | Scenario | Monthly | Annual |
 | --- | ---: | ---: |
-| Core platform + ActiveCampaign Starter | $278 | $3,336 |
-| Core platform + ActiveCampaign Plus | $296 | $3,552 |
-| Core platform + ActiveCampaign Pro | $458 | $5,496 |
-| Core platform + ActiveCampaign Enterprise | $648 | $7,776 |
-
-If Resend is also on Pro, add another:
-
-- **$20/month**
-- **$240/year**
+| Core platform + ActiveCampaign Starter | $295 | $3,540 |
+| Core platform + ActiveCampaign Plus | $313 | $3,756 |
+| Core platform + ActiveCampaign Pro | $475 | $5,700 |
+| Core platform + ActiveCampaign Enterprise | $665 | $7,980 |
 
 ### Costs To Confirm Outside This Repo
 
@@ -303,7 +294,7 @@ That changes the conversation from "should we build?" to "how do we finish, oper
 - Supabase usage/pricing examples: https://supabase.com/docs/guides/platform/manage-your-usage/egress
 - FirstPromoter pricing: https://firstpromoter.com/pricing
 - Stripe pricing: https://stripe.com/pricing
-- Resend pricing: https://resend.com/pricing
+- Postmark pricing: https://postmarkapp.com/pricing
 - Vimeo pricing page: https://vimeo.com/upgrade-plan
 - ActiveCampaign pricing page: https://www.activecampaign.com/pricing
 - ActiveCampaign pricing overview article: https://www.activecampaign.com/blog/activecampaign-pricing-myths-debunked

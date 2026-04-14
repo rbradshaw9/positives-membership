@@ -46,8 +46,8 @@ Before deciding what to build next, it helps to be honest about where the produc
 
 ### Email and lifecycle truth
 
-- Resend-backed email/admin tooling already exists
-- app-managed onboarding, payment recovery, and winback cron routes already exist
+- ActiveCampaign is now the sending system (delivery via Postmark)
+- app-managed cron sequences have been removed
 - ActiveCampaign sync logic already exists, but it still needs an audit and launch-readiness review
 - unsubscribe handling exists, but still needs end-to-end verification
 

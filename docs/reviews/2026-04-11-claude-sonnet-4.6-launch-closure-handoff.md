@@ -24,7 +24,7 @@ This is not a greenfield product pass. The app is already far along. The right j
   - Supabase auth + DB
   - Stripe checkout + customer portal
   - FirstPromoter attribution
-  - Resend + ActiveCampaign
+  - ActiveCampaign + Postmark
   - Sentry baseline now installed and DSN-verified
 
 Important:

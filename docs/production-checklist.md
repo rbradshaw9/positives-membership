@@ -21,7 +21,9 @@ Verify all required vars are set in Vercel:
 | `STRIPE_PRICE_LEVEL_1_MONTHLY` | ✅ | `price_1TH2w4KStVEuswF7Fy1gEQeb` |
 | `NEXT_PUBLIC_APP_URL` | ✅ | `https://positives.life` |
 | `ADMIN_EMAILS` | ✅ | `ryan@drpauljenkins.com` |
-| `RESEND_API_KEY` | ✅ | `re_...` — Resend API key, marked sensitive |
+| `ACTIVECAMPAIGN_API_URL` | ✅ | `https://lopcadmin.api-us1.com` |
+| `ACTIVECAMPAIGN_API_KEY` | ✅ | AC API token |
+| `EMAIL_UNSUBSCRIBE_SECRET` | ✅ | Used to sign unsubscribe links |
 
 Keep these intentionally unset for an L1-only launch unless the broader rollout is approved:
 
@@ -42,6 +44,7 @@ Keep these intentionally unset for an L1-only launch unless the broader rollout 
 - [ ] Send a magic link to your email — it should arrive
 
 **What this confirms:** Supabase URL + anon key are wired correctly in the deployed app.
+**Also verify:** Supabase Auth SMTP is configured (Postmark) so magic links and resets deliver reliably.
 
 ---
 

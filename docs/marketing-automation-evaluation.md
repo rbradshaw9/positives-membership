@@ -137,9 +137,9 @@ Positives is a tiered membership platform (L1–L4) built for Dr. Paul's coachin
 
 ---
 
-### 5. Build Custom (Supabase + MailWizz + Resend/Postmark)
+### 5. Build Custom (Supabase + MailWizz + Postmark)
 
-**Overview:** Use existing infrastructure — Supabase for member state, Resend/Postmark for transactional email, MailWizz for lifecycle broadcasts — and build automation triggers via Stripe webhooks and a custom job queue.
+**Overview:** Use existing infrastructure — Supabase for member state, Postmark for transactional email, MailWizz for lifecycle broadcasts — and build automation triggers via Stripe webhooks and a custom job queue.
 
 | Criterion | Score | Notes |
 |-----------|-------|-------|
@@ -147,17 +147,17 @@ Positives is a tiered membership platform (L1–L4) built for Dr. Paul's coachin
 | Stripe integration | ⭐⭐⭐⭐⭐ | Already built into the app |
 | Webhook callbacks | ⭐⭐⭐⭐⭐ | Native — we control the app |
 | CRM / deal tracking | ⭐ | Would need to build |
-| Transactional email | ⭐⭐⭐⭐ | Resend/Postmark integration is straightforward |
+| Transactional email | ⭐⭐⭐⭐ | Postmark integration is straightforward |
 | Ease of use | ⭐ | No visual builder — everything is code |
-| Pricing | ⭐⭐⭐⭐⭐ | Near-zero — just Resend ($20/mo) or Postmark |
+| Pricing | ⭐⭐⭐⭐⭐ | Near-zero — just Postmark |
 | Membership platform fit | ⭐⭐⭐ | Perfect data integration; poor operational usability |
 | API quality | ⭐⭐⭐⭐⭐ | We own it |
 
-**Pro:** Cheapest. No vendor dependency. Perfect Stripe/Supabase integration. Transactional email (welcome, receipt) via Resend could be done in a day.
+**Pro:** Cheapest. No vendor dependency. Perfect Stripe/Supabase integration. Transactional email (welcome, receipt) via Postmark could be done in a day.
 
 **Con:** The lifecycle automation engine (onboarding sequences, branching, win-back) would take weeks to build properly and months to maintain. Non-engineers can't manage sequences. No CRM for L4 pipeline. **Building a sequence engine is not a good use of engineering time at this stage.**
 
-**Verdict: Partially recommended.** Build the transactional layer only (Resend + webhook handlers for welcome/receipt/password-reset). Use a proper MA platform for lifecycle automation.
+**Verdict: Partially recommended.** Build the transactional layer only (Postmark + webhook handlers for welcome/receipt/password-reset). Use a proper MA platform for lifecycle automation.
 
 ---
 
@@ -175,12 +175,12 @@ Positives is a tiered membership platform (L1–L4) built for Dr. Paul's coachin
 
 ## Recommendation
 
-> **ActiveCampaign + Resend (transactional)**
+> **ActiveCampaign + Postmark (delivery)**
 
 **Phase 1 — At launch (this week):**
-- Integrate **Resend** for transactional email (welcome, payment receipt, password reset)
-- ~1 day of engineering. Zero ongoing cost until 3k emails/mo.
-- No MA platform needed yet.
+- Configure **Postmark** for transactional delivery (auth + receipts + payment notices)
+- Ensure **ActiveCampaign** automations are ready to send via Postmark
+- No app-owned email templates needed
 
 **Phase 2 — Within 30 days of launch:**
 - Onboard **ActiveCampaign** (Plus plan, ~$49/mo at launch contact volume)
@@ -204,17 +204,16 @@ Engineering time is better spent on product. A bespoke sequence engine would tak
 
 ## Implementation Plan (ActiveCampaign)
 
-### Phase 1: Resend transactional (launch gate)
+### Phase 1: Postmark + AC transactional (launch gate)
 
 ```
-1. Add RESEND_API_KEY to Vercel
-2. Create /lib/email/send.ts with Resend client
-3. Trigger welcome email from Stripe webhook: checkout.session.completed
-4. Trigger payment receipt from invoice.payment_succeeded
-5. Configure Supabase auth to use custom SMTP via Resend for password reset
+1. Configure Postmark sender domain and SMTP credentials
+2. Configure Supabase Auth SMTP for security emails
+3. Ensure Stripe webhooks set AC tags/fields for key events
+4. Build AC automations for welcome, payment receipt, and payment failed
 ```
 
-**Estimated effort:** 4–6 hours
+**Estimated effort:** 1–2 days including automation QA
 
 ### Phase 2: ActiveCampaign onboarding
 
@@ -248,7 +247,7 @@ Engineering time is better spent on product. A bespoke sequence engine would tak
 ## Next Steps
 
 - [ ] Approve this recommendation
-- [ ] Sign up for Resend (free tier, no credit card needed for 3k/mo)
+- [ ] Sign up for Postmark
 - [ ] Sign up for ActiveCampaign (Plus plan — 14-day free trial available)
-- [ ] Engineering: implement Phase 1 Resend integration
+- [ ] Engineering: confirm AC automation triggers and Postmark delivery
 - [ ] Content: write L1 welcome email and 7-email onboarding sequence copy

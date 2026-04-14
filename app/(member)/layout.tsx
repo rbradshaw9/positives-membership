@@ -6,6 +6,7 @@ import { ServiceWorkerRegistration } from "@/components/platform/ServiceWorkerRe
 import { config } from "@/lib/config";
 import { isStreakActive } from "@/lib/streak/compute-streak";
 import { getEffectiveDate } from "@/lib/dates/effective-date";
+import { trackFirstMemberLogin } from "@/lib/member/track-first-login";
 
 /**
  * app/(member)/layout.tsx
@@ -22,6 +23,11 @@ export default async function MemberLayout({
   children: React.ReactNode;
 }) {
   const member = await requireActiveMember();
+
+  await trackFirstMemberLogin({
+    memberId: member.id,
+    email: member.email,
+  });
 
   const showPasswordNudge = member.password_set === false;
   const marketingOptedOut = member.email_unsubscribed === true;

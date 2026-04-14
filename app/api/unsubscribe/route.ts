@@ -6,14 +6,12 @@
  * GET  /api/unsubscribe?email=...&token=...  — shows confirmation page
  * POST /api/unsubscribe                      — List-Unsubscribe-Post handler
  *
- * Adds the member to the `email_unsubscribed` set in Resend (suppression list)
- * so no further marketing emails are sent. Transactional emails (receipts,
- * password resets) are NOT suppressed — those use separate Resend logic.
+ * Marks the member as unsubscribed in our DB and syncs ActiveCampaign list status.
+ * Transactional emails are handled separately and are not suppressed here.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { resend } from "@/lib/email/resend";
 import { syncMarketingPreference } from "@/lib/activecampaign/sync";
 import { verifyUnsubscribeToken } from "@/lib/email/unsubscribe";
 
@@ -25,20 +23,7 @@ const supabase = createClient(
 async function suppressEmail(email: string): Promise<{ memberUpdateError: boolean }> {
   const normalizedEmail = email.trim().toLowerCase();
 
-  // 1. Add to Resend contact suppression
-  try {
-    await (resend.contacts as unknown as {
-      create: (opts: { email: string; audienceId: string; unsubscribed: boolean }) => Promise<unknown>;
-    }).create({
-      email: normalizedEmail,
-      audienceId: process.env.RESEND_AUDIENCE_ID ?? "",
-      unsubscribed: true,
-    });
-  } catch {
-    // Non-fatal if Resend audience not configured — still suppress in our DB
-  }
-
-  // 2. Record in our DB so cron jobs skip this address
+  // 1. Record in our DB so lifecycle automations skip this address
   const { error } = await supabase
     .from("member")
     .update({ email_unsubscribed: true })
@@ -48,6 +33,7 @@ async function suppressEmail(email: string): Promise<{ memberUpdateError: boolea
     console.error("[unsubscribe] failed to persist email_unsubscribed:", error.message);
   }
 
+  // 2. Sync ActiveCampaign marketing preference
   await syncMarketingPreference({ email: normalizedEmail, subscribe: false });
 
   return { memberUpdateError: Boolean(error) };

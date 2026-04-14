@@ -15,6 +15,7 @@
  *   canceled        → 6
  *   founding_member → 7
  *   onboarding_complete → 8
+ *   affiliate       → 9
  *
  * List IDs:
  *   Positives Audience → 3
@@ -42,6 +43,14 @@ const TAG = {
   founding_member:     7,
   onboarding_complete: 8,
   affiliate:           9,
+  // New lifecycle triggers — created 2026-04-14.
+  welcome_ready:       14,
+  trial_started:       15,
+  payment_succeeded:   16,
+  trial_ending:        17,
+  tier_changed:        18,
+  payment_failed:      19,
+  first_login_complete: 20,
 } as const;
 
 /** Custom field IDs (created 2026-04-07) */
@@ -49,10 +58,21 @@ const FIELD = {
   membershipTier:    2,
   memberSince:       3,
   stripeCustomerId:  4,
-  affiliateLink:     5,  // legacy perstag still uses Rewardful naming
-  affiliateToken:    6,  // legacy perstag still uses Rewardful naming
-  affiliatePortal:   7,  // legacy perstag still uses Rewardful naming
+  affiliateLink:     5,
+  affiliateToken:    6,
+  affiliatePortal:   7,
   billingLink:       9, // Signed billing recovery URL for payment-failed emails
+  // New transactional merge fields — created 2026-04-14.
+  loginLink:         13,
+  trialEndDate:      14,
+  amountPaid:        15,
+  invoiceNumber:     16,
+  invoiceUrl:        17,
+  nextBillingDate:   18,
+  previousTier:      19,
+  newTier:           20,
+  planName:          21,
+  firstLoginAt:      22,
 } as const;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -116,6 +136,30 @@ async function addTag(contactId: string, tagId: number): Promise<void> {
   });
 }
 
+function isConfiguredId(id: number): boolean {
+  return Number.isFinite(id) && id > 0;
+}
+
+async function addTagIfConfigured(
+  contactId: string,
+  tagId: number,
+  label: string
+): Promise<void> {
+  if (!isConfiguredId(tagId)) {
+    console.warn(`[AC] Tag "${label}" is not configured (ID missing).`);
+    return;
+  }
+  await addTag(contactId, tagId);
+}
+
+async function removeTagIfConfigured(
+  contactId: string,
+  tagId: number
+): Promise<void> {
+  if (!isConfiguredId(tagId)) return;
+  await removeTagIfPresent(contactId, tagId);
+}
+
 /** Remove a tag from a contact (fetches contactTags first to find the record ID). */
 async function removeTagIfPresent(contactId: string, tagId: number): Promise<void> {
   type TagList = { contactTags: Array<{ id: string; tag: string }> };
@@ -131,6 +175,21 @@ async function setFieldValue(contactId: string, fieldId: number, value: string):
   await ac.post("/fieldValues", {
     fieldValue: { contact: contactId, field: fieldId, value },
   });
+}
+
+async function setFieldValueIfConfigured(
+  contactId: string,
+  fieldId: number,
+  value: string | undefined,
+  label: string
+): Promise<void> {
+  if (!value || !isConfiguredId(fieldId)) {
+    if (!isConfiguredId(fieldId)) {
+      console.warn(`[AC] Field "${label}" is not configured (ID missing).`);
+    }
+    return;
+  }
+  await setFieldValue(contactId, fieldId, value);
 }
 
 async function syncExactTierState(
@@ -203,6 +262,7 @@ export async function syncTierChange(params: {
   email: string;
   oldTier: SubscriptionTier | null;
   newTier: SubscriptionTier;
+  planName?: string;
   subscribeToMarketing?: boolean;
 }): Promise<void> {
   if (!acIsConfigured()) return;
@@ -215,6 +275,26 @@ export async function syncTierChange(params: {
     }
 
     await syncExactTierState(contactId, params.newTier);
+
+    await setFieldValueIfConfigured(
+      contactId,
+      FIELD.previousTier,
+      params.oldTier ?? undefined,
+      "Previous Tier"
+    );
+    await setFieldValueIfConfigured(
+      contactId,
+      FIELD.newTier,
+      params.newTier,
+      "New Tier"
+    );
+    await setFieldValueIfConfigured(
+      contactId,
+      FIELD.planName,
+      params.planName,
+      "Plan Name"
+    );
+    await addTagIfConfigured(contactId, TAG.tier_changed, "tier_changed");
 
     if (params.subscribeToMarketing ?? false) {
       await subscribeToList(contactId);
@@ -270,6 +350,7 @@ export async function syncPaymentFailed(params: {
     }
 
     await addTag(contactId, TAG.past_due);
+    await addTagIfConfigured(contactId, TAG.payment_failed, "payment_failed");
 
     console.log(`[AC] Payment failed synced — ${params.email}`);
   } catch (err) {
@@ -287,6 +368,7 @@ export async function syncPaymentRecovered(params: { email: string }): Promise<v
   try {
     const contactId = await syncContact({ email: params.email });
     await removeTagIfPresent(contactId, TAG.past_due);
+    await removeTagIfConfigured(contactId, TAG.payment_failed);
 
     console.log(`[AC] Payment recovered — past_due tag removed for ${params.email}`);
   } catch (err) {
@@ -294,6 +376,148 @@ export async function syncPaymentRecovered(params: { email: string }): Promise<v
   }
 }
 
+export async function syncPaymentSucceeded(params: {
+  email: string;
+  amountPaid?: string;
+  invoiceNumber?: string;
+  invoiceUrl?: string;
+  nextBillingDate?: string;
+}): Promise<void> {
+  if (!acIsConfigured()) return;
+
+  try {
+    const contactId = await syncContact({ email: params.email });
+
+    await setFieldValueIfConfigured(
+      contactId,
+      FIELD.amountPaid,
+      params.amountPaid,
+      "Amount Paid"
+    );
+    await setFieldValueIfConfigured(
+      contactId,
+      FIELD.invoiceNumber,
+      params.invoiceNumber,
+      "Invoice Number"
+    );
+    await setFieldValueIfConfigured(
+      contactId,
+      FIELD.invoiceUrl,
+      params.invoiceUrl,
+      "Invoice URL"
+    );
+    await setFieldValueIfConfigured(
+      contactId,
+      FIELD.nextBillingDate,
+      params.nextBillingDate,
+      "Next Billing Date"
+    );
+
+    await addTagIfConfigured(contactId, TAG.payment_succeeded, "payment_succeeded");
+
+    console.log(`[AC] Payment succeeded synced — ${params.email}`);
+  } catch (err) {
+    console.error("[AC] syncPaymentSucceeded failed (non-fatal):", err);
+  }
+}
+
+export async function syncTrialEnding(params: {
+  email: string;
+  trialEndDate?: string;
+}): Promise<void> {
+  if (!acIsConfigured()) return;
+
+  try {
+    const contactId = await syncContact({ email: params.email });
+
+    await setFieldValueIfConfigured(
+      contactId,
+      FIELD.trialEndDate,
+      params.trialEndDate,
+      "Trial End Date"
+    );
+    await addTagIfConfigured(contactId, TAG.trial_ending, "trial_ending");
+
+    console.log(`[AC] Trial ending synced — ${params.email}`);
+  } catch (err) {
+    console.error("[AC] syncTrialEnding failed (non-fatal):", err);
+  }
+}
+
+export async function syncWelcomeEmail(params: {
+  email: string;
+  loginLink: string;
+  planName?: string;
+  trialEndDate?: string;
+  isTrial?: boolean;
+}): Promise<void> {
+  if (!acIsConfigured()) return;
+
+  try {
+    const contactId = await syncContact({ email: params.email });
+
+    await setFieldValueIfConfigured(
+      contactId,
+      FIELD.loginLink,
+      params.loginLink,
+      "Login Link"
+    );
+    await setFieldValueIfConfigured(
+      contactId,
+      FIELD.planName,
+      params.planName,
+      "Plan Name"
+    );
+    await setFieldValueIfConfigured(
+      contactId,
+      FIELD.trialEndDate,
+      params.trialEndDate,
+      "Trial End Date"
+    );
+
+    if (params.isTrial) {
+      await addTagIfConfigured(contactId, TAG.trial_started, "trial_started");
+    } else {
+      await addTagIfConfigured(contactId, TAG.welcome_ready, "welcome_ready");
+    }
+
+    console.log(`[AC] Welcome email synced — ${params.email}`);
+  } catch (err) {
+    console.error("[AC] syncWelcomeEmail failed (non-fatal):", err);
+  }
+}
+
+export async function syncFirstLoginComplete(params: {
+  email: string;
+  firstLoginAt?: string;
+}): Promise<void> {
+  if (!acIsConfigured()) return;
+
+  try {
+    const contactId = await syncContact({ email: params.email });
+
+    await setFieldValueIfConfigured(
+      contactId,
+      FIELD.firstLoginAt,
+      params.firstLoginAt,
+      "First Login At"
+    );
+
+    await addTagIfConfigured(
+      contactId,
+      TAG.first_login_complete,
+      "first_login_complete"
+    );
+
+    // These launch-trigger tags only need to start their automations once.
+    await removeTagIfConfigured(contactId, TAG.welcome_ready);
+    await removeTagIfConfigured(contactId, TAG.trial_started);
+
+    console.log(`[AC] First login synced — ${params.email}`);
+  } catch (err) {
+    console.error("[AC] syncFirstLoginComplete failed (non-fatal):", err);
+  }
+}
 /**
  * Called after the Day 14 onboarding drip email is sent successfully.
  * Applies the onboarding_complete tag, which triggers the L1 → L2
@@ -332,7 +556,7 @@ export async function syncAffiliate(params: {
   try {
     const contactId = await syncContact({ email: params.email });
     const referralLink = `https://positives.life?fpr=${params.referralToken}`;
-    const portalUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://positives.life"}/account/affiliate/portal`;
+    const portalUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://positives.life"}/account/affiliate`;
 
     if (params.subscribeToMarketing ?? false) {
       await subscribeToList(contactId);

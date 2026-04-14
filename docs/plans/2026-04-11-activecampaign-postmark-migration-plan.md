@@ -6,7 +6,7 @@ Move Positives from the current mixed email setup toward:
 
 - `ActiveCampaign` as the main automation and lifecycle system
 - `Postmark` as the transactional email delivery provider
-- no long-term dependence on `Resend`
+- no long-term dependence on legacy app-owned email tooling
 - no long-term dependence on the in-app admin email editing surfaces as the main email-control center
 
 This is a migration plan, not an instruction to change everything at once.
@@ -32,17 +32,13 @@ That means the app still matters. It just should not own more email logic than n
 
 ## Current State
 
-Today Positives still has meaningful email logic in the app:
+As of 2026-04-14, Positives no longer sends transactional or lifecycle email directly from the app:
 
-- auth emails via Supabase Send Email Hook
-- welcome email
-- receipt email
-- payment failed email
-- onboarding drip
-- payment recovery follow-up
-- win-back sequence
-- unsubscribe handling
-- admin email template management surfaces
+- auth emails are sent by Supabase via SMTP (Postmark)
+- Stripe webhooks only set ActiveCampaign tags and fields
+- ActiveCampaign automations send lifecycle and transactional email (via Postmark)
+- app-owned cron sequences are removed
+- admin email template management surfaces are removed
 
 There is also existing ActiveCampaign sync logic in:
 
@@ -123,9 +119,9 @@ Recommended first automations:
 3. Set up the right server/message-stream structure.
 4. Confirm account ownership and billing ownership.
 
-### Phase 4. Move transactional delivery
+### Phase 4. Verify transactional delivery
 
-1. Replace Resend as the delivery provider for app-triggered transactional emails.
+1. Confirm Postmark sender domain and message streams.
 2. Re-test:
    - auth
    - checkout success / welcome
@@ -133,26 +129,22 @@ Recommended first automations:
    - payment failed
    - trial notices
    - cancellation / account emails
-3. Do not remove Resend yet.
-4. Verify the new provider in production-like conditions first.
+3. Verify in production-like conditions.
 
-### Phase 5. Move lifecycle ownership
+### Phase 5. Verify lifecycle ownership
 
-1. Rebuild the selected lifecycle sequences in ActiveCampaign.
-2. Turn off the app-owned version only after the AC version is verified.
+1. Rebuild the selected lifecycle sequences in ActiveCampaign (if not already).
+2. Validate delivery timing and segmentation rules.
 3. Keep a written map of:
-   - what moved
-   - what still lives in code
+   - what ActiveCampaign owns
+   - what the app still triggers
    - what is intentionally deferred
 
-### Phase 6. Remove old surfaces
+### Phase 6. Documentation + monitoring
 
-Only after the new system is verified:
-
-1. retire Resend from the stack
-2. update docs and environment variables
-3. freeze or remove the in-app admin email management surfaces
-4. remove stale email code paths and outdated runbooks
+1. Keep docs and env vars aligned with the current stack.
+2. Add monitoring for key email events (delivery failures, payment failures).
+3. Maintain a simple audit checklist for launch readiness.
 
 ## Biggest Risks
 
@@ -205,25 +197,18 @@ If the app admin email tools, ActiveCampaign, and Postmark are all “kind of li
 
 Reasonable before-launch work:
 
-- audit the current email inventory
-- clean up the AC account model
-- set up Postmark
-- plan the migration
-- build the first high-value AC automations
-
-Possible but higher-risk before-launch work:
-
-- fully replace Resend transactional delivery
-- fully migrate lifecycle ownership out of the app
-- remove the admin email surfaces
+- verify Postmark domain + SMTP for Supabase
+- confirm ActiveCampaign automations for key lifecycle events
+- validate Stripe webhook -> AC tag/field triggers
+- finalize unsubscribe + consent rules
 
 ## Practical Recommendation
 
 If the team wants to move toward this stack now, the safest path is:
 
 1. commit to the target architecture
-2. prepare ActiveCampaign and Postmark immediately
-3. move in stages
-4. remove Resend and admin email surfaces only after the replacement paths are verified
+2. keep ActiveCampaign and Postmark configured as the single email system
+3. verify the key lifecycle automations and transactional flows
+4. keep documentation aligned as the system evolves
 
 That keeps the direction clear without forcing a fragile big-bang migration.

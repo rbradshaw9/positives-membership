@@ -50,8 +50,8 @@ Core principles:
 | Video (legacy) | Vimeo — `@vimeo/player` — fallback for pre-Mux content | ✅ Fallback |
 | Audio hosting | S3 (presigned URLs via `resolveAudioUrl()`) | ✅ Active |
 | Podcast feed | Castos — `castos_episode_url` column exists | ⚠️ Planned — no delivery code |
-| Email transactional | Resend | ⚠️ Planned — no code |
-| Email lifecycle | ActiveCampaign | ⚠️ Planned — no code |
+| Email transactional | ActiveCampaign + Postmark | ⚠️ In progress |
+| Email lifecycle | ActiveCampaign (Postmark delivery) | ⚠️ In progress |
 | Vector / AI | pgvector + OpenAI embeddings | ⚠️ Schema only — tables empty, no embedding code |
 
 ---
@@ -454,12 +454,13 @@ Future: semantic search, content recommendations, AI assistant (RAG), auto-taggi
 
 ---
 
-## 11. Email System (Planned — No Code)
+## 11. Email System (ActiveCampaign + Postmark)
 
-**Transactional:** Resend — welcome, password reset, payment receipts, milestones, event reminders  
-**Lifecycle:** ActiveCampaign — onboarding, engagement reminders, upgrade nurture, weekly digest
+**Transactional:** ActiveCampaign automations delivered through Postmark (welcome, receipts, payment recovery, upgrade/downgrade)  
+**Lifecycle:** ActiveCampaign — onboarding, engagement reminders, upgrade nurture, weekly digest  
+**Auth emails:** Supabase SMTP (Postmark)
 
-**Current state:** Zero integration code. No npm packages for either. No API keys used.
+**Current state:** App no longer sends transactional email directly. The app syncs tags/fields to ActiveCampaign, and AC owns delivery.
 
 ---
 
@@ -475,7 +476,7 @@ Future: semantic search, content recommendations, AI assistant (RAG), auto-taggi
 
 ### Phase 2 — Community
 - Events (Level 2 differentiator)
-- Email lifecycle (Resend + ActiveCampaign)
+- Email lifecycle (ActiveCampaign + Postmark)
 
 ### Phase 3 — Content Ops
 - Audio ingestion pipeline (Google Drive → S3 → transcription → AI metadata → review → publish → Castos)

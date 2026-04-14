@@ -1,15 +1,10 @@
 import type Stripe from "stripe";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe/config";
-import { resend, FROM_ADDRESS, REPLY_TO } from "@/lib/email/resend";
-import { trialStartedEmailHtml, trialStartedEmailText } from "@/lib/email/templates/trial-started";
-import { welcomeEmailHtml, welcomeEmailText } from "@/lib/email/templates/welcome";
-import { syncNewMember } from "@/lib/activecampaign/sync";
-import { enrollInOnboardingSequence } from "@/lib/onboarding/enroll";
+import { syncNewMember, syncWelcomeEmail } from "@/lib/activecampaign/sync";
 import { trackFpSale } from "@/lib/firstpromoter/client";
 import { trackServerEvent } from "@/lib/analytics/measurement-protocol";
 import { getSubscriptionAnalyticsFromPriceId } from "@/lib/analytics/subscription";
-import { buildUnsubscribeUrl } from "@/lib/email/unsubscribe";
 import { PLAN_NAME_BY_TIER } from "@/lib/plans";
 import type { Enums } from "@/types/supabase";
 
@@ -438,48 +433,25 @@ async function handleGuestCheckout(
     }
   }
 
-  // ── Step 6: Send welcome email ───────────────────────────────────────────
-  // Non-fatal — a send failure should never block the webhook response.
+  // ── Step 6: Trigger welcome/trial email via ActiveCampaign ─────────────
+  // Non-fatal — AC issues should never block the webhook response.
   try {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://positives.life";
     const loginUrl =
       `${appUrl}/auth/confirm?token_hash=${encodeURIComponent(tokenHash)}` +
       `&type=email&next=${encodeURIComponent("/today")}`;
 
-    await resend.emails.send({
-      from: FROM_ADDRESS,
-      to: email,
-      replyTo: REPLY_TO,
-      subject:
-        checkoutMode === "trial_7_day"
-          ? `Your ${planName ?? "Positives"} 7-day trial is live.`
-          : "Welcome to Positives — your first practice is ready.",
-      html:
-        checkoutMode === "trial_7_day"
-          ? trialStartedEmailHtml({
-              firstName,
-              loginUrl,
-              planName,
-              trialEndDate,
-              unsubscribeUrl: buildUnsubscribeUrl(email),
-            })
-          : welcomeEmailHtml({
-              firstName,
-              loginUrl,
-              unsubscribeUrl: buildUnsubscribeUrl(email),
-            }),
-      text:
-        checkoutMode === "trial_7_day"
-          ? trialStartedEmailText({ firstName, loginUrl, planName, trialEndDate })
-          : welcomeEmailText({ firstName, loginUrl }),
+    await syncWelcomeEmail({
+      email,
+      loginLink: loginUrl,
+      planName,
+      trialEndDate,
+      isTrial: checkoutMode === "trial_7_day",
     });
-
-    console.log(`[Resend] Welcome email sent — userId: ${userId}, email: ${email}`);
-  } catch (emailErr) {
+  } catch (syncErr) {
     console.error(
-      `[Resend] Failed to send welcome email to ${email}: ` +
-        `${emailErr instanceof Error ? emailErr.message : String(emailErr)}. ` +
-        `Member is active — this is non-fatal.`
+      `[AC] Failed to sync welcome email fields for ${email}: ` +
+        `${syncErr instanceof Error ? syncErr.message : String(syncErr)}`
     );
   }
 
@@ -499,11 +471,6 @@ async function handleGuestCheckout(
     stripeCustomerId: customerId,
     subscribeToMarketing: !marketingSuppressed,
   });
-
-  // Respect prior marketing opt-outs on returning purchasers.
-  if (!marketingSuppressed) {
-    await enrollInOnboardingSequence(userId, email);
-  }
 
   // ── Step 8: Track FP sale (credit the referrer) ──────────────────────────
   // Non-fatal — only fires when the member arrived via an affiliate link.

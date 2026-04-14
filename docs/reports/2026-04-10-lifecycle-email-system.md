@@ -7,48 +7,36 @@ the minimum required launch sequences.
 
 The goal is to avoid running the same lifecycle from two systems at once.
 
+Detailed campaign-by-campaign planning now lives in:
+
+- `docs/email/transactional-campaigns/README.md`
+- `docs/email/transactional-campaigns/*.md`
+
 ## System Of Record
 
-### Resend / app-owned sequences
+### ActiveCampaign + Postmark (lifecycle + transactional)
 
-These are the primary system of record for launch-critical member lifecycle email:
+ActiveCampaign is the automation brain and sends lifecycle + transactional email
+using Postmark as the delivery layer.
 
-- auth emails via Supabase Send Email Hook
-- welcome email after checkout
-- receipt email after successful payment
-- payment failed email sent immediately on `invoice.payment_failed`
-- onboarding drip on days 3, 7, and 14
-- payment recovery follow-up on days 3 and 7
-- win-back follow-up on days 1, 14, and 30
+The app does not send emails directly. It only sets tags and fields used by AC automations.
 
-These flows already live in the app and are backed by:
+Primary app sources:
 
 - `server/services/stripe/handle-checkout.ts`
 - `server/services/stripe/handle-subscription.ts`
-- `app/api/auth/send-email-hook/route.ts`
-- `app/api/cron/onboarding-drip/route.ts`
-- `app/api/cron/payment-recovery-drip/route.ts`
-- `app/api/cron/winback-drip/route.ts`
-
-### ActiveCampaign
-
-ActiveCampaign is currently best treated as a CRM / tagging / selective automation layer, not
-the primary delivery engine for core lifecycle email.
-
-Current ActiveCampaign responsibilities:
-
-- create or update member contacts
-- subscribe members to the Positives Members list
-- apply exact membership tier tags
-- apply and clear `past_due`
-- apply `founding_member`
-- apply `affiliate`
-- apply `onboarding_complete`
-- store searchable custom field values such as tier, member-since date, Stripe customer ID, and billing link
-
-Primary file:
-
 - `lib/activecampaign/sync.ts`
+
+### Supabase Auth (security emails)
+
+Supabase sends auth and security email via SMTP (Postmark).
+
+These emails stay outside ActiveCampaign:
+
+- magic link sign-in
+- password reset
+- email change confirmations
+- invite
 
 ## Minimum Required Launch Sequences
 
@@ -56,7 +44,7 @@ These should be considered launch-gate sequences.
 
 ### 1. Branded auth emails
 
-Owner: app + Resend
+Owner: Supabase SMTP (Postmark)
 
 Required:
 
@@ -66,38 +54,37 @@ Required:
 
 Status:
 
-- code is ready
-- launch still depends on enabling the Supabase Send Email Hook in the hosted project
+- requires Supabase SMTP configuration in production
 
 ### 2. New member welcome
 
-Owner: app + Resend
+Owner: ActiveCampaign (triggered by app tag)
 
 Trigger:
 
-- checkout completion
+- checkout completion tag/field sync
 
 Status:
 
 - required
-- implemented
+- automation must be verified in AC
 
 ### 3. Payment receipt
 
-Owner: app + Resend
+Owner: none for now
 
-Trigger:
+Decision:
 
-- successful Stripe invoice payment
+- Positives does not send receipt emails for now
+- do not build a receipt automation in ActiveCampaign
 
 Status:
 
-- required
-- implemented
+- intentionally deferred / off
 
 ### 4. Immediate payment failed email
 
-Owner: app + Resend
+Owner: ActiveCampaign (triggered by app tag + billing link)
 
 Trigger:
 
@@ -106,11 +93,11 @@ Trigger:
 Status:
 
 - required
-- implemented
+- automation must be verified in AC
 
 ### 5. Onboarding drip
 
-Owner: app + Resend
+Owner: ActiveCampaign
 
 Timing:
 
@@ -120,12 +107,12 @@ Timing:
 
 Status:
 
-- required
-- implemented
+- required if onboarding sequence is part of launch experience
+- automation must be verified in AC
 
 ### 6. Payment recovery follow-up
 
-Owner: app + Resend
+Owner: ActiveCampaign
 
 Timing:
 
@@ -134,14 +121,8 @@ Timing:
 
 Status:
 
-- required
-- implemented
-
-Important decision:
-
-- do **not** also enable an ActiveCampaign past-due recovery email automation
-- the app already owns payment recovery messaging
-- enabling AC recovery would risk duplicate member emails
+- recommended
+- ensure no duplicate sequences run in parallel
 
 ### 7. Affiliate welcome / onboarding
 
@@ -169,11 +150,11 @@ Current trigger:
 Recommendation:
 
 - keep the tag sync in place
-- defer the actual upsell automation until the upsell offer and copy are finalized
+- defer the actual upsell automation until the offer and copy are finalized
 
 ### Win-back sequence
 
-Owner: app + Resend
+Owner: ActiveCampaign
 
 Timing:
 
@@ -184,40 +165,36 @@ Timing:
 Recommendation:
 
 - nice to have
-- not a launch blocker if the rest of the member lifecycle is stable
+- not a launch blocker if the core member lifecycle is stable
 
 ## Recommended Launch Split
 
 Use this split for launch:
 
-### App / Resend owns
+### ActiveCampaign owns
 
-- auth emails
 - welcome
-- receipt
 - immediate payment failed
 - onboarding day 3 / 7 / 14
 - payment recovery day 3 / 7
 - win-back if kept active
+- affiliate welcome
 
-### ActiveCampaign owns
+### Supabase owns
 
-- member CRM record
-- tier tags
-- affiliate tag + affiliate welcome automation
-- optional future upsell automation based on `onboarding_complete`
+- auth emails via SMTP (Postmark)
 
-### ActiveCampaign should not own
+### The app owns
 
-- core payment recovery email delivery
-- core onboarding drip delivery
-- core transactional email delivery
+- product and billing events
+- ActiveCampaign tag/field sync
 
 ## Manual Follow-Ups Still Needed
 
 ### Required
 
-- enable Supabase Send Email Hook in the hosted Supabase project
+- configure Supabase SMTP in production
+- verify AC automations for welcome, payment failed, and onboarding
 
 ### Required only if affiliate launch stays live
 
@@ -229,10 +206,9 @@ Use this split for launch:
 
 ## Bottom Line
 
-For launch, Positives should run a hybrid system:
+For launch, Positives should run a single email system:
 
-- `Resend + app cron` for core lifecycle and transactional email
-- `ActiveCampaign` for CRM state, tags, and selected marketing automation
+- `ActiveCampaign` for lifecycle + transactional email (delivered by Postmark)
+- `Supabase SMTP` for auth/security email (delivered by Postmark)
 
-That keeps the critical member journey in one reliable app-owned system and reduces the risk of
-duplicate or conflicting lifecycle emails.
+That keeps the member journey in one automation system while retaining secure auth flows in Supabase.

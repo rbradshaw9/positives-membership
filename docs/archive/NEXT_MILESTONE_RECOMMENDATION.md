@@ -66,7 +66,7 @@ The schema already supports `content_id = NULL`. The server action already accep
 | Events system (Level 2) | Phase 2 feature |
 | Q&A system | Phase 2 feature |
 | Ingestion pipeline | Phase 3 feature |
-| ActiveCampaign / Resend | Phase 1.5+ |
+| ActiveCampaign / Postmark | Phase 1.5+ |
 | Community post UI | Phase 2+ |
 | Upgrade prompts | Can be added incrementally later |
 

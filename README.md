@@ -47,8 +47,8 @@ Higher tiers, events, and community features remain preview / post-launch work u
 | Audio hosting | S3 (presigned URLs) | ✅ Active |
 | Audio ingestion | Google Drive → S3 | ⚠️ Planned |
 | Private podcast feed | Castos | ⚠️ Planned |
-| Email — transactional | Resend | ⚠️ Planned |
-| Email — lifecycle | ActiveCampaign | ⚠️ Planned |
+| Email — transactional | ActiveCampaign + Postmark | ⚠️ In progress |
+| Email — lifecycle | ActiveCampaign (Postmark delivery) | ⚠️ In progress |
 
 ---
 

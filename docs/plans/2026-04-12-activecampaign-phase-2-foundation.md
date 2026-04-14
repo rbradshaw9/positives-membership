@@ -7,7 +7,7 @@ Owner: Codex
 
 This pass completed the Phase 2 foundation work that could be done safely from the repo and the ActiveCampaign API:
 
-- audited the current app-owned and Resend-owned email flows
+- audited the current app-owned and ActiveCampaign-owned email flows
 - locked the recommended ActiveCampaign contact model
 - defined unsubscribe, consent, and re-opt-in rules
 - locked the current trigger model for `App -> ActiveCampaign -> Postmark`
@@ -20,17 +20,13 @@ Important limitation:
 - it does **not** appear to support creating full automations from the API
 - the first automation builds therefore still need dashboard/UI work
 
-## What The App Sends Today
+## What The App Triggers Today
 
 ### Auth and security emails
 
 Source:
 
-- `app/api/auth/send-email-hook/route.ts`
-
-Current provider:
-
-- `Resend`
+- Supabase Auth email sending (SMTP)
 
 Emails:
 
@@ -47,7 +43,7 @@ Recommendation:
 
 - keep app-owned
 - do not move these into ActiveCampaign
-- when Postmark is ready, migrate delivery only if needed, not automation ownership
+- send via SMTP (Postmark) in Supabase, not via app routes
 
 ### Stripe-triggered lifecycle and billing emails
 
@@ -56,25 +52,28 @@ Source:
 - `server/services/stripe/handle-checkout.ts`
 - `server/services/stripe/handle-subscription.ts`
 
-Current provider:
+Current behavior:
 
-- `Resend`
+- app sets ActiveCampaign tags and fields only
+- ActiveCampaign automations send the emails (via Postmark)
 
-Emails:
+Triggers:
 
-- welcome
-- trial started
-- receipt
-- payment failed immediate notice
-- trial ending reminder
+- welcome / trial started
+- receipt / payment succeeded
+- payment failed
+- trial ending
+- tier change
 
-Related ActiveCampaign sync already present:
+Related ActiveCampaign sync:
 
-- `syncNewMember()`
-- `syncTierChange()`
-- `syncCancellation()`
+- `syncWelcomeEmail()`
+- `syncPaymentSucceeded()`
 - `syncPaymentFailed()`
 - `syncPaymentRecovered()`
+- `syncTrialEnding()`
+- `syncTierChange()`
+- `syncCancellation()`
 
 Classification:
 
@@ -84,29 +83,10 @@ Classification:
 
 ### Cron-owned lifecycle sequences
 
-Source:
+Current behavior:
 
-- `app/api/cron/onboarding-drip/route.ts`
-- `app/api/cron/payment-recovery-drip/route.ts`
-- `app/api/cron/winback-drip/route.ts`
-
-Current provider:
-
-- `Resend`
-
-Sequences:
-
-- onboarding day 3 / 7 / 14
-- payment recovery day 3 / 7
-- winback day 1 / 14 / 30
-
-Classification:
-
-- marketing / lifecycle
-
-Recommendation:
-
-- these are the first sequences that should move into ActiveCampaign ownership
+- removed from the app
+- all lifecycle sequences are owned in ActiveCampaign
 
 ### Unsubscribe and preferences
 
@@ -118,7 +98,6 @@ Source:
 Current behavior:
 
 - updates `member.email_unsubscribed`
-- suppresses in Resend audience when configured
 - syncs ActiveCampaign list subscription status
 
 Recommendation:
@@ -128,19 +107,13 @@ Recommendation:
 
 ### Admin email surfaces
 
-Source:
-
-- `app/admin/emails/page.tsx`
-- `app/admin/emails/[slug]/actions.ts`
-
 Current behavior:
 
-- preview and test-send app-owned templates
+- removed from the app
 
 Recommendation:
 
-- keep for now while the cutover is incomplete
-- retire after lifecycle ownership and transactional cutover are truly stable
+- ActiveCampaign is the single source of truth for email content and automation
 
 ## ActiveCampaign Account State After This Pass
 
@@ -171,6 +144,12 @@ Why:
 - `source_save_enrich`
 - `source_affiliate_interest`
 - `status_lead`
+- `welcome_ready`
+- `trial_started`
+- `payment_succeeded`
+- `trial_ending`
+- `tier_changed`
+- `payment_failed`
 
 These are meant to support non-member lead capture and future automation triggers.
 
@@ -190,6 +169,15 @@ These are meant to support non-member lead capture and future automation trigger
 - `Contact Role`
 - `Acquisition Source`
 - `Opt-In Entry Point`
+- `Login Link`
+- `Trial End Date`
+- `Amount Paid`
+- `Invoice Number`
+- `Invoice URL`
+- `Next Billing Date`
+- `Previous Tier`
+- `New Tier`
+- `Plan Name`
 
 ### Forms created
 

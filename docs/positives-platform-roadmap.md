@@ -559,97 +559,65 @@ Positives is a premium wellness product. Support interactions must feel warm, pe
 
 ## 5. Email Infrastructure
 
-### Architecture: Two Separate Systems
+### Architecture: One Automation Brain, One Delivery Layer
 
-Email in Positives is split into two systems with distinct purposes, delivery characteristics, and tooling.
+Email in Positives is centered on ActiveCampaign automations with Postmark as the delivery layer.
+Supabase Auth sends security emails via SMTP (Postmark).
 
-#### 5.1 Transactional Email System
+#### 5.1 Lifecycle + Transactional (ActiveCampaign + Postmark)
 
-**Recommended tool:** Resend
+**Recommended system:** ActiveCampaign automations sending through Postmark
 
-**Purpose:** Time-sensitive, triggered, one-to-one messages that members expect immediately.
+**Purpose:** Time-sensitive, triggered, one-to-one messages plus lifecycle sequences.
 
-| Email Type | Trigger | Content |
-|-----------|---------|---------|
-| Password reset | Member requests password change | Reset link |
-| Welcome email | Stripe `checkout.session.completed` webhook | Welcome message + getting started guide |
-| Payment receipt | Stripe `invoice.payment_succeeded` | Receipt with amount, date, plan name |
-| Payment failed | Stripe `invoice.payment_failed` | Gentle notice + update payment link |
-| Streak milestone | `markListened` action crosses 7/30/90 threshold | Congratulatory message |
-| Event reminder | 24h and 1h before live event | Event details + join link |
-
-**Why Resend:**
-- Developer-friendly API (first-class Next.js/Vercel integration)
-- React email templates (JSX-based, version-controlled)
-- Excellent deliverability
-- Simple pricing
-- No marketing automation overhead
+| Email Type | Trigger | Owner |
+|-----------|---------|-------|
+| Welcome email | Stripe `checkout.session.completed` → AC tag/field | ActiveCampaign |
+| Payment receipt | Stripe `invoice.payment_succeeded` → AC tag/field | ActiveCampaign |
+| Payment failed | Stripe `invoice.payment_failed` → AC tag/field | ActiveCampaign |
+| Trial ending | Stripe `customer.subscription.trial_will_end` → AC tag/field | ActiveCampaign |
+| Onboarding drip | AC automation (days 3/7/14) | ActiveCampaign |
+| Win-back / recovery | AC automation | ActiveCampaign |
 
 **Integration pattern:**
 ```
-Stripe webhook → API route → Resend API → member inbox
-markListened action → threshold check → Resend API → member inbox
+Stripe webhook → app → ActiveCampaign tags/fields → AC automation → Postmark → member inbox
 ```
 
-#### 5.2 Marketing Automation System
+#### 5.2 Auth / Security (Supabase SMTP)
 
-**Recommended tool:** ActiveCampaign
+**Recommended system:** Supabase Auth SMTP (Postmark)
 
-**Purpose:** Lifecycle sequences, engagement campaigns, re-activation flows, and newsletters. These are multi-step, segment-targeted, and behavior-driven.
+**Purpose:** Security-critical auth emails.
 
-| Sequence | Trigger | Content |
-|----------|---------|---------|
-| **Onboarding** (7 emails, days 1–14) | New member activation | Welcome, first listen guide, weekly principle intro, journal prompt, check-in |
-| **Engagement reminders** | No `daily_listened` event for 3+ days | "We miss you" / "Your practice is waiting" (warm, not guilt) |
-| **Re-activation** | No activity for 14+ days | Value reinforcement, easy re-entry prompt |
-| **Weekly digest** | Every Sunday | This week's principle recap, upcoming theme preview |
-| **Upgrade nurture** | Level 1 member, 30+ days active | Introduction to Plus tier value (events, Q&A) |
-| **Milestone celebration** | Streak milestones (30, 90, 365) | Recognition email with member's stats |
-
-**Why separate from transactional:**
-- Marketing emails have different deliverability requirements (CAN-SPAM, unsubscribe headers)
-- ActiveCampaign provides visual automation builders, segmentation, and A/B testing
-- Transactional emails must never be caught in marketing deliverability issues
-- Different team workflows: marketing sequences are designed by growth/content teams; transactional templates are engineered
-
-**Integration pattern:**
-```
-Supabase → ActiveCampaign contact sync (webhook or scheduled job)
-Activity events → ActiveCampaign tags/custom fields
-ActiveCampaign automations → triggered by tags/field changes
-```
+| Email Type | Trigger | Owner |
+|-----------|---------|-------|
+| Password reset | Member requests password change | Supabase |
+| Magic link sign-in | Member requests login | Supabase |
+| Email change confirmation | Member updates email | Supabase |
 
 ### Email Flow Diagram
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │                     EMAIL INFRASTRUCTURE                         │
-├──────────────────────────┬───────────────────────────────────────┤
-│   TRANSACTIONAL (Resend) │   MARKETING (ActiveCampaign)         │
-│                          │                                       │
-│   ← Stripe webhooks      │   ← Supabase event sync              │
-│   ← Server actions       │   ← Segment/tag automations          │
-│                          │                                       │
-│   • Password reset       │   • Onboarding sequence (7 emails)   │
-│   • Welcome email        │   • Engagement reminders             │
-│   • Payment receipt      │   • Re-activation campaign           │
-│   • Payment failed       │   • Weekly digest                    │
-│   • Event reminder       │   • Upgrade nurture                  │
-│   • Milestone alert      │   • Milestone celebration            │
-│                          │   • Newsletter                       │
-└──────────────────────────┴───────────────────────────────────────┘
+├──────────────────────────────────────────────────────────────────┤
+│   Stripe webhooks → app → ActiveCampaign tags/fields             │
+│   ActiveCampaign automations → Postmark → member inbox           │
+│                                                                  │
+│   Supabase Auth (SMTP) → Postmark → member inbox                 │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 ### Implementation Timeline
 
 | System | Phase | Scope |
 |--------|-------|-------|
-| Resend: welcome + receipt emails | Phase 1 | Wire to Stripe webhooks |
-| Resend: milestone + event reminder | Phase 2 | Wire to engagement tracking |
-| ActiveCampaign: contact sync | Phase 1 | Supabase → AC on member activation |
+| ActiveCampaign: transactional + lifecycle | Phase 1 | Wire tags/fields to Stripe webhooks |
 | ActiveCampaign: onboarding sequence | Phase 1 | 7-email welcome series |
 | ActiveCampaign: engagement reminders | Phase 2 | Activity-gap automations |
 | ActiveCampaign: upgrade nurture | Phase 3 | Level 1 → Plus journey |
+| Supabase SMTP (Postmark) | Phase 1 | Auth email delivery |
 
 ---
 
@@ -912,7 +880,7 @@ CREATE TABLE qa_reply (
 
 | Type | Implementation | Timeline |
 |------|---------------|----------|
-| Email notifications | Resend (transactional) + ActiveCampaign (lifecycle) | Phase 1–2 |
+| Email notifications | ActiveCampaign automations (delivery via Postmark) | Phase 1–2 |
 | In-app notifications | Notification bell in MemberTopNav with unread count | Phase 3 |
 | Push notifications | PWA service worker or Capacitor plugin | Phase 5 |
 | SMS notifications | Twilio (event reminders, payment failures) | Phase 3 |
@@ -968,7 +936,7 @@ CREATE TABLE qa_reply (
 | **GDPR data export** | Member data export endpoint: JSON dump of member row, progress, journal, activity events | Phase 2 |
 | **GDPR right to erasure** | Account deletion flow: cascade delete member row (all FK cascades handle related data) | Phase 2 |
 | **Cookie consent** | Not needed for auth-essential cookies. Required if adding analytics tracking cookies. | Phase 3 |
-| **Unsubscribe mechanism** | ActiveCampaign handles marketing email unsubscribe. Resend handles transactional opt-out. | Phase 1 |
+| **Unsubscribe mechanism** | ActiveCampaign handles marketing email unsubscribe. Transactional emails are non-unsubscribable. | Phase 1 |
 | **Data retention policy** | Define how long activity_event and progress data is retained. Recommend: indefinite for members, purge 90d after account deletion. | Phase 2 |
 
 ### 9.6 Billing Workflows
@@ -976,7 +944,7 @@ CREATE TABLE qa_reply (
 | Workflow | Current State | Target State |
 |----------|--------------|-------------|
 | New subscription | ✅ Stripe Checkout → webhook → member activation | Done |
-| Payment failure | ✅ Webhook marks member `past_due` | Add Resend email notification |
+| Payment failure | ✅ Webhook marks member `past_due` | ActiveCampaign payment-failed automation |
 | Cancellation | ✅ Webhook marks member `canceled` | Add exit survey + re-activation campaign |
 | Upgrade | Not implemented | Stripe Customer Portal link with upgrade options |
 | Downgrade | Not implemented | Stripe Customer Portal |
