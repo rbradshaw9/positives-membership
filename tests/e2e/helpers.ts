@@ -599,16 +599,18 @@ export async function loginWithPassword(
     email,
     password,
     next = "/today",
+    expectedPath = next,
   }: {
     email: string;
     password: string;
     next?: string;
+    expectedPath?: string;
   }
 ) {
   await page.goto(`/login?next=${encodeURIComponent(next)}`);
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: /sign in/i }).click();
-  const escapedNext = next.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  await expect(page).toHaveURL(new RegExp(`${escapedNext}$`));
+  const escapedExpected = expectedPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  await expect(page).toHaveURL(new RegExp(`${escapedExpected}$`));
 }

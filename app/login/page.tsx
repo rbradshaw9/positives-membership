@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { asLooseSupabaseClient } from "@/lib/supabase/loose";
-import { hasActiveMemberAccess } from "@/lib/subscription/access";
+import { resolvePostLoginDestination } from "@/lib/auth/post-login-destination";
 import { LoginClient } from "./login-client";
 
 export const metadata: Metadata = {
@@ -27,35 +26,7 @@ export default async function LoginPage({
   } = await supabase.auth.getUser();
 
   if (user) {
-    const { data: member } = await supabase
-      .from("member")
-      .select("id, subscription_status")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    if (hasActiveMemberAccess(member?.subscription_status)) {
-      redirect(next);
-    }
-
-    if (member?.subscription_status === "past_due") {
-      redirect("/account");
-    }
-
-    if (member?.id) {
-      const { data: entitlement } = await asLooseSupabaseClient(supabase)
-        .from("course_entitlement")
-        .select("id")
-        .eq("member_id", member.id)
-        .eq("status", "active")
-        .limit(1)
-        .maybeSingle();
-
-      if (entitlement) {
-        redirect(next === "/today" ? "/library" : next);
-      }
-    }
-
-    redirect("/join");
+    redirect(await resolvePostLoginDestination(supabase, next));
   }
 
   return <LoginClient />;

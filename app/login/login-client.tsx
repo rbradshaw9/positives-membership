@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { formatSupabaseAuthError } from "@/lib/auth/client-error";
+import { resolvePostLoginDestination } from "@/lib/auth/post-login-destination";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import Link from "next/link";
@@ -48,7 +49,8 @@ function LoginForm() {
       return;
     }
 
-    router.push(next);
+    const destination = await resolvePostLoginDestination(supabase, next);
+    router.push(destination);
     router.refresh();
   }
 

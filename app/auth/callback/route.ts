@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { resolvePostLoginDestination } from "@/lib/auth/post-login-destination";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -17,7 +18,8 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      const destination = await resolvePostLoginDestination(supabase, next);
+      return NextResponse.redirect(`${origin}${destination}`);
     }
   }
 
