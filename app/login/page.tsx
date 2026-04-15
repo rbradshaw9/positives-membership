@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import { hasActiveMemberAccess } from "@/lib/subscription/access";
 import { LoginClient } from "./login-client";
 
@@ -28,7 +29,7 @@ export default async function LoginPage({
   if (user) {
     const { data: member } = await supabase
       .from("member")
-      .select("subscription_status")
+      .select("id, subscription_status")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -38,6 +39,20 @@ export default async function LoginPage({
 
     if (member?.subscription_status === "past_due") {
       redirect("/account");
+    }
+
+    if (member?.id) {
+      const { data: entitlement } = await asLooseSupabaseClient(supabase)
+        .from("course_entitlement")
+        .select("id")
+        .eq("member_id", member.id)
+        .eq("status", "active")
+        .limit(1)
+        .maybeSingle();
+
+      if (entitlement) {
+        redirect(next === "/today" ? "/library" : next);
+      }
     }
 
     redirect("/join");

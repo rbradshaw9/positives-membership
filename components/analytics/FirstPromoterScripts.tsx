@@ -33,7 +33,7 @@ export function FirstPromoterScripts() {
       <Script
         id="fp-sdk"
         src="https://cdn.firstpromoter.com/fpr.js"
-        strategy="afterInteractive"
+        strategy="lazyOnload"
       />
     </>
   );

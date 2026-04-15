@@ -1,7 +1,3 @@
-"use client";
-
-import { useState } from "react";
-
 const LANDING_FAQS = [
   {
     q: "What exactly is Positives?",
@@ -46,42 +42,53 @@ const LANDING_FAQS = [
 ] as const;
 
 export function LandingFaq() {
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
-
   return (
     <div>
+      <style>{`
+        .landing-faq-row[open] .landing-faq-icon {
+          background: rgba(47,111,237,0.1);
+          transform: rotate(45deg);
+        }
+
+        .landing-faq-row[open] .landing-faq-icon svg {
+          stroke: #2F6FED;
+        }
+
+        .landing-faq-row summary::-webkit-details-marker {
+          display: none;
+        }
+      `}</style>
       {LANDING_FAQS.map((faq, index) => (
-        <div key={faq.q} style={{ borderBottom: "1px solid rgba(221,215,207,0.7)" }}>
-          <button
-            type="button"
-            onClick={() => setOpenIndex(openIndex === index ? null : index)}
-            className="flex w-full items-center justify-between gap-4 py-5 text-left"
-            aria-expanded={openIndex === index}
+        <details
+          key={faq.q}
+          className="landing-faq-row"
+          open={index === 0}
+          style={{ borderBottom: "1px solid rgba(221,215,207,0.7)" }}
+        >
+          <summary
+            className="flex w-full cursor-pointer list-none items-center justify-between gap-4 py-5 text-left"
           >
             <span className="font-medium" style={{ fontSize: "1rem", color: "#121417", lineHeight: "1.5", letterSpacing: "-0.01em" }}>
               {faq.q}
             </span>
             <span
-              className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full"
+              className="landing-faq-icon flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full"
               style={{
-                background: openIndex === index ? "rgba(47,111,237,0.1)" : "rgba(18,20,23,0.06)",
-                transform: openIndex === index ? "rotate(45deg)" : "none",
+                background: "rgba(18,20,23,0.06)",
                 transition: "transform 0.2s ease",
               }}
               aria-hidden="true"
             >
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={openIndex === index ? "#2F6FED" : "#68707A"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#68707A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
             </span>
-          </button>
-          <div style={{ overflow: "hidden", maxHeight: openIndex === index ? "300px" : 0, transition: "max-height 0.3s ease" }}>
-            <p style={{ fontSize: "0.975rem", color: "#68707A", lineHeight: "1.78", paddingBottom: "1.25rem" }}>
-              {faq.a}
-            </p>
-          </div>
-        </div>
+          </summary>
+          <p style={{ fontSize: "0.975rem", color: "#68707A", lineHeight: "1.78", paddingBottom: "1.25rem" }}>
+            {faq.a}
+          </p>
+        </details>
       ))}
     </div>
   );

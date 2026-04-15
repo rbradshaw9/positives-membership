@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { PublicTrackedLink } from "@/components/marketing/PublicTrackedLink";
+import Link from "next/link";
 
 /**
  * components/marketing/Logo.tsx
@@ -64,12 +64,12 @@ export function Logo({
   if (href === null) return <span className={className}>{img}</span>;
 
   return (
-    <PublicTrackedLink
+    <Link
       href={href}
       className={`inline-flex items-center hover:opacity-75 transition-opacity ${className}`}
       aria-label="Positives — home"
     >
       {img}
-    </PublicTrackedLink>
+    </Link>
   );
 }

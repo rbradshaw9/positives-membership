@@ -26,9 +26,10 @@ export const metadata = {
 export default async function SubscribeSuccessPage({
   searchParams,
 }: {
-  searchParams: Promise<{ session_id?: string }>;
+  searchParams: Promise<{ session_id?: string; next?: string }>;
 }) {
-  const { session_id } = await searchParams;
+  const { session_id, next } = await searchParams;
+  const nextPath = next?.startsWith("/") && !next.startsWith("//") ? next : "/today";
 
   return (
     <div className="min-h-dvh flex flex-col" style={{ background: "#FAFAF8" }}>
@@ -66,7 +67,7 @@ export default async function SubscribeSuccessPage({
             paddingBottom: "clamp(4rem, 8vw, 6rem)",
           }}
         >
-          <SuccessClient sessionId={session_id ?? null} />
+          <SuccessClient sessionId={session_id ?? null} nextPath={nextPath} />
         </div>
       </main>
 

@@ -1,5 +1,9 @@
+import Link from "next/link";
 import { Logo } from "@/components/marketing/Logo";
-import { PublicTrackedLink } from "@/components/marketing/PublicTrackedLink";
+import {
+  appendPublicTrackingParams,
+  type PublicSearchParams,
+} from "@/lib/marketing/public-query-params";
 
 type PublicHeaderLink = {
   href: string;
@@ -13,6 +17,7 @@ interface PublicSiteHeaderProps {
   primaryCtaHref?: string;
   primaryCtaLabel?: string;
   navLinks?: PublicHeaderLink[];
+  trackingParams?: PublicSearchParams;
 }
 
 export function PublicSiteHeader({
@@ -21,7 +26,12 @@ export function PublicSiteHeader({
   primaryCtaHref,
   primaryCtaLabel,
   navLinks = [],
+  trackingParams,
 }: PublicSiteHeaderProps) {
+  function trackedHref(href: string) {
+    return appendPublicTrackingParams(href, trackingParams);
+  }
+
   return (
     <header
       className="sticky top-0 z-50 w-full"
@@ -33,27 +43,27 @@ export function PublicSiteHeader({
       }}
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-5 py-3 sm:px-8 sm:py-4">
-        <Logo kind="wordmark" height={24} />
+        <Logo kind="wordmark" height={24} href={trackedHref("/")} />
 
         <nav className="flex items-center gap-3 sm:gap-6" aria-label="Public site navigation">
           {navLinks.map((link) => (
-            <PublicTrackedLink
+            <Link
               key={`${link.href}-${link.label}`}
-              href={link.href}
+              href={trackedHref(link.href)}
               className={`${link.hiddenOnMobile ? "hidden md:block" : ""} text-xs sm:text-sm font-medium`}
               style={{ color: "#68707A" }}
             >
               {link.label}
-            </PublicTrackedLink>
+            </Link>
           ))}
 
-          <PublicTrackedLink href={signInHref} className="text-xs sm:text-sm font-medium" style={{ color: "#68707A" }}>
+          <Link href={trackedHref(signInHref)} className="text-xs sm:text-sm font-medium" style={{ color: "#68707A" }}>
             {signInLabel}
-          </PublicTrackedLink>
+          </Link>
 
           {primaryCtaHref && primaryCtaLabel ? (
-            <PublicTrackedLink
-              href={primaryCtaHref}
+            <Link
+              href={trackedHref(primaryCtaHref)}
               className="rounded-full px-4 py-2 text-xs font-semibold sm:px-5 sm:py-2.5 sm:text-sm"
               style={{
                 background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
@@ -63,7 +73,7 @@ export function PublicSiteHeader({
               }}
             >
               {primaryCtaLabel}
-            </PublicTrackedLink>
+            </Link>
           ) : null}
         </nav>
       </div>

@@ -55,6 +55,7 @@ function fpReferral(email: string) {
 
 interface SuccessClientProps {
   sessionId: string | null;
+  nextPath?: string;
 }
 
 type CheckoutContext = {
@@ -64,7 +65,7 @@ type CheckoutContext = {
   trialEndDate: string | null;
 };
 
-export function SuccessClient({ sessionId }: SuccessClientProps) {
+export function SuccessClient({ sessionId, nextPath = "/today" }: SuccessClientProps) {
   const router = useRouter();
   const supabase = createClient();
 
@@ -126,8 +127,15 @@ export function SuccessClient({ sessionId }: SuccessClientProps) {
     }
 
     setTimeout(() => {
-      // ?welcome=1 triggers WelcomeModal on first landing — stripped by the modal after mount
-      router.push("/today?welcome=1");
+      const safeNextPath =
+        nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/today";
+      if (safeNextPath === "/today") {
+        // ?welcome=1 triggers WelcomeModal on first landing — stripped by the modal after mount
+        router.push("/today?welcome=1");
+        return;
+      }
+      const separator = safeNextPath.includes("?") ? "&" : "?";
+      router.push(`${safeNextPath}${separator}course_purchase=success`);
     }, 1600);
   }
 

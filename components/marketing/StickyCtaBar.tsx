@@ -1,7 +1,7 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
-import { PublicTrackedLink } from "@/components/marketing/PublicTrackedLink";
 
 /**
  * components/marketing/StickyCtaBar.tsx
@@ -54,7 +54,7 @@ export function StickyCtaBar({ sentinelId, href, label }: StickyCtaBarProps) {
         }
       `}</style>
       <div className="flex flex-col gap-2 px-4 py-3">
-        <PublicTrackedLink
+        <Link
           href={href}
           className="flex items-center justify-center font-semibold rounded-full text-sm"
           style={{
@@ -66,7 +66,7 @@ export function StickyCtaBar({ sentinelId, href, label }: StickyCtaBarProps) {
           }}
         >
           {label}
-        </PublicTrackedLink>
+        </Link>
         <p
           className="text-center text-[11px] font-medium"
           style={{ color: "rgba(255,255,255,0.72)", lineHeight: "1.35" }}

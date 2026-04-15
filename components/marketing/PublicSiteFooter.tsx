@@ -1,9 +1,14 @@
+import Link from "next/link";
 import { Logo } from "@/components/marketing/Logo";
-import { PublicTrackedLink } from "@/components/marketing/PublicTrackedLink";
+import {
+  appendPublicTrackingParams,
+  type PublicSearchParams,
+} from "@/lib/marketing/public-query-params";
 import type { PublicSessionState } from "@/lib/marketing/public-session";
 
 interface PublicSiteFooterProps {
   paidHref: string;
+  trackingParams?: PublicSearchParams;
   session: Pick<
     PublicSessionState,
     "paidShortLabel" | "signInHref" | "signInLabel"
@@ -12,8 +17,13 @@ interface PublicSiteFooterProps {
 
 export function PublicSiteFooter({
   paidHref,
+  trackingParams,
   session,
 }: PublicSiteFooterProps) {
+  function trackedHref(href: string) {
+    return appendPublicTrackingParams(href, trackingParams);
+  }
+
   return (
     <footer
       className="w-full"
@@ -25,7 +35,7 @@ export function PublicSiteFooter({
       >
         <div className="mb-8 flex flex-col justify-between gap-10 md:flex-row md:items-start">
           <div>
-            <Logo href="/" kind="wordmark" height={22} className="opacity-55" />
+            <Logo href={trackedHref("/")} kind="wordmark" height={22} className="opacity-55" />
             <p
               className="mt-3 text-sm"
               style={{ color: "#8E877F", maxWidth: "240px", lineHeight: "1.75" }}
@@ -43,27 +53,27 @@ export function PublicSiteFooter({
                 Practice
               </p>
               <div className="space-y-2">
-                <PublicTrackedLink
-                  href={paidHref}
+                <Link
+                  href={trackedHref(paidHref)}
                   className="block py-0.5 text-[0.95rem]"
                   style={{ color: "#4F5760", lineHeight: "1.65" }}
                 >
                   {session.paidShortLabel}
-                </PublicTrackedLink>
-                <PublicTrackedLink
-                  href="/#how-it-works"
+                </Link>
+                <Link
+                  href={trackedHref("/#how-it-works")}
                   className="block py-0.5 text-[0.95rem]"
                   style={{ color: "#4F5760", lineHeight: "1.65" }}
                 >
                   How it works
-                </PublicTrackedLink>
-                <PublicTrackedLink
-                  href={session.signInHref}
+                </Link>
+                <Link
+                  href={trackedHref(session.signInHref)}
                   className="block py-0.5 text-[0.95rem]"
                   style={{ color: "#4F5760", lineHeight: "1.65" }}
                 >
                   {session.signInLabel}
-                </PublicTrackedLink>
+                </Link>
               </div>
             </div>
 
@@ -75,20 +85,20 @@ export function PublicSiteFooter({
                 Learn
               </p>
               <div className="space-y-2">
-                <PublicTrackedLink
-                  href="/about"
+                <Link
+                  href={trackedHref("/about")}
                   className="block py-0.5 text-[0.95rem]"
                   style={{ color: "#4F5760", lineHeight: "1.65" }}
                 >
                   About Dr. Paul
-                </PublicTrackedLink>
-                <PublicTrackedLink
-                  href="/faq"
+                </Link>
+                <Link
+                  href={trackedHref("/faq")}
                   className="block py-0.5 text-[0.95rem]"
                   style={{ color: "#4F5760", lineHeight: "1.65" }}
                 >
                   FAQ
-                </PublicTrackedLink>
+                </Link>
               </div>
             </div>
 
@@ -100,27 +110,27 @@ export function PublicSiteFooter({
                 Help
               </p>
               <div className="space-y-2">
-                <PublicTrackedLink
-                  href="/support"
+                <Link
+                  href={trackedHref("/support")}
                   className="block py-0.5 text-[0.95rem]"
                   style={{ color: "#4F5760", lineHeight: "1.65" }}
                 >
                   Support
-                </PublicTrackedLink>
-                <PublicTrackedLink
-                  href="/privacy"
+                </Link>
+                <Link
+                  href={trackedHref("/privacy")}
                   className="block py-0.5 text-[0.95rem]"
                   style={{ color: "#4F5760", lineHeight: "1.65" }}
                 >
                   Privacy
-                </PublicTrackedLink>
-                <PublicTrackedLink
-                  href="/terms"
+                </Link>
+                <Link
+                  href={trackedHref("/terms")}
                   className="block py-0.5 text-[0.95rem]"
                   style={{ color: "#4F5760", lineHeight: "1.65" }}
                 >
                   Terms
-                </PublicTrackedLink>
+                </Link>
               </div>
             </div>
           </div>

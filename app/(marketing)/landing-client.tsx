@@ -3,9 +3,12 @@ import Image from "next/image";
 import { PublicSiteFooter } from "@/components/marketing/PublicSiteFooter";
 import { PublicSiteHeader } from "@/components/marketing/PublicSiteHeader";
 import { StickyCtaBar } from "@/components/marketing/StickyCtaBar";
-import { PublicTrackedLink } from "@/components/marketing/PublicTrackedLink";
 import { LandingAudioPlayer } from "@/components/marketing/LandingAudioPlayer";
 import { LandingFaq } from "@/components/marketing/LandingFaq";
+import {
+  appendPublicTrackingParams,
+  type PublicSearchParams,
+} from "@/lib/marketing/public-query-params";
 import type { PublicSessionState } from "@/lib/marketing/public-session";
 
 /* ─── Check Icon ─────────────────────────────────────────────────────────── */
@@ -35,13 +38,18 @@ type LandingPageClientProps = {
   session: PublicSessionState;
   signInHref: string;
   paidHref: string;
+  trackingParams?: PublicSearchParams;
 };
 
 function LandingPageShell({
   session,
   signInHref,
   paidHref,
+  trackingParams,
 }: LandingPageClientProps) {
+  const trackedPaidHref = appendPublicTrackingParams(paidHref, trackingParams);
+  const trackedSupportHref = appendPublicTrackingParams("/support", trackingParams);
+
   return (
     <div className="min-h-dvh flex flex-col overflow-x-hidden" style={{ background: "#FAFAF8" }}>
 
@@ -51,6 +59,7 @@ function LandingPageShell({
         signInLabel={session.signInLabel}
         primaryCtaHref={paidHref}
         primaryCtaLabel={session.paidShortLabel}
+        trackingParams={trackingParams}
         navLinks={[
           { href: "#how-it-works", label: "How it Works", hiddenOnMobile: true },
           { href: "#dr-paul", label: "Dr. Paul", hiddenOnMobile: true },
@@ -125,8 +134,8 @@ function LandingPageShell({
 
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row items-center gap-4 mb-8 w-full sm:w-auto">
-            <PublicTrackedLink
-              href={paidHref}
+            <Link
+              href={trackedPaidHref}
               className="inline-flex w-full sm:w-auto items-center justify-center font-semibold rounded-full"
               style={{
                 background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
@@ -138,7 +147,7 @@ function LandingPageShell({
               }}
             >
               {session.paidActionLabel}
-            </PublicTrackedLink>
+            </Link>
             <Link href="#how-it-works" className="text-sm font-medium" style={{ color: "#68707A" }}>
               See how it works
             </Link>
@@ -156,7 +165,7 @@ function LandingPageShell({
 
       <StickyCtaBar
         sentinelId="landing-hero-sentinel"
-        href={paidHref}
+        href={trackedPaidHref}
         label={session.hasMemberAccess ? "Open today’s practice →" : "Start your daily practice →"}
       />
 
@@ -308,9 +317,9 @@ function LandingPageShell({
 
           <p className="mt-8 text-sm" style={{ color: "#B0A89E" }}>
             Daily sessions available to members ·{" "}
-            <PublicTrackedLink href={paidHref} className="font-medium underline underline-offset-2" style={{ color: "#2F6FED" }}>
+            <Link href={trackedPaidHref} className="font-medium underline underline-offset-2" style={{ color: "#2F6FED" }}>
               {session.hasMemberAccess ? "Open your practice" : "Start your practice"}
-            </PublicTrackedLink>
+            </Link>
           </p>
         </div>
       </section>
@@ -340,8 +349,8 @@ function LandingPageShell({
                 relationships, clearer purpose, and a more intentional life.
               </p>
             </div>
-            <PublicTrackedLink
-              href={paidHref}
+            <Link
+              href={trackedPaidHref}
               className="inline-flex items-center justify-center font-semibold rounded-full"
               style={{
                 background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
@@ -353,7 +362,7 @@ function LandingPageShell({
               }}
             >
               {session.paidActionLabel}
-            </PublicTrackedLink>
+            </Link>
           </div>
 
           <div>
@@ -636,8 +645,8 @@ function LandingPageShell({
               We believe the practice will speak for itself. This guarantee just means there&apos;s nothing to risk.
             </p>
             <div className="pt-2">
-              <PublicTrackedLink
-                href={paidHref}
+              <Link
+                href={trackedPaidHref}
                 className="inline-flex items-center justify-center font-semibold rounded-full"
                 style={{
                   background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
@@ -649,7 +658,7 @@ function LandingPageShell({
                 }}
               >
                 {session.paidActionLabel}
-              </PublicTrackedLink>
+              </Link>
             </div>
           </div>
         </div>
@@ -682,9 +691,9 @@ function LandingPageShell({
 
           <p className="text-center mt-8 text-sm" style={{ color: "#9AA0A8" }}>
             Still have questions?{" "}
-            <PublicTrackedLink href="/support" style={{ color: "#2F6FED", textDecoration: "underline" }}>
+            <Link href={trackedSupportHref} style={{ color: "#2F6FED", textDecoration: "underline" }}>
               Contact support →
-            </PublicTrackedLink>
+            </Link>
           </p>
         </div>
       </section>
@@ -723,8 +732,8 @@ function LandingPageShell({
             </span>
           </h2>
 
-          <PublicTrackedLink
-            href={paidHref}
+          <Link
+            href={trackedPaidHref}
             className="inline-flex items-center justify-center font-semibold rounded-full"
             style={{
               background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
@@ -736,7 +745,7 @@ function LandingPageShell({
             }}
           >
             {session.paidActionLabel}
-          </PublicTrackedLink>
+          </Link>
 
           <p className="mt-5 text-sm" style={{ color: "#68707A" }}>
             From $37/month · Cancel anytime · 30-day guarantee
@@ -745,7 +754,7 @@ function LandingPageShell({
       </section>
 
       {/* ━━ 11. FOOTER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <PublicSiteFooter paidHref={paidHref} session={session} />
+      <PublicSiteFooter paidHref={paidHref} trackingParams={trackingParams} session={session} />
     </div>
   );
 }
