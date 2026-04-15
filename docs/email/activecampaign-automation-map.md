@@ -154,7 +154,7 @@ These should remain on the contact while true.
 - Live reminder automations are operational and should use `Postmark
   transactional` delivery inside ActiveCampaign
 - The app writes current session fields and applies a reminder trigger tag
-- A GitHub Actions scheduled workflow calls the reminder dispatcher every `15 minutes`
+- Vercel Cron calls the reminder dispatcher every `15 minutes`
 - The dispatcher uses a durable dispatch log so the same member/session/window
   cannot send twice
 - Current repo truth:
