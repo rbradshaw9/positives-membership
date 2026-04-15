@@ -12,6 +12,7 @@
     "backfill:member-names": "node scripts/backfill-member-names-from-stripe.mjs",
     "stripe:catalog": "node scripts/configure-stripe-product-catalog.mjs",
     "stripe:hosted-billing": "node scripts/configure-stripe-hosted-billing.mjs",
+    "courses:import-legacy": "node scripts/import-legacy-course-entitlements.mjs",
     "content:launch": "node scripts/apply-launch-content-plan.mjs",
     "audit:launch": "node scripts/audit-launch-readiness.mjs",
     "test:e2e": "npm run seed:users && playwright test"

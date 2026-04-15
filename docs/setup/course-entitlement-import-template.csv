@@ -1,0 +1,2 @@
+email,name,course_slug,course_id,purchase_date,legacy_transaction_id,legacy_product_id,legacy_course_id,legacy_member_id,legacy_source
+member@example.com,Example Member,core-course,,2025-03-15,txn_123,legacy_product_456,legacy_course_456,legacy_contact_789,keap
