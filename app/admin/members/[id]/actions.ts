@@ -9,8 +9,6 @@ import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 type ActionResult = { error?: string };
 type IdRow = { id: string };
 
-const MEMBER_STATUSES = new Set(["active", "past_due", "canceled", "trialing", "inactive"]);
-const MEMBER_TIERS = new Set(["level_1", "level_2", "level_3", "level_4"]);
 const FOLLOWUP_STATUSES = new Set([
   "none",
   "needs_followup",
@@ -27,6 +25,26 @@ function memberPath(memberId: string, success?: string) {
   return success
     ? `/admin/members/${memberId}?success=${encodeURIComponent(success)}`
     : `/admin/members/${memberId}`;
+}
+
+function requireClientAuthorization(formData: FormData, reasonFieldName: string): ActionResult & {
+  reason?: string;
+} {
+  const confirmed = formData.get("clientAuthorizationConfirmed") === "on";
+  const reason = clean(formData.get(reasonFieldName));
+
+  if (!confirmed) {
+    return {
+      error:
+        "Confirm that this change is authorized by the member/client or approved by the team before saving.",
+    };
+  }
+
+  if (!reason || reason.length < 3) {
+    return { error: "Add a short note explaining why this change is being made." };
+  }
+
+  return { reason };
 }
 
 async function logAudit(params: {
@@ -78,16 +96,15 @@ export async function updateMemberCrmProfile(formData: FormData): Promise<Action
   const memberId = clean(formData.get("memberId"));
   if (!memberId) return { error: "Missing member." };
 
+  const authorization = requireClientAuthorization(formData, "changeReason");
+  if (authorization.error || !authorization.reason) return { error: authorization.error };
+
   const name = clean(formData.get("name"));
   const timezone = clean(formData.get("timezone"));
-  const status = clean(formData.get("subscriptionStatus"));
-  const tier = clean(formData.get("subscriptionTier"));
   const assignedCoachId = clean(formData.get("assignedCoachId"));
   const followupStatus = clean(formData.get("followupStatus"));
   const followupNote = clean(formData.get("followupNote"));
 
-  if (status && !MEMBER_STATUSES.has(status)) return { error: "Invalid status." };
-  if (tier && !MEMBER_TIERS.has(tier)) return { error: "Invalid tier." };
   if (followupStatus && !FOLLOWUP_STATUSES.has(followupStatus)) {
     return { error: "Invalid follow-up status." };
   }
@@ -95,8 +112,6 @@ export async function updateMemberCrmProfile(formData: FormData): Promise<Action
   const updates = {
     name,
     timezone: timezone ?? "America/New_York",
-    subscription_status: status ?? "inactive",
-    subscription_tier: tier,
     assigned_coach_id: assignedCoachId,
     followup_status: followupStatus ?? "none",
     followup_note: followupNote,
@@ -114,8 +129,8 @@ export async function updateMemberCrmProfile(formData: FormData): Promise<Action
     actorId: actor.id,
     memberId,
     action: "member.profile_updated",
-    reason: "Admin CRM profile update",
-    metadata: updates,
+    reason: authorization.reason,
+    metadata: { ...updates, client_authorization_confirmed: true },
   });
 
   revalidatePath(`/admin/members/${memberId}`);
@@ -129,6 +144,8 @@ export async function grantCourseToMember(formData: FormData): Promise<ActionRes
   const grantNote = clean(formData.get("grantNote"));
 
   if (!memberId || !courseId) return { error: "Missing member or course." };
+  const authorization = requireClientAuthorization(formData, "grantNote");
+  if (authorization.error || !authorization.reason) return { error: authorization.error };
   if (!grantNote || grantNote.length < 3) {
     return { error: "A short reason is required to grant course access." };
   }
@@ -192,6 +209,8 @@ export async function revokeCourseEntitlement(formData: FormData): Promise<Actio
   const revokeNote = clean(formData.get("revokeNote"));
 
   if (!memberId || !entitlementId) return { error: "Missing entitlement." };
+  const authorization = requireClientAuthorization(formData, "revokeNote");
+  if (authorization.error || !authorization.reason) return { error: authorization.error };
   if (!revokeNote || revokeNote.length < 3) {
     return { error: "A short reason is required to revoke course access." };
   }
@@ -252,6 +271,8 @@ export async function adjustMemberPoints(formData: FormData): Promise<ActionResu
   const description = clean(formData.get("description"));
 
   if (!memberId || !rawDelta) return { error: "Missing member or point amount." };
+  const authorization = requireClientAuthorization(formData, "description");
+  if (authorization.error || !authorization.reason) return { error: authorization.error };
   const delta = Number.parseInt(rawDelta, 10);
   if (!Number.isFinite(delta) || delta === 0) return { error: "Enter a non-zero point amount." };
   if (!description || description.length < 3) {
@@ -377,6 +398,8 @@ export async function unlockCourseWithPointsForMember(formData: FormData): Promi
   const note = clean(formData.get("note")) ?? "Admin points unlock";
 
   if (!memberId || !courseId || !rawCost) return { error: "Missing unlock details." };
+  const authorization = requireClientAuthorization(formData, "note");
+  if (authorization.error || !authorization.reason) return { error: authorization.error };
   const cost = Number.parseInt(rawCost, 10);
   if (!Number.isFinite(cost) || cost <= 0) return { error: "Invalid point cost." };
 

@@ -204,6 +204,42 @@ function EmptyState({ children }: { children: React.ReactNode }) {
   return <div className="member-crm-empty">{children}</div>;
 }
 
+function ClientAuthorizationFields({
+  reasonName,
+  reasonLabel = "Change reason",
+  reasonPlaceholder = "Who authorized this, and why are we making the change?",
+}: {
+  reasonName: string;
+  reasonLabel?: string;
+  reasonPlaceholder?: string;
+}) {
+  return (
+    <div className="member-crm-authorization">
+      <label className="member-crm-checkbox-row">
+        <input type="checkbox" name="clientAuthorizationConfirmed" required />
+        <span>
+          I verified this change is authorized by the member/client or approved by the team.
+        </span>
+      </label>
+      <label className="admin-form-field">
+        <span className="admin-search-bar__label">{reasonLabel}</span>
+        <TextArea name={reasonName} required placeholder={reasonPlaceholder} />
+      </label>
+    </div>
+  );
+}
+
+function ClientAuthorizationCheckbox() {
+  return (
+    <label className="member-crm-checkbox-row">
+      <input type="checkbox" name="clientAuthorizationConfirmed" required />
+      <span>
+        I verified this change is authorized by the member/client or approved by the team.
+      </span>
+    </label>
+  );
+}
+
 function MemberCrmStyles() {
   return (
     <style>{`
@@ -472,6 +508,58 @@ function MemberCrmStyles() {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
         gap: 1rem;
+      }
+
+      .member-crm-readonly-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+        gap: 1rem;
+        grid-column: 1 / -1;
+      }
+
+      .member-crm-readonly-field {
+        border: 1px solid var(--color-border);
+        border-radius: 1rem;
+        background: color-mix(in srgb, var(--color-surface) 88%, white);
+        padding: 0.9rem 1rem;
+      }
+
+      .member-crm-readonly-field__value {
+        margin: 0.35rem 0 0;
+        color: var(--color-fg);
+        font-family: var(--font-heading);
+        font-size: 1rem;
+        font-weight: 750;
+      }
+
+      .member-crm-warning-note {
+        grid-column: 1 / -1;
+        border: 1px solid color-mix(in srgb, #f59e0b 38%, var(--color-border));
+        border-radius: 1rem;
+        background: color-mix(in srgb, #fef3c7 62%, var(--color-surface));
+        color: #6b4e16;
+        font-size: 0.85rem;
+        line-height: 1.55;
+        padding: 0.9rem 1rem;
+      }
+
+      .member-crm-authorization {
+        display: grid;
+        gap: 0.75rem;
+        margin-top: 0.75rem;
+      }
+
+      .member-crm-checkbox-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.6rem;
+        color: var(--color-muted-fg);
+        font-size: 0.8125rem;
+        line-height: 1.5;
+      }
+
+      .member-crm-checkbox-row input {
+        margin-top: 0.15rem;
       }
 
       .member-crm-profile-grid {
@@ -810,9 +898,32 @@ export default async function AdminMemberDetailPage({
         </dl>
       </Section>
 
-      <Section id="access" title="Access" description="Subscription state, manual operational fields, and course access summary.">
+      <Section id="access" title="Access" description="Operational member fields and access context. Billing/tier changes must go through Stripe-backed plan-change tooling.">
         <form action={asFormAction(updateMemberCrmProfile)} className="member-crm-form-grid">
           <input type="hidden" name="memberId" value={member.id} />
+          <div className="member-crm-warning-note">
+            <strong>Stripe is the source of truth for billing and subscription tier.</strong>{" "}
+            This page no longer saves direct status/tier edits because that would not update the
+            member&apos;s invoice or subscription. A proper admin plan-change flow should preview
+            upgrade prorations, show the immediate charge, and explain that downgrades take effect
+            on the next billing date before anything is applied.
+          </div>
+          <div className="member-crm-readonly-grid" aria-label="Stripe billing state">
+            <div className="member-crm-readonly-field">
+              <span className="admin-search-bar__label">Subscription Status</span>
+              <p className="member-crm-readonly-field__value">
+                {STATUS_LABEL[member.subscription_status] ?? member.subscription_status}
+              </p>
+            </div>
+            <div className="member-crm-readonly-field">
+              <span className="admin-search-bar__label">Tier</span>
+              <p className="member-crm-readonly-field__value">
+                {member.subscription_tier
+                  ? PLAN_NAME_BY_TIER[member.subscription_tier] ?? member.subscription_tier
+                  : "No tier"}
+              </p>
+            </div>
+          </div>
           <label className="admin-form-field">
             <span className="admin-search-bar__label">Name</span>
             <TextInput name="name" defaultValue={member.name ?? ""} />
@@ -820,23 +931,6 @@ export default async function AdminMemberDetailPage({
           <label className="admin-form-field">
             <span className="admin-search-bar__label">Timezone</span>
             <TextInput name="timezone" defaultValue={member.timezone ?? "America/New_York"} />
-          </label>
-          <label className="admin-form-field">
-            <span className="admin-search-bar__label">Subscription Status</span>
-            <Select name="subscriptionStatus" defaultValue={member.subscription_status}>
-              {Object.entries(STATUS_LABEL).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </Select>
-          </label>
-          <label className="admin-form-field">
-            <span className="admin-search-bar__label">Tier</span>
-            <Select name="subscriptionTier" defaultValue={member.subscription_tier ?? ""}>
-              <option value="">No tier</option>
-              {Object.entries(PLAN_NAME_BY_TIER).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </Select>
           </label>
           <label className="admin-form-field">
             <span className="admin-search-bar__label">Assigned Coach</span>
@@ -859,7 +953,13 @@ export default async function AdminMemberDetailPage({
           <label className="admin-form-field" style={{ gridColumn: "1 / -1" }}>
             <span className="admin-search-bar__label">Follow-up Note</span>
             <TextArea name="followupNote" defaultValue={member.followup_note ?? ""} />
+            <span className="member-crm-muted">
+              Use this for the current next action. Use Notes below for dated history and coaching/support context.
+            </span>
           </label>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <ClientAuthorizationFields reasonName="changeReason" />
+          </div>
           <div style={{ gridColumn: "1 / -1" }}>
             <button type="submit" className="admin-btn admin-btn--primary">
               Save member management fields
@@ -909,6 +1009,9 @@ export default async function AdminMemberDetailPage({
                     <input type="hidden" name="memberId" value={member.id} />
                     <input type="hidden" name="entitlementId" value={entitlement.id} />
                     <TextInput name="revokeNote" required placeholder="Reason to revoke..." />
+                    <div style={{ marginTop: "0.5rem" }}>
+                      <ClientAuthorizationCheckbox />
+                    </div>
                     <button type="submit" className="admin-btn admin-btn--outline" style={{ marginTop: "0.5rem" }}>
                       Revoke access
                     </button>
@@ -955,6 +1058,7 @@ export default async function AdminMemberDetailPage({
                 <span className="admin-search-bar__label">Grant reason</span>
                 <TextArea name="grantNote" required placeholder="Coach bonus, migration correction, support fix..." />
               </label>
+              <ClientAuthorizationCheckbox />
               <button type="submit" className="admin-btn admin-btn--primary" style={{ marginTop: "0.75rem" }}>
                 Grant access
               </button>
@@ -983,8 +1087,9 @@ export default async function AdminMemberDetailPage({
               </label>
               <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
                 <span className="admin-search-bar__label">Note</span>
-                <TextInput name="note" placeholder="Course unlocked with points" />
+                <TextInput name="note" required placeholder="Course unlocked with points" />
               </label>
+              <ClientAuthorizationCheckbox />
               <button type="submit" className="admin-btn admin-btn--outline" style={{ marginTop: "0.75rem" }}>
                 Unlock course
               </button>
@@ -1032,6 +1137,7 @@ export default async function AdminMemberDetailPage({
               <span className="admin-search-bar__label">Reason</span>
               <TextArea name="description" required placeholder="Manual correction, bonus, event attendance..." />
             </label>
+            <ClientAuthorizationCheckbox />
             <button type="submit" className="admin-btn admin-btn--primary" style={{ marginTop: "0.75rem" }}>
               Save point adjustment
             </button>

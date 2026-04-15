@@ -1,6 +1,7 @@
 import { getAdminClient } from "@/lib/supabase/admin";
 import { getMemberRecentActivity, getMemberStats } from "@/lib/queries/get-admin-members";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
+import { config } from "@/lib/config";
 import type { Tables } from "@/types/supabase";
 
 export const MEMBER_CRM_PAGE_SIZE = 30;
@@ -416,19 +417,71 @@ export async function getMemberCrmList(filters: MemberCrmListFilters = {}): Prom
 }
 
 export async function getAdminAssignableMembers(): Promise<{ id: string; label: string }[]> {
-  const supabase = getAdminClient();
-  const { data, error } = await supabase
-    .from("member")
-    .select("id, email, name")
-    .order("email", { ascending: true })
-    .limit(500);
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  const bootstrapAdminEmails = config.app.adminEmails;
 
-  if (error) {
-    console.error("[member-crm] assignable members failed:", error.message);
+  const { data: roleRows, error: roleError } = await supabase
+    .from("admin_role")
+    .select<{ id: string }[]>("id")
+    .in("key", ["super_admin", "admin", "coach"]);
+
+  if (roleError) {
+    console.error("[member-crm] assignable role fetch failed:", roleError.message);
     return [];
   }
 
-  return (data ?? []).map((member) => ({
+  const roleIds = (roleRows ?? []).map((role: { id: string }) => role.id);
+  const memberIds = new Set<string>();
+
+  if (roleIds.length > 0) {
+    const { data: assignments, error: assignmentError } = await supabase
+      .from("admin_user_role")
+      .select<{ member_id: string }[]>("member_id")
+      .in("role_id", roleIds);
+
+    if (assignmentError) {
+      console.error("[member-crm] assignable role assignment fetch failed:", assignmentError.message);
+      return [];
+    }
+
+    for (const assignment of assignments ?? []) {
+      memberIds.add(assignment.member_id);
+    }
+  }
+
+  const membersById = new Map<string, { id: string; email: string; name: string | null }>();
+
+  if (memberIds.size > 0) {
+    const { data, error } = await supabase
+      .from("member")
+      .select<{ id: string; email: string; name: string | null }[]>("id, email, name")
+      .in("id", [...memberIds]);
+
+    if (error) {
+      console.error("[member-crm] assignable members failed:", error.message);
+      return [];
+    }
+
+    for (const member of data ?? []) membersById.set(member.id, member);
+  }
+
+  if (bootstrapAdminEmails.length > 0) {
+    const { data, error } = await supabase
+      .from("member")
+      .select<{ id: string; email: string; name: string | null }[]>("id, email, name")
+      .in("email", bootstrapAdminEmails);
+
+    if (error) {
+      console.error("[member-crm] bootstrap assignable members failed:", error.message);
+      return [];
+    }
+
+    for (const member of data ?? []) membersById.set(member.id, member);
+  }
+
+  return [...membersById.values()]
+    .sort((a, b) => a.email.localeCompare(b.email))
+    .map((member) => ({
     id: member.id,
     label: member.name ? `${member.name} (${member.email})` : member.email,
   }));
