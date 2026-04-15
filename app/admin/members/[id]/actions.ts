@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireAdminPermission } from "@/lib/auth/require-admin";
@@ -9,6 +10,8 @@ import { applyAdminPlanChange } from "@/server/services/stripe/admin-plan-change
 
 type ActionResult = { error?: string };
 type IdRow = { id: string };
+const MEMBER_DOCUMENT_BUCKET = "member-documents";
+const MAX_MEMBER_DOCUMENT_BYTES = 10 * 1024 * 1024;
 
 const FOLLOWUP_STATUSES = new Set([
   "none",
@@ -20,6 +23,21 @@ const FOLLOWUP_STATUSES = new Set([
 function clean(value: FormDataEntryValue | null) {
   const text = value?.toString().trim() ?? "";
   return text.length > 0 ? text : null;
+}
+
+function getUploadedFile(formData: FormData, key: string) {
+  const value = formData.get(key);
+  if (value instanceof File && value.size > 0) return value;
+  return null;
+}
+
+function sanitizeFileName(fileName: string) {
+  const cleaned = fileName
+    .replace(/[/\\?%*:|"<>]/g, "-")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .trim();
+  return cleaned || "document";
 }
 
 function memberPath(memberId: string, success?: string) {
@@ -432,11 +450,43 @@ export async function addMemberDocumentReference(formData: FormData): Promise<Ac
   const title = clean(formData.get("title"));
   const externalUrl = clean(formData.get("externalUrl"));
   const note = clean(formData.get("note"));
+  const file = getUploadedFile(formData, "documentFile");
 
   if (!memberId || !title) return { error: "Document title is required." };
-  if (!externalUrl) return { error: "Add a document link for v1." };
+  if (!externalUrl && !file) return { error: "Add a document file or link." };
+
+  const authorization = requireClientAuthorization(formData, "documentReason");
+  if (authorization.error || !authorization.reason) return { error: authorization.error };
+
+  if (file && file.size > MAX_MEMBER_DOCUMENT_BYTES) {
+    return { error: "Document uploads are limited to 10 MB." };
+  }
 
   const supabase = asLooseSupabaseClient(getAdminClient());
+  let storagePath: string | null = null;
+  let fileName: string | null = null;
+  let contentType: string | null = null;
+  let sizeBytes: number | null = null;
+
+  if (file) {
+    fileName = sanitizeFileName(file.name);
+    contentType = file.type || "application/octet-stream";
+    sizeBytes = file.size;
+    storagePath = `${memberId}/${randomUUID()}-${fileName}`;
+
+    const upload = await supabase.storage
+      .from(MEMBER_DOCUMENT_BUCKET)
+      .upload(storagePath, Buffer.from(await file.arrayBuffer()), {
+        contentType,
+        upsert: false,
+      });
+
+    if (upload.error) {
+      console.error("[admin/member-actions] document upload failed:", upload.error.message);
+      return { error: "Could not upload document." };
+    }
+  }
+
   const { data, error } = await supabase
     .from("member_document")
     .insert({
@@ -444,6 +494,10 @@ export async function addMemberDocumentReference(formData: FormData): Promise<Ac
       uploaded_by: actor.id,
       title,
       external_url: externalUrl,
+      storage_path: storagePath,
+      file_name: fileName,
+      content_type: contentType,
+      size_bytes: sizeBytes,
       internal_only: true,
       note,
     })
@@ -461,7 +515,15 @@ export async function addMemberDocumentReference(formData: FormData): Promise<Ac
     action: "document.added",
     targetType: "member_document",
     targetId: data.id,
-    reason: "Internal coaching/support document",
+    reason: authorization.reason,
+    metadata: {
+      external_url: externalUrl,
+      storage_path: storagePath,
+      file_name: fileName,
+      content_type: contentType,
+      size_bytes: sizeBytes,
+      client_authorization_confirmed: true,
+    },
   });
 
   revalidatePath(`/admin/members/${memberId}`);

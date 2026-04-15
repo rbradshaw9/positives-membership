@@ -122,6 +122,13 @@ function formatMoney(cents: number, currency: string) {
   }).format(cents / 100);
 }
 
+function formatBytes(bytes: number | null) {
+  if (!bytes) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function formatRelativeDate(iso: string | null): string {
   if (!iso) return "Never";
   const diffDays = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
@@ -1447,14 +1454,23 @@ export default async function AdminMemberDetailPage({
         </div>
       </Section>
 
-      <Section id="documents" title="Documents" description="Internal document references for coaching and support. File upload can use this same table later.">
+      <Section id="documents" title="Documents" description="Internal document uploads and references for coaching and support.">
         <div className="member-crm-grid-2">
           <div className="member-crm-list">
             {documents.length > 0 ? documents.map((document) => (
               <div key={document.id} className="member-crm-card">
                 <p className="member-crm-record__title">{document.title}</p>
-                {document.external_url ? (
-                  <a href={document.external_url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-primary)", fontSize: "0.8125rem" }}>
+                {document.storage_path || document.external_url ? (
+                  <a
+                    href={
+                      document.storage_path
+                        ? `/admin/members/${member.id}/documents/${document.id}`
+                        : document.external_url ?? "#"
+                    }
+                    target={document.storage_path ? undefined : "_blank"}
+                    rel={document.storage_path ? undefined : "noopener noreferrer"}
+                    style={{ color: "var(--color-primary)", fontSize: "0.8125rem" }}
+                  >
                     Open document ↗
                   </a>
                 ) : null}
@@ -1462,6 +1478,7 @@ export default async function AdminMemberDetailPage({
                   <p className="member-crm-record__note">{document.note}</p>
                 ) : null}
                 <p className="member-crm-record__meta">
+                  {document.file_name ? `${document.file_name} ${formatBytes(document.size_bytes) ? `· ${formatBytes(document.size_bytes)}` : ""} · ` : ""}
                   Internal only · {formatDateTime(document.created_at)}
                 </p>
               </div>
@@ -1469,21 +1486,30 @@ export default async function AdminMemberDetailPage({
               <EmptyState>No internal documents yet.</EmptyState>
             )}
           </div>
-          <form action={asFormAction(addMemberDocumentReference)} className="member-crm-card">
+          <form action={asFormAction(addMemberDocumentReference)} className="member-crm-card" encType="multipart/form-data">
             <input type="hidden" name="memberId" value={member.id} />
-            <p className="member-crm-card-title">Add document link</p>
+            <p className="member-crm-card-title">Add document</p>
             <label className="admin-form-field">
               <span className="admin-search-bar__label">Title</span>
               <TextInput name="title" required placeholder="Coaching worksheet" />
             </label>
             <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
-              <span className="admin-search-bar__label">URL</span>
-              <TextInput name="externalUrl" required placeholder="https://..." />
+              <span className="admin-search-bar__label">Upload file</span>
+              <TextInput name="documentFile" type="file" />
+              <span className="member-crm-muted">Private files are limited to 10 MB.</span>
+            </label>
+            <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
+              <span className="admin-search-bar__label">Or URL</span>
+              <TextInput name="externalUrl" placeholder="https://..." />
             </label>
             <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
               <span className="admin-search-bar__label">Note</span>
               <TextArea name="note" placeholder="Internal context..." />
             </label>
+            <ClientAuthorizationFields
+              reasonName="documentReason"
+              reasonPlaceholder="Why is this document being added to the member record?"
+            />
             <button type="submit" className="admin-btn admin-btn--primary" style={{ marginTop: "0.75rem" }}>
               Save document
             </button>
