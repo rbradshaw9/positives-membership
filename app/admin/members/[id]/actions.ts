@@ -6,9 +6,11 @@ import { revalidatePath } from "next/cache";
 import { requireAdminPermission } from "@/lib/auth/require-admin";
 import { getAdminRolesForMember } from "@/lib/admin/member-crm";
 import { config } from "@/lib/config";
+import { hasActiveMemberAccess } from "@/lib/subscription/access";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import { applyAdminPlanChange } from "@/server/services/stripe/admin-plan-change";
+import type { Enums } from "@/types/supabase";
 
 type ActionResult = { error?: string };
 type IdRow = { id: string };
@@ -664,6 +666,21 @@ export async function unlockCourseWithPointsForMember(formData: FormData): Promi
   if (!Number.isFinite(cost) || cost <= 0) return { error: "Invalid point cost." };
 
   const supabase = asLooseSupabaseClient(getAdminClient());
+  const { data: member, error: memberError } = await supabase
+    .from("member")
+    .select<{ subscription_status: Enums<"subscription_status"> | null }>("subscription_status")
+    .eq("id", memberId)
+    .maybeSingle();
+
+  if (memberError || !member) {
+    console.error("[admin/member-actions] points unlock member lookup failed:", memberError?.message);
+    return { error: "Could not verify member subscription status." };
+  }
+
+  if (!hasActiveMemberAccess(member.subscription_status)) {
+    return { error: "Points unlocks are only available for active or trialing subscribers." };
+  }
+
   const { data: pointRows, error: pointError } = await supabase
     .from("member_points_ledger")
     .select<{ delta: number }[]>("delta")
