@@ -23,6 +23,7 @@ import { syncAffiliate } from "@/lib/activecampaign/sync";
 import {
   ensureFpPromoter,
   isFirstPromoterAuthError,
+  updatePromoterPayPalEmail,
   updatePromoterRefId,
 } from "@/lib/firstpromoter/client";
 
@@ -180,9 +181,24 @@ export async function savePayPalEmailAction(
     return { error: "You need to enroll as an affiliate first." };
   }
 
-  // Store PayPal email in the member table for our records.
-  // FP does not have a native PayPal field — payouts are handled via
-  // FP's payout settings or manual ACH/PayPal from the FP dashboard.
+  try {
+    await updatePromoterPayPalEmail(member.fp_promoter_id, trimmed);
+  } catch (err) {
+    console.error("[Affiliate] savePayPalEmail FP sync failed:", err);
+    if (isFirstPromoterAuthError(err)) {
+      return {
+        error:
+          "Payout setup is temporarily unavailable because the FirstPromoter API key needs attention. Please contact support@positives.life.",
+      };
+    }
+    return {
+      error:
+        "We couldn't sync that payout email to FirstPromoter. Please try again or contact support@positives.life.",
+    };
+  }
+
+  // Store PayPal email locally after FirstPromoter accepts it so the portal gate
+  // only opens when payout readiness is visible in both systems.
   const { error: updateError } = await admin
     .from("member")
     .update({ paypal_email: trimmed })

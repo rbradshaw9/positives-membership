@@ -3,6 +3,7 @@ import path from "node:path";
 import { expect, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import type { Enums } from "@/types/supabase";
+import { getPromoterPayPalEmail } from "@/lib/firstpromoter/client";
 
 export const MEMBER_EMAIL = process.env.E2E_MEMBER_EMAIL ?? "rbradshaw+l1@gmail.com";
 export const MEMBER_PASSWORD = process.env.E2E_MEMBER_PASSWORD ?? "PiR43Tx2-";
@@ -228,6 +229,28 @@ export async function resetAffiliateTestState(email: string) {
   if (error) {
     throw new Error(`Failed to reset affiliate test state for ${email}: ${error.message}`);
   }
+}
+
+export async function getAffiliatePayoutState(email: string) {
+  const supabase = getServiceRoleClient();
+  const { data, error } = await supabase
+    .from("member")
+    .select("fp_promoter_id, paypal_email")
+    .eq("email", email)
+    .single();
+
+  if (error || !data) {
+    throw new Error(
+      `Failed to fetch affiliate payout state for ${email}: ${error?.message ?? "member not found"}`
+    );
+  }
+
+  return {
+    localPayPalEmail: data.paypal_email,
+    firstPromoterPayPalEmail: data.fp_promoter_id
+      ? await getPromoterPayPalEmail(data.fp_promoter_id)
+      : null,
+  };
 }
 
 export async function ensureAdminMonthWorkspaceFixture() {

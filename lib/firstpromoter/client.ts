@@ -208,6 +208,16 @@ interface FpPayoutResponse {
   created_at: string;
 }
 
+interface FpPayoutMethodResponse {
+  id: number;
+  method: "paypal" | "bank" | "wise" | "crypto" | "custom" | "dots" | string;
+  details?: {
+    paypal_email?: string | null;
+  } | null;
+  is_disabled?: boolean;
+  is_selected?: boolean;
+}
+
 interface FpPromoterReportRow {
   id: number | string;
   promoter?: {
@@ -542,6 +552,60 @@ export async function updatePromoterRefId(
   });
 
   return normalizePromoter(await getPromoterDetailsByIdentifier(promoterId), campaign.campaign_id);
+}
+
+export async function updatePromoterPayPalEmail(
+  promoterId: number,
+  paypalEmail: string
+): Promise<void> {
+  const existingMethod = await getPromoterPayPalPayoutMethod(promoterId);
+  const payload = {
+    method: "paypal",
+    promoter_id: promoterId,
+    details: {
+      paypal_email: paypalEmail,
+    },
+    is_disabled: false,
+    is_selected: true,
+  };
+
+  if (existingMethod) {
+    await fpFetch<FpPayoutMethodResponse>(`/company/payout_methods/${existingMethod.id}`, {
+      method: "PUT",
+      json: payload,
+    });
+    return;
+  }
+
+  await fpFetch<FpPayoutMethodResponse>("/company/payout_methods", {
+    method: "POST",
+    json: payload,
+  });
+}
+
+export async function getPromoterPayPalPayoutMethod(
+  promoterId: number
+): Promise<FpPayoutMethodResponse | null> {
+  const payoutMethods = await fpFetch<FpPayoutMethodResponse[]>("/company/payout_methods", {
+    query: {
+      "filters[promoter_id]": promoterId,
+    },
+  });
+
+  return (
+    payoutMethods.find(
+      (method) => method.method === "paypal" && method.details?.paypal_email
+    ) ??
+    payoutMethods.find((method) => method.method === "paypal") ??
+    null
+  );
+}
+
+export async function getPromoterPayPalEmail(
+  promoterId: number
+): Promise<string | null> {
+  const payoutMethod = await getPromoterPayPalPayoutMethod(promoterId);
+  return payoutMethod?.details?.paypal_email ?? null;
 }
 
 export async function getPromoterStats(promoterId: number): Promise<PromoterStats> {

@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {
+  getAffiliatePayoutState,
   loginWithPassword,
   MEMBER_EMAIL,
   MEMBER_PASSWORD,
@@ -43,6 +44,15 @@ test.describe("affiliate portal", () => {
     const payoutEmail = "rbradshaw+paypal@gmail.com";
     await page.locator("#payout-paypal-input").fill(payoutEmail);
     await page.locator("#payout-save-btn").click();
+
+    await expect
+      .poll(async () => getAffiliatePayoutState(MEMBER_EMAIL), {
+        timeout: 15_000,
+      })
+      .toEqual({
+        localPayPalEmail: payoutEmail,
+        firstPromoterPayPalEmail: payoutEmail,
+      });
 
     await expect(
       page.getByRole("heading", { name: "Your affiliate portal" })
