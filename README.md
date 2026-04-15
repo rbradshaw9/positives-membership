@@ -42,8 +42,7 @@ Higher tiers, events, and community features remain preview / post-launch work u
 | Hosting | Vercel | ✅ Active |
 | Database / Auth | Supabase (Postgres + Supabase Auth) | ✅ Active |
 | Payments | Stripe | ✅ Active |
-| Video (primary) | **Mux** — upload, delivery, analytics, resume tracking | ✅ Active |
-| Video (legacy) | Vimeo — fallback for pre-Mux content | ✅ Fallback |
+| Video | Vimeo and YouTube embeds | ✅ Active |
 | Audio hosting | S3 (presigned URLs) | ✅ Active |
 | Audio ingestion | Google Drive → S3 | ⚠️ Planned |
 | Private podcast feed | Castos | ⚠️ Planned |
@@ -72,7 +71,7 @@ Stripe drives billing state. All access decisions are enforced server-side via `
 
 ### Video Delivery
 
-Mux is the system of record for hosted video content. The admin includes a drag-drop upload panel (`VideoUploadPanel`) that chunks files to Mux, polls for processing, and commits `mux_playback_id` + `mux_asset_id` to the content record. `VideoEmbed` routes to MuxPlayer (primary), Vimeo iframe (legacy), or YouTube based on available IDs.
+Vimeo is the primary hosted video path for Positives content, with YouTube supported for external embeds. Video playback is stored on content records through `vimeo_video_id` and `youtube_video_id`; retired video-provider fields have been removed from the active app model.
 
 ### Daily Audio Pipeline
 
@@ -148,7 +147,7 @@ Current status: preview only, not part of the Level 1 launch.
 | Journal / Notes | ✅ Built |
 | Coaching System | ✅ Built |
 | Community / Q&A | ✅ Built (feature-flagged, launch-off) |
-| Mux Video Pipeline | ✅ Built |
+| Video Playback | ✅ Built |
 | Admin Dashboard | ✅ Built |
 | Practice Heatmap | ✅ Built |
 | Email Lifecycle | ⚠️ Planned |
@@ -170,7 +169,7 @@ All development sprints are complete as of 2026-04.
 | 9 | Member UI — responsive layout, typed content cards |
 | 10 | Tier gating, coaching system, journal new entry |
 | 11 | Visual cohesion — design tokens, CSS component system |
-| Post-11 | Mux video migration, video tracking, months workspace, community Q&A, heatmap |
+| Post-11 | Video playback cleanup, video tracking, months workspace, community Q&A, heatmap |
 
 ---
 

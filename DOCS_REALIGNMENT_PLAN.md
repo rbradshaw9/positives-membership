@@ -26,7 +26,7 @@
 | Section | Status | Notes |
 |---------|--------|-------|
 | §1 Platform Overview | ✅ Accurate | Core philosophy matches code |
-| §2 Core Technology Stack | ⚠️ Partially outdated | Lists Resend and ActiveCampaign as part of stack — neither has any code. Lists pgvector/OpenAI embeddings — tables exist but no code uses them. |
+| §2 Core Technology Stack | ⚠️ Partially outdated | Lists older email and AI assumptions. ActiveCampaign/Postmark is now the current email direction; pgvector/OpenAI embeddings tables exist but no code uses them. |
 | §3 Subscription Tiers | ⚠️ Partially outdated | Lists 4 tiers correctly. References `content.tier_min` — **column does not exist yet** |
 | §4 Core Database Tables | ❌ Outdated | `member` table lists `onboarding_completed_at` — **does not exist**. `content` table lists `tier_min` — **does not exist**. Lists `coaching_call` and `event` as content types — **not in enum**. `progress` table shows `completed_at` — actual column is `listened_at`. Activity events list `event_rsvp` and `qa_posted` — **not in enum**. |
 | §5 Core Product Features | ⚠️ Partially outdated | "Sprints 1–9 delivered" is correct. Engagement tracking list is correct except overstates what events are actively fired. |
@@ -35,7 +35,7 @@
 | §8 Library System | ⚠️ Partially outdated | Core is accurate. Lists "coaching, events, resources, courses" in library types — only daily/weekly/monthly actually exist. |
 | §9 Notes / Journal | ⚠️ Partially outdated | "Add Entry button" described — **does not exist in UI** |
 | §10 AI System | ✅ Accurate | Correctly marked as "Planned" |
-| §11 Email System | ❌ Aspirational | Describes Resend and ActiveCampaign — **zero integration code exists** |
+| §11 Email System | ❌ Aspirational | Describes old app-managed email assumptions and needs to be aligned to ActiveCampaign/Postmark |
 | §12 Next Development Phases | ✅ Accurate | Phases 1–5 are reasonable forward-looking descriptions |
 | §13 Current Development Target | ⚠️ Partially outdated | Says "Sprint 10" but nothing has been implemented yet for Sprint 10 |
 
@@ -43,7 +43,7 @@
 
 | Action | Details |
 |--------|---------|
-| **Edit §2** | Add "(planned)" after Resend, ActiveCampaign, and "OpenAI embeddings" |
+| **Edit §2** | Align email stack to ActiveCampaign/Postmark and add "(planned)" after "OpenAI embeddings" |
 | **Edit §3** | Add note: "`tier_min` column is planned but not yet in schema" |
 | **Edit §4 member** | Remove `onboarding_completed_at` (add note: "planned for Sprint 12") |
 | **Edit §4 content** | Add note under `tier_min`: "Not yet added — Sprint 10 migration will create this" |
@@ -53,7 +53,7 @@
 | **Edit §7** | Add opening note: "⚠️ Not yet implemented. Planned for Sprint 10." |
 | **Edit §8** | Remove coaching/events/resources from library types. Add note about planned types. |
 | **Edit §9** | Change "Journal page must include: Add Entry button" to "Journal page will include: Add Entry button (planned Sprint 10)" |
-| **Edit §11** | Add "⚠️ Not yet implemented" header to both Resend and ActiveCampaign sections |
+| **Edit §11** | Replace old app-managed email assumptions with the current ActiveCampaign/Postmark lifecycle model |
 
 ---
 

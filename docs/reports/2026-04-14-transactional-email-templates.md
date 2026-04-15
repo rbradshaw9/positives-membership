@@ -11,7 +11,7 @@ The ActiveCampaign template library has been cleaned up around the current
 - Missing current templates: `0`
 - Legacy `Positives Transactional - ...` templates: `0`
 - Receipt templates: `0`
-- Rewardful references: `0`
+- Old affiliate-provider references: `0`
 - JSON-wrapped / broken HTML templates: `0`
 
 ## Current Source Of Truth

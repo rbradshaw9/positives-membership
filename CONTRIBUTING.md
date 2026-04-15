@@ -15,7 +15,7 @@ All work should align with:
 - Supabase is the source of truth
 - Stripe is authoritative for billing state
 - Access control is server-side only
-- Mux is the primary video host (Vimeo is legacy fallback for pre-Mux content)
+- Vimeo is the primary video host, with YouTube supported for external embeds
 - Google Drive → S3 is the audio ingestion path (planned — pipeline not yet built)
 - Castos is the private podcast delivery layer (planned — no integration code yet)
 

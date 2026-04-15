@@ -5,11 +5,9 @@
  *
  * Returns the affiliate dashboard URL for the current member.
  *
- * FirstPromoter does not have a server-side SSO API like Rewardful did.
  * Affiliates log in directly at positives.firstpromoter.com using the email
- * address they registered with. This route returns the portal URL as JSON
- * so the client can navigate there via window.location.href (same-tab navigation
- * carries cookies and browsing context through Cloudflare bot checks).
+ * address they registered with. This route returns the portal URL as JSON so
+ * the client can navigate there via window.location.href.
  */
 
 import { NextResponse } from "next/server";

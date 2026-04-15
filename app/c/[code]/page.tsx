@@ -9,9 +9,9 @@ interface Props {
 /**
  * /c/[code] — Legacy affiliate redirect compatibility page.
  *
- * Older shared links may still point here from the Rewardful era. We now
- * resolve the stored destination server-side and redirect immediately with the
- * canonical FirstPromoter query parameter (`?fpr=`).
+ * Older shared links may still point here. We resolve the stored destination
+ * server-side and redirect immediately with the canonical FirstPromoter query
+ * parameter (`?fpr=`).
  */
 export default async function CookiePage({ params }: Props) {
   const { code } = await params;

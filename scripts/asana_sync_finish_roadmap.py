@@ -48,7 +48,7 @@ COMPLETED_TASKS = [
     ("Build admin member management views", "The admin area includes member list and member-detail views."),
     ("Build admin course management surfaces", "Admin course management routes and supporting actions are already in place."),
     ("Build admin email template management surfaces", "There is already an admin UI for editing and organizing core email templates."),
-    ("Implement Resend-based lifecycle email framework", "App-managed onboarding, payment recovery, and winback email frameworks already exist."),
+    ("Implement ActiveCampaign lifecycle email framework", "ActiveCampaign sync and lifecycle trigger foundations already exist."),
     ("Implement Stripe webhook subscription sync foundation", "Stripe webhook handling already updates the app state around billing and membership."),
     ("Implement ActiveCampaign sync foundation", "ActiveCampaign sync logic already exists for member and affiliate-related lifecycle events."),
     ("Migrate affiliate attribution to FirstPromoter", "FirstPromoter is already the current affiliate attribution and reporting source of truth."),

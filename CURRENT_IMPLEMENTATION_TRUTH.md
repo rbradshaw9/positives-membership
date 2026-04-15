@@ -181,5 +181,5 @@ Recommended implementation order from this reality-sync point:
 ## Notes
 
 - This document is intentionally the current operating truth, not the historical migration story
-- Historical Rewardful/FirstPromoter migration docs should be treated as archived context, not current architecture
+- Historical affiliate migration docs should be treated as archived context, not current architecture
 - This is not legal advice; affiliate rules/terms should still receive legal review if you want stronger protection

@@ -46,7 +46,7 @@ The following items are **out of scope**. Do not build them, even if implementat
 - Admin member viewer
 - Upgrade prompt CTAs with Stripe links
 - Milestone/streak celebration cards on Today
-- ActiveCampaign or Resend email integration
+- Email lifecycle integration
 - Any ingestion pipeline or transcription code
 - Community features (events, Q&A)
 - Error boundaries (`error.tsx` / `not-found.tsx`)
@@ -335,7 +335,7 @@ The following items are **explicitly excluded**. If implementation naturally enc
 - Admin member viewer
 - Upgrade prompt Stripe integration (just link to `/join`)
 - Error boundaries
-- ActiveCampaign or Resend
+- Email lifecycle integration
 - Ingestion pipeline
 - Transcription
 - AI/vector/semantic search

@@ -46,8 +46,7 @@ Core principles:
 | Hosting | Vercel | ✅ Active |
 | Database + Auth | Supabase (Postgres + Supabase Auth) | ✅ Active |
 | Billing | Stripe (checkout, webhooks, portal) | ✅ Active |
-| Video (primary) | **Mux** — `@mux/mux-node`, `@mux/mux-player-react`, `@mux/upchunk` | ✅ Active |
-| Video (legacy) | Vimeo — `@vimeo/player` — fallback for pre-Mux content | ✅ Fallback |
+| Video | Vimeo + YouTube embeds | ✅ Active |
 | Audio hosting | S3 (presigned URLs via `resolveAudioUrl()`) | ✅ Active |
 | Podcast feed | Castos — `castos_episode_url` column exists | ⚠️ Planned — no delivery code |
 | Email transactional | ActiveCampaign + Postmark | ⚠️ In progress |
@@ -138,10 +137,8 @@ starts_at                    -- TIMESTAMPTZ for coaching calls / events
 
 s3_audio_key
 castos_episode_url
-vimeo_video_id               -- legacy; prefer Mux for new content
+vimeo_video_id               -- primary hosted video ID
 youtube_video_id
-mux_playback_id              -- Mux streaming playback ID
-mux_asset_id                 -- Mux asset ID (for deletion / dashboard lookup)
 join_url                     -- coaching Zoom link (server-side only, never in client bundle)
 download_url
 
@@ -305,7 +302,7 @@ Schema-only. Tables exist with pgvector columns. Zero data — no embedding pipe
 - Radial-gradient hero with time-aware greeting, date label, monthly theme subtitle, streak badge
 - DailyPracticeCard — in-card audio player, 80% completion tracking, reflection prompt, note button
 - WeeklyPrincipleCard — optional audio, markdown body, reflection prompt, note button
-- MonthlyThemeCard — Mux (primary) or Vimeo video, expandable markdown body, resources, note button
+- MonthlyThemeCard — Vimeo or YouTube video, expandable markdown body, resources, note button
 - Audio/video coordination via `MemberAudioProvider` ("latest wins" pattern)
 - MonthlyAudioArchive — inline playlist per month, play/pause/scrub/skip ±15s
 - WeeklyArchive — past weeks' reflections this month
@@ -318,7 +315,7 @@ Schema-only. Tables exist with pgvector columns. Zero data — no embedding pipe
 - Pagination (20 items/page)
 - Tier filtering (respects `tier_min`)
 - Note indicators
-- Library item detail page (`/library/[id]`) with Mux/Vimeo video
+- Library item detail page (`/library/[id]`) with Vimeo/YouTube video
 
 **My Practice (`/practice`)**
 - Stats hero — streak, listens, notes count
@@ -330,7 +327,7 @@ Schema-only. Tables exist with pgvector columns. Zero data — no embedding pipe
 **Coaching (`/coaching`)**
 - Level 3+ gated — Level 1/2 sees upgrade prompt
 - Upcoming call card (starts_at, join_url from server only)
-- Replay archive (past calls with Mux/Vimeo embed)
+- Replay archive (past calls with Vimeo/YouTube embed)
 
 **Community Q&A (`/community`)**
 - Level 2+ gated
@@ -351,16 +348,14 @@ Schema-only. Tables exist with pgvector columns. Zero data — no embedding pipe
 
 **Admin (`/admin`)**
 - Content list with type filters and status badges
-- Content create/edit (all fields including `tier_min`, `starts_at`, Mux video panel)
+- Content create/edit (all fields including `tier_min`, `starts_at`, and video IDs)
 - Months workspace — month list, detail page, daily audio grid with drag-to-reorder
 - Member viewer — list and detail with subscription/activity data
 - Content calendar — date-based content view
 - Admin reskin: 100% on `admin-*` CSS system (2 minor pages remain: calendar, ingestion)
 
 **Video System**
-- `VideoUploadPanel` — admin drag-drop upload, 5MB chunked, Mux processing poll
-- API: `/api/admin/video/upload`, `/api/admin/video/status`, `/api/admin/video/commit`, `/api/admin/video/remove`
-- `VideoEmbed` — routes to MuxPlayer (primary), Vimeo iframe, or YouTube based on available IDs
+- `VideoEmbed` — routes to Vimeo iframe or YouTube based on available IDs
 - Video resume overlay (shows "You left off at X:XX" with Resume / Start Over)
 - `video_views` tracking: milestone writes at 25/50/75/95%, session counting, resume position
 - Audio/video coordination: playing video pauses audio and vice versa
@@ -409,7 +404,7 @@ content.join_url = Zoom URL (server-side only — never in client bundle)
 
 Route: `/coaching`  
 - Upcoming call → `UpcomingCallCard` (date, time, Zoom join)
-- Past calls → `CoachingReplayCard` (Mux or Vimeo replay)
+- Past calls → `CoachingReplayCard` (Vimeo or YouTube replay)
 - Non-eligible → `CoachingUpgradePrompt`
 
 ---
@@ -424,7 +419,7 @@ Library shows all published content. Respects `tier_min` filtering.
 daily_audio | weekly_principle | monthly_theme | library | workshop | coaching_call
 ```
 
-Features: FTS, type filters, pagination (20/page), note indicators, Mux/Vimeo video on detail page.
+Features: FTS, type filters, pagination (20/page), note indicators, Vimeo/YouTube video on detail page.
 
 **Planned (not built):** semantic search, AI recommendations, course collections.
 
@@ -468,7 +463,7 @@ Future: semantic search, content recommendations, AI assistant (RAG), auto-taggi
 
 ### Immediate (In Progress)
 - Admin reskin: complete `content/calendar/page.tsx` + `ingestion/page.tsx`
-- Write migration `0013_mux_video_tracking.sql` to capture Mux schema in version control
+- Keep video tracking aligned with Vimeo/YouTube playback
 
 ### Phase 1 — Revenue & Member Experience
 - Multi-tier pricing on `/join` page (currently Level 1 only)
@@ -499,7 +494,7 @@ Future: semantic search, content recommendations, AI assistant (RAG), auto-taggi
 | 9 | Member UI: responsive layout, typed cards | ✅ Complete |
 | 10 | Tier gating, coaching, journal new entry, admin coaching | ✅ Complete |
 | 11 | Visual cohesion: `.member-hero`, `.btn-primary`, `.member-input` | ✅ Complete |
-| Post-11 | Mux video migration, video tracking, months workspace, community Q&A, heatmap, CMS dedup | ✅ Complete |
+| Post-11 | Video playback cleanup, video tracking, months workspace, community Q&A, heatmap, CMS dedup | ✅ Complete |
 
 ---
 

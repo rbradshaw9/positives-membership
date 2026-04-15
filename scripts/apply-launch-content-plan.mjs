@@ -243,8 +243,6 @@ function buildContentFields(entry, type, monthYear, monthlyPracticeId, existingR
 
   maybeAssign(row, "vimeo_video_id", entry.vimeo_video_id, (value) => value || null);
   maybeAssign(row, "youtube_video_id", entry.youtube_video_id, (value) => value || null);
-  maybeAssign(row, "mux_playback_id", entry.mux_playback_id, (value) => value || null);
-  maybeAssign(row, "mux_asset_id", entry.mux_asset_id, (value) => value || null);
   maybeAssign(row, "join_url", entry.join_url?.trim(), (value) => value || null);
   maybeAssign(row, "starts_at", entry.starts_at, (value) => {
     if (!value) return null;

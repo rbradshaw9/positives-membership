@@ -280,8 +280,6 @@ export type Database = {
           month_theme: string | null
           month_year: string | null
           monthly_practice_id: string | null
-          mux_asset_id: string | null
-          mux_playback_id: string | null
           publish_date: string | null
           published_at: string | null
           reflection_prompt: string | null
@@ -322,8 +320,6 @@ export type Database = {
           month_theme?: string | null
           month_year?: string | null
           monthly_practice_id?: string | null
-          mux_asset_id?: string | null
-          mux_playback_id?: string | null
           publish_date?: string | null
           published_at?: string | null
           reflection_prompt?: string | null
@@ -364,8 +360,6 @@ export type Database = {
           month_theme?: string | null
           month_year?: string | null
           monthly_practice_id?: string | null
-          mux_asset_id?: string | null
-          mux_playback_id?: string | null
           publish_date?: string | null
           published_at?: string | null
           reflection_prompt?: string | null
@@ -685,7 +679,6 @@ export type Database = {
           id: string
           lesson_id: string | null
           module_id: string
-          mux_playback_id: string | null
           resources: string | null
           sort_order: number
           title: string
@@ -700,7 +693,6 @@ export type Database = {
           id?: string
           lesson_id?: string | null
           module_id: string
-          mux_playback_id?: string | null
           resources?: string | null
           sort_order?: number
           title: string
@@ -715,7 +707,6 @@ export type Database = {
           id?: string
           lesson_id?: string | null
           module_id?: string
-          mux_playback_id?: string | null
           resources?: string | null
           sort_order?: number
           title?: string
@@ -1183,8 +1174,6 @@ export type Database = {
           course_lesson_id: string | null
           id: string
           last_seen_at: string
-          mux_asset_id: string | null
-          mux_playback_id: string | null
           resume_at_seconds: number
           session_count: number
           started_at: string
@@ -1197,8 +1186,6 @@ export type Database = {
           course_lesson_id?: string | null
           id?: string
           last_seen_at?: string
-          mux_asset_id?: string | null
-          mux_playback_id?: string | null
           resume_at_seconds?: number
           session_count?: number
           started_at?: string
@@ -1211,8 +1198,6 @@ export type Database = {
           course_lesson_id?: string | null
           id?: string
           last_seen_at?: string
-          mux_asset_id?: string | null
-          mux_playback_id?: string | null
           resume_at_seconds?: number
           session_count?: number
           started_at?: string

@@ -13,7 +13,7 @@ new one. Currently in **sandbox/test mode** (waiting on business verification do
 | **Products & Prices** | 1 product (L4) + up to 7 prices to recreate |
 | **Webhooks** | 1 endpoint to register in the new Stripe dashboard |
 | **Database** | `stripe_customer_id` on member rows — all old IDs become invalid |
-| **Connected Services** | Rewardful (or FirstPromoter when migrated) + Stripe Billing Portal config |
+| **Connected Services** | FirstPromoter + Stripe Billing Portal config |
 | **Vercel** | Update all STRIPE_* env vars in the Vercel dashboard |
 
 ---
@@ -161,13 +161,11 @@ Update all the same keys for **Production**, **Preview**, and **Development** en
 
 These services are connected to Stripe and must be updated:
 
-### Rewardful (Current affiliate platform)
+### FirstPromoter (Affiliate platform)
 
-Rewardful connects to Stripe via **OAuth**. The connection is account-specific.
+FirstPromoter connects to Stripe through its Stripe integration. The connection is account-specific.
 
-**Action:** In Rewardful dashboard → **Settings → Stripe Integration → Disconnect → Reconnect** with the new Stripe account.
-
-> **After the FirstPromoter migration:** Same applies — reconnect FP to the new Stripe account in FP Settings → Integrations → Stripe.
+**Action:** In FirstPromoter dashboard → **Settings → Integrations → Stripe** and connect the correct Stripe account/mode.
 
 ### Stripe Billing Portal (see Step 4 above)
 
@@ -228,7 +226,7 @@ All of the above, plus:
 - [ ] Switch from test keys (`sk_test_`, `pk_test_`) to live keys (`sk_live_`, `pk_live_`)
 - [ ] Recreate products/prices in **live** mode (separate from test mode)
 - [ ] Register webhook pointing to production URL in **live** mode
-- [ ] Reconnect Rewardful (or FirstPromoter) to live Stripe account
+- [ ] Reconnect FirstPromoter to live Stripe account
 - [ ] Decide on existing member migration strategy
 - [ ] Update Vercel production env vars
 - [ ] Redeploy

@@ -31,7 +31,7 @@ export default async function AdminContentEditPage({ params, searchParams }: Pro
   const { data: row, error } = await supabase
     .from("content")
     .select(
-      "id, type, title, excerpt, description, body, reflection_prompt, download_url, resource_links, status, publish_date, week_start, month_year, duration_seconds, castos_episode_url, s3_audio_key, vimeo_video_id, youtube_video_id, admin_notes, tier_min, starts_at, join_url, mux_asset_id, mux_playback_id, send_reminders, send_replay_email"
+      "id, type, title, excerpt, description, body, reflection_prompt, download_url, resource_links, status, publish_date, week_start, month_year, duration_seconds, castos_episode_url, s3_audio_key, vimeo_video_id, youtube_video_id, admin_notes, tier_min, starts_at, join_url, send_reminders, send_replay_email"
     )
     .eq("id", id)
     .single();
