@@ -1088,11 +1088,6 @@ function PayoutSetupStep({
           >
             Create a PayPal account
           </a>
-          <div style={{ marginTop: "0.55rem" }}>
-            <Link href="/affiliate-program" style={{ color: "#2563EB", fontWeight: 700, textDecoration: "underline" }}>
-              Review affiliate program rules
-            </Link>
-          </div>
         </div>
 
         <form
