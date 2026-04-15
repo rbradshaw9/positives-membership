@@ -74,7 +74,7 @@ export default async function EventsPage() {
               startsAt={nextEvent.starts_at}
               joinUrl={nextEvent.join_url}
             />
-          ) : (
+          ) : hasReplayLibrary ? (
             <EmptyState
               icon={
                 <svg
@@ -95,23 +95,72 @@ export default async function EventsPage() {
                 </svg>
               }
               title="No live event is scheduled yet"
-              subtitle={
-                hasReplayLibrary
-                  ? "Nothing new is on the calendar right now, but you can still revisit past events below while the next live session is being scheduled."
-                  : "Nothing new is on the calendar right now. New workshops and member sessions will show up here as soon as they are scheduled."
-              }
+              subtitle="Nothing new is on the calendar right now, but you can still revisit past events below while the next live session is being scheduled."
               action={
                 <div className="flex flex-wrap items-center justify-center gap-3">
-                  {hasReplayLibrary ? (
-                    <Button href="#event-replays">Browse replays</Button>
-                  ) : null}
+                  <Button href="#event-replays">Browse replays</Button>
                   <Button href="/community" variant="secondary">
                     Open Q&A
                   </Button>
                 </div>
               }
-              className={hasReplayLibrary ? "max-w-xl" : undefined}
+              className="max-w-xl"
             />
+          ) : (
+            <SurfaceCard
+              tone="tint"
+              padding="lg"
+              elevated
+              className="surface-card--editorial mx-auto max-w-2xl overflow-hidden"
+            >
+              <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_220px] md:items-center">
+                <div>
+                  <p className="ui-section-eyebrow mb-3">Live events are being scheduled</p>
+                  <h2 className="heading-balance font-heading text-2xl font-semibold tracking-[-0.03em] text-foreground md:text-3xl">
+                    Your first live event will appear here
+                  </h2>
+                  <p className="mt-3 text-sm leading-[1.75] text-muted-foreground">
+                    When the next workshop is published, you will see the date, join link, and
+                    replay here. Until then, Today and Q&A are good places to stay connected.
+                  </p>
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    <Button href="/today">Go to Today</Button>
+                    <Button href="/community" variant="secondary">
+                      Open Q&A
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="rounded-[var(--radius-xl)] border border-border/70 bg-card/70 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                    What to expect
+                  </p>
+                  <div className="mt-4 space-y-3 text-sm text-foreground">
+                    <div className="flex gap-3">
+                      <span
+                        className="mt-1 h-2 w-2 rounded-full bg-accent"
+                        aria-hidden="true"
+                      />
+                      <span>Live workshops for guided practice</span>
+                    </div>
+                    <div className="flex gap-3">
+                      <span
+                        className="mt-1 h-2 w-2 rounded-full bg-accent"
+                        aria-hidden="true"
+                      />
+                      <span>Simple reminders before sessions</span>
+                    </div>
+                    <div className="flex gap-3">
+                      <span
+                        className="mt-1 h-2 w-2 rounded-full bg-accent"
+                        aria-hidden="true"
+                      />
+                      <span>Replays after events are published</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </SurfaceCard>
           )}
         </section>
 
