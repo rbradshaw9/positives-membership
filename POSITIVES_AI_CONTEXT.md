@@ -242,8 +242,7 @@ Tracks per-member video watch progress for resume, milestones, analytics.
 id
 user_id
 content_id (nullable)
-mux_asset_id (nullable)
-mux_playback_id (nullable)
+course_lesson_id (nullable)
 watch_percent
 completed
 resume_at_seconds
