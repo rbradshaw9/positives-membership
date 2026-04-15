@@ -12,7 +12,7 @@ import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import { applyAdminPlanChange } from "@/server/services/stripe/admin-plan-change";
 import type { Enums } from "@/types/supabase";
 
-type ActionResult = { error?: string };
+type ActionResult = { error?: string; success?: string };
 type IdRow = { id: string };
 const MEMBER_DOCUMENT_BUCKET = "member-documents";
 const MEMBER_AVATAR_BUCKET = "member-avatars";
@@ -212,7 +212,19 @@ export async function updateMemberCrmProfile(formData: FormData): Promise<Action
   });
 
   revalidatePath(`/admin/members/${memberId}`);
+  if (formData.get("returnState") === "true") {
+    return { success: "Member management fields saved." };
+  }
+
   redirect(memberPath(memberId, "profile_updated", "access"));
+}
+
+export async function updateMemberCrmProfileInline(
+  _previousState: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  formData.set("returnState", "true");
+  return updateMemberCrmProfile(formData);
 }
 
 export async function updateMemberAvatar(formData: FormData): Promise<ActionResult> {

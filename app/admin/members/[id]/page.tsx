@@ -25,8 +25,9 @@ import {
   revokeCourseEntitlement,
   unlockCourseWithPointsForMember,
   updateMemberAvatar,
-  updateMemberCrmProfile,
+  updateMemberCrmProfileInline,
 } from "./actions";
+import { MemberCrmProfileForm } from "./MemberCrmProfileForm";
 
 export const metadata = {
   title: "Member Management — Positives Admin",
@@ -577,6 +578,27 @@ function MemberCrmStyles() {
         padding: 0.9rem 1rem;
       }
 
+      .member-crm-inline-alert {
+        grid-column: 1 / -1;
+        border-radius: 1rem;
+        font-size: 0.85rem;
+        font-weight: 700;
+        line-height: 1.5;
+        padding: 0.85rem 1rem;
+      }
+
+      .member-crm-inline-alert--success {
+        border: 1px solid color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
+        background: color-mix(in srgb, var(--color-primary) 10%, white);
+        color: color-mix(in srgb, var(--color-primary) 72%, #064e3b);
+      }
+
+      .member-crm-inline-alert--error {
+        border: 1px solid rgba(220, 38, 38, 0.24);
+        background: rgba(254, 242, 242, 0.9);
+        color: #b91c1c;
+      }
+
       .member-crm-authorization {
         display: grid;
         gap: 0.75rem;
@@ -958,7 +980,6 @@ export default async function AdminMemberDetailPage({
         <form
           action={asFormAction(updateMemberAvatar)}
           className="member-crm-card"
-          encType="multipart/form-data"
           style={{ marginTop: "1rem" }}
         >
           <input type="hidden" name="memberId" value={member.id} />
@@ -982,73 +1003,22 @@ export default async function AdminMemberDetailPage({
       </Section>
 
       <Section id="access" title="Access" description="Operational member fields and access context. Billing/tier changes must go through Stripe-backed plan-change tooling.">
-        <form action={asFormAction(updateMemberCrmProfile)} className="member-crm-form-grid">
-          <input type="hidden" name="memberId" value={member.id} />
-          <div className="member-crm-warning-note">
-            <strong>Stripe is the source of truth for billing and subscription tier.</strong>{" "}
-            This page no longer saves direct status/tier edits because that would not update the
-            member&apos;s invoice or subscription. A proper admin plan-change flow should preview
-            upgrade prorations, show the immediate charge, and explain that downgrades take effect
-            on the next billing date before anything is applied.
-          </div>
-          <div className="member-crm-readonly-grid" aria-label="Stripe billing state">
-            <div className="member-crm-readonly-field">
-              <span className="admin-search-bar__label">Subscription Status</span>
-              <p className="member-crm-readonly-field__value">
-                {STATUS_LABEL[member.subscription_status] ?? member.subscription_status}
-              </p>
-            </div>
-            <div className="member-crm-readonly-field">
-              <span className="admin-search-bar__label">Tier</span>
-              <p className="member-crm-readonly-field__value">
-                {member.subscription_tier
-                  ? PLAN_NAME_BY_TIER[member.subscription_tier] ?? member.subscription_tier
-                  : "No tier"}
-              </p>
-            </div>
-          </div>
-          <label className="admin-form-field">
-            <span className="admin-search-bar__label">Name</span>
-            <TextInput name="name" defaultValue={member.name ?? ""} />
-          </label>
-          <label className="admin-form-field">
-            <span className="admin-search-bar__label">Timezone</span>
-            <TextInput name="timezone" defaultValue={member.timezone ?? "America/New_York"} />
-          </label>
-          <label className="admin-form-field">
-            <span className="admin-search-bar__label">Assigned Coach</span>
-            <Select name="assignedCoachId" defaultValue={member.assigned_coach_id ?? ""}>
-              <option value="">Unassigned</option>
-              {coaches.map((coach) => (
-                <option key={coach.id} value={coach.id}>{coach.label}</option>
-              ))}
-            </Select>
-          </label>
-          <label className="admin-form-field">
-            <span className="admin-search-bar__label">Follow-up Status</span>
-            <Select name="followupStatus" defaultValue={member.followup_status ?? "none"}>
-              <option value="none">No follow-up</option>
-              <option value="needs_followup">Needs follow-up</option>
-              <option value="waiting_on_member">Waiting on member</option>
-              <option value="resolved">Resolved</option>
-            </Select>
-          </label>
-          <label className="admin-form-field" style={{ gridColumn: "1 / -1" }}>
-            <span className="admin-search-bar__label">Follow-up Note</span>
-            <TextArea name="followupNote" defaultValue={member.followup_note ?? ""} />
-            <span className="member-crm-muted">
-              Use this for the current next action. Use Notes below for dated history and coaching/support context.
-            </span>
-          </label>
-          <div style={{ gridColumn: "1 / -1" }}>
-            <ClientAuthorizationFields reasonName="changeReason" />
-          </div>
-          <div style={{ gridColumn: "1 / -1" }}>
-            <button type="submit" className="admin-btn admin-btn--primary">
-              Save member management fields
-            </button>
-          </div>
-        </form>
+        <MemberCrmProfileForm
+          action={updateMemberCrmProfileInline}
+          coaches={coaches}
+          member={{
+            id: member.id,
+            name: member.name,
+            timezone: member.timezone,
+            assignedCoachId: member.assigned_coach_id,
+            followupStatus: member.followup_status,
+            followupNote: member.followup_note,
+            subscriptionStatusLabel: STATUS_LABEL[member.subscription_status] ?? member.subscription_status,
+            tierLabel: member.subscription_tier
+              ? PLAN_NAME_BY_TIER[member.subscription_tier] ?? member.subscription_tier
+              : "No tier",
+          }}
+        />
 
         {overrides.length > 0 ? (
           <div style={{ marginTop: "1rem" }}>
@@ -1344,7 +1314,7 @@ export default async function AdminMemberDetailPage({
           <ProfileField label="Marketing Email">
             {member.email_unsubscribed ? "Unsubscribed" : "Subscribed / not opted out"}
             <span className="member-crm-muted">
-              App flag from member.email_unsubscribed. Our unsubscribe route syncs to AC; direct AC opt-outs need the webhook/reconciliation task.
+              App flag from member.email_unsubscribed. App unsubscribe links sync to AC; AC subscribe/unsubscribe webhooks sync back into the app.
             </span>
           </ProfileField>
           <ProfileField label="Password">
@@ -1511,7 +1481,7 @@ export default async function AdminMemberDetailPage({
               <EmptyState>No internal documents yet.</EmptyState>
             )}
           </div>
-          <form action={asFormAction(addMemberDocumentReference)} className="member-crm-card" encType="multipart/form-data">
+          <form action={asFormAction(addMemberDocumentReference)} className="member-crm-card">
             <input type="hidden" name="memberId" value={member.id} />
             <p className="member-crm-card-title">Add document</p>
             <label className="admin-form-field">

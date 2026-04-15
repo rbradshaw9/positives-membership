@@ -29,16 +29,27 @@ test.describe("admin member operations", () => {
 
     await expect(page.getByRole("heading", { name: "Members" })).toBeVisible();
 
-    await page.getByLabel("Search by email or name").fill(MEMBER_EMAIL);
-    await page.getByRole("button", { name: "Filter" }).click();
+    await page.getByLabel("Search members").fill(MEMBER_EMAIL);
+    await page.getByRole("button", { name: "Search" }).click();
 
     await expect(page.getByRole("link", { name: MEMBER_EMAIL })).toBeVisible();
     await page.getByRole("link", { name: MEMBER_EMAIL }).click();
 
     await expect(page.getByRole("heading", { name: /Ryan \(L1 Test\)|rbradshaw\+l1@gmail\.com/ })).toBeVisible();
-    await expect(page.getByText("Profile")).toBeVisible();
-    await expect(page.getByText("Billing is managed exclusively in Stripe.")).toBeVisible();
-    await expect(page.getByText("Recent Activity")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Access" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Billing" })).toBeVisible();
+
+    const beforeUrl = page.url();
+    const accessSection = page.locator("section#access");
+    await accessSection.getByLabel("Change reason").fill("E2E verifies inline CRM save behavior.");
+    await accessSection
+      .getByLabel("I verified this change is authorized by the member/client or approved by the team.")
+      .check();
+    await accessSection.getByRole("button", { name: "Save member management fields" }).click();
+
+    await expect(accessSection.getByRole("status")).toContainText("Member management fields saved.");
+    expect(page.url()).toBe(beforeUrl);
   });
 
   test("admin detail flags canceled, incomplete, and billing-handoff edge cases", async ({
@@ -64,19 +75,17 @@ test.describe("admin member operations", () => {
         next: "/admin/members",
       });
 
-      await page.getByLabel("Search by email or name").fill(MEMBER_EMAIL);
-      await page.getByRole("button", { name: "Filter" }).click();
+      await page.getByLabel("Search members").fill(MEMBER_EMAIL);
+      await page.getByRole("button", { name: "Search" }).click();
       await expect(page.getByRole("link", { name: MEMBER_EMAIL })).toBeVisible();
       await page.getByRole("link", { name: MEMBER_EMAIL }).click();
 
       await expect(page.getByRole("heading", { name: MEMBER_EMAIL })).toBeVisible();
-      await expect(page.getByText("Support flags")).toBeVisible();
-      await expect(page.getByText("Missing Stripe customer link")).toBeVisible();
-      await expect(page.getByText("Canceled membership")).toBeVisible();
-      await expect(page.getByText("Password not set")).toBeVisible();
-      await expect(page.getByText("No practice activity yet")).toBeVisible();
+      await expect(page.getByText("Canceled", { exact: true }).first()).toBeVisible();
+      await expect(page.getByText("No active access", { exact: true }).first()).toBeVisible();
+      await expect(page.getByText("Magic-link / password not set")).toBeVisible();
+      await expect(page.getByText("No practice tracked yet.")).toBeVisible();
       await expect(page.getByText("Not linked")).toBeVisible();
-      await expect(page.getByText("No — magic link only")).toBeVisible();
     } finally {
       await updateAdminMemberSupportFields(MEMBER_EMAIL, originalMemberSupportState);
       originalMemberSupportState = null;
