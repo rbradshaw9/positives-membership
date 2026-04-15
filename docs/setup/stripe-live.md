@@ -46,6 +46,7 @@ The handler:
 | `customer.subscription.trial_will_end` | `handleTrialWillEnd` | Syncs trial-ending state |
 | `invoice.payment_succeeded` | `handlePaymentSucceeded` | Clears past-due state / syncs billing recovery |
 | `invoice.payment_failed` | `handlePaymentFailed` | Sets `subscription_status=past_due` |
+| `payment_intent.succeeded` | `handleCoursePaymentSucceeded` | Grants direct saved-card course purchase entitlements |
 | `charge.refunded` | `handleChargeRefunded` | Marks matching one-time course entitlement `refunded` after a full refund |
 | `charge.dispute.closed` | `handleDisputeClosed` | Marks matching one-time course entitlement `chargeback` when a dispute is lost |
 
@@ -101,6 +102,7 @@ If you ever need to create a new webhook endpoint (e.g., custom domain):
    - `customer.subscription.trial_will_end`
    - `invoice.payment_succeeded`
    - `invoice.payment_failed`
+   - `payment_intent.succeeded`
    - `charge.refunded`
    - `charge.dispute.closed`
 4. Copy the signing secret and update `STRIPE_WEBHOOK_SECRET` locally and in Vercel

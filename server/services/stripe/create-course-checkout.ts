@@ -54,10 +54,12 @@ export async function createCourseCheckoutSession({
     client_reference_id: userId ?? undefined,
     metadata: {
       purchase_type: "course",
+      course_id: courseId,
       courseId,
       courseTitle,
       sourcePath: normalizedSourcePath,
-      ...(userId ? { userId } : {}),
+      ...(userId ? { member_id: userId, userId } : {}),
+      ...(customerEmail ? { buyer_email: customerEmail } : {}),
     },
     success_url: successUrl,
     cancel_url: `${appUrl}${normalizedSourcePath}`,

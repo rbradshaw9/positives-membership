@@ -167,6 +167,35 @@ export async function createCourseEntitlementWebhookFixture({
   };
 }
 
+export async function createStandaloneCourseFixture(slugSeed: string) {
+  const supabase = getServiceRoleClient();
+  const slug = `e2e-course-${slugSeed}`;
+
+  const { data: course, error } = await supabase
+    .from("course")
+    .insert({
+      title: "E2E Standalone Course Fixture",
+      slug,
+      status: "published",
+      tier_min: "level_1",
+      is_standalone_purchasable: true,
+      price_cents: 5000,
+      admin_notes: "e2e-standalone-course-fixture",
+    })
+    .select("id")
+    .single();
+
+  if (error || !course) {
+    throw new Error(
+      `Failed to create standalone course fixture: ${error?.message ?? "unknown error"}`
+    );
+  }
+
+  return {
+    courseId: course.id,
+  };
+}
+
 export async function deleteCourseFixture(courseId: string) {
   const supabase = getServiceRoleClient();
   const { error } = await supabase.from("course").delete().eq("id", courseId);
@@ -203,6 +232,35 @@ export async function waitForCourseEntitlementStatus(
   }
 
   throw new Error(`Entitlement ${entitlementId} did not reach status ${expectedStatus}.`);
+}
+
+export async function waitForCourseEntitlementByPaymentIntent(
+  paymentIntentId: string,
+  expectedStatus: "active" | "revoked" | "refunded" | "chargeback" = "active",
+  timeoutMs = 10_000
+) {
+  const supabase = getServiceRoleClient();
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    const { data, error } = await supabase
+      .from("course_entitlement")
+      .select("id, status")
+      .eq("stripe_payment_intent_id", paymentIntentId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Failed to fetch entitlement for ${paymentIntentId}: ${error.message}`);
+    }
+
+    if (data?.status === expectedStatus) {
+      return data;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+
+  throw new Error(`Payment intent ${paymentIntentId} did not create ${expectedStatus} entitlement.`);
 }
 
 export async function waitForMemberBillingState(

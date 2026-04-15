@@ -527,7 +527,7 @@ async function handleCourseCheckout(
 ): Promise<void> {
   const supabase = asLooseSupabaseClient(getAdminClient());
   const stripe = getStripe();
-  const courseId = session.metadata?.courseId ?? null;
+  const courseId = session.metadata?.course_id ?? session.metadata?.courseId ?? null;
 
   if (!courseId) {
     console.error(`[Stripe] Course checkout ${session.id} missing metadata.courseId.`);
@@ -559,8 +559,10 @@ async function handleCourseCheckout(
     );
   }
 
-  const metadataUserId = session.metadata?.userId ?? session.client_reference_id ?? null;
-  const sessionEmail = session.customer_details?.email ?? stripeCustomer?.email ?? null;
+  const metadataUserId =
+    session.metadata?.member_id ?? session.metadata?.userId ?? session.client_reference_id ?? null;
+  const sessionEmail =
+    session.metadata?.buyer_email ?? session.customer_details?.email ?? stripeCustomer?.email ?? null;
   const sessionName =
     session.customer_details?.name?.trim() ?? stripeCustomer?.name?.trim() ?? null;
   let userId = metadataUserId;

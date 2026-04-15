@@ -17,6 +17,7 @@ Events:
 - `customer.subscription.trial_will_end`
 - `invoice.payment_succeeded`
 - `invoice.payment_failed`
+- `payment_intent.succeeded`
 - `charge.refunded`
 - `charge.dispute.closed`
 

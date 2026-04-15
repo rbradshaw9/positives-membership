@@ -10,9 +10,126 @@ type CourseEntitlementRow = {
   course_id: string;
 };
 
+type CoursePurchaseGrantInput = {
+  memberId: string;
+  courseId: string;
+  stripeCustomerId: string | null;
+  stripeCheckoutSessionId?: string | null;
+  stripePaymentIntentId?: string | null;
+  stripeChargeId?: string | null;
+  grantNote: string;
+};
+
+type CoursePurchaseGrantResult = {
+  granted: boolean;
+  entitlementId: string | null;
+  memberId: string;
+  courseId: string;
+};
+
 function idFromExpandable<T extends { id: string }>(value: string | T | null | undefined) {
   if (!value) return null;
   return typeof value === "string" ? value : value.id;
+}
+
+export async function grantPurchasedCourseEntitlement({
+  memberId,
+  courseId,
+  stripeCustomerId,
+  stripeCheckoutSessionId = null,
+  stripePaymentIntentId = null,
+  stripeChargeId = null,
+  grantNote,
+}: CoursePurchaseGrantInput): Promise<CoursePurchaseGrantResult> {
+  const supabase = asLooseSupabaseClient(getAdminClient());
+
+  const { data: course, error: courseError } = await supabase
+    .from("course")
+    .select<{ id: string; title: string; status: string }>("id, title, status")
+    .eq("id", courseId)
+    .maybeSingle();
+
+  if (courseError || !course) {
+    throw new Error(
+      `[Stripe] Course purchase references missing course ${courseId}: ` +
+        `${courseError?.message ?? "not found"}`
+    );
+  }
+
+  const { data: existingEntitlement, error: existingError } = await supabase
+    .from("course_entitlement")
+    .select<{ id: string }>("id")
+    .eq("member_id", memberId)
+    .eq("course_id", courseId)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (existingError) {
+    throw new Error(
+      `[Stripe] Failed to check existing course entitlement for ${memberId}: ${existingError.message}`
+    );
+  }
+
+  if (existingEntitlement) {
+    return {
+      granted: false,
+      entitlementId: existingEntitlement.id,
+      memberId,
+      courseId,
+    };
+  }
+
+  const { data: entitlement, error: entitlementError } = await supabase
+    .from("course_entitlement")
+    .insert({
+      member_id: memberId,
+      course_id: courseId,
+      source: "purchase",
+      status: "active",
+      stripe_customer_id: stripeCustomerId,
+      stripe_checkout_session_id: stripeCheckoutSessionId,
+      stripe_payment_intent_id: stripePaymentIntentId,
+      stripe_charge_id: stripeChargeId,
+      purchased_at: new Date().toISOString(),
+      grant_note: grantNote,
+    })
+    .select<{ id: string }>("id")
+    .single();
+
+  if (entitlementError) {
+    if (entitlementError.code === "23505") {
+      return {
+        granted: false,
+        entitlementId: null,
+        memberId,
+        courseId,
+      };
+    }
+
+    throw new Error(
+      `[Stripe] Failed to grant course entitlement for ${memberId}: ${entitlementError.message}`
+    );
+  }
+
+  await supabase.from("activity_event").insert({
+    member_id: memberId,
+    event_type: "course_unlocked",
+    metadata: {
+      course_id: courseId,
+      course_title: course.title,
+      source: "purchase",
+      stripe_checkout_session_id: stripeCheckoutSessionId,
+      stripe_payment_intent_id: stripePaymentIntentId,
+      stripe_charge_id: stripeChargeId,
+    },
+  });
+
+  return {
+    granted: true,
+    entitlementId: entitlement?.id ?? null,
+    memberId,
+    courseId,
+  };
 }
 
 async function markCourseEntitlementInactive({
@@ -97,6 +214,37 @@ export async function handleChargeRefunded(charge: Stripe.Charge) {
     chargeId: charge.id,
     note: `Refunded through Stripe charge ${charge.id}.`,
   });
+}
+
+export async function handleCoursePaymentSucceeded(paymentIntent: Stripe.PaymentIntent) {
+  if (paymentIntent.metadata?.purchase_type !== "course") return;
+
+  const courseId = paymentIntent.metadata.course_id ?? paymentIntent.metadata.courseId ?? null;
+  const memberId = paymentIntent.metadata.member_id ?? paymentIntent.metadata.userId ?? null;
+
+  if (!courseId || !memberId) {
+    console.error(
+      `[Stripe] Course payment intent ${paymentIntent.id} missing course/member metadata.`
+    );
+    return;
+  }
+
+  const chargeId = idFromExpandable(paymentIntent.latest_charge);
+  const customerId = idFromExpandable(paymentIntent.customer);
+
+  const result = await grantPurchasedCourseEntitlement({
+    memberId,
+    courseId,
+    stripeCustomerId: customerId,
+    stripePaymentIntentId: paymentIntent.id,
+    stripeChargeId: chargeId,
+    grantNote: `Purchased through saved-card payment ${paymentIntent.id}.`,
+  });
+
+  console.log(
+    `[Stripe] Course payment intent processed — member: ${memberId}, course: ${courseId}, ` +
+      `granted: ${result.granted ? "yes" : "already_active"}.`
+  );
 }
 
 export async function handleDisputeClosed(dispute: Stripe.Dispute) {

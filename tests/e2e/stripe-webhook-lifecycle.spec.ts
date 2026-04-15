@@ -2,10 +2,12 @@ import Stripe from "stripe";
 import { expect, test } from "@playwright/test";
 import {
   createCourseEntitlementWebhookFixture,
+  createStandaloneCourseFixture,
   deleteCourseFixture,
   getMemberBillingState,
   MEMBER_EMAIL,
   waitForMemberBillingState,
+  waitForCourseEntitlementByPaymentIntent,
   waitForCourseEntitlementStatus,
 } from "./helpers";
 
@@ -236,6 +238,63 @@ test.describe("Stripe webhook lifecycle", () => {
     } finally {
       await deleteCourseFixture(refundFixture.courseId);
       await deleteCourseFixture(chargebackFixture.courseId);
+    }
+  });
+
+  test("grants course entitlement from direct saved-card payment intent", async ({
+    request,
+  }) => {
+    const member = await getMemberBillingState(MEMBER_EMAIL);
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+    if (!webhookSecret) {
+      throw new Error("Missing STRIPE_WEBHOOK_SECRET required for course payment verification.");
+    }
+
+    const stripe = new Stripe("sk_test_placeholder", {
+      apiVersion: "2026-03-25.dahlia",
+    });
+    const paymentIntentId = "pi_e2e_course_direct_purchase";
+    const chargeId = "ch_e2e_course_direct_purchase";
+    const fixture = await createStandaloneCourseFixture("direct-purchase");
+
+    const payload = JSON.stringify(
+      buildEvent("payment_intent.succeeded", {
+        id: paymentIntentId,
+        object: "payment_intent",
+        amount: 5000,
+        amount_received: 5000,
+        currency: "usd",
+        customer: member.stripe_customer_id,
+        latest_charge: chargeId,
+        status: "succeeded",
+        metadata: {
+          purchase_type: "course",
+          course_id: fixture.courseId,
+          member_id: member.id,
+          buyer_email: MEMBER_EMAIL,
+        },
+      })
+    );
+    const signature = stripe.webhooks.generateTestHeaderString({
+      payload,
+      secret: webhookSecret,
+    });
+
+    try {
+      const response = await request.post("/api/webhooks/stripe", {
+        data: payload,
+        headers: {
+          "content-type": "application/json",
+          "stripe-signature": signature,
+        },
+      });
+
+      expect(response.status()).toBe(200);
+      await expect(response.json()).resolves.toMatchObject({ received: true });
+      await waitForCourseEntitlementByPaymentIntent(paymentIntentId, "active");
+    } finally {
+      await deleteCourseFixture(fixture.courseId);
     }
   });
 });

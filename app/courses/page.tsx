@@ -212,7 +212,12 @@ export default async function CoursesPage({
                       </p>
                     )}
                   </div>
-                  <CourseCheckoutButton courseId={course.id} disabled={!hasPrice} />
+                  <CourseCheckoutButton
+                    courseId={course.id}
+                    disabled={!hasPrice}
+                    signedIn={Boolean(user)}
+                    priceLabel={formatUsd(course.price_cents)}
+                  />
                 </article>
               );
             })}

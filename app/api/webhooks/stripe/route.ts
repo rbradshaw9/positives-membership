@@ -13,6 +13,7 @@ import {
 import { handleCheckoutSessionCompleted } from "@/server/services/stripe/handle-checkout";
 import {
   handleChargeRefunded,
+  handleCoursePaymentSucceeded,
   handleDisputeClosed,
 } from "@/server/services/stripe/handle-course-entitlements";
 
@@ -32,6 +33,7 @@ import {
  *   customer.subscription.trial_will_end → send trial reminder email
  *   invoice.payment_succeeded       → send receipt email
  *   invoice.payment_failed          → mark past_due + send payment-failed email
+ *   payment_intent.succeeded        → grant direct saved-card course purchase
  *   charge.refunded                 → mark matching course entitlement refunded
  *   charge.dispute.closed           → mark matching course entitlement chargeback if lost
  *
@@ -46,6 +48,7 @@ import {
  *   customer.subscription.trial_will_end
  *   invoice.payment_succeeded
  *   invoice.payment_failed
+ *   payment_intent.succeeded
  *   charge.refunded
  *   charge.dispute.closed
  */
@@ -119,6 +122,10 @@ export async function POST(request: Request) {
 
       case "invoice.payment_failed":
         await handlePaymentFailed(event.data.object as Stripe.Invoice);
+        break;
+
+      case "payment_intent.succeeded":
+        await handleCoursePaymentSucceeded(event.data.object as Stripe.PaymentIntent);
         break;
 
       case "charge.refunded":
