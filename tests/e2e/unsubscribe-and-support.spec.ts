@@ -33,6 +33,41 @@ test.describe("unsubscribe and support flows", () => {
     await setMemberEmailUnsubscribed(MEMBER_EMAIL, false);
   });
 
+  test("ActiveCampaign webhook keeps app marketing preference aligned", async ({
+    request,
+  }) => {
+    await setMemberEmailUnsubscribed(MEMBER_EMAIL, false);
+
+    const webhookHeaders = {
+      "x-activecampaign-webhook-secret": process.env.ACTIVECAMPAIGN_WEBHOOK_SECRET ?? "",
+    };
+
+    const acUnsubscribe = await request.post("/api/webhooks/activecampaign", {
+      headers: webhookHeaders,
+      form: {
+        type: "unsubscribe",
+        "contact[email]": MEMBER_EMAIL,
+        "unsubscribe[reason]": "member clicked AC unsubscribe",
+      },
+    });
+
+    expect(acUnsubscribe.status()).toBe(200);
+    expect(await getMemberEmailUnsubscribed(MEMBER_EMAIL)).toBe(true);
+
+    const acSubscribe = await request.post("/api/webhooks/activecampaign", {
+      headers: webhookHeaders,
+      data: {
+        type: "subscribe",
+        contact: {
+          email: MEMBER_EMAIL,
+        },
+      },
+    });
+
+    expect(acSubscribe.status()).toBe(200);
+    expect(await getMemberEmailUnsubscribed(MEMBER_EMAIL)).toBe(false);
+  });
+
   test("support page accepts a member question and stores the submission", async ({
     page,
   }) => {

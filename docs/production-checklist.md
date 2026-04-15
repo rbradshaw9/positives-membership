@@ -23,6 +23,7 @@ Verify all required vars are set in Vercel:
 | `ADMIN_EMAILS` | ✅ | `ryan@drpauljenkins.com` |
 | `ACTIVECAMPAIGN_API_URL` | ✅ | `https://lopcadmin.api-us1.com` |
 | `ACTIVECAMPAIGN_API_KEY` | ✅ | AC API token |
+| `ACTIVECAMPAIGN_WEBHOOK_SECRET` | ✅ | Shared secret appended to the AC webhook URL |
 | `EMAIL_UNSUBSCRIBE_SECRET` | ✅ | Used to sign unsubscribe links |
 
 These are now configured in Vercel for the real Positives Stripe account in test

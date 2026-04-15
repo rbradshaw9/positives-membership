@@ -99,6 +99,7 @@ These are not needed for Milestone 02 but are documented here for completeness.
 |---|---|---|
 | `ACTIVECAMPAIGN_API_URL` | 04+ | ActiveCampaign API endpoint |
 | `ACTIVECAMPAIGN_API_KEY` | 04+ | ActiveCampaign key |
+| `ACTIVECAMPAIGN_WEBHOOK_SECRET` | 04+ | Shared secret for AC unsubscribe/subscribe webhook sync |
 | `TWILIO_ACCOUNT_SID` | 04+ | Twilio account SID |
 | `TWILIO_AUTH_TOKEN` | 04+ | Twilio auth token |
 | `TWILIO_FROM_NUMBER` | 04+ | Sending phone number |
