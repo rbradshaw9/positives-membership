@@ -40,10 +40,11 @@ function sanitizeFileName(fileName: string) {
   return cleaned || "document";
 }
 
-function memberPath(memberId: string, success?: string) {
-  return success
+function memberPath(memberId: string, success?: string, hash?: string) {
+  const path = success
     ? `/admin/members/${memberId}?success=${encodeURIComponent(success)}`
     : `/admin/members/${memberId}`;
+  return hash ? `${path}#${hash}` : path;
 }
 
 function memberBillingPath(memberId: string, params: Record<string, string | null | undefined> = {}) {
@@ -162,7 +163,7 @@ export async function updateMemberCrmProfile(formData: FormData): Promise<Action
   });
 
   revalidatePath(`/admin/members/${memberId}`);
-  redirect(memberPath(memberId, "profile_updated"));
+  redirect(memberPath(memberId, "profile_updated", "access"));
 }
 
 export async function previewMemberPlanChange(formData: FormData): Promise<ActionResult> {
@@ -295,7 +296,7 @@ export async function grantCourseToMember(formData: FormData): Promise<ActionRes
   revalidatePath(`/admin/members/${memberId}`);
   revalidatePath("/admin/members");
   revalidatePath("/library");
-  redirect(memberPath(memberId, "course_granted"));
+  redirect(memberPath(memberId, "course_granted", "courses"));
 }
 
 export async function revokeCourseEntitlement(formData: FormData): Promise<ActionResult> {
@@ -357,7 +358,7 @@ export async function revokeCourseEntitlement(formData: FormData): Promise<Actio
   revalidatePath(`/admin/members/${memberId}`);
   revalidatePath("/admin/members");
   revalidatePath("/library");
-  redirect(memberPath(memberId, "course_revoked"));
+  redirect(memberPath(memberId, "course_revoked", "courses"));
 }
 
 export async function adjustMemberPoints(formData: FormData): Promise<ActionResult> {
@@ -401,7 +402,7 @@ export async function adjustMemberPoints(formData: FormData): Promise<ActionResu
 
   revalidatePath(`/admin/members/${memberId}`);
   revalidatePath("/admin/members");
-  redirect(memberPath(memberId, "points_adjusted"));
+  redirect(memberPath(memberId, "points_adjusted", "points"));
 }
 
 export async function addMemberAdminNote(formData: FormData): Promise<ActionResult> {
@@ -441,7 +442,7 @@ export async function addMemberAdminNote(formData: FormData): Promise<ActionResu
   });
 
   revalidatePath(`/admin/members/${memberId}`);
-  redirect(memberPath(memberId, "note_added"));
+  redirect(memberPath(memberId, "note_added", "notes"));
 }
 
 export async function addMemberDocumentReference(formData: FormData): Promise<ActionResult> {
@@ -527,7 +528,7 @@ export async function addMemberDocumentReference(formData: FormData): Promise<Ac
   });
 
   revalidatePath(`/admin/members/${memberId}`);
-  redirect(memberPath(memberId, "document_added"));
+  redirect(memberPath(memberId, "document_added", "documents"));
 }
 
 export async function unlockCourseWithPointsForMember(formData: FormData): Promise<ActionResult> {
@@ -619,7 +620,7 @@ export async function unlockCourseWithPointsForMember(formData: FormData): Promi
 
   revalidatePath(`/admin/members/${memberId}`);
   revalidatePath("/library");
-  redirect(memberPath(memberId, "course_unlocked"));
+  redirect(memberPath(memberId, "course_unlocked", "courses"));
 }
 
 export async function assignAdminRoleToMember(formData: FormData): Promise<ActionResult> {
@@ -654,7 +655,7 @@ export async function assignAdminRoleToMember(formData: FormData): Promise<Actio
   });
 
   revalidatePath(`/admin/members/${memberId}`);
-  redirect(memberPath(memberId, "role_assigned"));
+  redirect(memberPath(memberId, "role_assigned", "communication"));
 }
 
 export async function removeAdminRoleFromMember(formData: FormData): Promise<ActionResult> {
@@ -695,5 +696,5 @@ export async function removeAdminRoleFromMember(formData: FormData): Promise<Act
   });
 
   revalidatePath(`/admin/members/${memberId}`);
-  redirect(memberPath(memberId, "role_removed"));
+  redirect(memberPath(memberId, "role_removed", "communication"));
 }
