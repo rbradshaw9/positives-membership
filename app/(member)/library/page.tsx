@@ -23,7 +23,12 @@ export const metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function LibraryPage() {
+export default async function LibraryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ upgrade?: string }>;
+}) {
+  const { upgrade } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -42,6 +47,7 @@ export default async function LibraryPage() {
   }
 
   const hasSubscriptionAccess = hasActiveMemberAccess(member.subscription_status);
+  const showMembershipPrompt = upgrade === "true" && !hasSubscriptionAccess;
   const [courses, archive] = await Promise.all([
     getAccessibleCourses(member.subscription_tier, member.id, hasSubscriptionAccess),
     hasSubscriptionAccess ? getMonthlyArchive(12) : Promise.resolve([]),
@@ -60,6 +66,27 @@ export default async function LibraryPage() {
       </div>
 
       <div className="flex flex-col gap-14">
+        {showMembershipPrompt ? (
+          <section aria-label="Membership access needed">
+            <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5 md:p-6">
+              <p className="text-xs font-semibold uppercase tracking-widest text-primary">
+                Membership access
+              </p>
+              <h2 className="heading-balance mt-2 font-heading text-xl font-bold tracking-tight text-foreground">
+                That area is part of the full Positives membership.
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                Your purchased courses are still yours and stay available below. If you want the
+                daily practice, archive, events, and coaching access again, you can restart from
+                the membership page when you are ready.
+              </p>
+              <a href="/join" className="btn-primary mt-4 inline-flex items-center">
+                Explore membership
+              </a>
+            </div>
+          </section>
+        ) : null}
+
         {/* ── YOUR COURSES ─────────────────────────────────────────────────── */}
         <section aria-labelledby="courses-heading">
           <div className="flex items-center justify-between mb-5">
