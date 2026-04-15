@@ -14,7 +14,11 @@ Events:
 - `customer.subscription.created`
 - `customer.subscription.updated`
 - `customer.subscription.deleted`
+- `customer.subscription.trial_will_end`
+- `invoice.payment_succeeded`
 - `invoice.payment_failed`
+- `charge.refunded`
+- `charge.dispute.closed`
 
 Excluded:
 - full billing portal UI

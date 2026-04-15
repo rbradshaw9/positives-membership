@@ -1,9 +1,12 @@
 import Stripe from "stripe";
 import { expect, test } from "@playwright/test";
 import {
+  createCourseEntitlementWebhookFixture,
+  deleteCourseFixture,
   getMemberBillingState,
   MEMBER_EMAIL,
   waitForMemberBillingState,
+  waitForCourseEntitlementStatus,
 } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
@@ -158,6 +161,81 @@ test.describe("Stripe webhook lifecycle", () => {
         subscription_status: restoreStatus,
         subscription_tier: restoreTier,
       });
+    }
+  });
+
+  test("marks purchased course entitlements inactive after refund or lost dispute", async ({
+    request,
+  }) => {
+    const member = await getMemberBillingState(MEMBER_EMAIL);
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+    if (!webhookSecret) {
+      throw new Error("Missing STRIPE_WEBHOOK_SECRET required for course entitlement webhook verification.");
+    }
+
+    const stripe = new Stripe("sk_test_placeholder", {
+      apiVersion: "2026-03-25.dahlia",
+    });
+
+    const postSignedEvent = async (type: string, object: Record<string, unknown>) => {
+      const payload = JSON.stringify(buildEvent(type, object));
+      const signature = stripe.webhooks.generateTestHeaderString({
+        payload,
+        secret: webhookSecret,
+      });
+
+      const response = await request.post("/api/webhooks/stripe", {
+        data: payload,
+        headers: {
+          "content-type": "application/json",
+          "stripe-signature": signature,
+        },
+      });
+
+      expect(response.status(), `${type} should return 200`).toBe(200);
+      await expect(response.json()).resolves.toMatchObject({ received: true });
+    };
+
+    const refundedPaymentIntent = "pi_e2e_course_refund";
+    const refundedCharge = "ch_e2e_course_refund";
+    const chargebackPaymentIntent = "pi_e2e_course_chargeback";
+    const chargebackCharge = "ch_e2e_course_chargeback";
+
+    const refundFixture = await createCourseEntitlementWebhookFixture({
+      memberId: member.id,
+      paymentIntentId: refundedPaymentIntent,
+      chargeId: refundedCharge,
+    });
+    const chargebackFixture = await createCourseEntitlementWebhookFixture({
+      memberId: member.id,
+      paymentIntentId: chargebackPaymentIntent,
+      chargeId: chargebackCharge,
+    });
+
+    try {
+      await postSignedEvent("charge.refunded", {
+        id: refundedCharge,
+        object: "charge",
+        amount: 5000,
+        amount_captured: 5000,
+        amount_refunded: 5000,
+        payment_intent: refundedPaymentIntent,
+      });
+      await waitForCourseEntitlementStatus(refundFixture.entitlementId, "refunded");
+
+      await postSignedEvent("charge.dispute.closed", {
+        id: "dp_e2e_course_chargeback",
+        object: "dispute",
+        amount: 5000,
+        charge: chargebackCharge,
+        payment_intent: chargebackPaymentIntent,
+        status: "lost",
+      });
+      await waitForCourseEntitlementStatus(chargebackFixture.entitlementId, "chargeback");
+    } finally {
+      await deleteCourseFixture(refundFixture.courseId);
+      await deleteCourseFixture(chargebackFixture.courseId);
     }
   });
 });

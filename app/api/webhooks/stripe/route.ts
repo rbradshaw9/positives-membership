@@ -11,6 +11,10 @@ import {
   handleTrialWillEnd,
 } from "@/server/services/stripe/handle-subscription";
 import { handleCheckoutSessionCompleted } from "@/server/services/stripe/handle-checkout";
+import {
+  handleChargeRefunded,
+  handleDisputeClosed,
+} from "@/server/services/stripe/handle-course-entitlements";
 
 /**
  * app/api/webhooks/stripe/route.ts
@@ -28,6 +32,8 @@ import { handleCheckoutSessionCompleted } from "@/server/services/stripe/handle-
  *   customer.subscription.trial_will_end → send trial reminder email
  *   invoice.payment_succeeded       → send receipt email
  *   invoice.payment_failed          → mark past_due + send payment-failed email
+ *   charge.refunded                 → mark matching course entitlement refunded
+ *   charge.dispute.closed           → mark matching course entitlement chargeback if lost
  *
  * Configure your Stripe webhook to point to:
  *   https://positives.life/api/webhooks/stripe
@@ -40,6 +46,8 @@ import { handleCheckoutSessionCompleted } from "@/server/services/stripe/handle-
  *   customer.subscription.trial_will_end
  *   invoice.payment_succeeded
  *   invoice.payment_failed
+ *   charge.refunded
+ *   charge.dispute.closed
  */
 export async function POST(request: Request) {
   const body = await request.text();
@@ -111,6 +119,14 @@ export async function POST(request: Request) {
 
       case "invoice.payment_failed":
         await handlePaymentFailed(event.data.object as Stripe.Invoice);
+        break;
+
+      case "charge.refunded":
+        await handleChargeRefunded(event.data.object as Stripe.Charge);
+        break;
+
+      case "charge.dispute.closed":
+        await handleDisputeClosed(event.data.object as Stripe.Dispute);
         break;
 
       default:

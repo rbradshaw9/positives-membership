@@ -126,6 +126,8 @@ The live account's test-mode webhook is configured as:
   - `customer.subscription.trial_will_end`
   - `invoice.payment_succeeded`
   - `invoice.payment_failed`
+  - `charge.refunded`
+  - `charge.dispute.closed`
 
 The matching `STRIPE_WEBHOOK_SECRET` must be set anywhere the app uses these
 test-mode keys. It is currently set in local `.env.local` and Vercel

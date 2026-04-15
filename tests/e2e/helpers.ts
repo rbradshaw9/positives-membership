@@ -108,6 +108,103 @@ export async function getMemberBillingState(email: string) {
   return data;
 }
 
+export async function createCourseEntitlementWebhookFixture({
+  memberId,
+  paymentIntentId,
+  chargeId,
+}: {
+  memberId: string;
+  paymentIntentId: string;
+  chargeId?: string | null;
+}) {
+  const supabase = getServiceRoleClient();
+  const slug = `e2e-course-webhook-${paymentIntentId}`;
+
+  const { data: course, error: courseError } = await supabase
+    .from("course")
+    .insert({
+      title: "E2E Course Webhook Fixture",
+      slug,
+      status: "published",
+      tier_min: "level_1",
+      is_standalone_purchasable: true,
+      price_cents: 5000,
+      admin_notes: "e2e-course-webhook-fixture",
+    })
+    .select("id")
+    .single();
+
+  if (courseError || !course) {
+    throw new Error(
+      `Failed to create course webhook fixture: ${courseError?.message ?? "unknown error"}`
+    );
+  }
+
+  const { data: entitlement, error: entitlementError } = await supabase
+    .from("course_entitlement")
+    .insert({
+      member_id: memberId,
+      course_id: course.id,
+      source: "purchase",
+      status: "active",
+      stripe_payment_intent_id: paymentIntentId,
+      stripe_charge_id: chargeId ?? null,
+      grant_note: "E2E course webhook fixture.",
+    })
+    .select("id")
+    .single();
+
+  if (entitlementError || !entitlement) {
+    await supabase.from("course").delete().eq("id", course.id);
+    throw new Error(
+      `Failed to create course entitlement webhook fixture: ${entitlementError?.message ?? "unknown error"}`
+    );
+  }
+
+  return {
+    courseId: course.id,
+    entitlementId: entitlement.id,
+  };
+}
+
+export async function deleteCourseFixture(courseId: string) {
+  const supabase = getServiceRoleClient();
+  const { error } = await supabase.from("course").delete().eq("id", courseId);
+
+  if (error) {
+    throw new Error(`Failed to delete course fixture ${courseId}: ${error.message}`);
+  }
+}
+
+export async function waitForCourseEntitlementStatus(
+  entitlementId: string,
+  expectedStatus: "active" | "revoked" | "refunded" | "chargeback",
+  timeoutMs = 10_000
+) {
+  const supabase = getServiceRoleClient();
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    const { data, error } = await supabase
+      .from("course_entitlement")
+      .select("status")
+      .eq("id", entitlementId)
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to fetch entitlement ${entitlementId}: ${error.message}`);
+    }
+
+    if (data.status === expectedStatus) {
+      return data;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+
+  throw new Error(`Entitlement ${entitlementId} did not reach status ${expectedStatus}.`);
+}
+
 export async function waitForMemberBillingState(
   email: string,
   expected: {
