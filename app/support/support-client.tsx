@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect } from "react";
 import { PublicSiteFooter } from "@/components/marketing/PublicSiteFooter";
 import { PublicSiteHeader } from "@/components/marketing/PublicSiteHeader";
 import { PublicTrackedLink } from "@/components/marketing/PublicTrackedLink";
@@ -19,7 +19,6 @@ export default function SupportPage({
   >;
 }) {
   const [state, formAction, isPending] = useActionState(submitSupportForm, initial);
-  const [startedAt] = useState(() => Date.now().toString());
 
   useEffect(() => {
     if (state.status === "sent") {
@@ -228,7 +227,6 @@ export default function SupportPage({
                     boxShadow: "0 4px 24px rgba(18,20,23,0.06)",
                   }}
                 >
-                  <input type="hidden" name="started_at" value={startedAt} />
                   <div
                     aria-hidden="true"
                     style={{

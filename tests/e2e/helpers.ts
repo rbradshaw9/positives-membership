@@ -80,6 +80,16 @@ type LifecycleSequenceTable =
   | "onboarding_sequence"
   | "payment_recovery_sequence"
   | "winback_sequence";
+export type AdminMemberSupportSnapshot = {
+  name: string | null;
+  stripe_customer_id: string | null;
+  subscription_status: SubscriptionStatus;
+  subscription_tier: SubscriptionTier | null;
+  subscription_end_date: string | null;
+  password_set: boolean;
+  practice_streak: number;
+  last_practiced_at: string | null;
+};
 
 export async function getMemberBillingState(email: string) {
   const supabase = getServiceRoleClient();
@@ -125,6 +135,39 @@ export async function waitForMemberBillingState(
     `Member ${email} never reached expected billing state ${expected.subscription_status}/${expected.subscription_tier}. ` +
       `Final state was ${finalState.subscription_status}/${finalState.subscription_tier}.`
   );
+}
+
+export async function getAdminMemberSupportSnapshot(
+  email: string
+): Promise<AdminMemberSupportSnapshot> {
+  const supabase = getServiceRoleClient();
+  const { data, error } = await supabase
+    .from("member")
+    .select(
+      "name, stripe_customer_id, subscription_status, subscription_tier, subscription_end_date, password_set, practice_streak, last_practiced_at"
+    )
+    .eq("email", email)
+    .single();
+
+  if (error || !data) {
+    throw new Error(
+      `Failed to fetch admin member support snapshot for ${email}: ${error?.message ?? "member not found"}`
+    );
+  }
+
+  return data;
+}
+
+export async function updateAdminMemberSupportFields(
+  email: string,
+  fields: Partial<AdminMemberSupportSnapshot>
+) {
+  const supabase = getServiceRoleClient();
+  const { error } = await supabase.from("member").update(fields).eq("email", email);
+
+  if (error) {
+    throw new Error(`Failed to update admin member support fields for ${email}: ${error.message}`);
+  }
 }
 
 export async function clearLifecycleSequenceRows(memberId: string) {

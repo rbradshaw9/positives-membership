@@ -13,7 +13,6 @@ export async function submitSupportForm(
   _prev: SupportFormState,
   formData: FormData
 ): Promise<SupportFormState> {
-  const startedAtRaw = formData.get("started_at")?.toString().trim() ?? "";
   const botTrap = formData.get("website")?.toString().trim() ?? "";
   const name = formData.get("name")?.toString().trim() ?? "";
   const email = formData.get("email")?.toString().trim() ?? "";
@@ -40,11 +39,6 @@ export async function submitSupportForm(
       status: "error",
       message: "Please keep your message under 5,000 characters.",
     };
-  }
-
-  const startedAt = Number(startedAtRaw);
-  if (!Number.isFinite(startedAt) || Date.now() - startedAt < 1500) {
-    return { status: "sent" };
   }
 
   try {
@@ -76,8 +70,8 @@ export async function submitSupportForm(
 
     if (error) {
       console.error("[support] insert error:", error.message);
-        return {
-          status: "error",
+      return {
+        status: "error",
         message: "Something went wrong. Please email us directly at support@positives.life",
       };
     }
