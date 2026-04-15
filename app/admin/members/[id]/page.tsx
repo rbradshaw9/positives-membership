@@ -24,6 +24,7 @@ import {
   removeAdminRoleFromMember,
   revokeCourseEntitlement,
   unlockCourseWithPointsForMember,
+  updateMemberAvatar,
   updateMemberCrmProfile,
 } from "./actions";
 
@@ -954,6 +955,30 @@ export default async function AdminMemberDetailPage({
           </ProfileField>
           <ProfileField label="Legacy Ref">{member.legacy_member_ref ?? "—"}</ProfileField>
         </dl>
+        <form
+          action={asFormAction(updateMemberAvatar)}
+          className="member-crm-card"
+          encType="multipart/form-data"
+          style={{ marginTop: "1rem" }}
+        >
+          <input type="hidden" name="memberId" value={member.id} />
+          <p className="member-crm-card-title">Profile photo</p>
+          <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
+            Upload a member avatar for the admin CRM and future member-facing profile surfaces.
+            JPEG, PNG, WebP, or GIF. Max 3 MB.
+          </p>
+          <label className="admin-form-field">
+            <span className="admin-search-bar__label">Avatar image</span>
+            <TextInput name="avatarFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" required />
+          </label>
+          <ClientAuthorizationFields
+            reasonName="avatarReason"
+            reasonPlaceholder="Example: Member sent updated profile photo by email."
+          />
+          <button type="submit" className="admin-btn admin-btn--outline" style={{ marginTop: "0.75rem" }}>
+            Upload profile photo
+          </button>
+        </form>
       </Section>
 
       <Section id="access" title="Access" description="Operational member fields and access context. Billing/tier changes must go through Stripe-backed plan-change tooling.">

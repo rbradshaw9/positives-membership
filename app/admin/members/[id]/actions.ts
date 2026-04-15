@@ -11,7 +11,15 @@ import { applyAdminPlanChange } from "@/server/services/stripe/admin-plan-change
 type ActionResult = { error?: string };
 type IdRow = { id: string };
 const MEMBER_DOCUMENT_BUCKET = "member-documents";
+const MEMBER_AVATAR_BUCKET = "member-avatars";
 const MAX_MEMBER_DOCUMENT_BYTES = 10 * 1024 * 1024;
+const MAX_MEMBER_AVATAR_BYTES = 3 * 1024 * 1024;
+const ALLOWED_MEMBER_AVATAR_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+]);
 
 const FOLLOWUP_STATUSES = new Set([
   "none",
@@ -164,6 +172,72 @@ export async function updateMemberCrmProfile(formData: FormData): Promise<Action
 
   revalidatePath(`/admin/members/${memberId}`);
   redirect(memberPath(memberId, "profile_updated", "access"));
+}
+
+export async function updateMemberAvatar(formData: FormData): Promise<ActionResult> {
+  const actor = await requireAdminPermission("members.update_profile");
+  const memberId = clean(formData.get("memberId"));
+  if (!memberId) return { error: "Missing member." };
+
+  const authorization = requireClientAuthorization(formData, "avatarReason");
+  if (authorization.error || !authorization.reason) return { error: authorization.error };
+
+  const avatarFile = getUploadedFile(formData, "avatarFile");
+  if (!avatarFile) return { error: "Choose an image to upload." };
+
+  if (!ALLOWED_MEMBER_AVATAR_TYPES.has(avatarFile.type)) {
+    return { error: "Avatar must be a JPEG, PNG, WebP, or GIF image." };
+  }
+
+  if (avatarFile.size > MAX_MEMBER_AVATAR_BYTES) {
+    return { error: "Avatar image must be 3 MB or smaller." };
+  }
+
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  const avatarPath = `${memberId}/${randomUUID()}-${sanitizeFileName(avatarFile.name)}`;
+  const { error: uploadError } = await supabase.storage
+    .from(MEMBER_AVATAR_BUCKET)
+    .upload(avatarPath, avatarFile, {
+      contentType: avatarFile.type,
+      upsert: false,
+      cacheControl: "31536000",
+    });
+
+  if (uploadError) {
+    console.error("[admin/member-actions] avatar upload failed:", uploadError.message);
+    return { error: "Could not upload avatar." };
+  }
+
+  const { data: publicUrlData } = supabase.storage
+    .from(MEMBER_AVATAR_BUCKET)
+    .getPublicUrl(avatarPath);
+
+  const { error: updateError } = await supabase
+    .from("member")
+    .update({ avatar_url: publicUrlData.publicUrl })
+    .eq("id", memberId);
+
+  if (updateError) {
+    console.error("[admin/member-actions] avatar update failed:", updateError.message);
+    return { error: "Avatar uploaded, but the member record could not be updated." };
+  }
+
+  await logAudit({
+    actorId: actor.id,
+    memberId,
+    action: "member.avatar_updated",
+    reason: authorization.reason,
+    metadata: {
+      avatar_path: avatarPath,
+      file_name: avatarFile.name,
+      content_type: avatarFile.type,
+      size_bytes: avatarFile.size,
+      client_authorization_confirmed: true,
+    },
+  });
+
+  revalidatePath(`/admin/members/${memberId}`);
+  redirect(memberPath(memberId, "avatar_updated", "overview"));
 }
 
 export async function previewMemberPlanChange(formData: FormData): Promise<ActionResult> {
