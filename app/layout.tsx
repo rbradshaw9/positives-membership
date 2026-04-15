@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Analytics } from "@vercel/analytics/next";
 import { montserrat, poppins } from "@/app/fonts";
 import { config } from "@/lib/config";
 import "./globals.css";
@@ -35,6 +36,7 @@ export default function RootLayout({
       <body className="h-full antialiased bg-background text-foreground">
         {children}
         <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );
