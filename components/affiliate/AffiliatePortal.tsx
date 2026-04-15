@@ -1070,7 +1070,9 @@ function PayoutSetupStep({
           One more step before your affiliate portal opens
         </h1>
         <p style={{ margin: "0.8rem auto 0", maxWidth: 440, fontSize: "0.9rem", color: "#52525B", lineHeight: 1.65 }}>
-          Add your PayPal email now so your commissions are payout-ready from day one. We require this before opening the affiliate dashboard, and you can update it later anytime.
+          Add the email connected to your PayPal account so your commissions are payout-ready
+          from day one. We require this before opening the affiliate dashboard, and you can
+          update it later anytime.
         </p>
 
         <div style={{ marginTop: "1rem", textAlign: "left", border: "1px solid rgba(68,168,216,0.16)", background: "rgba(68,168,216,0.06)", borderRadius: "0.95rem", padding: "0.95rem 1rem" }}>
@@ -1922,7 +1924,8 @@ function EarningsTab({
             PayPal email
           </h2>
           <p style={{ margin: 0, fontSize: "0.84rem", lineHeight: 1.6, color: "#71717A" }}>
-            This is the email Positives should use when coordinating your affiliate payouts. If PayPal needs any tax or verification details later, they will handle that in their own flow.
+            Use the email connected to your PayPal account. If PayPal needs any tax,
+            confirmation, or verification details later, they will handle that in their own flow.
           </p>
           <p style={{ margin: "0.55rem 0 0", fontSize: "0.8rem", color: "#71717A", lineHeight: 1.55 }}>
             Need a refresher on payouts, prohibited behavior, or program rules?{" "}

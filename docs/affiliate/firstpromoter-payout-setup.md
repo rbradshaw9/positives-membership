@@ -30,6 +30,82 @@ The FirstPromoter payload uses:
 }
 ```
 
+## PayPal Direct Payout Setup
+
+FirstPromoter can handle PayPal payouts directly from the FirstPromoter
+dashboard when PayPal Payouts is configured.
+
+Requirements:
+
+- A dedicated Positives PayPal Business account.
+- PayPal Payouts API enabled on that account.
+- FirstPromoter Business or Enterprise plan.
+- A live PayPal app for FirstPromoter payouts.
+- PayPal webhook events connected back to FirstPromoter.
+
+Setup outline:
+
+1. In PayPal Developer Dashboard, confirm Payouts is enabled on the Live
+   account.
+2. Create a Live app named `FirstPromoter payouts`.
+3. Copy the PayPal Client ID and Secret into FirstPromoter Settings →
+   Integrations → PayPal.
+4. Copy the FirstPromoter PayPal webhook URL into the PayPal app.
+5. Subscribe the webhook to all `Payment payouts-item` events and the
+   `Payment payoutsbatch denied` event.
+6. Copy the PayPal Webhook ID back into FirstPromoter and save.
+
+If PayPal Payouts API is not approved yet, use FirstPromoter's external bulk
+CSV payout flow temporarily, then mark payouts paid in FirstPromoter after the
+payment provider processes them.
+
+References:
+
+- FirstPromoter PayPal Payout setup:
+  <https://help.firstpromoter.com/en/articles/8971526-how-to-configure-paypal-payouts>
+- FirstPromoter payout methods:
+  <https://help.firstpromoter.com/en/articles/8971513-how-to-pay-your-promoters>
+
+## Failed PayPal Payout Review Workflow
+
+FirstPromoter can store a valid-looking PayPal email before PayPal proves the
+recipient account is usable. Some issues only surface when a payout is
+attempted.
+
+Watch for these PayPal payout errors in FirstPromoter:
+
+- `RECEIVER_UNREGISTERED`: the PayPal email was not found.
+- `RECEIVER_UNCONFIRMED`: the PayPal email exists but is not confirmed.
+- `RISK_DECLINE`: PayPal declined the recipient/payment for risk reasons.
+- `UNDEFINED`: PayPal had an internal processing error.
+
+When one of these occurs:
+
+1. Do not assume FirstPromoter has sent the affiliate the right correction
+   message.
+2. Flag the affiliate as needing payout review.
+3. Contact the affiliate from `support@positives.life`.
+4. Ask them to update the payout email to the email connected to their PayPal
+   account, or confirm the email inside PayPal.
+5. Re-run or retry the payout after the affiliate confirms the correction.
+6. Record the outcome in the payout review notes.
+
+Recommended ActiveCampaign follow-up:
+
+- Field: `AFFILIATE_PAYOUT_ERROR`
+- Field: `AFFILIATE_PAYOUT_EMAIL`
+- Field: `AFFILIATE_PAYOUT_FAILED_AT`
+- Optional field: `AFFILIATE_PAYOUT_AMOUNT`
+- Trigger tag: `affiliate_payout_failed`
+
+The `affiliate_payout_failed` tag should be removed after automation entry so
+it can be reused for a future payout issue.
+
+Reference:
+
+- FirstPromoter common PayPal errors:
+  <https://help.firstpromoter.com/en/articles/8971520-common-paypal-errors>
+
 ## Verification
 
 Run:
