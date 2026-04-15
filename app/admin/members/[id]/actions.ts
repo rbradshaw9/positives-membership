@@ -4,6 +4,8 @@ import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireAdminPermission } from "@/lib/auth/require-admin";
+import { getAdminRolesForMember } from "@/lib/admin/member-crm";
+import { config } from "@/lib/config";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import { applyAdminPlanChange } from "@/server/services/stripe/admin-plan-change";
@@ -82,6 +84,43 @@ function requireClientAuthorization(formData: FormData, reasonFieldName: string)
   }
 
   return { reason };
+}
+
+function isCoachOnlyRoleSet(roles: { role_key: string }[]) {
+  const keys = new Set(roles.map((role) => role.role_key));
+  return (
+    keys.has("coach") &&
+    !keys.has("super_admin") &&
+    !keys.has("admin") &&
+    !keys.has("support") &&
+    !keys.has("readonly")
+  );
+}
+
+async function requireAssignedCoachScope(actor: { id: string; email?: string | null }, memberId: string) {
+  const normalizedEmail = actor.email?.trim().toLowerCase() ?? "";
+  if (config.app.adminEmails.includes(normalizedEmail)) return null;
+
+  const roles = await getAdminRolesForMember(actor.id);
+  if (!isCoachOnlyRoleSet(roles)) return null;
+
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  const { data: member, error } = await supabase
+    .from("member")
+    .select<{ assigned_coach_id: string | null }>("assigned_coach_id")
+    .eq("id", memberId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[admin/member-actions] coach scope lookup failed:", error.message);
+    return "Could not verify coach assignment.";
+  }
+
+  if (member?.assigned_coach_id !== actor.id) {
+    return "Coach access is limited to assigned members.";
+  }
+
+  return null;
 }
 
 async function logAudit(params: {
@@ -489,6 +528,9 @@ export async function addMemberAdminNote(formData: FormData): Promise<ActionResu
     return { error: "Write a note before saving." };
   }
 
+  const scopeError = await requireAssignedCoachScope(actor, memberId);
+  if (scopeError) return { error: scopeError };
+
   const supabase = asLooseSupabaseClient(getAdminClient());
   const { data, error } = await supabase
     .from("member_admin_note")
@@ -529,6 +571,9 @@ export async function addMemberDocumentReference(formData: FormData): Promise<Ac
 
   if (!memberId || !title) return { error: "Document title is required." };
   if (!externalUrl && !file) return { error: "Add a document file or link." };
+
+  const scopeError = await requireAssignedCoachScope(actor, memberId);
+  if (scopeError) return { error: scopeError };
 
   const authorization = requireClientAuthorization(formData, "documentReason");
   if (authorization.error || !authorization.reason) return { error: authorization.error };
