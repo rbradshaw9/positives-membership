@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { MemberCrmInlineAlert } from "./MemberCrmInlineForm";
 
 type ActionResult = { error?: string; success?: string };
 
@@ -41,21 +42,6 @@ function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return <select {...rest} className={["admin-select", className].filter(Boolean).join(" ")} />;
 }
 
-function InlineAlert({ state }: { state: ActionResult }) {
-  if (!state.error && !state.success) return null;
-
-  return (
-    <div
-      role={state.error ? "alert" : "status"}
-      className={`member-crm-inline-alert ${
-        state.error ? "member-crm-inline-alert--error" : "member-crm-inline-alert--success"
-      }`}
-    >
-      {state.error ?? state.success}
-    </div>
-  );
-}
-
 export function MemberCrmProfileForm({ member, coaches, action }: Props) {
   const [state, formAction, isPending] = useActionState(action, {});
 
@@ -78,7 +64,7 @@ export function MemberCrmProfileForm({ member, coaches, action }: Props) {
           <p className="member-crm-readonly-field__value">{member.tierLabel}</p>
         </div>
       </div>
-      <InlineAlert state={state} />
+      <MemberCrmInlineAlert state={state} />
       <label className="admin-form-field">
         <span className="admin-search-bar__label">Name</span>
         <TextInput name="name" defaultValue={member.name ?? ""} />

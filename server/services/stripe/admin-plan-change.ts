@@ -285,10 +285,10 @@ export async function applyAdminPlanChange(params: {
 
   const schedule = await stripe.subscriptionSchedules.create({
     from_subscription: subscription.id,
-    metadata,
   });
 
   await stripe.subscriptionSchedules.update(schedule.id, {
+    metadata,
     end_behavior: "release",
     proration_behavior: "none",
     phases: [

@@ -92,6 +92,9 @@ Current model:
 - `/api/cron/reminders` scans scheduled content and applies ActiveCampaign
   reminder trigger tags/fields.
 - The dispatch log prevents duplicate reminder windows.
+- `/api/cron/affiliate-payouts` scans FirstPromoter payout records once per
+  day, records failed payout alerts, and applies the ActiveCampaign
+  `affiliate_payout_failed` trigger tag after writing the payout failure fields.
 
 Preview reminders should be tested manually or against controlled staging data
 only. Do not let preview/staging cron fire against production contacts.

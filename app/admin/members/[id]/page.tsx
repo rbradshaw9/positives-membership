@@ -9,24 +9,29 @@ import {
 } from "@/lib/admin/member-crm";
 import { getContentTitleMap } from "@/lib/queries/get-admin-members";
 import { PLAN_NAME_BY_TIER } from "@/lib/plans";
+import { ADMIN_PERMISSION_OPTIONS, getAdminPermissionLabel } from "@/lib/admin/permissions";
+import { getAdminPermissionOverridesForMember } from "@/lib/admin/roles";
 import {
   getAdminPlanChangeOptions,
   getAdminPlanChangePreview,
 } from "@/server/services/stripe/admin-plan-change";
 import {
-  addMemberAdminNote,
-  addMemberDocumentReference,
-  applyMemberPlanChange,
-  assignAdminRoleToMember,
-  adjustMemberPoints,
-  grantCourseToMember,
+  addMemberAdminNoteInline,
+  addMemberDocumentReferenceInline,
+  applyMemberPlanChangeInline,
+  assignAdminRoleToMemberInline,
+  adjustMemberPointsInline,
+  grantCourseToMemberInline,
   previewMemberPlanChange,
-  removeAdminRoleFromMember,
-  revokeCourseEntitlement,
-  unlockCourseWithPointsForMember,
-  updateMemberAvatar,
+  removeAdminRoleFromMemberInline,
+  removeAdminPermissionOverrideInline,
+  revokeCourseEntitlementInline,
+  setAdminPermissionOverrideInline,
+  unlockCourseWithPointsForMemberInline,
+  updateMemberAvatarInline,
   updateMemberCrmProfileInline,
 } from "./actions";
+import { MemberCrmInlineForm } from "./MemberCrmInlineForm";
 import { MemberCrmProfileForm } from "./MemberCrmProfileForm";
 
 export const metadata = {
@@ -801,11 +806,12 @@ export default async function AdminMemberDetailPage({
 
   const { id } = await params;
   const sp = await searchParams;
-  const [detail, coaches, availableRoles, currentAdminRoles] = await Promise.all([
+  const [detail, coaches, availableRoles, currentAdminRoles, permissionOverrides] = await Promise.all([
     getMemberCrmDetail(id),
     getAdminAssignableMembers(),
     getAvailableAdminRoles(),
     getAdminRolesForMember(adminUser.id),
+    getAdminPermissionOverridesForMember(id),
   ]);
 
   if (!detail) notFound();
@@ -977,10 +983,14 @@ export default async function AdminMemberDetailPage({
           </ProfileField>
           <ProfileField label="Legacy Ref">{member.legacy_member_ref ?? "—"}</ProfileField>
         </dl>
-        <form
-          action={asFormAction(updateMemberAvatar)}
+        <MemberCrmInlineForm
+          action={updateMemberAvatarInline}
           className="member-crm-card"
           style={{ marginTop: "1rem" }}
+          submitLabel="Upload profile photo"
+          pendingLabel="Uploading..."
+          buttonClassName="admin-btn admin-btn--outline"
+          buttonStyle={{ marginTop: "0.75rem" }}
         >
           <input type="hidden" name="memberId" value={member.id} />
           <p className="member-crm-card-title">Profile photo</p>
@@ -996,10 +1006,7 @@ export default async function AdminMemberDetailPage({
             reasonName="avatarReason"
             reasonPlaceholder="Example: Member sent updated profile photo by email."
           />
-          <button type="submit" className="admin-btn admin-btn--outline" style={{ marginTop: "0.75rem" }}>
-            Upload profile photo
-          </button>
-        </form>
+        </MemberCrmInlineForm>
       </Section>
 
       <Section id="access" title="Access" description="Operational member fields and access context. Billing/tier changes must go through Stripe-backed plan-change tooling.">
@@ -1058,17 +1065,22 @@ export default async function AdminMemberDetailPage({
                       ) : null}
                     </div>
                   </div>
-                  <form action={asFormAction(revokeCourseEntitlement)} style={{ minWidth: "14rem" }}>
+                  <MemberCrmInlineForm
+                    action={revokeCourseEntitlementInline}
+                    style={{ minWidth: "14rem" }}
+                    submitLabel="Revoke access"
+                    pendingLabel="Revoking..."
+                    buttonClassName="admin-btn admin-btn--outline"
+                    buttonStyle={{ marginTop: "0.5rem" }}
+                    resetOnSuccess={false}
+                  >
                     <input type="hidden" name="memberId" value={member.id} />
                     <input type="hidden" name="entitlementId" value={entitlement.id} />
                     <TextInput name="revokeNote" required placeholder="Reason to revoke..." />
                     <div style={{ marginTop: "0.5rem" }}>
                       <ClientAuthorizationCheckbox />
                     </div>
-                    <button type="submit" className="admin-btn admin-btn--outline" style={{ marginTop: "0.5rem" }}>
-                      Revoke access
-                    </button>
-                  </form>
+                  </MemberCrmInlineForm>
                 </div>
               ))
             ) : (
@@ -1093,7 +1105,13 @@ export default async function AdminMemberDetailPage({
           </div>
 
           <div className="member-crm-list">
-            <form action={asFormAction(grantCourseToMember)} className="member-crm-card">
+            <MemberCrmInlineForm
+              action={grantCourseToMemberInline}
+              className="member-crm-card"
+              submitLabel="Grant access"
+              pendingLabel="Granting..."
+              buttonStyle={{ marginTop: "0.75rem" }}
+            >
               <input type="hidden" name="memberId" value={member.id} />
               <p className="member-crm-card-title">Grant course</p>
               <label className="admin-form-field">
@@ -1112,12 +1130,16 @@ export default async function AdminMemberDetailPage({
                 <TextArea name="grantNote" required placeholder="Coach bonus, migration correction, support fix..." />
               </label>
               <ClientAuthorizationCheckbox />
-              <button type="submit" className="admin-btn admin-btn--primary" style={{ marginTop: "0.75rem" }}>
-                Grant access
-              </button>
-            </form>
+            </MemberCrmInlineForm>
 
-            <form action={asFormAction(unlockCourseWithPointsForMember)} className="member-crm-card">
+            <MemberCrmInlineForm
+              action={unlockCourseWithPointsForMemberInline}
+              className="member-crm-card"
+              submitLabel="Unlock course"
+              pendingLabel="Unlocking..."
+              buttonClassName="admin-btn admin-btn--outline"
+              buttonStyle={{ marginTop: "0.75rem" }}
+            >
               <input type="hidden" name="memberId" value={member.id} />
               <p className="member-crm-card-title" style={{ marginBottom: "0.35rem" }}>Unlock with points</p>
               <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
@@ -1143,10 +1165,7 @@ export default async function AdminMemberDetailPage({
                 <TextInput name="note" required placeholder="Course unlocked with points" />
               </label>
               <ClientAuthorizationCheckbox />
-              <button type="submit" className="admin-btn admin-btn--outline" style={{ marginTop: "0.75rem" }}>
-                Unlock course
-              </button>
-            </form>
+            </MemberCrmInlineForm>
           </div>
         </div>
       </Section>
@@ -1176,7 +1195,13 @@ export default async function AdminMemberDetailPage({
               <EmptyState>No points activity yet.</EmptyState>
             )}
           </div>
-          <form action={asFormAction(adjustMemberPoints)} className="member-crm-card">
+          <MemberCrmInlineForm
+            action={adjustMemberPointsInline}
+            className="member-crm-card"
+            submitLabel="Save point adjustment"
+            pendingLabel="Saving..."
+            buttonStyle={{ marginTop: "0.75rem" }}
+          >
             <input type="hidden" name="memberId" value={member.id} />
             <p className="member-crm-card-title" style={{ marginBottom: "0.35rem" }}>Adjust points</p>
             <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
@@ -1191,10 +1216,7 @@ export default async function AdminMemberDetailPage({
               <TextArea name="description" required placeholder="Manual correction, bonus, event attendance..." />
             </label>
             <ClientAuthorizationCheckbox />
-            <button type="submit" className="admin-btn admin-btn--primary" style={{ marginTop: "0.75rem" }}>
-              Save point adjustment
-            </button>
-          </form>
+          </MemberCrmInlineForm>
         </div>
       </Section>
 
@@ -1291,17 +1313,20 @@ export default async function AdminMemberDetailPage({
                 </dl>
                 <p className="member-crm-record__note">{planChangePreview.message}</p>
                 {planChangePreview.kind !== "same_plan" ? (
-                  <form action={asFormAction(applyMemberPlanChange)}>
+                  <MemberCrmInlineForm
+                    action={applyMemberPlanChangeInline}
+                    submitLabel={planChangePreview.kind === "upgrade" ? "Apply upgrade in Stripe" : "Schedule change in Stripe"}
+                    pendingLabel="Applying..."
+                    buttonStyle={{ marginTop: "0.75rem" }}
+                    resetOnSuccess={false}
+                  >
                     <input type="hidden" name="memberId" value={member.id} />
                     <input type="hidden" name="targetKey" value={planChangePreview.targetKey} />
                     <ClientAuthorizationFields
                       reasonName="changeReason"
                       reasonPlaceholder="Example: Member requested upgrade by phone on Apr 15; confirmed immediate prorated charge."
                     />
-                    <button type="submit" className="admin-btn admin-btn--primary" style={{ marginTop: "0.75rem" }}>
-                      {planChangePreview.kind === "upgrade" ? "Apply upgrade in Stripe" : "Schedule change in Stripe"}
-                    </button>
-                  </form>
+                  </MemberCrmInlineForm>
                 ) : null}
               </div>
             )}
@@ -1387,13 +1412,17 @@ export default async function AdminMemberDetailPage({
                         {role.permissions.length} permission{role.permissions.length === 1 ? "" : "s"}
                       </p>
                     </div>
-                    <form action={asFormAction(removeAdminRoleFromMember)}>
+                    <MemberCrmInlineForm
+                      action={removeAdminRoleFromMemberInline}
+                      submitLabel="Remove"
+                      pendingLabel="Removing..."
+                      buttonClassName="admin-btn admin-btn--outline"
+                      buttonStyle={{ fontSize: "0.75rem" }}
+                      resetOnSuccess={false}
+                    >
                       <input type="hidden" name="memberId" value={member.id} />
                       <input type="hidden" name="roleKey" value={role.role_key} />
-                      <button type="submit" className="admin-btn admin-btn--outline" style={{ fontSize: "0.75rem" }}>
-                        Remove
-                      </button>
-                    </form>
+                    </MemberCrmInlineForm>
                   </div>
                 ))}
               </div>
@@ -1401,7 +1430,13 @@ export default async function AdminMemberDetailPage({
               <EmptyState>No admin role assigned.</EmptyState>
             )}
           </div>
-          <form action={asFormAction(assignAdminRoleToMember)} className="member-crm-card">
+          <MemberCrmInlineForm
+            action={assignAdminRoleToMemberInline}
+            className="member-crm-card"
+            submitLabel="Assign role"
+            pendingLabel="Assigning..."
+            buttonStyle={{ marginTop: "0.75rem" }}
+          >
             <input type="hidden" name="memberId" value={member.id} />
             <p className="member-crm-card-title">Assign role</p>
             <Select name="roleId" required>
@@ -1412,10 +1447,79 @@ export default async function AdminMemberDetailPage({
                 </option>
               ))}
             </Select>
-            <button type="submit" className="admin-btn admin-btn--primary" style={{ marginTop: "0.75rem" }}>
-              Assign role
-            </button>
-          </form>
+          </MemberCrmInlineForm>
+
+          <div className="member-crm-card">
+            <p className="member-crm-card-title">Permission overrides</p>
+            <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
+              Use sparingly for one-off exceptions. Role defaults should still be managed from{" "}
+              <Link href="/admin/roles" className="member-crm-link">Admin Roles</Link>.
+            </p>
+            {permissionOverrides.length > 0 ? (
+              <div className="member-crm-list" style={{ marginBottom: "1rem" }}>
+                {permissionOverrides.map((override) => (
+                  <div key={override.permission} className="member-crm-record">
+                    <div>
+                      <p className="member-crm-record__title">
+                        {getAdminPermissionLabel(override.permission)}
+                      </p>
+                      <p className="member-crm-record__meta">
+                        {override.allowed ? "Explicitly allowed" : "Explicitly denied"} · Updated {formatDateTime(override.updated_at)}
+                      </p>
+                    </div>
+                    <MemberCrmInlineForm
+                      action={removeAdminPermissionOverrideInline}
+                      submitLabel="Remove"
+                      pendingLabel="Removing..."
+                      buttonClassName="admin-btn admin-btn--outline"
+                      buttonStyle={{ marginTop: "0.5rem", fontSize: "0.75rem" }}
+                    >
+                      <input type="hidden" name="memberId" value={member.id} />
+                      <input type="hidden" name="permission" value={override.permission} />
+                      <ClientAuthorizationFields
+                        reasonName="overrideReason"
+                        reasonLabel="Removal reason"
+                        reasonPlaceholder="Why should this member return to role defaults?"
+                      />
+                    </MemberCrmInlineForm>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState>No per-user permission overrides.</EmptyState>
+            )}
+            <MemberCrmInlineForm
+              action={setAdminPermissionOverrideInline}
+              submitLabel="Save override"
+              pendingLabel="Saving..."
+              buttonClassName="admin-btn admin-btn--primary"
+              buttonStyle={{ marginTop: "0.75rem" }}
+            >
+              <input type="hidden" name="memberId" value={member.id} />
+              <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
+                <span className="admin-search-bar__label">Permission</span>
+                <Select name="permission" required>
+                  <option value="">Choose permission...</option>
+                  {ADMIN_PERMISSION_OPTIONS.map((permission) => (
+                    <option key={permission.key} value={permission.key}>
+                      {permission.label}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+              <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
+                <span className="admin-search-bar__label">Override</span>
+                <Select name="allowed" required>
+                  <option value="true">Allow even if role does not allow it</option>
+                  <option value="false">Deny even if role allows it</option>
+                </Select>
+              </label>
+              <ClientAuthorizationFields
+                reasonName="overrideReason"
+                reasonPlaceholder="Why does this admin need a one-off permission override?"
+              />
+            </MemberCrmInlineForm>
+          </div>
         </div>
       </Section>
 
@@ -1434,7 +1538,13 @@ export default async function AdminMemberDetailPage({
               <EmptyState>No internal notes yet.</EmptyState>
             )}
           </div>
-          <form action={asFormAction(addMemberAdminNote)} className="member-crm-card">
+          <MemberCrmInlineForm
+            action={addMemberAdminNoteInline}
+            className="member-crm-card"
+            submitLabel="Save note"
+            pendingLabel="Saving..."
+            buttonStyle={{ marginTop: "0.75rem" }}
+          >
             <input type="hidden" name="memberId" value={member.id} />
             <p className="member-crm-card-title">Add note</p>
             <TextArea name="body" required placeholder="Internal coaching/support note..." />
@@ -1442,10 +1552,7 @@ export default async function AdminMemberDetailPage({
               <input type="checkbox" name="pinned" />
               Pin this note
             </label>
-            <button type="submit" className="admin-btn admin-btn--primary" style={{ marginTop: "0.75rem" }}>
-              Save note
-            </button>
-          </form>
+          </MemberCrmInlineForm>
         </div>
       </Section>
 
@@ -1481,7 +1588,13 @@ export default async function AdminMemberDetailPage({
               <EmptyState>No internal documents yet.</EmptyState>
             )}
           </div>
-          <form action={asFormAction(addMemberDocumentReference)} className="member-crm-card">
+          <MemberCrmInlineForm
+            action={addMemberDocumentReferenceInline}
+            className="member-crm-card"
+            submitLabel="Save document"
+            pendingLabel="Saving..."
+            buttonStyle={{ marginTop: "0.75rem" }}
+          >
             <input type="hidden" name="memberId" value={member.id} />
             <p className="member-crm-card-title">Add document</p>
             <label className="admin-form-field">
@@ -1505,10 +1618,7 @@ export default async function AdminMemberDetailPage({
               reasonName="documentReason"
               reasonPlaceholder="Why is this document being added to the member record?"
             />
-            <button type="submit" className="admin-btn admin-btn--primary" style={{ marginTop: "0.75rem" }}>
-              Save document
-            </button>
-          </form>
+          </MemberCrmInlineForm>
         </div>
       </Section>
 

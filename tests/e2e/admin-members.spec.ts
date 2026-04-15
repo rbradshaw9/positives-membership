@@ -20,6 +20,19 @@ test.afterAll(async () => {
 });
 
 test.describe("admin member operations", () => {
+  test("admin can open role permission management", async ({ page }) => {
+    await loginWithPassword(page, {
+      email: ADMIN_EMAIL,
+      password: ADMIN_PASSWORD,
+      next: "/admin/roles",
+    });
+
+    await expect(page.getByRole("heading", { name: "Admin Roles" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Super Admin" })).toBeVisible();
+    await expect(page.getByText("Read members").first()).toBeVisible();
+    await expect(page.getByText("Save role permissions").first()).toBeVisible();
+  });
+
   test("admin can find a member and open operational detail", async ({ page }) => {
     await loginWithPassword(page, {
       email: ADMIN_EMAIL,

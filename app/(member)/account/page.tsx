@@ -131,7 +131,11 @@ export default async function AccountPage({
           <div className="flex flex-col gap-6">
             <section aria-labelledby="section-profile">
               <SectionLabel id="section-profile">Profile</SectionLabel>
-              <ProfileForm currentName={member?.name ?? ""} email={email} />
+              <ProfileForm
+                currentName={member?.name ?? ""}
+                email={email}
+                avatarUrl={member?.avatar_url}
+              />
             </section>
 
             <section aria-labelledby="section-membership">

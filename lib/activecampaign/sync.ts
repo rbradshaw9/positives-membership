@@ -31,6 +31,7 @@
  *   coaching_reminder_24h → 28
  *   coaching_reminder_1h → 29
  *   coaching_replay_ready → 30
+ *   affiliate_payout_failed → 32
  *
  * List IDs:
  *   Positives Audience → 3
@@ -74,6 +75,7 @@ const TAG = {
   coaching_reminder_24h: 28,
   coaching_reminder_1h: 29,
   coaching_replay_ready: 30,
+  affiliate_payout_failed: 32,
 } as const;
 
 /** Custom field IDs (created 2026-04-07) */
@@ -106,6 +108,10 @@ const FIELD = {
   nextEventReplayUrl: 30,
   nextEventTier:     31,
   nextEventType:     32,
+  affiliatePayoutError: 33,
+  affiliatePayoutEmail: 34,
+  affiliatePayoutFailedAt: 35,
+  affiliatePayoutAmount: 36,
 } as const;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -728,6 +734,60 @@ export async function syncAffiliate(params: {
     console.log(`[AC] Affiliate synced — ${params.email}, token: ${params.referralToken}`);
   } catch (err) {
     console.error("[AC] syncAffiliate failed (non-fatal):", err);
+  }
+}
+
+export async function syncAffiliatePayoutFailed(params: {
+  email: string;
+  payoutError: string;
+  payoutEmail?: string | null;
+  failedAt: string;
+  payoutAmount?: string | number | null;
+}): Promise<void> {
+  if (!acIsConfigured()) return;
+
+  try {
+    const contactId = await syncContact({ email: params.email });
+
+    await setFieldValueIfConfigured(
+      contactId,
+      FIELD.affiliatePayoutError,
+      params.payoutError,
+      "Affiliate Payout Error"
+    );
+    await setFieldValueIfConfigured(
+      contactId,
+      FIELD.affiliatePayoutEmail,
+      params.payoutEmail ?? undefined,
+      "Affiliate Payout Email"
+    );
+    await setFieldValueIfConfigured(
+      contactId,
+      FIELD.affiliatePayoutFailedAt,
+      params.failedAt,
+      "Affiliate Payout Failed At"
+    );
+    await setFieldValueIfConfigured(
+      contactId,
+      FIELD.affiliatePayoutAmount,
+      params.payoutAmount === null || params.payoutAmount === undefined
+        ? undefined
+        : String(params.payoutAmount),
+      "Affiliate Payout Amount"
+    );
+
+    // Reusable trigger: remove first so a resolved previous issue cannot block
+    // a new failed payout from entering the AC automation.
+    await removeTagIfConfigured(contactId, TAG.affiliate_payout_failed);
+    await addTagIfConfigured(
+      contactId,
+      TAG.affiliate_payout_failed,
+      "affiliate_payout_failed"
+    );
+
+    console.log(`[AC] Affiliate payout failure synced — ${params.email}`);
+  } catch (err) {
+    console.error("[AC] syncAffiliatePayoutFailed failed (non-fatal):", err);
   }
 }
 

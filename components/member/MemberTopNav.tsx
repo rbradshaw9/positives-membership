@@ -20,12 +20,14 @@ interface MemberTopNavProps {
   streak?: number;
   tier?: string | null;
   memberName?: string | null;
+  memberAvatarUrl?: string | null;
   communityPreviewEnabled?: boolean;
 }
 
 export function MemberTopNav({
   tier,
   memberName,
+  memberAvatarUrl,
   communityPreviewEnabled = false,
 }: MemberTopNavProps) {
   const pathname = usePathname();
@@ -144,8 +146,12 @@ export function MemberTopNav({
               aria-haspopup="menu"
               aria-label="Open profile menu"
             >
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-xs font-semibold text-white">
-                {initials || "P"}
+              <span
+                className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-white/10 bg-cover bg-center text-xs font-semibold text-white"
+                style={memberAvatarUrl ? { backgroundImage: `url(${memberAvatarUrl})` } : undefined}
+                aria-hidden="true"
+              >
+                {memberAvatarUrl ? null : initials || "P"}
               </span>
               <span className="hidden min-w-0 md:block">
                 <span className="block max-w-[8rem] truncate text-sm font-medium text-white">

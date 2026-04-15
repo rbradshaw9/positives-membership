@@ -101,6 +101,21 @@ Recommended ActiveCampaign follow-up:
 The `affiliate_payout_failed` tag should be removed after automation entry so
 it can be reused for a future payout issue.
 
+The app now checks for failed FirstPromoter payouts once per day through
+`/api/cron/affiliate-payouts`. The cron job:
+
+1. Scans members with a FirstPromoter promoter ID.
+2. Pulls recent payout records from FirstPromoter.
+3. Creates or updates a durable `affiliate_payout_alert` row for each failed
+   payout.
+4. Syncs the payout failure fields to ActiveCampaign.
+5. Applies `affiliate_payout_failed` once per unresolved payout issue.
+
+The `affiliate_payout_alert` table dedupes by FirstPromoter promoter ID and
+payout ID, so rerunning the cron will not repeatedly trigger the same AC
+automation unless the alert was later marked resolved and the failure appears
+again.
+
 Reference:
 
 - FirstPromoter common PayPal errors:

@@ -16,8 +16,6 @@ import { updateSession } from "@/lib/supabase/proxy";
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const { supabaseResponse, user } = await updateSession(request);
-
   // Protected route groups
   const isMemberRoute =
     pathname.startsWith("/dashboard") ||
@@ -31,6 +29,27 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/account");
 
   const isAdminRoute = pathname.startsWith("/admin");
+  const requiresAuth = isMemberRoute || isAdminRoute;
+
+  const hasSupabaseCookie = request.cookies
+    .getAll()
+    .some(({ name }) => name.startsWith("sb-"));
+
+  if (!requiresAuth && !hasSupabaseCookie) {
+    const publicResponse = NextResponse.next({ request });
+    publicResponse.headers.set("x-pathname", pathname);
+    return publicResponse;
+  }
+
+  if (requiresAuth && !hasSupabaseCookie) {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    // Preserve the intended destination for post-login redirect
+    loginUrl.searchParams.set("next", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  const { supabaseResponse, user } = await updateSession(request);
 
   if ((isMemberRoute || isAdminRoute) && !user) {
     const loginUrl = request.nextUrl.clone();

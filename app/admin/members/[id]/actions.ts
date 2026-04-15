@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireAdminPermission } from "@/lib/auth/require-admin";
 import { getAdminRolesForMember } from "@/lib/admin/member-crm";
+import { isAdminPermissionKey } from "@/lib/admin/permissions";
 import { config } from "@/lib/config";
 import { hasActiveMemberAccess } from "@/lib/subscription/access";
 import { getAdminClient } from "@/lib/supabase/admin";
@@ -290,7 +291,19 @@ export async function updateMemberAvatar(formData: FormData): Promise<ActionResu
   });
 
   revalidatePath(`/admin/members/${memberId}`);
+  if (formData.get("returnState") === "true") {
+    return { success: "Profile photo uploaded." };
+  }
+
   redirect(memberPath(memberId, "avatar_updated", "overview"));
+}
+
+export async function updateMemberAvatarInline(
+  _previousState: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  formData.set("returnState", "true");
+  return updateMemberAvatar(formData);
 }
 
 export async function previewMemberPlanChange(formData: FormData): Promise<ActionResult> {
@@ -356,9 +369,23 @@ export async function applyMemberPlanChange(formData: FormData): Promise<ActionR
 
   revalidatePath(`/admin/members/${memberId}`);
   revalidatePath("/admin/members");
+  if (formData.get("returnState") === "true") {
+    return {
+      success: result.kind === "upgrade" ? "Plan upgrade applied in Stripe." : "Plan change scheduled in Stripe.",
+    };
+  }
+
   redirect(memberBillingPath(memberId, {
     success: result.kind === "upgrade" ? "plan_upgraded" : "plan_change_scheduled",
   }));
+}
+
+export async function applyMemberPlanChangeInline(
+  _previousState: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  formData.set("returnState", "true");
+  return applyMemberPlanChange(formData);
 }
 
 export async function grantCourseToMember(formData: FormData): Promise<ActionResult> {
@@ -423,7 +450,19 @@ export async function grantCourseToMember(formData: FormData): Promise<ActionRes
   revalidatePath(`/admin/members/${memberId}`);
   revalidatePath("/admin/members");
   revalidatePath("/library");
+  if (formData.get("returnState") === "true") {
+    return { success: "Course access granted." };
+  }
+
   redirect(memberPath(memberId, "course_granted", "courses"));
+}
+
+export async function grantCourseToMemberInline(
+  _previousState: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  formData.set("returnState", "true");
+  return grantCourseToMember(formData);
 }
 
 export async function revokeCourseEntitlement(formData: FormData): Promise<ActionResult> {
@@ -485,7 +524,19 @@ export async function revokeCourseEntitlement(formData: FormData): Promise<Actio
   revalidatePath(`/admin/members/${memberId}`);
   revalidatePath("/admin/members");
   revalidatePath("/library");
+  if (formData.get("returnState") === "true") {
+    return { success: "Course access revoked." };
+  }
+
   redirect(memberPath(memberId, "course_revoked", "courses"));
+}
+
+export async function revokeCourseEntitlementInline(
+  _previousState: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  formData.set("returnState", "true");
+  return revokeCourseEntitlement(formData);
 }
 
 export async function adjustMemberPoints(formData: FormData): Promise<ActionResult> {
@@ -529,7 +580,19 @@ export async function adjustMemberPoints(formData: FormData): Promise<ActionResu
 
   revalidatePath(`/admin/members/${memberId}`);
   revalidatePath("/admin/members");
+  if (formData.get("returnState") === "true") {
+    return { success: "Points adjusted." };
+  }
+
   redirect(memberPath(memberId, "points_adjusted", "points"));
+}
+
+export async function adjustMemberPointsInline(
+  _previousState: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  formData.set("returnState", "true");
+  return adjustMemberPoints(formData);
 }
 
 export async function addMemberAdminNote(formData: FormData): Promise<ActionResult> {
@@ -572,7 +635,19 @@ export async function addMemberAdminNote(formData: FormData): Promise<ActionResu
   });
 
   revalidatePath(`/admin/members/${memberId}`);
+  if (formData.get("returnState") === "true") {
+    return { success: "Internal note added." };
+  }
+
   redirect(memberPath(memberId, "note_added", "notes"));
+}
+
+export async function addMemberAdminNoteInline(
+  _previousState: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  formData.set("returnState", "true");
+  return addMemberAdminNote(formData);
 }
 
 export async function addMemberDocumentReference(formData: FormData): Promise<ActionResult> {
@@ -661,7 +736,19 @@ export async function addMemberDocumentReference(formData: FormData): Promise<Ac
   });
 
   revalidatePath(`/admin/members/${memberId}`);
+  if (formData.get("returnState") === "true") {
+    return { success: "Document saved." };
+  }
+
   redirect(memberPath(memberId, "document_added", "documents"));
+}
+
+export async function addMemberDocumentReferenceInline(
+  _previousState: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  formData.set("returnState", "true");
+  return addMemberDocumentReference(formData);
 }
 
 export async function unlockCourseWithPointsForMember(formData: FormData): Promise<ActionResult> {
@@ -768,7 +855,19 @@ export async function unlockCourseWithPointsForMember(formData: FormData): Promi
 
   revalidatePath(`/admin/members/${memberId}`);
   revalidatePath("/library");
+  if (formData.get("returnState") === "true") {
+    return { success: "Course unlocked with points." };
+  }
+
   redirect(memberPath(memberId, "course_unlocked", "courses"));
+}
+
+export async function unlockCourseWithPointsForMemberInline(
+  _previousState: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  formData.set("returnState", "true");
+  return unlockCourseWithPointsForMember(formData);
 }
 
 export async function assignAdminRoleToMember(formData: FormData): Promise<ActionResult> {
@@ -803,7 +902,19 @@ export async function assignAdminRoleToMember(formData: FormData): Promise<Actio
   });
 
   revalidatePath(`/admin/members/${memberId}`);
+  if (formData.get("returnState") === "true") {
+    return { success: "Admin role assigned." };
+  }
+
   redirect(memberPath(memberId, "role_assigned", "communication"));
+}
+
+export async function assignAdminRoleToMemberInline(
+  _previousState: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  formData.set("returnState", "true");
+  return assignAdminRoleToMember(formData);
 }
 
 export async function removeAdminRoleFromMember(formData: FormData): Promise<ActionResult> {
@@ -844,5 +955,124 @@ export async function removeAdminRoleFromMember(formData: FormData): Promise<Act
   });
 
   revalidatePath(`/admin/members/${memberId}`);
+  if (formData.get("returnState") === "true") {
+    return { success: "Admin role removed." };
+  }
+
   redirect(memberPath(memberId, "role_removed", "communication"));
+}
+
+export async function removeAdminRoleFromMemberInline(
+  _previousState: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  formData.set("returnState", "true");
+  return removeAdminRoleFromMember(formData);
+}
+
+export async function setAdminPermissionOverride(formData: FormData): Promise<ActionResult> {
+  const actor = await requireAdminPermission("roles.manage");
+  const memberId = clean(formData.get("memberId"));
+  const permission = clean(formData.get("permission"));
+  const allowedValue = clean(formData.get("allowed"));
+
+  if (!memberId || !permission || !isAdminPermissionKey(permission)) {
+    return { error: "Choose a valid permission override." };
+  }
+
+  const authorization = requireClientAuthorization(formData, "overrideReason");
+  if (authorization.error || !authorization.reason) return { error: authorization.error };
+
+  const allowed = allowedValue === "true";
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  const { error } = await supabase.from("admin_user_permission_override").upsert(
+    {
+      member_id: memberId,
+      permission,
+      allowed,
+      updated_by: actor.id,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "member_id,permission" }
+  );
+
+  if (error) {
+    console.error("[admin/member-actions] permission override failed:", error.message);
+    return { error: "Could not save permission override." };
+  }
+
+  await logAudit({
+    actorId: actor.id,
+    memberId,
+    action: "admin_permission.override_set",
+    targetType: "admin_permission",
+    targetId: permission,
+    reason: authorization.reason,
+    metadata: { permission, allowed, client_authorization_confirmed: true },
+  });
+
+  revalidatePath(`/admin/members/${memberId}`);
+  if (formData.get("returnState") === "true") {
+    return { success: "Permission override saved." };
+  }
+
+  redirect(memberPath(memberId, "permission_override_saved", "communication"));
+}
+
+export async function setAdminPermissionOverrideInline(
+  _previousState: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  formData.set("returnState", "true");
+  return setAdminPermissionOverride(formData);
+}
+
+export async function removeAdminPermissionOverride(formData: FormData): Promise<ActionResult> {
+  const actor = await requireAdminPermission("roles.manage");
+  const memberId = clean(formData.get("memberId"));
+  const permission = clean(formData.get("permission"));
+
+  if (!memberId || !permission || !isAdminPermissionKey(permission)) {
+    return { error: "Choose a valid permission override." };
+  }
+
+  const authorization = requireClientAuthorization(formData, "overrideReason");
+  if (authorization.error || !authorization.reason) return { error: authorization.error };
+
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  const { error } = await supabase
+    .from("admin_user_permission_override")
+    .delete()
+    .eq("member_id", memberId)
+    .eq("permission", permission);
+
+  if (error) {
+    console.error("[admin/member-actions] permission override removal failed:", error.message);
+    return { error: "Could not remove permission override." };
+  }
+
+  await logAudit({
+    actorId: actor.id,
+    memberId,
+    action: "admin_permission.override_removed",
+    targetType: "admin_permission",
+    targetId: permission,
+    reason: authorization.reason,
+    metadata: { permission, client_authorization_confirmed: true },
+  });
+
+  revalidatePath(`/admin/members/${memberId}`);
+  if (formData.get("returnState") === "true") {
+    return { success: "Permission override removed." };
+  }
+
+  redirect(memberPath(memberId, "permission_override_removed", "communication"));
+}
+
+export async function removeAdminPermissionOverrideInline(
+  _previousState: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  formData.set("returnState", "true");
+  return removeAdminPermissionOverride(formData);
 }

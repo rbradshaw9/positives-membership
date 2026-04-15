@@ -124,6 +124,7 @@ export interface AffiliatePayout {
   amount: number;
   state: "paid" | "processing" | "due" | "pending" | string;
   created_at: string;
+  error?: string;
 }
 
 export interface PromoterStats {
@@ -206,6 +207,11 @@ interface FpPayoutResponse {
   state?: string;
   status?: string;
   created_at: string;
+  error?: string;
+  error_message?: string;
+  failure_reason?: string;
+  failure_message?: string;
+  paypal_error?: string;
 }
 
 interface FpPayoutMethodResponse {
@@ -651,6 +657,12 @@ export async function getPromoterPayouts(promoterId: number): Promise<AffiliateP
       amount: payout.amount ?? payout.total_amount ?? 0,
       state: normalizePayoutState(payout.state ?? payout.status),
       created_at: payout.created_at,
+      error:
+        payout.error ??
+        payout.error_message ??
+        payout.failure_reason ??
+        payout.failure_message ??
+        payout.paypal_error,
     }));
   } catch {
     return [];

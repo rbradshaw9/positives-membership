@@ -43,6 +43,7 @@ export default async function MemberLayout({
       streak={streak}
       tier={member.subscription_tier}
       memberName={member.name}
+      memberAvatarUrl={member.avatar_url}
       communityPreviewEnabled={config.app.communityPreviewEnabled}
       needsPasswordSetup={showPasswordNudge}
       marketingOptedOut={marketingOptedOut}

@@ -1,12 +1,38 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { formatSupabaseAuthError } from "@/lib/auth/client-error";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getStripe } from "@/lib/stripe/config";
+import { getAdminClient } from "@/lib/supabase/admin";
+import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 
 type ActionResult = { error?: string; success?: true };
+const MEMBER_AVATAR_BUCKET = "member-avatars";
+const MAX_MEMBER_AVATAR_BYTES = 3 * 1024 * 1024;
+const ALLOWED_MEMBER_AVATAR_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+]);
+
+function getUploadedFile(formData: FormData, key: string) {
+  const value = formData.get(key);
+  if (value instanceof File && value.size > 0) return value;
+  return null;
+}
+
+function sanitizeFileName(fileName: string) {
+  const cleaned = fileName
+    .replace(/[/\\?%*:|"<>]/g, "-")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .trim();
+  return cleaned || "avatar";
+}
 
 /**
  * app/(member)/account/actions.ts
@@ -93,9 +119,46 @@ export async function updateProfile(
     return { error: "You must be signed in to update your profile." };
   }
 
+  let avatarUrl: string | null = null;
+  const avatarFile = getUploadedFile(formData, "avatarFile");
+  if (avatarFile) {
+    if (!ALLOWED_MEMBER_AVATAR_TYPES.has(avatarFile.type)) {
+      return { error: "Avatar must be a JPEG, PNG, WebP, or GIF image." };
+    }
+
+    if (avatarFile.size > MAX_MEMBER_AVATAR_BYTES) {
+      return { error: "Avatar image must be 3 MB or smaller." };
+    }
+
+    const adminClient = asLooseSupabaseClient(getAdminClient());
+    const avatarPath = `${user.id}/${randomUUID()}-${sanitizeFileName(avatarFile.name)}`;
+    const { error: uploadError } = await adminClient.storage
+      .from(MEMBER_AVATAR_BUCKET)
+      .upload(avatarPath, avatarFile, {
+        contentType: avatarFile.type,
+        upsert: false,
+        cacheControl: "31536000",
+      });
+
+    if (uploadError) {
+      console.error("[Account] avatar upload error:", uploadError.message);
+      return { error: "Could not upload your profile photo right now." };
+    }
+
+    const { data: publicUrlData } = adminClient.storage
+      .from(MEMBER_AVATAR_BUCKET)
+      .getPublicUrl(avatarPath);
+    avatarUrl = publicUrlData.publicUrl;
+  }
+
+  const updates = {
+    name,
+    ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
+  };
+
   const { error } = await supabase
     .from("member")
-    .update({ name })
+    .update(updates)
     .eq("id", user.id);
 
   if (error) {

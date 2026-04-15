@@ -11,6 +11,7 @@ interface MemberShellClientProps {
   streak: number;
   tier: string | null;
   memberName?: string | null;
+  memberAvatarUrl?: string | null;
   communityPreviewEnabled?: boolean;
   needsPasswordSetup?: boolean;
   marketingOptedOut?: boolean;
@@ -21,6 +22,7 @@ export function MemberShellClient({
   streak,
   tier,
   memberName,
+  memberAvatarUrl,
   communityPreviewEnabled = false,
   needsPasswordSetup = false,
   marketingOptedOut = false,
@@ -33,6 +35,7 @@ export function MemberShellClient({
           streak={streak}
           tier={tier}
           memberName={memberName}
+          memberAvatarUrl={memberAvatarUrl}
           communityPreviewEnabled={communityPreviewEnabled}
         />
         <InstallAppPrompt />
