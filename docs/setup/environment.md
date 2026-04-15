@@ -4,6 +4,9 @@ Reference for all environment variables used by the platform.
 
 Copy `.env.example` to `.env.local` for local development. Never commit `.env.local`.
 
+For environment separation, staging, and live billing cutover policy, see
+[`docs/setup/environment-strategy.md`](./environment-strategy.md).
+
 ---
 
 ## Required for Milestone 02
