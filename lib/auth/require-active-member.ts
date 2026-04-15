@@ -1,19 +1,9 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import type { Tables } from "@/types/supabase";
 import { hasActiveMemberAccess } from "@/lib/subscription/access";
-
-type MemberProfile = Pick<
-  Tables<"member">,
-  | "id"
-  | "email"
-  | "name"
-  | "subscription_status"
-  | "subscription_tier"
-  | "password_set"
-  | "email_unsubscribed"
->;
-
+import {
+  getCurrentMemberProfile,
+  type MemberProfile,
+} from "@/lib/auth/member-profile";
 
 /**
  * lib/auth/require-active-member.ts
@@ -35,30 +25,17 @@ type MemberProfile = Pick<
  * Use at the top of protected Server Component layouts/pages.
  */
 export async function requireActiveMember(): Promise<MemberProfile> {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  const { user, member, authError, memberError } = await getCurrentMemberProfile();
 
   if (authError || !user) {
     redirect("/login");
   }
 
-  const { data, error: memberError } = await supabase
-    .from("member")
-    .select("id, email, name, subscription_status, subscription_tier, password_set, email_unsubscribed")
-    .eq("id", user.id)
-    .single();
-
-  if (memberError || !data) {
+  if (memberError || !member) {
     // Member row missing — trigger may not have run yet (first sign-in race).
     // User IS authenticated, so redirect to /join not /login.
     redirect("/join");
   }
-
-  const member = data;
 
   if (member.subscription_status === "past_due") {
     // Past due members must reach /account/billing to fix their payment.

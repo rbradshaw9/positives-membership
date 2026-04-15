@@ -41,19 +41,13 @@ export default async function TodayPage() {
   const effectiveDateStr = getEffectiveDate();
   const effectiveMonthYear = getEffectiveMonthYear();
 
-  const [todayContent, weeklyContent, monthlyContent, monthGroups, monthWeekly, memberRow] =
+  const [todayContent, weeklyContent, monthlyContent, monthGroups, monthWeekly] =
     await Promise.all([
       getTodayContent(),
       getWeeklyContent(),
       getMonthlyContent(),
       getMonthlyDailyAudios(effectiveDateStr),
       getMonthWeeklyContent(effectiveMonthYear),
-      supabase
-        .from("member")
-        .select("practice_streak, last_practiced_at")
-        .eq("id", member.id)
-        .single()
-        .then((r) => r.data),
     ]);
 
   const [dailyAudioUrl, weeklyAudioUrl] = await Promise.all([
@@ -101,8 +95,8 @@ export default async function TodayPage() {
 
   // Only show a non-zero streak if the member practiced today or yesterday.
   // If they missed a day the DB value is stale — display 0 until they listen again.
-  const streak = isStreakActive(memberRow?.last_practiced_at, effectiveDateStr)
-    ? (memberRow?.practice_streak ?? 0)
+  const streak = isStreakActive(member.last_practiced_at, effectiveDateStr)
+    ? (member.practice_streak ?? 0)
     : 0;
 
   const effectiveDate = new Date(effectiveDateStr + "T12:00:00");

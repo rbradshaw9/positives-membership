@@ -1,5 +1,6 @@
 import type Stripe from "stripe";
 import { getAdminClient } from "@/lib/supabase/admin";
+import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import { getStripe } from "@/lib/stripe/config";
 import {
   syncMembershipReactivated,
@@ -126,6 +127,11 @@ export async function handleCheckoutSessionCompleted(
       `[Stripe] checkout.session.completed has no customer ID — session: ${session.id}. ` +
         `Member cannot be activated. Check Stripe session configuration.`
     );
+    return;
+  }
+
+  if (session.metadata?.purchase_type === "course") {
+    await handleCourseCheckout(session, customerId);
     return;
   }
 
@@ -513,4 +519,178 @@ async function handleGuestCheckout(
       );
     }
   }
+}
+
+async function handleCourseCheckout(
+  session: Stripe.Checkout.Session,
+  customerId: string
+): Promise<void> {
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  const stripe = getStripe();
+  const courseId = session.metadata?.courseId ?? null;
+
+  if (!courseId) {
+    console.error(`[Stripe] Course checkout ${session.id} missing metadata.courseId.`);
+    return;
+  }
+
+  const { data: course, error: courseError } = await supabase
+    .from("course")
+    .select<{ id: string; title: string; status: string }>("id, title, status")
+    .eq("id", courseId)
+    .maybeSingle();
+
+  if (courseError || !course) {
+    console.error(
+      `[Stripe] Course checkout ${session.id} references missing course ${courseId}: ` +
+        `${courseError?.message ?? "not found"}`
+    );
+    return;
+  }
+
+  let stripeCustomer: Stripe.Customer | null = null;
+  try {
+    const customer = await stripe.customers.retrieve(customerId);
+    if (!customer.deleted) stripeCustomer = customer;
+  } catch (error) {
+    console.error(
+      `[Stripe] Course checkout — failed to retrieve customer ${customerId}: ` +
+        `${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+
+  const metadataUserId = session.metadata?.userId ?? session.client_reference_id ?? null;
+  const sessionEmail = session.customer_details?.email ?? stripeCustomer?.email ?? null;
+  const sessionName =
+    session.customer_details?.name?.trim() ?? stripeCustomer?.name?.trim() ?? null;
+  let userId = metadataUserId;
+  let email = sessionEmail;
+
+  if (userId && !email) {
+    const { data: existingMember } = await supabase
+      .from("member")
+      .select<{ email: string | null }>("email")
+      .eq("id", userId)
+      .maybeSingle();
+    email = existingMember?.email ?? null;
+  }
+
+  if (!email) {
+    console.error(`[Stripe] Course checkout ${session.id} has no customer email.`);
+    return;
+  }
+
+  if (!userId) {
+    const { data: newUserData, error: createError } =
+      await supabase.auth.admin.createUser({
+        email,
+        email_confirm: true,
+      });
+
+    if (createError) {
+      const { data: memberRow, error: memberLookupError } = await supabase
+        .from("member")
+        .select<{ id: string }>("id")
+        .eq("email", email)
+        .maybeSingle();
+
+      if (memberLookupError || !memberRow) {
+        throw new Error(
+          `[Stripe] Course checkout user creation failed and no member row exists for ${email}.`
+        );
+      }
+
+      userId = memberRow.id;
+    } else {
+      userId = newUserData.user.id;
+    }
+  }
+
+  const { data: currentMember } = await supabase
+    .from("member")
+    .select<{ stripe_customer_id: string | null; subscription_status: SubscriptionStatus | null }>(
+      "stripe_customer_id, subscription_status"
+    )
+    .eq("id", userId)
+    .maybeSingle();
+
+  const { error: memberError } = await supabase.from("member").upsert(
+    {
+      id: userId,
+      email,
+      ...(sessionName ? { name: sessionName } : {}),
+      stripe_customer_id: currentMember?.stripe_customer_id ?? customerId,
+      subscription_status: currentMember?.subscription_status ?? "inactive",
+    },
+    { onConflict: "id" }
+  );
+
+  if (memberError) {
+    throw new Error(
+      `[Stripe] Failed to upsert course buyer member ${userId}: ${memberError.message}`
+    );
+  }
+
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : session.payment_intent?.id ?? null;
+
+  const { error: entitlementError } = await supabase.from("course_entitlement").insert({
+    member_id: userId,
+    course_id: courseId,
+    source: "purchase",
+    status: "active",
+    stripe_customer_id: customerId,
+    stripe_checkout_session_id: session.id,
+    stripe_payment_intent_id: paymentIntentId,
+    purchased_at: new Date().toISOString(),
+    grant_note: `Purchased through Stripe checkout ${session.id}.`,
+  });
+
+  if (entitlementError && entitlementError.code !== "23505") {
+    throw new Error(
+      `[Stripe] Failed to grant course entitlement for ${email}: ${entitlementError.message}`
+    );
+  }
+
+  await supabase.from("activity_event").insert({
+    member_id: userId,
+    event_type: "course_unlocked",
+    metadata: {
+      course_id: courseId,
+      course_title: course.title,
+      source: "purchase",
+      stripe_checkout_session_id: session.id,
+    },
+  });
+
+  const { data: linkData, error: linkError } =
+    await supabase.auth.admin.generateLink({
+      type: "magiclink",
+      email,
+    });
+
+  if (linkError || !linkData?.properties?.hashed_token) {
+    console.error(
+      `[Stripe] Course checkout — failed to generate onboarding token for ${email}: ` +
+        `${linkError?.message ?? "no hashed_token in response"}`
+    );
+    return;
+  }
+
+  const { error: tokenError } = await supabase
+    .from("member")
+    .update({ onboarding_token: linkData.properties.hashed_token })
+    .eq("id", userId);
+
+  if (tokenError) {
+    console.error(
+      `[Stripe] Course checkout — failed to store onboarding token for ${email}: ${tokenError.message}`
+    );
+  }
+
+  console.log(
+    `[Stripe] Course checkout complete — userId: ${userId}, course: ${courseId}, session: ${session.id}`
+  );
 }

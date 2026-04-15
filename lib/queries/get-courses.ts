@@ -1,11 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
+import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 
 /**
  * lib/queries/get-courses.ts
  *
  * Fetches course data for the member Library dashboard and detail pages.
- * All functions enforce tier access — only courses where tier_min ≤ member tier
- * are returned from getAccessibleCourses().
+ * Course access can come from active subscription tier access or from a
+ * permanent course entitlement.
  */
 
 const TIER_ORDER: Record<string, number> = {
@@ -33,6 +34,7 @@ export type CourseWithProgress = {
   lesson_count: number;
   /** Lessons the member has marked complete */
   completed_count: number;
+  access_source?: "subscription" | "entitlement";
 };
 
 export type CourseModule = {
@@ -83,18 +85,62 @@ export type LessonWithContext = CourseLesson & {
   course_title: string;
   course_slug: string | null;
   module_title: string;
+  course_tier_min: string | null;
   prev_lesson_id: string | null;
   next_lesson_id: string | null;
 };
+
+async function getActiveEntitledCourseIds(memberId: string): Promise<Set<string>> {
+  const supabase = asLooseSupabaseClient(await createClient());
+  const { data, error } = await supabase
+    .from("course_entitlement")
+    .select<{ course_id: string }[]>("course_id")
+    .eq("member_id", memberId)
+    .eq("status", "active");
+
+  if (error) {
+    console.error("[get-courses] entitlement lookup error:", error.message);
+    return new Set();
+  }
+
+  return new Set((data ?? []).map((row: { course_id: string }) => row.course_id));
+}
+
+export async function memberHasCourseEntitlement(
+  memberId: string,
+  courseId: string
+): Promise<boolean> {
+  const entitledIds = await getActiveEntitledCourseIds(memberId);
+  return entitledIds.has(courseId);
+}
+
+export async function memberCanAccessCourse(params: {
+  memberId: string;
+  memberTier: string | null;
+  hasSubscriptionAccess: boolean;
+  courseId: string;
+  courseTierMin: string | null;
+}): Promise<boolean> {
+  if (
+    params.hasSubscriptionAccess &&
+    tierLevel(params.courseTierMin) <= tierLevel(params.memberTier)
+  ) {
+    return true;
+  }
+
+  return memberHasCourseEntitlement(params.memberId, params.courseId);
+}
 
 // ─── Accessible courses (library dashboard) ───────────────────────────────────
 
 export async function getAccessibleCourses(
   memberTier: string | null,
-  memberId: string
+  memberId: string,
+  hasSubscriptionAccess = true
 ): Promise<CourseWithProgress[]> {
   const supabase = await createClient();
   const memberLevel = tierLevel(memberTier);
+  const entitledCourseIds = await getActiveEntitledCourseIds(memberId);
 
   const { data: courses, error: courseError } = await supabase
     .from("course")
@@ -104,9 +150,11 @@ export async function getAccessibleCourses(
 
   if (courseError || !courses) return [];
 
-  // Filter to tiers the member can access
+  // Filter to courses the member can access by subscription or ownership.
   const accessible = courses.filter(
-    (c) => tierLevel(c.tier_min) <= memberLevel
+    (c) =>
+      (hasSubscriptionAccess && tierLevel(c.tier_min) <= memberLevel) ||
+      entitledCourseIds.has(c.id)
   );
 
   if (accessible.length === 0) return [];
@@ -145,6 +193,10 @@ export async function getAccessibleCourses(
     ...c,
     lesson_count: lessonsByCourse.get(c.id) ?? 0,
     completed_count: completedByCourse.get(c.id) ?? 0,
+    access_source:
+      entitledCourseIds.has(c.id) && !(hasSubscriptionAccess && tierLevel(c.tier_min) <= memberLevel)
+        ? "entitlement"
+        : "subscription",
   }));
 }
 
@@ -251,7 +303,7 @@ export async function getCourseLesson(
   const { data: lesson, error } = await supabase
     .from("course_lesson")
     .select(
-      "id, title, description, body, video_url, duration_seconds, resources, sort_order, module_id, course_module!inner(id, title, course_id, course!inner(id, title, slug))"
+      "id, title, description, body, video_url, duration_seconds, resources, sort_order, module_id, course_module!inner(id, title, course_id, course!inner(id, title, slug, tier_min))"
     )
     .eq("id", lessonId)
     .maybeSingle();
@@ -259,7 +311,7 @@ export async function getCourseLesson(
   if (error || !lesson) return null;
 
   const courseModule = lesson.course_module;
-  const course = (courseModule as unknown as { course?: { id: string; title: string; slug: string | null } })?.course;
+  const course = (courseModule as unknown as { course?: { id: string; title: string; slug: string | null; tier_min?: string | null } })?.course;
 
   const moduleId: string = courseModule?.id ?? "";
   const courseId: string = course?.id ?? "";
@@ -313,6 +365,7 @@ export async function getCourseLesson(
     course_id: courseId,
     course_title: course?.title ?? "",
     course_slug: course?.slug ?? null,
+    course_tier_min: course?.tier_min ?? null,
     module_title: courseModule?.title ?? "",
     prev_lesson_id,
     next_lesson_id,

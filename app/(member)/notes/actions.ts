@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { POINT_VALUES, awardMemberPoints } from "@/lib/points/award";
 
 /**
  * app/(member)/notes/actions.ts
@@ -80,6 +81,16 @@ export async function createJournalEntry(
     contentId,
     eventType: "note_created",
     noteId: created.id,
+  });
+
+  void awardMemberPoints({
+    memberId: userId,
+    delta: POINT_VALUES.journalEntry,
+    reason: "journal_entry",
+    description: "Reflection saved",
+    contentId,
+    idempotencyKey: `journal_entry:${created.id}`,
+    metadata: { note_id: created.id },
   });
 
   return { ok: true, noteId: created.id, isNew: true };

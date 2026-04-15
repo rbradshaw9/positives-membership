@@ -51,7 +51,7 @@ export default async function AffiliatePage() {
       const startDate = new Date();
       startDate.setMonth(startDate.getMonth() - 5);
 
-      [stats, commissions, payouts, trendReport, urlReports] = await Promise.all([
+      [stats, commissions, payouts, trendReport, urlReports, trackedLinks] = await Promise.all([
         getPromoterStats(promoterId),
         getPromoterCommissions(promoterId),
         getPromoterPayouts(promoterId),
@@ -70,9 +70,8 @@ export default async function AffiliatePage() {
               groupBy: "month",
             }).catch(() => [])
           : Promise.resolve([]),
+        getPromoterTrackedLinks(promoterId).catch(() => []),
       ]);
-
-      trackedLinks = await getPromoterTrackedLinks(promoterId).catch(() => []);
     } catch {
       // Non-fatal — render with partial data
     }

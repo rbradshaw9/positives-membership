@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { computeNewStreak } from "@/lib/streak/compute-streak";
+import { POINT_VALUES, awardMemberPoints } from "@/lib/points/award";
 
 /**
  * app/(member)/today/actions.ts
@@ -72,17 +73,31 @@ export async function markListened(contentId: string): Promise<{ newStreak: numb
   }
 
   // ── 2. Write activity_event record ─────────────────────────────────────────
-  const { error: eventError } = await supabase.from("activity_event").insert({
-    member_id: user.id,
-    event_type: "daily_listened",
-    content_id: contentId,
-    metadata: { percent_completed: 80 },
-    // occurred_at defaults to NOW() in DB
-  });
+  const { data: activityEvent, error: eventError } = await supabase
+    .from("activity_event")
+    .insert({
+      member_id: user.id,
+      event_type: "daily_listened",
+      content_id: contentId,
+      metadata: { percent_completed: 80 },
+      // occurred_at defaults to NOW() in DB
+    })
+    .select("id")
+    .single();
 
   if (eventError) {
     console.error("[markListened] activity_event insert error:", eventError.message);
   }
+
+  await awardMemberPoints({
+    memberId: user.id,
+    delta: POINT_VALUES.dailyPractice,
+    reason: "daily_practice",
+    description: "Daily practice completed",
+    contentId,
+    activityEventId: activityEvent?.id ?? null,
+    idempotencyKey: `daily_practice:${user.id}:${now.toISOString().slice(0, 10)}`,
+  });
 
   // ── 3. Fetch current member streak state ────────────────────────────────────
   const { data: member, error: memberFetchError } = await supabase

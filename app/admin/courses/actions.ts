@@ -149,6 +149,17 @@ export async function updateCourse(formData: FormData) {
       slug: slugify(title!),
       description: formData.get("description")?.toString().trim() || null,
       status: formData.get("status")?.toString() || "draft",
+      stripe_price_id: formData.get("stripe_price_id")?.toString().trim() || null,
+      is_standalone_purchasable:
+        formData.get("is_standalone_purchasable")?.toString() === "true",
+      price_cents: formData.get("price_cents")?.toString()
+        ? parseInt(formData.get("price_cents")!.toString(), 10)
+        : null,
+      points_unlock_enabled:
+        formData.get("points_unlock_enabled")?.toString() === "true",
+      points_price: formData.get("points_price")?.toString()
+        ? parseInt(formData.get("points_price")!.toString(), 10)
+        : null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id!);

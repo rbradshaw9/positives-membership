@@ -2,6 +2,8 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { POINT_VALUES, awardMemberPoints } from "@/lib/points/award";
+import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 
 /**
  * app/(member)/library/courses/actions.ts
@@ -38,6 +40,74 @@ async function getMemberAndCourse(courseId: string) {
   return { supabase, member, course };
 }
 
+async function awardLessonAndCoursePoints({
+  supabase,
+  memberId,
+  courseId,
+  lessonId,
+}: {
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  memberId: string;
+  courseId: string;
+  lessonId: string;
+}) {
+  const looseSupabase = asLooseSupabaseClient(supabase);
+  const { data: activityEvent } = await looseSupabase
+    .from("activity_event")
+    .insert({
+      member_id: memberId,
+      event_type: "course_lesson_completed",
+      metadata: { course_id: courseId, lesson_id: lessonId },
+    })
+    .select<{ id: string }>("id")
+    .single();
+
+  await awardMemberPoints({
+    memberId,
+    delta: POINT_VALUES.courseLessonComplete,
+    reason: "course_lesson_complete",
+    description: "Course lesson completed",
+    courseId,
+    activityEventId: activityEvent?.id ?? null,
+    idempotencyKey: `course_lesson_complete:${memberId}:${lessonId}`,
+    metadata: { lesson_id: lessonId },
+  });
+
+  const { data: lessons } = await looseSupabase
+    .from("course_lesson")
+    .select<{ id: string }[]>("id, course_module!inner(course_id)")
+    .eq("course_module.course_id", courseId);
+
+  const lessonIds = (lessons ?? []).map((lesson: { id: string }) => lesson.id);
+  if (lessonIds.length === 0) return;
+
+  const { data: progress } = await supabase
+    .from("course_progress")
+    .select("course_lesson_id")
+    .eq("member_id", memberId)
+    .eq("course_id", courseId)
+    .eq("completed", true)
+    .in("course_lesson_id", lessonIds);
+
+  const completedIds = new Set((progress ?? []).map((row) => row.course_lesson_id));
+  if (lessonIds.every((id: string) => completedIds.has(id))) {
+    await looseSupabase.from("activity_event").insert({
+      member_id: memberId,
+      event_type: "course_completed",
+      metadata: { course_id: courseId },
+    });
+
+    await awardMemberPoints({
+      memberId,
+      delta: POINT_VALUES.courseComplete,
+      reason: "course_complete",
+      description: "Course completed",
+      courseId,
+      idempotencyKey: `course_complete:${memberId}:${courseId}`,
+    });
+  }
+}
+
 // ─── Mark lesson complete ──────────────────────────────────────────────────────
 
 export async function markLessonComplete(lessonId: string, courseId: string) {
@@ -53,6 +123,13 @@ export async function markLessonComplete(lessonId: string, courseId: string) {
     },
     { onConflict: "member_id,course_lesson_id" }
   );
+
+  await awardLessonAndCoursePoints({
+    supabase,
+    memberId: member.id,
+    courseId,
+    lessonId,
+  });
 
   revalidatePath(`/library`);
   revalidatePath(`/library/courses/[slug]`, "page");
@@ -90,6 +167,7 @@ export async function updateCourseVideoProgress(
     .maybeSingle();
 
   if (existing) {
+    const shouldAward = isComplete && !existing.completed;
     await supabase
       .from("course_progress")
       .update({
@@ -99,6 +177,15 @@ export async function updateCourseVideoProgress(
         completed_at: isComplete && !existing.completed ? new Date().toISOString() : undefined,
       })
       .eq("id", existing.id);
+
+    if (shouldAward) {
+      await awardLessonAndCoursePoints({
+        supabase,
+        memberId: member.id,
+        courseId,
+        lessonId,
+      });
+    }
   } else {
     await supabase.from("course_progress").insert({
       member_id: member.id,
@@ -109,6 +196,15 @@ export async function updateCourseVideoProgress(
       auto_completed: isComplete,
       completed_at: isComplete ? new Date().toISOString() : undefined,
     });
+
+    if (isComplete) {
+      await awardLessonAndCoursePoints({
+        supabase,
+        memberId: member.id,
+        courseId,
+        lessonId,
+      });
+    }
   }
 
   if (isComplete) {

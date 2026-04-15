@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/supabase/server";
 import { AccountClient } from "./account-client";
 import { EmailPreferencesForm } from "./email-preferences-form";
 import { ProfileForm } from "./profile-form";
@@ -11,8 +10,8 @@ import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { AffiliateCTA } from "@/components/affiliate/AffiliateCTA";
 import { signOut } from "./actions";
 import { getPositivesPlanName } from "@/lib/plans";
-import { getScheduledBillingChange } from "@/server/services/stripe/get-scheduled-billing-change";
-import { getNextRenewalDate } from "@/server/services/stripe/get-next-renewal-date";
+import { requireMember } from "@/lib/auth/require-member";
+import { getAccountBillingSummary } from "@/server/services/stripe/get-account-billing-summary";
 
 export const metadata = {
   title: "Account — Positives",
@@ -31,21 +30,12 @@ export default async function AccountPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const supabase = await createClient();
-  const resolvedSearchParams = await searchParams;
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const [member, resolvedSearchParams] = await Promise.all([
+    requireMember(),
+    searchParams,
+  ]);
 
-  const { data: member } = await supabase
-    .from("member")
-    .select(
-      "email, name, password_set, subscription_tier, subscription_status, stripe_customer_id, timezone, fp_ref_id, fp_promoter_id, email_unsubscribed"
-    )
-    .eq("id", user!.id)
-    .single();
-
-  const email = member?.email ?? user?.email ?? "";
+  const email = member?.email ?? "";
   const passwordSet = member?.password_set === true;
   const tier = member?.subscription_tier ?? "level_1";
   const planName = getPositivesPlanName(tier);
@@ -54,12 +44,13 @@ export default async function AccountPage({
   const status = member?.subscription_status ?? "active";
   const memberName = member?.name?.trim() || "Member";
   const initials = memberName.charAt(0).toUpperCase();
-  const scheduledBillingChange = await getScheduledBillingChange(member?.stripe_customer_id);
-  const nextRenewalDate = await getNextRenewalDate(member?.stripe_customer_id);
+  const { scheduledBillingChange, nextRenewalDate } = await getAccountBillingSummary(
+    member?.stripe_customer_id
+  );
   const billingUnavailable = resolvedSearchParams.error === "billing_unavailable";
-  const joinedLabel = user?.created_at
+  const joinedLabel = member?.created_at
     ? new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(
-        new Date(user.created_at)
+        new Date(member.created_at)
       )
     : "Recently";
 

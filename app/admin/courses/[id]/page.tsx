@@ -47,6 +47,9 @@ type ModuleRow = {
 type CourseRow = {
   id: string; title: string; slug: string | null; description: string | null;
   status: string; admin_notes: string | null;
+  stripe_price_id: string | null; is_standalone_purchasable: boolean;
+  price_cents: number | null; points_price: number | null;
+  points_unlock_enabled: boolean;
   course_module: ModuleRow[];
 };
 
@@ -110,6 +113,7 @@ export default async function CourseEditorPage({
     .from("course")
     .select(`
       id, title, slug, description, status, admin_notes,
+      stripe_price_id, is_standalone_purchasable, price_cents, points_price, points_unlock_enabled,
       course_module(
         id, title, description, sort_order,
         course_lesson(
@@ -200,6 +204,62 @@ export default async function CourseEditorPage({
                   <option value="draft">Draft — hidden from members</option>
                   <option value="published">Published — visible to members</option>
                 </select>
+              </div>
+              <div className="admin-form-field">
+                <label className="admin-label">Standalone purchase</label>
+                <select
+                  name="is_standalone_purchasable"
+                  defaultValue={c.is_standalone_purchasable ? "true" : "false"}
+                  className="admin-select"
+                >
+                  <option value="false">No — library/subscription only</option>
+                  <option value="true">Yes — show in course store</option>
+                </select>
+              </div>
+              <div className="admin-form-field">
+                <label className="admin-label">Stripe one-time Price ID</label>
+                <input
+                  name="stripe_price_id"
+                  type="text"
+                  defaultValue={c.stripe_price_id ?? ""}
+                  className="admin-input"
+                  placeholder="price_..."
+                />
+              </div>
+              <div className="admin-form-field">
+                <label className="admin-label">Price (USD cents)</label>
+                <input
+                  name="price_cents"
+                  type="number"
+                  min="0"
+                  step="1"
+                  defaultValue={c.price_cents ?? ""}
+                  className="admin-input"
+                  placeholder="9700"
+                />
+              </div>
+              <div className="admin-form-field">
+                <label className="admin-label">Points unlock</label>
+                <select
+                  name="points_unlock_enabled"
+                  defaultValue={c.points_unlock_enabled ? "true" : "false"}
+                  className="admin-select"
+                >
+                  <option value="false">Disabled</option>
+                  <option value="true">Enabled for active subscribers</option>
+                </select>
+              </div>
+              <div className="admin-form-field">
+                <label className="admin-label">Point cost</label>
+                <input
+                  name="points_price"
+                  type="number"
+                  min="0"
+                  step="1"
+                  defaultValue={c.points_price ?? ""}
+                  className="admin-input"
+                  placeholder="Defaults to dollar price"
+                />
               </div>
             </div>
             <button type="submit" className="admin-btn admin-btn--primary" style={{ marginTop: "0.75rem" }}>

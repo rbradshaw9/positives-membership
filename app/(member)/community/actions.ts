@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { config } from "@/lib/config";
+import { POINT_VALUES, awardMemberPoints } from "@/lib/points/award";
 
 /**
  * app/(member)/community/actions.ts
@@ -47,16 +48,32 @@ export async function createPost(
     return { error: "Please keep your post under 4,000 characters." };
   }
 
-  const { error } = await supabase.from("community_post").insert({
-    member_id: user.id,
-    content_id: contentId,
-    body: trimmed,
-    post_type: postType,
-  });
+  const { data: created, error } = await supabase
+    .from("community_post")
+    .insert({
+      member_id: user.id,
+      content_id: contentId,
+      body: trimmed,
+      post_type: postType,
+    })
+    .select("id")
+    .single();
 
   if (error) {
     console.error("[createPost] insert error:", error.message);
     return { error: "Something went wrong. Please try again." };
+  }
+
+  if (created?.id) {
+    void awardMemberPoints({
+      memberId: user.id,
+      delta: POINT_VALUES.communityPost,
+      reason: "community_post",
+      description: "Community post created",
+      contentId,
+      idempotencyKey: `community_post:${created.id}`,
+      metadata: { post_id: created.id, post_type: postType },
+    });
   }
 
   revalidatePath("/community");
@@ -91,17 +108,33 @@ export async function createReply(
     return { error: "The post you're replying to was not found." };
   }
 
-  const { error } = await supabase.from("community_post").insert({
-    member_id: user.id,
-    content_id: parent.content_id,
-    parent_id: parentId,
-    body: trimmed,
-    post_type: "reflection",
-  });
+  const { data: created, error } = await supabase
+    .from("community_post")
+    .insert({
+      member_id: user.id,
+      content_id: parent.content_id,
+      parent_id: parentId,
+      body: trimmed,
+      post_type: "reflection",
+    })
+    .select("id")
+    .single();
 
   if (error) {
     console.error("[createReply] insert error:", error.message);
     return { error: "Something went wrong. Please try again." };
+  }
+
+  if (created?.id) {
+    void awardMemberPoints({
+      memberId: user.id,
+      delta: POINT_VALUES.communityReply,
+      reason: "community_reply",
+      description: "Community reply created",
+      contentId: parent.content_id,
+      idempotencyKey: `community_reply:${created.id}`,
+      metadata: { post_id: created.id, parent_id: parentId },
+    });
   }
 
   revalidatePath("/community");

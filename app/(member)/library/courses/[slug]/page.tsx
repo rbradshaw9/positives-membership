@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCourseBySlug } from "@/lib/queries/get-courses";
+import { getCourseBySlug, memberCanAccessCourse } from "@/lib/queries/get-courses";
 import { getLastWatchedLesson } from "@/app/(member)/today/video-actions";
 import { CourseOutline } from "@/components/courses/CourseOutline";
 import Link from "next/link";
@@ -26,10 +26,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-const TIER_ORDER: Record<string, number> = {
-  level_1: 1, level_2: 2, level_3: 3, level_4: 4,
-};
-
 export default async function CourseDetailPage({ params }: Props) {
   const { slug } = await params;
 
@@ -46,17 +42,24 @@ export default async function CourseDetailPage({ params }: Props) {
     .eq("id", user.id)
     .single();
 
-  if (!member || !hasActiveMemberAccess(member.subscription_status)) redirect("/account");
+  if (!member) redirect("/account");
 
   const course = await getCourseBySlug(slug, member.id);
 
   if (!course) notFound();
 
-  // Tier access check
-  const memberLevel = TIER_ORDER[member.subscription_tier ?? "level_1"] ?? 1;
-  const requiredLevel = TIER_ORDER[course.tier_min ?? "level_1"] ?? 1;
+  const hasSubscriptionAccess = hasActiveMemberAccess(member.subscription_status);
 
-  if (memberLevel < requiredLevel) {
+  // Subscription tier or permanent course entitlement can grant access.
+  const canAccess = await memberCanAccessCourse({
+    memberId: member.id,
+    memberTier: member.subscription_tier,
+    hasSubscriptionAccess,
+    courseId: course.id,
+    courseTierMin: course.tier_min,
+  });
+
+  if (!canAccess) {
     redirect("/library?upgrade=true");
   }
 

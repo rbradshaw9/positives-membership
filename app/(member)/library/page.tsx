@@ -37,13 +37,14 @@ export default async function LibraryPage() {
     .eq("id", user.id)
     .single();
 
-  if (!member || !hasActiveMemberAccess(member.subscription_status)) {
+  if (!member) {
     redirect("/account");
   }
 
+  const hasSubscriptionAccess = hasActiveMemberAccess(member.subscription_status);
   const [courses, archive] = await Promise.all([
-    getAccessibleCourses(member.subscription_tier, member.id),
-    getMonthlyArchive(12),
+    getAccessibleCourses(member.subscription_tier, member.id, hasSubscriptionAccess),
+    hasSubscriptionAccess ? getMonthlyArchive(12) : Promise.resolve([]),
   ]);
 
   return (
@@ -72,6 +73,9 @@ export default async function LibraryPage() {
                   : "Courses"}
               </h2>
             </div>
+            <a href="/courses" className="btn-secondary inline-flex items-center text-sm">
+              Browse store
+            </a>
           </div>
 
           {courses.length > 0 ? (
@@ -95,12 +99,18 @@ export default async function LibraryPage() {
                 </svg>
               }
               title="No courses yet"
-              subtitle="Courses included with your membership will appear here as they are published."
+              subtitle={
+                hasSubscriptionAccess
+                  ? "Courses included with your membership will appear here as they are published."
+                  : "Purchased or granted courses will appear here. You can also browse the course store."
+              }
+              action={<a href="/courses" className="btn-primary inline-flex items-center">Browse courses</a>}
             />
           )}
         </section>
 
         {/* ── MONTHLY ARCHIVE ──────────────────────────────────────────────── */}
+        {hasSubscriptionAccess ? (
         <section aria-labelledby="archive-heading">
           <div className="mb-5">
             <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--color-primary)" }}>
@@ -140,6 +150,25 @@ export default async function LibraryPage() {
             />
           )}
         </section>
+        ) : (
+          <section aria-labelledby="membership-heading">
+            <div className="rounded-2xl border border-border bg-card p-6 md:p-7">
+              <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--color-primary)" }}>
+                Membership
+              </p>
+              <h2 id="membership-heading" className="heading-balance font-heading font-bold text-xl text-foreground">
+                Want the full daily practice?
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                Your purchased courses stay available here. A current Positives membership adds
+                Today, Practice, live events, coaching access, and the monthly archive.
+              </p>
+              <a href="/join" className="btn-primary mt-5 inline-flex items-center">
+                Explore membership
+              </a>
+            </div>
+          </section>
+        )}
       </div>
     </main>
   );

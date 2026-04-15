@@ -1,5 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
-import { requireActiveMember } from "@/lib/auth/require-active-member";
+import { requireMember } from "@/lib/auth/require-member";
 import { PasswordNudgeBanner } from "@/components/member/PasswordNudgeBanner";
 import { MemberShellClient } from "@/components/member/MemberShellClient";
 import { ServiceWorkerRegistration } from "@/components/platform/ServiceWorkerRegistration";
@@ -22,7 +21,7 @@ export default async function MemberLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const member = await requireActiveMember();
+  const member = await requireMember();
 
   await trackFirstMemberLogin({
     memberId: member.id,
@@ -32,17 +31,11 @@ export default async function MemberLayout({
   const showPasswordNudge = member.password_set === false;
   const marketingOptedOut = member.email_unsubscribed === true;
 
-  const supabase = await createClient();
-  const { data: streakRow } = await supabase
-    .from("member")
-    .select("practice_streak, last_practiced_at")
-    .eq("id", member.id)
-    .single();
   // Only show a non-zero streak if the member practiced today or yesterday.
   // If they missed a day, show 0 — the DB value itself gets corrected on next listen.
   const today = getEffectiveDate();
-  const streak = isStreakActive(streakRow?.last_practiced_at, today)
-    ? (streakRow?.practice_streak ?? 0)
+  const streak = isStreakActive(member.last_practiced_at, today)
+    ? (member.practice_streak ?? 0)
     : 0;
 
   return (

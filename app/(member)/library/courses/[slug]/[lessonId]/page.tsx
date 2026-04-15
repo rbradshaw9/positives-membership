@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCourseLesson } from "@/lib/queries/get-courses";
+import { getCourseLesson, memberCanAccessCourse } from "@/lib/queries/get-courses";
 import { LessonViewer } from "@/components/courses/LessonViewer";
 import type { Metadata } from "next";
 import { hasActiveMemberAccess } from "@/lib/subscription/access";
@@ -38,11 +38,21 @@ export default async function LessonPage({ params }: Props) {
     .eq("id", user.id)
     .single();
 
-  if (!member || !hasActiveMemberAccess(member.subscription_status)) redirect("/account");
+  if (!member) redirect("/account");
 
   const lesson = await getCourseLesson(lessonId, member.id);
 
   if (!lesson) notFound();
+
+  const canAccess = await memberCanAccessCourse({
+    memberId: member.id,
+    memberTier: member.subscription_tier,
+    hasSubscriptionAccess: hasActiveMemberAccess(member.subscription_status),
+    courseId: lesson.course_id,
+    courseTierMin: lesson.course_tier_min,
+  });
+
+  if (!canAccess) redirect("/library?upgrade=true");
 
   return <LessonViewer lesson={lesson} memberId={member.id} />;
 }
