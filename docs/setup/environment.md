@@ -45,11 +45,11 @@ Required for webhook tier mapping. Set once your Stripe products are created.
 | `STRIPE_PRICE_LEVEL_1_MONTHLY` | When billing active | Level 1 monthly price ID |
 | `STRIPE_PRICE_LEVEL_2_MONTHLY` | When billing active | Level 2 monthly price ID |
 | `STRIPE_PRICE_LEVEL_3_MONTHLY` | When billing active | Level 3 monthly price ID |
-| `STRIPE_PRICE_LEVEL_4_MONTHLY` | When billing active | Level 4 monthly price ID |
+| `STRIPE_PRICE_LEVEL_4_THREE_PAY` | When L4 billing active | Level 4 three-pay price ID |
+| `STRIPE_PRODUCT_LEVEL_4` | When L4 billing active | Level 4 product ID |
 | `STRIPE_PRICE_LEVEL_1_ANNUAL` | Optional | Level 1 annual price ID |
 | `STRIPE_PRICE_LEVEL_2_ANNUAL` | Optional | Level 2 annual price ID |
 | `STRIPE_PRICE_LEVEL_3_ANNUAL` | Optional | Level 3 annual price ID |
-| `STRIPE_PRICE_LEVEL_4_ANNUAL` | Optional | Level 4 annual price ID |
 
 ---
 

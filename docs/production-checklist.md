@@ -25,14 +25,16 @@ Verify all required vars are set in Vercel:
 | `ACTIVECAMPAIGN_API_KEY` | ✅ | AC API token |
 | `EMAIL_UNSUBSCRIBE_SECRET` | ✅ | Used to sign unsubscribe links |
 
-Keep these intentionally unset for an L1-only launch unless the broader rollout is approved:
+These are now configured in Vercel for the real Positives Stripe account in test
+mode, so hosted Checkout and Customer Portal can be tested across all planned
+tiers:
 
 - `STRIPE_PRICE_LEVEL_2_MONTHLY`
 - `STRIPE_PRICE_LEVEL_2_ANNUAL`
 - `STRIPE_PRICE_LEVEL_3_MONTHLY`
 - `STRIPE_PRICE_LEVEL_3_ANNUAL`
-- `STRIPE_PRICE_LEVEL_4_MONTHLY`
-- `STRIPE_PRICE_LEVEL_4_ANNUAL`
+- `STRIPE_PRICE_LEVEL_4_THREE_PAY`
+- `STRIPE_PRODUCT_LEVEL_4`
 
 ---
 

@@ -204,29 +204,29 @@ const templates = [
     }),
   },
   {
-    name: "POS C01-E02 AC Your Membership Is Ready",
+    name: "POS C01-E02 AC Come Back to Today's Practice",
     html: buildTemplate({
-      preview: "A quick reminder that your first practice is waiting.",
-      kicker: "Access reminder",
-      title: "Your Positives membership is ready.",
+      preview: "A few quiet minutes is enough to keep the rhythm going.",
+      kicker: "First week",
+      title: "Come back to today’s practice.",
       paragraphs: [
         "Hi %FIRSTNAME%,",
-        "Just a quick reminder that your membership is ready whenever you are.",
-        "The easiest place to begin is today’s practice. You do not need a long block of time. Just start there and let the rest unfold from that rhythm.",
+        "The value of Positives comes from returning, not from doing everything at once.",
+        "Come back to today’s practice when you have a few quiet minutes. That is enough to keep the rhythm going.",
       ],
       cta: { label: "Open Positives", href: "%LOGIN_LINK%" },
     }),
   },
   {
-    name: "POS C01-E03 AC Need Help Getting In",
+    name: "POS C01-E03 AC Make Positives Stick",
     html: buildTemplate({
-      preview: "If sign-in has been the blocker, here’s the easiest next step.",
-      kicker: "Support",
-      title: "Need help getting into Positives?",
+      preview: "Start with Today, stay close to This Week, and let the habit build.",
+      kicker: "Practice rhythm",
+      title: "A simple way to make Positives stick.",
       paragraphs: [
         "Hi %FIRSTNAME%,",
-        "Sometimes the first step gets missed in a busy inbox, so we wanted to make it easy.",
-        "Your membership is active. If you have not made it in yet, use the button below and we’ll take you straight to the member experience.",
+        "The simplest rhythm is this: start with Today, stay close to This Week, and let This Month give the practice a larger direction.",
+        "You do not need to be perfect. Just keep returning.",
       ],
       cta: { label: "Open Positives", href: "%LOGIN_LINK%" },
     }),
@@ -271,6 +271,39 @@ const templates = [
         "If you want your access to continue without interruption, please confirm your payment details now.",
       ],
       cta: { label: "Update Billing", href: "%BILLING_LINK%" },
+    }),
+  },
+  {
+    name: "POS C03-E01 PM Your Access Has Been Restored",
+    html: buildTemplate({
+      preview: "Your Positives access is active again.",
+      kicker: "Access restored",
+      title: "Your access has been restored.",
+      paragraphs: [
+        "Hi %FIRSTNAME%,",
+        "Your Positives access is active again.",
+        "The easiest way back in is to start with today’s practice. You do not need to catch up or restart from the beginning.",
+      ],
+      info: `
+        <p style="margin:0;font-family:${BRAND.fontBody};font-size:13px;color:${BRAND.mutedFg};line-height:1.6;">
+          Restored on <strong style="color:${BRAND.foreground};">%ACCESS_RESTORED_AT%</strong>
+        </p>
+      `,
+      cta: { label: "Return to Positives", href: "%LOGIN_LINK%" },
+    }),
+  },
+  {
+    name: "POS C03-E02 PM Pick Up Where You Left Off",
+    html: buildTemplate({
+      preview: "A gentle nudge back into your daily practice.",
+      kicker: "Pick up again",
+      title: "Pick up where you left off.",
+      paragraphs: [
+        "Hi %FIRSTNAME%,",
+        "Now that your access is restored, the best next step is simple: come back to Today.",
+        "A few quiet minutes is enough to reconnect with the practice.",
+      ],
+      cta: { label: "Open Today", href: "%LOGIN_LINK%" },
     }),
   },
   {
@@ -372,6 +405,39 @@ const templates = [
         "If you’d like to continue your membership without interruption, you can rejoin any time.",
       ],
       cta: { label: "Rejoin Positives", href: "https://positives.life/join" },
+    }),
+  },
+  {
+    name: "POS C08-E01 PM Welcome Back to Positives",
+    html: buildTemplate({
+      preview: "Your membership is active again. Welcome back.",
+      kicker: "Welcome back",
+      title: "Welcome back to Positives.",
+      paragraphs: [
+        "Hi %FIRSTNAME%,",
+        "Your membership is active again, and we’re glad to have you back.",
+        "Since you’ve been here before, there’s no need for a big restart. Just return to today’s practice and let the rhythm meet you there.",
+      ],
+      info: `
+        <p style="margin:0;font-family:${BRAND.fontBody};font-size:13px;color:${BRAND.mutedFg};line-height:1.6;">
+          Reactivated on <strong style="color:${BRAND.foreground};">%REACTIVATED_AT%</strong>
+        </p>
+      `,
+      cta: { label: "Open Positives", href: "%LOGIN_LINK%" },
+    }),
+  },
+  {
+    name: "POS C08-E02 PM Here’s the Easiest Place to Resume",
+    html: buildTemplate({
+      preview: "Start with Today and resume from there.",
+      kicker: "Resume gently",
+      title: "Here’s the easiest place to resume.",
+      paragraphs: [
+        "Hi %FIRSTNAME%,",
+        "If you’re wondering where to begin again, keep it very simple: start with Today.",
+        "You can explore the weekly and monthly pieces after that, but today’s practice is the doorway back in.",
+      ],
+      cta: { label: "Go to Today", href: "%LOGIN_LINK%" },
     }),
   },
   {
@@ -561,6 +627,106 @@ const templates = [
         "If that feels like the right next step, you can explore it here.",
       ],
       cta: { label: "Explore Coaching Circle", href: "https://positives.life/join" },
+    }),
+  },
+  {
+    name: "POS R01-E01 PM Event Tomorrow",
+    html: buildTemplate({
+      preview: "Your Positives event is coming up tomorrow.",
+      kicker: "Event reminder",
+      title: "%NEXT_EVENT_TITLE% is tomorrow.",
+      paragraphs: [
+        "Hi %FIRSTNAME%,",
+        "This is a quick reminder that your Positives event is coming up tomorrow.",
+        "Come as you are. You’ll have the join link below when it’s time.",
+      ],
+      info: `
+        <p style="margin:0 0 6px;font-family:${BRAND.fontHeading};font-size:13px;font-weight:700;color:${BRAND.foreground};">Session time</p>
+        <p style="margin:0;font-family:${BRAND.fontBody};font-size:13px;color:${BRAND.mutedFg};line-height:1.6;">%NEXT_EVENT_STARTS_AT%</p>
+      `,
+      cta: { label: "Join Event", href: "%NEXT_EVENT_JOIN_URL%" },
+    }),
+  },
+  {
+    name: "POS R02-E01 PM Event Starting Soon",
+    html: buildTemplate({
+      preview: "Your Positives event starts soon.",
+      kicker: "Starting soon",
+      title: "%NEXT_EVENT_TITLE% starts soon.",
+      paragraphs: [
+        "Hi %FIRSTNAME%,",
+        "Your Positives event starts in about an hour.",
+        "Use the link below when you’re ready to join.",
+      ],
+      info: `
+        <p style="margin:0 0 6px;font-family:${BRAND.fontHeading};font-size:13px;font-weight:700;color:${BRAND.foreground};">Session time</p>
+        <p style="margin:0;font-family:${BRAND.fontBody};font-size:13px;color:${BRAND.mutedFg};line-height:1.6;">%NEXT_EVENT_STARTS_AT%</p>
+      `,
+      cta: { label: "Join Event", href: "%NEXT_EVENT_JOIN_URL%" },
+    }),
+  },
+  {
+    name: "POS R03-E01 PM Event Replay Ready",
+    html: buildTemplate({
+      preview: "The replay is ready when you are.",
+      kicker: "Replay ready",
+      title: "The replay is ready: %NEXT_EVENT_TITLE%.",
+      paragraphs: [
+        "Hi %FIRSTNAME%,",
+        "The replay for %NEXT_EVENT_TITLE% is ready.",
+        "If you missed the live session or want to revisit it, you can watch it now.",
+      ],
+      cta: { label: "Watch Replay", href: "%NEXT_EVENT_REPLAY_URL%" },
+    }),
+  },
+  {
+    name: "POS R04-E01 PM Coaching Tomorrow",
+    html: buildTemplate({
+      preview: "Your coaching session is coming up tomorrow.",
+      kicker: "Coaching reminder",
+      title: "%NEXT_EVENT_TITLE% is tomorrow.",
+      paragraphs: [
+        "Hi %FIRSTNAME%,",
+        "This is a quick reminder that your Positives coaching session is coming up tomorrow.",
+        "Bring whatever is most useful to work through. You don’t need to prepare anything perfectly.",
+      ],
+      info: `
+        <p style="margin:0 0 6px;font-family:${BRAND.fontHeading};font-size:13px;font-weight:700;color:${BRAND.foreground};">Session time</p>
+        <p style="margin:0;font-family:${BRAND.fontBody};font-size:13px;color:${BRAND.mutedFg};line-height:1.6;">%NEXT_EVENT_STARTS_AT%</p>
+      `,
+      cta: { label: "Join Coaching", href: "%NEXT_EVENT_JOIN_URL%" },
+    }),
+  },
+  {
+    name: "POS R05-E01 PM Coaching Starting Soon",
+    html: buildTemplate({
+      preview: "Your coaching session starts soon.",
+      kicker: "Starting soon",
+      title: "%NEXT_EVENT_TITLE% starts soon.",
+      paragraphs: [
+        "Hi %FIRSTNAME%,",
+        "Your Positives coaching session starts in about an hour.",
+        "Use the link below when you’re ready to join.",
+      ],
+      info: `
+        <p style="margin:0 0 6px;font-family:${BRAND.fontHeading};font-size:13px;font-weight:700;color:${BRAND.foreground};">Session time</p>
+        <p style="margin:0;font-family:${BRAND.fontBody};font-size:13px;color:${BRAND.mutedFg};line-height:1.6;">%NEXT_EVENT_STARTS_AT%</p>
+      `,
+      cta: { label: "Join Coaching", href: "%NEXT_EVENT_JOIN_URL%" },
+    }),
+  },
+  {
+    name: "POS R06-E01 PM Coaching Replay Ready",
+    html: buildTemplate({
+      preview: "The coaching replay is ready when you are.",
+      kicker: "Replay ready",
+      title: "The replay is ready: %NEXT_EVENT_TITLE%.",
+      paragraphs: [
+        "Hi %FIRSTNAME%,",
+        "The replay for %NEXT_EVENT_TITLE% is ready.",
+        "If you couldn’t attend live or want to review it again, you can watch it now.",
+      ],
+      cta: { label: "Watch Replay", href: "%NEXT_EVENT_REPLAY_URL%" },
     }),
   },
   {

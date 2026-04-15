@@ -44,6 +44,8 @@ type ContentInput = {
   admin_notes: string;
   tier_min: string;   // Sprint 10
   starts_at: string;  // Sprint 10 (ISO datetime-local string)
+  send_reminders: boolean;
+  send_replay_email: boolean;
 };
 
 function adminClient() {
@@ -55,6 +57,9 @@ function adminClient() {
 }
 
 function parseFormData(formData: FormData): ContentInput {
+  const sendReminderValues = formData.getAll("send_reminders").map(String);
+  const sendReplayValues = formData.getAll("send_replay_email").map(String);
+
   return {
     id: formData.get("id")?.toString() || undefined,
     type: formData.get("type")?.toString() ?? "daily_audio",
@@ -77,6 +82,12 @@ function parseFormData(formData: FormData): ContentInput {
     admin_notes: formData.get("admin_notes")?.toString().trim() ?? "",
     tier_min: formData.get("tier_min")?.toString() ?? "",
     starts_at: formData.get("starts_at")?.toString() ?? "",
+    send_reminders: sendReminderValues.length > 0
+      ? sendReminderValues.includes("on")
+      : true,
+    send_replay_email: sendReplayValues.length > 0
+      ? sendReplayValues.includes("on")
+      : true,
   };
 }
 
@@ -116,6 +127,8 @@ function buildRow(input: ContentInput) {
     // Sprint 10 fields
     tier_min: input.tier_min || null,
     starts_at: input.starts_at ? new Date(input.starts_at).toISOString() : null,
+    send_reminders: input.send_reminders,
+    send_replay_email: input.send_replay_email,
   };
 
   if (isDaily) {

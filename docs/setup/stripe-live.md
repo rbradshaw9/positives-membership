@@ -1,15 +1,23 @@
-# Stripe Live Webhook Configuration — Positives Platform
+# Stripe Webhook Configuration — Positives Platform
+
+For hosted Checkout and Customer Portal branding/proration setup, use
+`docs/setup/stripe-hosted-billing.md`. That runbook is the source of truth for
+configuring test mode now and repeating the setup in live mode after business
+verification.
 
 ## Status
 
-The live Stripe webhook is **already configured** and pointing to the correct deployed endpoint.
+Current launch prep uses the real Positives Stripe account in **test mode**.
+Live-mode billing is intentionally deferred until Stripe business verification
+is complete.
 
 | Field | Value |
 |---|---|
-| Webhook ID | `we_1TH2waKStVEuswF7Z1V5ODVn` |
-| Endpoint URL | `https://positives-membership.vercel.app/api/webhooks/stripe` |
+| Test-mode Account | `acct_1THAYAIoN7XN0qfm` |
+| Test-mode Webhook ID | `we_1TMUlxIoN7XN0qfmPqNI5lSO` |
+| Endpoint URL | `https://positives.life/api/webhooks/stripe` |
 | Status | `enabled` |
-| Secret | Set in Vercel as `STRIPE_WEBHOOK_SECRET` |
+| Secret | Set locally and in Vercel as `STRIPE_WEBHOOK_SECRET` for deployed test-mode checkout |
 
 ---
 
@@ -30,27 +38,34 @@ The handler:
 
 | Event | Handler | Effect |
 |---|---|---|
+| `checkout.session.completed` | `handleCheckoutSessionCompleted` | Creates/activates member and starts onboarding |
 | `customer.subscription.created` | `handleSubscriptionCreated` | Sets member `subscription_status=active`, maps tier |
 | `customer.subscription.updated` | `handleSubscriptionUpdated` | Updates status and tier |
 | `customer.subscription.deleted` | `handleSubscriptionDeleted` | Sets `subscription_status=canceled` |
+| `customer.subscription.trial_will_end` | `handleTrialWillEnd` | Syncs trial-ending state |
+| `invoice.payment_succeeded` | `handlePaymentSucceeded` | Clears past-due state / syncs billing recovery |
 | `invoice.payment_failed` | `handlePaymentFailed` | Sets `subscription_status=past_due` |
 
 ---
 
 ## How the webhook secret was generated
 
-The webhook endpoint was created in the Stripe dashboard (or via CLI). The signing secret (`whsec_...`) is only shown once at creation time. It has been saved in:
+The webhook endpoint was created against the real Positives Stripe account in
+test mode. The signing secret (`whsec_...`) is only shown once at creation time.
+It has been saved in:
 
 - `.env.local` as `STRIPE_WEBHOOK_SECRET` (local dev)
-- Vercel environment variables as `STRIPE_WEBHOOK_SECRET` (production)
+- Vercel Production/Preview/Development as `STRIPE_WEBHOOK_SECRET`, alongside
+  the matching test-mode publishable key, secret key, and price IDs
 
-**Do not rotate the secret without updating both locations.**
+**Do not rotate the secret without updating every environment that uses this
+test-mode Stripe account.**
 
 ---
 
 ## Verifying the webhook is working
 
-After a successful checkout, check the Stripe Dashboard → Developers → Webhooks → `we_1TH2waKStVEuswF7Z1V5ODVn` → Recent deliveries.
+After a successful checkout, check the Stripe Dashboard → Developers → Webhooks → `we_1TMUlxIoN7XN0qfmPqNI5lSO` → Recent deliveries.
 
 You should see `customer.subscription.created` with a `200` response.
 
@@ -74,13 +89,16 @@ Expected after successful checkout:
 If you ever need to create a new webhook endpoint (e.g., custom domain):
 
 1. Go to Stripe Dashboard → Developers → Webhooks → Add endpoint
-2. URL: `https://your-domain.com/api/webhooks/stripe`
+2. URL: `https://positives.life/api/webhooks/stripe`
 3. Select events:
+   - `checkout.session.completed`
    - `customer.subscription.created`
    - `customer.subscription.updated`
    - `customer.subscription.deleted`
+   - `customer.subscription.trial_will_end`
+   - `invoice.payment_succeeded`
    - `invoice.payment_failed`
-4. Copy the signing secret and update `STRIPE_WEBHOOK_SECRET` in Vercel
+4. Copy the signing secret and update `STRIPE_WEBHOOK_SECRET` locally and in Vercel
 
 ---
 

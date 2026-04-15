@@ -43,14 +43,15 @@ Verify production env intent against [.env.example](/Users/ryanbradshaw/AntiGrav
 - `NEXT_PUBLIC_APP_URL`
 - `ADMIN_EMAILS`
 
-For an L1-only launch, keep these unset in production:
+For full hosted-billing testing, these are configured in Vercel for the real
+Positives Stripe account in test mode:
 
 - `STRIPE_PRICE_LEVEL_2_MONTHLY`
 - `STRIPE_PRICE_LEVEL_2_ANNUAL`
 - `STRIPE_PRICE_LEVEL_3_MONTHLY`
 - `STRIPE_PRICE_LEVEL_3_ANNUAL`
-- `STRIPE_PRICE_LEVEL_4_MONTHLY`
-- `STRIPE_PRICE_LEVEL_4_ANNUAL`
+- `STRIPE_PRICE_LEVEL_4_THREE_PAY`
+- `STRIPE_PRODUCT_LEVEL_4`
 
 Operational launch settings:
 

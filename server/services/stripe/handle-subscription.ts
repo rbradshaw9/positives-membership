@@ -4,7 +4,9 @@ import type { Enums } from "@/types/supabase";
 import { config } from "@/lib/config";
 import { getStripe } from "@/lib/stripe/config";
 import {
-  syncCancellation,
+  syncAccessRestored,
+  syncCancellationCleared,
+  syncCancellationState,
   syncPaymentFailed,
   syncPaymentRecovered,
   syncPaymentSucceeded,
@@ -127,7 +129,7 @@ async function updateMemberSubscription(
   // First verify the member row exists — a zero-row update is otherwise silent.
   const { data: existing, error: lookupError } = await supabase
     .from("member")
-    .select("id, email, subscription_tier, subscription_status, referred_by_fpr, email_unsubscribed")
+    .select("id, email, subscription_tier, subscription_status, subscription_end_date, referred_by_fpr, email_unsubscribed")
     .eq("stripe_customer_id", customerId)
     .maybeSingle();
 
@@ -261,6 +263,42 @@ async function updateMemberSubscription(
     });
   }
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://positives.life";
+  const regainedAccess =
+    existing.subscription_status === "past_due" &&
+    (status === "active" || status === "trialing");
+
+  if (existing.email && regainedAccess) {
+    await syncAccessRestored({
+      email: existing.email,
+      accessRestoredAt: new Date().toISOString(),
+      loginLink: `${appUrl}/login?next=/today`,
+      planName,
+    });
+  }
+
+  const cancellationScheduled =
+    Boolean(subscription.cancel_at) &&
+    (status === "active" || status === "trialing");
+
+  if (existing.email && cancellationScheduled) {
+    await syncCancellationState({
+      email: existing.email,
+      tier: null,
+      canceledAt: new Date().toISOString(),
+      paidThroughAt: subscriptionEndDate ?? undefined,
+    });
+  }
+
+  const cancellationCleared =
+    Boolean(existing.subscription_end_date) &&
+    !subscriptionEndDate &&
+    (status === "active" || status === "trialing");
+
+  if (existing.email && cancellationCleared) {
+    await syncCancellationCleared({ email: existing.email });
+  }
+
   if (comparePlanLevels(existing.subscription_tier, tier) > 0) {
     try {
       await trackServerEvent({
@@ -305,7 +343,7 @@ export async function handleSubscriptionDeleted(
 
   const { data: canceledMember } = await supabase
     .from("member")
-    .select("id, email")
+    .select("id, email, subscription_tier")
     .eq("stripe_customer_id", customerId)
     .maybeSingle();
 
@@ -327,8 +365,12 @@ export async function handleSubscriptionDeleted(
   console.log(`[Stripe] Subscription canceled — customer: ${customerId}`);
 
   if (canceledMember?.email) {
-    // Non-fatal: sync cancellation tag to ActiveCampaign
-    await syncCancellation({ email: canceledMember.email, tier: null });
+    await syncCancellationState({
+      email: canceledMember.email,
+      tier: (canceledMember.subscription_tier as SubscriptionTier | null) ?? null,
+      canceledAt: new Date().toISOString(),
+      paidThroughAt: new Date().toISOString(),
+    });
   }
 
   if (canceledMember?.id) {
@@ -422,12 +464,10 @@ export async function handlePaymentFailed(invoice: Stripe.Invoice) {
     const member = await getMemberByCustomerId(customerId);
     if (member?.email) {
       // Generate signed billing token for 1-click access (no login required)
-      let updatePaymentUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://positives.life"}/account/billing`;
       let billingLink: string | undefined;
       try {
         const token = generateBillingToken({ stripeCustomerId: customerId, email: member.email });
         const tokenUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://positives.life"}/account/billing?token=${token}`;
-        updatePaymentUrl = tokenUrl;
         billingLink = tokenUrl;
       } catch (tokenErr) {
         console.error("[Stripe] Failed to generate billing token (using fallback URL):", tokenErr);

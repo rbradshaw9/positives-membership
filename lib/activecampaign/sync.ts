@@ -16,6 +16,21 @@
  *   founding_member → 7
  *   onboarding_complete → 8
  *   affiliate       → 9
+ *   welcome_ready   → 14
+ *   trial_started   → 15
+ *   payment_succeeded → 16
+ *   trial_ending    → 17
+ *   tier_changed    → 18
+ *   payment_failed  → 19
+ *   first_login_complete → 20
+ *   access_restored → 23
+ *   membership_reactivated → 24
+ *   event_reminder_24h → 25
+ *   event_reminder_1h → 26
+ *   event_replay_ready → 27
+ *   coaching_reminder_24h → 28
+ *   coaching_reminder_1h → 29
+ *   coaching_replay_ready → 30
  *
  * List IDs:
  *   Positives Audience → 3
@@ -51,6 +66,14 @@ const TAG = {
   tier_changed:        18,
   payment_failed:      19,
   first_login_complete: 20,
+  access_restored:     23,
+  membership_reactivated: 24,
+  event_reminder_24h:  25,
+  event_reminder_1h:   26,
+  event_replay_ready:  27,
+  coaching_reminder_24h: 28,
+  coaching_reminder_1h: 29,
+  coaching_replay_ready: 30,
 } as const;
 
 /** Custom field IDs (created 2026-04-07) */
@@ -73,6 +96,16 @@ const FIELD = {
   newTier:           20,
   planName:          21,
   firstLoginAt:      22,
+  accessRestoredAt:  23,
+  reactivatedAt:     24,
+  canceledAt:        25,
+  paidThroughAt:     26,
+  nextEventTitle:    27,
+  nextEventStartsAt: 28,
+  nextEventJoinUrl:  29,
+  nextEventReplayUrl: 30,
+  nextEventTier:     31,
+  nextEventType:     32,
 } as const;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -87,6 +120,14 @@ type ContactSyncPayload = {
 type ContactSyncResponse = {
   contact: { id: string };
 };
+
+type ReminderTriggerTag =
+  | "event_reminder_24h"
+  | "event_reminder_1h"
+  | "event_replay_ready"
+  | "coaching_reminder_24h"
+  | "coaching_reminder_1h"
+  | "coaching_replay_ready";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -328,6 +369,50 @@ export async function syncCancellation(params: { email: string; tier: Subscripti
   }
 }
 
+export async function syncCancellationState(params: {
+  email: string;
+  tier: SubscriptionTier | null;
+  canceledAt?: string;
+  paidThroughAt?: string;
+}): Promise<void> {
+  if (!acIsConfigured()) return;
+
+  try {
+    const contactId = await syncContact({ email: params.email });
+
+    if (params.tier) {
+      await removeTagIfPresent(contactId, TIER_TAG[params.tier]);
+    }
+
+    await addTag(contactId, TAG.canceled);
+    await removeTagIfPresent(contactId, TAG.past_due);
+    await removeTagIfConfigured(contactId, TAG.payment_failed);
+    await removeTagIfConfigured(contactId, TAG.access_restored);
+
+    await setFieldValueIfConfigured(contactId, FIELD.canceledAt, params.canceledAt, "Canceled At");
+    await setFieldValueIfConfigured(contactId, FIELD.paidThroughAt, params.paidThroughAt, "Paid Through At");
+
+    console.log(`[AC] Cancellation state synced — ${params.email}`);
+  } catch (err) {
+    console.error("[AC] syncCancellationState failed (non-fatal):", err);
+  }
+}
+
+export async function syncCancellationCleared(params: {
+  email: string;
+}): Promise<void> {
+  if (!acIsConfigured()) return;
+
+  try {
+    const contactId = await syncContact({ email: params.email });
+    await removeTagIfPresent(contactId, TAG.canceled);
+
+    console.log(`[AC] Cancellation cleared — ${params.email}`);
+  } catch (err) {
+    console.error("[AC] syncCancellationCleared failed (non-fatal):", err);
+  }
+}
+
 /**
  * Called on invoice.payment_failed.
  * Sets BILLING_LINK field (signed 7-day token URL) then applies past_due tag.
@@ -373,6 +458,46 @@ export async function syncPaymentRecovered(params: { email: string }): Promise<v
     console.log(`[AC] Payment recovered — past_due tag removed for ${params.email}`);
   } catch (err) {
     console.error("[AC] syncPaymentRecovered failed (non-fatal):", err);
+  }
+}
+
+export async function syncAccessRestored(params: {
+  email: string;
+  accessRestoredAt?: string;
+  loginLink?: string;
+  planName?: string;
+}): Promise<void> {
+  if (!acIsConfigured()) return;
+
+  try {
+    const contactId = await syncContact({ email: params.email });
+
+    await setFieldValueIfConfigured(
+      contactId,
+      FIELD.accessRestoredAt,
+      params.accessRestoredAt,
+      "Access Restored At"
+    );
+    await setFieldValueIfConfigured(
+      contactId,
+      FIELD.loginLink,
+      params.loginLink,
+      "Login Link"
+    );
+    await setFieldValueIfConfigured(
+      contactId,
+      FIELD.planName,
+      params.planName,
+      "Plan Name"
+    );
+
+    await removeTagIfPresent(contactId, TAG.past_due);
+    await removeTagIfConfigured(contactId, TAG.payment_failed);
+    await addTagIfConfigured(contactId, TAG.access_restored, "access_restored");
+
+    console.log(`[AC] Access restored synced — ${params.email}`);
+  } catch (err) {
+    console.error("[AC] syncAccessRestored failed (non-fatal):", err);
   }
 }
 
@@ -484,6 +609,36 @@ export async function syncWelcomeEmail(params: {
     console.log(`[AC] Welcome email synced — ${params.email}`);
   } catch (err) {
     console.error("[AC] syncWelcomeEmail failed (non-fatal):", err);
+  }
+}
+
+export async function syncMembershipReactivated(params: {
+  email: string;
+  loginLink?: string;
+  planName?: string;
+  trialEndDate?: string;
+  reactivatedAt?: string;
+}): Promise<void> {
+  if (!acIsConfigured()) return;
+
+  try {
+    const contactId = await syncContact({ email: params.email });
+
+    await setFieldValueIfConfigured(contactId, FIELD.loginLink, params.loginLink, "Login Link");
+    await setFieldValueIfConfigured(contactId, FIELD.planName, params.planName, "Plan Name");
+    await setFieldValueIfConfigured(contactId, FIELD.trialEndDate, params.trialEndDate, "Trial End Date");
+    await setFieldValueIfConfigured(contactId, FIELD.reactivatedAt, params.reactivatedAt, "Reactivated At");
+
+    await removeTagIfPresent(contactId, TAG.canceled);
+    await addTagIfConfigured(
+      contactId,
+      TAG.membership_reactivated,
+      "membership_reactivated"
+    );
+
+    console.log(`[AC] Membership reactivated synced — ${params.email}`);
+  } catch (err) {
+    console.error("[AC] syncMembershipReactivated failed (non-fatal):", err);
   }
 }
 
@@ -601,5 +756,35 @@ export async function syncMarketingPreference(params: {
     );
   } catch (err) {
     console.error("[AC] syncMarketingPreference failed (non-fatal):", err);
+  }
+}
+
+export async function syncReminderContext(params: {
+  email: string;
+  triggerTag: ReminderTriggerTag;
+  title: string;
+  startsAt: string;
+  joinUrl?: string;
+  replayUrl?: string;
+  eventTier: SubscriptionTier;
+  eventType: "event" | "coaching";
+}): Promise<void> {
+  if (!acIsConfigured()) return;
+
+  try {
+    const contactId = await syncContact({ email: params.email });
+
+    await setFieldValueIfConfigured(contactId, FIELD.nextEventTitle, params.title, "Next Event Title");
+    await setFieldValueIfConfigured(contactId, FIELD.nextEventStartsAt, params.startsAt, "Next Event Starts At");
+    await setFieldValueIfConfigured(contactId, FIELD.nextEventJoinUrl, params.joinUrl, "Next Event Join URL");
+    await setFieldValueIfConfigured(contactId, FIELD.nextEventReplayUrl, params.replayUrl, "Next Event Replay URL");
+    await setFieldValueIfConfigured(contactId, FIELD.nextEventTier, params.eventTier, "Next Event Tier");
+    await setFieldValueIfConfigured(contactId, FIELD.nextEventType, params.eventType, "Next Event Type");
+
+    await addTagIfConfigured(contactId, TAG[params.triggerTag], params.triggerTag);
+
+    console.log(`[AC] Reminder context synced — ${params.email}, tag: ${params.triggerTag}`);
+  } catch (err) {
+    console.error("[AC] syncReminderContext failed (non-fatal):", err);
   }
 }

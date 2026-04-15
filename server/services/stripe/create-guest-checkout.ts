@@ -148,7 +148,7 @@ export async function createGuestCheckoutSession(
 
     locale: "auto",
 
-    // Collect phone number — passed to ActiveCampaign for SMS marketing
+    // Store phone on the AC contact profile. This is not SMS marketing consent.
     phone_number_collection: { enabled: true },
 
     name_collection: {

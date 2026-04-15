@@ -10,6 +10,8 @@
     "seed:users": "node scripts/seed-test-users.mjs",
     "seed:billing-fixtures": "node scripts/seed-stripe-billing-fixtures.mjs",
     "backfill:member-names": "node scripts/backfill-member-names-from-stripe.mjs",
+    "stripe:catalog": "node scripts/configure-stripe-product-catalog.mjs",
+    "stripe:hosted-billing": "node scripts/configure-stripe-hosted-billing.mjs",
     "content:launch": "node scripts/apply-launch-content-plan.mjs",
     "audit:launch": "node scripts/audit-launch-readiness.mjs",
     "test:e2e": "npm run seed:users && playwright test"

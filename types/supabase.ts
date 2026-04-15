@@ -216,6 +216,51 @@ export type Database = {
           },
         ]
       }
+      email_reminder_dispatch: {
+        Row: {
+          activecampaign_tag: string
+          content_id: string
+          created_at: string
+          dispatched_at: string | null
+          id: string
+          member_id: string
+          reminder_kind: string
+        }
+        Insert: {
+          activecampaign_tag: string
+          content_id: string
+          created_at?: string
+          dispatched_at?: string | null
+          id?: string
+          member_id: string
+          reminder_kind: string
+        }
+        Update: {
+          activecampaign_tag?: string
+          content_id?: string
+          created_at?: string
+          dispatched_at?: string | null
+          id?: string
+          member_id?: string
+          reminder_kind?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_reminder_dispatch_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_reminder_dispatch_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "member"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       content: {
         Row: {
           admin_notes: string | null
@@ -243,6 +288,8 @@ export type Database = {
           resource_links: Json
           s3_audio_key: string | null
           search_vector: unknown
+          send_reminders: boolean
+          send_replay_email: boolean
           source: Database["public"]["Enums"]["content_source"]
           source_ref: string | null
           starts_at: string | null
@@ -283,6 +330,8 @@ export type Database = {
           resource_links?: Json
           s3_audio_key?: string | null
           search_vector?: unknown
+          send_reminders?: boolean
+          send_replay_email?: boolean
           source?: Database["public"]["Enums"]["content_source"]
           source_ref?: string | null
           starts_at?: string | null
@@ -323,6 +372,8 @@ export type Database = {
           resource_links?: Json
           s3_audio_key?: string | null
           search_vector?: unknown
+          send_reminders?: boolean
+          send_replay_email?: boolean
           source?: Database["public"]["Enums"]["content_source"]
           source_ref?: string | null
           starts_at?: string | null

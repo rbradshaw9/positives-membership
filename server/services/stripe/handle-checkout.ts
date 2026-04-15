@@ -1,7 +1,11 @@
 import type Stripe from "stripe";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe/config";
-import { syncNewMember, syncWelcomeEmail } from "@/lib/activecampaign/sync";
+import {
+  syncMembershipReactivated,
+  syncNewMember,
+  syncWelcomeEmail,
+} from "@/lib/activecampaign/sync";
 import { trackFpSale } from "@/lib/firstpromoter/client";
 import { trackServerEvent } from "@/lib/analytics/measurement-protocol";
 import { getSubscriptionAnalyticsFromPriceId } from "@/lib/analytics/subscription";
@@ -243,6 +247,8 @@ async function handleGuestCheckout(
   const subscriptionStatus = mapStripeSubscriptionStatus(subscription?.status);
   const trialEndDate = formatStripeDate(subscription?.trial_end);
   let marketingSuppressed = false;
+  let priorSubscriptionStatus: SubscriptionStatus | null = null;
+  let shouldUseReactivationFlow = false;
 
   // ── Step 2: Get or create Supabase auth user ─────────────────────────────
   // email_confirm: true — payment is proof of email ownership.
@@ -276,7 +282,7 @@ async function handleGuestCheckout(
 
     const { data: memberRow, error: memberLookupError } = await supabase
       .from("member")
-      .select("id, email_unsubscribed")
+      .select("id, email_unsubscribed, subscription_status")
       .eq("email", email)
       .maybeSingle();
 
@@ -289,6 +295,11 @@ async function handleGuestCheckout(
 
     userId = memberRow.id;
     marketingSuppressed = Boolean(memberRow.email_unsubscribed);
+    priorSubscriptionStatus = memberRow.subscription_status;
+    shouldUseReactivationFlow =
+      priorSubscriptionStatus === "canceled" ||
+      priorSubscriptionStatus === "inactive" ||
+      priorSubscriptionStatus === "past_due";
     console.log(
       `[Stripe] Existing user resolved from member table — userId: ${userId}, email: ${email}`
     );
@@ -441,13 +452,23 @@ async function handleGuestCheckout(
       `${appUrl}/auth/confirm?token_hash=${encodeURIComponent(tokenHash)}` +
       `&type=email&next=${encodeURIComponent("/today")}`;
 
-    await syncWelcomeEmail({
-      email,
-      loginLink: loginUrl,
-      planName,
-      trialEndDate,
-      isTrial: checkoutMode === "trial_7_day",
-    });
+    if (shouldUseReactivationFlow) {
+      await syncMembershipReactivated({
+        email,
+        loginLink: loginUrl,
+        planName,
+        trialEndDate,
+        reactivatedAt: new Date().toISOString(),
+      });
+    } else {
+      await syncWelcomeEmail({
+        email,
+        loginLink: loginUrl,
+        planName,
+        trialEndDate,
+        isTrial: checkoutMode === "trial_7_day",
+      });
+    }
   } catch (syncErr) {
     console.error(
       `[AC] Failed to sync welcome email fields for ${email}: ` +

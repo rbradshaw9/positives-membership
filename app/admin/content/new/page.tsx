@@ -95,6 +95,8 @@ export interface ContentFormValues {
   tier_min?: string | null;   // Sprint 10
   starts_at?: string | null;  // Sprint 10
   join_url?: string | null;   // Sprint 10 patch: coaching Zoom link
+  send_reminders?: boolean;
+  send_replay_email?: boolean;
 }
 
 /**
@@ -260,21 +262,55 @@ export function ContentForm({
 
         {/* starts_at — relevant for coaching calls and future events */}
         {(isCoaching || !!values?.starts_at) && (
-          <div className="admin-form-field">
-            <label htmlFor="starts_at" className="admin-label">
-              Call date &amp; time
-            </label>
-            <input
-              id="starts_at"
-              name="starts_at"
-              type="datetime-local"
-              defaultValue={startsAtLocal}
-              className="admin-input"
-            />
-            <p className="admin-hint">
-              When the live call happens. Leave blank for replays with no scheduled time.
-            </p>
-          </div>
+          <>
+            <div className="admin-form-field">
+              <label htmlFor="starts_at" className="admin-label">
+                Call date &amp; time
+              </label>
+              <input
+                id="starts_at"
+                name="starts_at"
+                type="datetime-local"
+                defaultValue={startsAtLocal}
+                className="admin-input"
+              />
+              <p className="admin-hint">
+                When the live call happens. Leave blank for replays with no scheduled time.
+              </p>
+            </div>
+
+            <div className="admin-form-grid-2">
+              <label
+                className="admin-form-field"
+                style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start" }}
+              >
+                <input type="hidden" name="send_reminders" value="off" />
+                <input
+                  type="checkbox"
+                  name="send_reminders"
+                  value="on"
+                  defaultChecked={values?.send_reminders ?? true}
+                  style={{ marginTop: "0.25rem", accentColor: "var(--color-primary)", width: "1rem", height: "1rem", flexShrink: 0 }}
+                />
+                <span>Send the 24h and 1h reminder emails</span>
+              </label>
+
+              <label
+                className="admin-form-field"
+                style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start" }}
+              >
+                <input type="hidden" name="send_replay_email" value="off" />
+                <input
+                  type="checkbox"
+                  name="send_replay_email"
+                  value="on"
+                  defaultChecked={values?.send_replay_email ?? true}
+                  style={{ marginTop: "0.25rem", accentColor: "var(--color-primary)", width: "1rem", height: "1rem", flexShrink: 0 }}
+                />
+                <span>Send the replay-ready email when replay media is added</span>
+              </label>
+            </div>
+          </>
         )}
       </div>
 
