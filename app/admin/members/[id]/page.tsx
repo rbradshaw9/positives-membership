@@ -306,6 +306,12 @@ function MemberCrmStyles() {
         box-shadow: 0 18px 40px rgba(14, 16, 21, 0.22);
       }
 
+      .member-crm-avatar--photo {
+        background-position: center;
+        background-size: cover;
+        color: transparent;
+      }
+
       .member-crm-eyebrow {
         margin: 0 0 0.35rem;
         font-size: 0.6875rem;
@@ -504,6 +510,13 @@ function MemberCrmStyles() {
         letter-spacing: -0.02em;
       }
 
+      .member-crm-card-title--row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+      }
+
       .member-crm-form-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
@@ -675,6 +688,17 @@ function MemberCrmStyles() {
         font-size: 0.74rem;
       }
 
+      .member-crm-link {
+        color: var(--color-primary);
+        font-size: 0.8125rem;
+        font-weight: 750;
+        text-decoration: none;
+      }
+
+      .member-crm-link:hover {
+        text-decoration: underline;
+      }
+
       @media (max-width: 1100px) {
         .member-crm-hero__inner,
         .member-crm-grid-2 {
@@ -795,7 +819,14 @@ export default async function AdminMemberDetailPage({
       <section className="member-crm-hero">
         <div className="member-crm-hero__inner">
           <div className="member-crm-identity">
-            <div className="member-crm-avatar" aria-hidden="true">
+            <div
+              className={[
+                "member-crm-avatar",
+                member.avatar_url ? "member-crm-avatar--photo" : "",
+              ].filter(Boolean).join(" ")}
+              style={member.avatar_url ? { backgroundImage: `url(${member.avatar_url})` } : undefined}
+              aria-hidden="true"
+            >
               {getInitials(member.name, member.email)}
             </div>
             <div>
@@ -1188,10 +1219,13 @@ export default async function AdminMemberDetailPage({
         </dl>
       </Section>
 
-      <Section id="communication" title="Communication" description="Email preferences, lifecycle context, and role scaffolding.">
+      <Section id="communication" title="Communication" description="Email preferences, referral context, lifecycle context, and role scaffolding.">
         <dl className="member-crm-profile-grid">
           <ProfileField label="Marketing Email">
             {member.email_unsubscribed ? "Unsubscribed" : "Subscribed / not opted out"}
+            <span className="member-crm-muted">
+              App flag from member.email_unsubscribed. Our unsubscribe route syncs to AC; direct AC opt-outs need the webhook/reconciliation task.
+            </span>
           </ProfileField>
           <ProfileField label="Password">
             {member.password_set ? "Password set" : "Magic-link / password not set"}
@@ -1204,6 +1238,53 @@ export default async function AdminMemberDetailPage({
           </ProfileField>
         </dl>
         <div className="member-crm-grid-2" style={{ marginTop: "1.25rem" }}>
+          <div className="member-crm-card">
+            <p className="member-crm-card-title member-crm-card-title--row">
+              Affiliate & referral
+              {member.fp_promoter_id ? (
+                <a
+                  href="https://positives.firstpromoter.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="member-crm-link"
+                >
+                  Open portal
+                </a>
+              ) : null}
+            </p>
+            <dl className="member-crm-profile-grid">
+              <ProfileField label="Promoter ID">
+                {member.fp_promoter_id ? (
+                  <span className="member-crm-mono">{member.fp_promoter_id}</span>
+                ) : "Not an affiliate"}
+              </ProfileField>
+              <ProfileField label="Referral Code">
+                {member.fp_ref_id ? (
+                  <span className="member-crm-mono">{member.fp_ref_id}</span>
+                ) : "Not set"}
+              </ProfileField>
+              <ProfileField label="Referral Link">
+                {member.fp_ref_id ? (
+                  <a
+                    href={`https://positives.life?fpr=${member.fp_ref_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="member-crm-link member-crm-mono"
+                  >
+                    positives.life?fpr={member.fp_ref_id}
+                  </a>
+                ) : "Not available"}
+              </ProfileField>
+              <ProfileField label="Referred By">
+                {member.referred_by_fpr ? (
+                  <span className="member-crm-mono">{member.referred_by_fpr}</span>
+                ) : "No referral source stored"}
+              </ProfileField>
+              <ProfileField label="Payout Email">
+                {member.paypal_email ?? "Not set"}
+              </ProfileField>
+            </dl>
+          </div>
           <div className="member-crm-card">
             <p className="member-crm-card-title">Assigned admin roles</p>
             {roles.length > 0 ? (
