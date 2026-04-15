@@ -30,11 +30,13 @@ export function BodyEditor({ defaultValue = "", placeholder }: BodyEditorProps) 
   const placeholderText = placeholder ?? "Write body content… Headings, bold, lists, and links are all supported.";
 
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit.configure({
         // Disable codeBlock — not needed for wellness prose
         codeBlock: false,
         code: false,
+        link: false,
       }),
       TiptapLink.configure({
         openOnClick: false,

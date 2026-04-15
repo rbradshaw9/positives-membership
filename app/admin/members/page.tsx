@@ -186,8 +186,11 @@ export default async function AdminMembersPage({
       {/* Search + filters bar */}
       <form method="GET" action="/admin/members" className="admin-search-bar">
         <div className="admin-search-bar__field" style={{ flex: "1", minWidth: "200px" }}>
-          <label className="admin-search-bar__label">Search by email or name</label>
+          <label htmlFor="member-search" className="admin-search-bar__label">
+            Search by email or name
+          </label>
           <input
+            id="member-search"
             type="text"
             name="search"
             defaultValue={search}
@@ -197,8 +200,8 @@ export default async function AdminMembersPage({
         </div>
 
         <div className="admin-search-bar__field">
-          <label className="admin-search-bar__label">Status</label>
-          <select name="status" defaultValue={status}>
+          <label htmlFor="member-status" className="admin-search-bar__label">Status</label>
+          <select id="member-status" name="status" defaultValue={status}>
             {STATUS_FILTERS.map((f) => (
               <option key={f.value} value={f.value}>
                 {f.label}
@@ -208,8 +211,8 @@ export default async function AdminMembersPage({
         </div>
 
         <div className="admin-search-bar__field">
-          <label className="admin-search-bar__label">Tier</label>
-          <select name="tier" defaultValue={tier}>
+          <label htmlFor="member-tier" className="admin-search-bar__label">Tier</label>
+          <select id="member-tier" name="tier" defaultValue={tier}>
             {TIER_FILTERS.map((f) => (
               <option key={f.value} value={f.value}>
                 {f.label}
@@ -219,8 +222,8 @@ export default async function AdminMembersPage({
         </div>
 
         <div className="admin-search-bar__field">
-          <label className="admin-search-bar__label">Billing</label>
-          <select name="billing" defaultValue={billing}>
+          <label htmlFor="member-billing" className="admin-search-bar__label">Billing</label>
+          <select id="member-billing" name="billing" defaultValue={billing}>
             {BILLING_FILTERS.map((f) => (
               <option key={f.value} value={f.value}>
                 {f.label}
@@ -230,8 +233,8 @@ export default async function AdminMembersPage({
         </div>
 
         <div className="admin-search-bar__field">
-          <label className="admin-search-bar__label">Password</label>
-          <select name="password" defaultValue={password}>
+          <label htmlFor="member-password" className="admin-search-bar__label">Password</label>
+          <select id="member-password" name="password" defaultValue={password}>
             {PASSWORD_FILTERS.map((f) => (
               <option key={f.value} value={f.value}>
                 {f.label}

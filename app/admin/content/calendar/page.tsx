@@ -37,12 +37,10 @@ const TYPE_LABEL: Record<string, string> = {
 function ItemCard({
   item,
   extras,
-  fallbackHref,
   sectionLabel,
 }: {
   item: CalendarItem | null;
   extras: number;
-  fallbackHref: string;
   sectionLabel: string;
 }) {
   return (
@@ -81,13 +79,9 @@ function ItemCard({
 
           <div className="mt-2 flex items-center justify-between gap-2">
             {extras > 0 ? (
-              <Link
-                href={fallbackHref}
-                className="inline-block text-[11px] transition-colors hover:text-foreground"
-                style={{ color: "var(--color-text-subtle)" }}
-              >
-                +{extras} more
-              </Link>
+              <span className="text-[11px]" style={{ color: "var(--color-text-subtle)" }}>
+                +{extras} more scheduled
+              </span>
             ) : (
               <span className="text-[11px]" style={{ color: "var(--color-text-subtle)" }}>
                 Scheduled
@@ -185,19 +179,16 @@ function DayCell({ day }: { day: AdminCalendarDay }) {
         <ItemCard
           item={day.daily}
           extras={day.dailyExtras}
-          fallbackHref="/admin/content?type=daily_audio"
           sectionLabel="Daily Coverage"
         />
         <ItemCard
           item={day.weekly}
           extras={day.weeklyExtras}
-          fallbackHref="/admin/content?type=weekly_principle"
           sectionLabel="Weekly Principle"
         />
         <ItemCard
           item={day.monthly}
           extras={day.monthlyExtras}
-          fallbackHref="/admin/content?type=monthly_theme"
           sectionLabel="Monthly Theme"
         />
 

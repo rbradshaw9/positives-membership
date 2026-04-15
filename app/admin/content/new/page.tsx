@@ -3,6 +3,7 @@ import { createContent } from "../actions";
 import { getEffectiveDate } from "@/lib/dates/effective-date";
 import { ResourceLinksEditor } from "@/components/admin/ResourceLinksEditor";
 import { BodyEditor } from "@/components/admin/BodyEditor";
+import { ContentTypeSelect } from "@/components/admin/ContentTypeSelect";
 
 /**
  * app/admin/content/new/page.tsx
@@ -43,7 +44,7 @@ export default async function AdminContentNewPage({
       <div className="admin-page-header">
         <h1 className="admin-page-header__title">New content</h1>
         <p className="admin-page-header__subtitle">
-          Create a Daily, Weekly, or Monthly content record.
+          Create a Daily, Weekly, Monthly, or Coaching content record.
         </p>
       </div>
 
@@ -138,6 +139,12 @@ export function ContentForm({
   const isWeekly = type === "weekly_principle";
   const isMonthly = type === "monthly_theme";
   const isCoaching = type === "coaching_call";
+  const contentTypeOptions = [
+    { value: "daily_audio", label: "Daily - audio practice" },
+    { value: "weekly_principle", label: "Weekly - principle" },
+    { value: "monthly_theme", label: "Monthly - theme" },
+    { value: "coaching_call", label: "Coaching call (Coaching Circle+)" },
+  ];
 
   // Format stored ISO string back to datetime-local input value (YYYY-MM-DDTHH:mm)
   const startsAtLocal = values?.starts_at
@@ -155,18 +162,35 @@ export function ContentForm({
         <label htmlFor="type" className="admin-label">
           Content type <span className="admin-label__required">*</span>
         </label>
-        <select
-          id="type"
-          name="type"
-          defaultValue={type}
-          className="admin-select"
-        >
-          <option value="daily_audio">Daily — audio practice</option>
-          <option value="weekly_principle">Weekly — principle</option>
-          <option value="monthly_theme">Monthly — theme</option>
-          <option value="coaching_call">Coaching call (Coaching Circle+)</option>
-        </select>
-        <p className="admin-hint">Determines which Today card this appears in</p>
+        {values?.id ? (
+          <>
+            <input type="hidden" name="type" value={type} />
+            <select id="type" defaultValue={type} className="admin-select" disabled>
+              {contentTypeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <p className="admin-hint">
+              Existing content keeps its type so scheduling and media fields stay safe. Create a
+              new record if this needs to become a different content type.
+            </p>
+          </>
+        ) : (
+          <>
+            <ContentTypeSelect
+              id="type"
+              name="type"
+              defaultValue={type}
+              className="admin-select"
+              options={contentTypeOptions}
+            />
+            <p className="admin-hint">
+              Changing this reloads the form with the right scheduling and media fields.
+            </p>
+          </>
+        )}
       </div>
 
       {/* Title */}

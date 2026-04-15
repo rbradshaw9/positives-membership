@@ -21,10 +21,10 @@ const ADMIN_MONTH_WORKSPACE_FIXTURE = {
   marker: "e2e-admin-month-workspace",
   monthYear: "2099-11",
   label: "November 2099",
-  monthlyTitle: "E2E Monthly Theme",
-  weeklyTitle: "E2E Weekly Reflection",
-  assignedDailyTitle: "E2E Assigned Daily",
-  unassignedDailyTitle: "E2E Unassigned Daily",
+  monthlyTitle: "Admin Smoke Monthly Theme",
+  weeklyTitle: "Admin Smoke Weekly Reflection",
+  assignedDailyTitle: "Admin Smoke Assigned Daily",
+  unassignedDailyTitle: "Admin Smoke Unassigned Daily",
 };
 
 let envLoaded = false;
@@ -388,5 +388,6 @@ export async function loginWithPassword(
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: /sign in/i }).click();
-  await expect(page).toHaveURL(new RegExp(`${next.replace("/", "\\/")}$`));
+  const escapedNext = next.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  await expect(page).toHaveURL(new RegExp(`${escapedNext}$`));
 }

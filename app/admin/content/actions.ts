@@ -256,7 +256,13 @@ export async function togglePublish(formData: FormData) {
   const newStatus = current === "published" ? "draft" : "published";
 
   const supabase = adminClient();
-  await supabase.from("content").update({ status: newStatus }).eq("id", id);
+  await supabase
+    .from("content")
+    .update({
+      status: newStatus,
+      is_active: newStatus === "published",
+    })
+    .eq("id", id);
 
   revalidateContentTags();
 
