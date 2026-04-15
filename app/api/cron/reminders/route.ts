@@ -15,7 +15,7 @@ function isAuthorized(request: NextRequest) {
     return true;
   }
 
-  return request.headers.has("x-vercel-cron");
+  return false;
 }
 
 export async function GET(request: NextRequest) {
