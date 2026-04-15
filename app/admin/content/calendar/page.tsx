@@ -36,13 +36,15 @@ const TYPE_LABEL: Record<string, string> = {
 
 function ItemCard({
   item,
-  extras,
+  extraItems,
   sectionLabel,
 }: {
   item: CalendarItem | null;
-  extras: number;
+  extraItems: CalendarItem[];
   sectionLabel: string;
 }) {
+  const extras = extraItems.length;
+
   return (
     <div className="surface-card" style={{ padding: "0.625rem 0.75rem", borderRadius: "0.75rem" }}>
       <div className="mb-2 flex items-center justify-between gap-2">
@@ -95,6 +97,49 @@ function ItemCard({
               Edit
             </Link>
           </div>
+
+          {extraItems.length > 0 ? (
+            <details
+              className="mt-2 rounded-xl border border-dashed px-2.5 py-2"
+              style={{
+                borderColor: "var(--color-border)",
+                background: "rgba(18,20,23,0.02)",
+              }}
+            >
+              <summary
+                className="cursor-pointer text-[11px] font-medium"
+                style={{ color: "var(--color-text-subtle)" }}
+              >
+                View duplicate items
+              </summary>
+              <div className="mt-2 flex flex-col gap-2">
+                {extraItems.map((extra) => (
+                  <Link
+                    key={extra.id}
+                    href={extra.href}
+                    className="rounded-lg border px-2.5 py-2 text-xs transition-colors hover:bg-muted"
+                    style={{
+                      borderColor: "var(--color-border)",
+                      color: "var(--color-text-default)",
+                    }}
+                  >
+                    <span className="line-clamp-2 font-medium">{extra.title}</span>
+                    <span
+                      className={STATUS_BADGE[extra.status] ?? STATUS_BADGE.draft}
+                      style={{
+                        marginTop: "0.4rem",
+                        width: "fit-content",
+                        fontSize: "0.6rem",
+                        padding: "0.1rem 0.45rem",
+                      }}
+                    >
+                      {STATUS_LABEL[extra.status] ?? extra.status}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </details>
+          ) : null}
         </>
       ) : (
         <p className="text-xs leading-relaxed" style={{ color: "var(--color-text-subtle)" }}>
@@ -178,17 +223,17 @@ function DayCell({ day }: { day: AdminCalendarDay }) {
       <div className="flex flex-1 flex-col gap-2">
         <ItemCard
           item={day.daily}
-          extras={day.dailyExtras}
+          extraItems={day.dailyExtraItems}
           sectionLabel="Daily Coverage"
         />
         <ItemCard
           item={day.weekly}
-          extras={day.weeklyExtras}
+          extraItems={day.weeklyExtraItems}
           sectionLabel="Weekly Principle"
         />
         <ItemCard
           item={day.monthly}
-          extras={day.monthlyExtras}
+          extraItems={day.monthlyExtraItems}
           sectionLabel="Monthly Theme"
         />
 

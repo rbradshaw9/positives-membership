@@ -41,10 +41,13 @@ export type AdminCalendarDay = {
   isMonthStart: boolean;
   daily: CalendarItem | null;
   dailyExtras: number;
+  dailyExtraItems: CalendarItem[];
   weekly: CalendarItem | null;
   weeklyExtras: number;
+  weeklyExtraItems: CalendarItem[];
   monthly: CalendarItem | null;
   monthlyExtras: number;
+  monthlyExtraItems: CalendarItem[];
   hasDailyGap: boolean;
   hasDailyPublishRisk: boolean;
   hasWeeklyGap: boolean;
@@ -93,15 +96,18 @@ function toCalendarItem(row: CalendarContentRow): CalendarItem {
 function pickBest(rows: CalendarContentRow[]): {
   item: CalendarItem | null;
   extras: number;
+  extraItems: CalendarItem[];
 } {
   if (rows.length === 0) {
-    return { item: null, extras: 0 };
+    return { item: null, extras: 0, extraItems: [] };
   }
 
   const sorted = [...rows].sort(comparePriority);
+  const items = sorted.map(toCalendarItem);
   return {
-    item: toCalendarItem(sorted[0]),
+    item: items[0],
     extras: Math.max(0, sorted.length - 1),
+    extraItems: items.slice(1),
   };
 }
 
@@ -198,10 +204,13 @@ export async function getAdminContentCalendar(
       isMonthStart,
       daily: daily.item,
       dailyExtras: daily.extras,
+      dailyExtraItems: daily.extraItems,
       weekly: weekly.item,
       weeklyExtras: weekly.extras,
+      weeklyExtraItems: weekly.extraItems,
       monthly: monthly.item,
       monthlyExtras: monthly.extras,
+      monthlyExtraItems: monthly.extraItems,
       hasDailyGap: dailyRows.length === 0,
       hasDailyPublishRisk: dailyRows.length > 0 && !hasPublishedDaily,
       hasWeeklyGap: isWeekStart && !publishedWeeklyStarts.has(weekStart),
