@@ -984,8 +984,14 @@ function EnrollScreen({
           />
           <span>
             I agree to the{" "}
-            <Link href="/affiliate-program" style={{ color: "#0F766E", fontWeight: 700, textDecoration: "underline" }}>
+            <Link
+              href="/affiliate-program"
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: "#0F766E", fontWeight: 700, textDecoration: "underline" }}
+            >
               Affiliate Program Terms
+              <span className="sr-only"> opens in a new tab</span>
             </Link>
             .
           </span>
@@ -1929,8 +1935,14 @@ function EarningsTab({
           </p>
           <p style={{ margin: "0.55rem 0 0", fontSize: "0.8rem", color: "#71717A", lineHeight: 1.55 }}>
             Need a refresher on payouts, prohibited behavior, or program rules?{" "}
-            <Link href="/affiliate-program" style={{ color: "#0F766E", fontWeight: 700, textDecoration: "underline" }}>
+            <Link
+              href="/affiliate-program"
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: "#0F766E", fontWeight: 700, textDecoration: "underline" }}
+            >
               Review the Affiliate Program Terms
+              <span className="sr-only"> opens in a new tab</span>
             </Link>
             .
           </p>
