@@ -10,11 +10,17 @@ import {
 import { getContentTitleMap } from "@/lib/queries/get-admin-members";
 import { PLAN_NAME_BY_TIER } from "@/lib/plans";
 import {
+  getAdminPlanChangeOptions,
+  getAdminPlanChangePreview,
+} from "@/server/services/stripe/admin-plan-change";
+import {
   addMemberAdminNote,
   addMemberDocumentReference,
+  applyMemberPlanChange,
   assignAdminRoleToMember,
   adjustMemberPoints,
   grantCourseToMember,
+  previewMemberPlanChange,
   removeAdminRoleFromMember,
   revokeCourseEntitlement,
   unlockCourseWithPointsForMember,
@@ -107,6 +113,13 @@ function formatDate(iso: string | null): string {
     day: "numeric",
     year: "numeric",
   }).format(new Date(iso));
+}
+
+function formatMoney(cents: number, currency: string) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency.toUpperCase(),
+  }).format(cents / 100);
 }
 
 function formatRelativeDate(iso: string | null): string {
@@ -745,7 +758,7 @@ function MemberCrmStyles() {
 }
 
 type PageParams = Promise<{ id: string }>;
-type SearchParams = Promise<{ success?: string }>;
+type SearchParams = Promise<{ success?: string; planTarget?: string }>;
 
 export default async function AdminMemberDetailPage({
   params,
@@ -791,6 +804,13 @@ export default async function AdminMemberDetailPage({
   const contentTitleMap = await getContentTitleMap(activity.map((event) => event.content_id));
   const stripeUrl = member.stripe_customer_id
     ? `https://dashboard.stripe.com/customers/${member.stripe_customer_id}`
+    : null;
+  const planChangeOptions = getAdminPlanChangeOptions();
+  const planChangePreview = sp.planTarget
+    ? await getAdminPlanChangePreview({
+        stripeCustomerId: member.stripe_customer_id,
+        targetKey: sp.planTarget,
+      })
     : null;
   const activeEntitlements = entitlements.filter((entitlement) => entitlement.status === "active");
   const inactiveEntitlements = entitlements.filter((entitlement) => entitlement.status !== "active");
@@ -1217,6 +1237,74 @@ export default async function AdminMemberDetailPage({
             Use Stripe for invoice/payment-method changes; use admin fields only for operational corrections.
           </ProfileField>
         </dl>
+        <div className="member-crm-grid-2" style={{ marginTop: "1.25rem" }}>
+          <form action={asFormAction(previewMemberPlanChange)} className="member-crm-card">
+            <input type="hidden" name="memberId" value={member.id} />
+            <p className="member-crm-card-title">Preview admin plan change</p>
+            <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
+              This only previews the Stripe impact. The change is not applied until the confirmation
+              step below is submitted.
+            </p>
+            <label className="admin-form-field">
+              <span className="admin-search-bar__label">Target plan</span>
+              <Select name="targetKey" defaultValue={sp.planTarget ?? ""} required>
+                <option value="">Choose target plan...</option>
+                {planChangeOptions.map((option) => (
+                  <option key={option.key} value={option.key}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            {planChangeOptions.length === 0 ? (
+              <p className="member-crm-record__note">
+                No plan-change prices are configured in this environment.
+              </p>
+            ) : null}
+            <button type="submit" className="admin-btn admin-btn--outline" style={{ marginTop: "0.75rem" }}>
+              Preview Stripe impact
+            </button>
+          </form>
+
+          <div className="member-crm-card">
+            <p className="member-crm-card-title">Stripe impact</p>
+            {!planChangePreview ? (
+              <EmptyState>Choose a target plan to preview the billing impact.</EmptyState>
+            ) : !planChangePreview.ok ? (
+              <EmptyState>{planChangePreview.error}</EmptyState>
+            ) : (
+              <div className="member-crm-list">
+                <dl className="member-crm-profile-grid">
+                  <ProfileField label="Current Plan">{planChangePreview.currentPlanName}</ProfileField>
+                  <ProfileField label="Target Plan">{planChangePreview.targetPlanName}</ProfileField>
+                  <ProfileField label="Effective">
+                    {planChangePreview.effectiveLabel}
+                  </ProfileField>
+                  <ProfileField label={planChangePreview.kind === "upgrade" ? "Prorated Charge Now" : "Charge Now"}>
+                    {planChangePreview.kind === "upgrade"
+                      ? formatMoney(planChangePreview.amountDueCents, planChangePreview.currency)
+                      : formatMoney(0, planChangePreview.currency)}
+                  </ProfileField>
+                  <ProfileField label="Next Billing Date">{planChangePreview.nextBillingLabel}</ProfileField>
+                </dl>
+                <p className="member-crm-record__note">{planChangePreview.message}</p>
+                {planChangePreview.kind !== "same_plan" ? (
+                  <form action={asFormAction(applyMemberPlanChange)}>
+                    <input type="hidden" name="memberId" value={member.id} />
+                    <input type="hidden" name="targetKey" value={planChangePreview.targetKey} />
+                    <ClientAuthorizationFields
+                      reasonName="changeReason"
+                      reasonPlaceholder="Example: Member requested upgrade by phone on Apr 15; confirmed immediate prorated charge."
+                    />
+                    <button type="submit" className="admin-btn admin-btn--primary" style={{ marginTop: "0.75rem" }}>
+                      {planChangePreview.kind === "upgrade" ? "Apply upgrade in Stripe" : "Schedule change in Stripe"}
+                    </button>
+                  </form>
+                ) : null}
+              </div>
+            )}
+          </div>
+        </div>
       </Section>
 
       <Section id="communication" title="Communication" description="Email preferences, referral context, lifecycle context, and role scaffolding.">

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdminPermission } from "@/lib/auth/require-admin";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
+import { applyAdminPlanChange } from "@/server/services/stripe/admin-plan-change";
 
 type ActionResult = { error?: string };
 type IdRow = { id: string };
@@ -25,6 +26,15 @@ function memberPath(memberId: string, success?: string) {
   return success
     ? `/admin/members/${memberId}?success=${encodeURIComponent(success)}`
     : `/admin/members/${memberId}`;
+}
+
+function memberBillingPath(memberId: string, params: Record<string, string | null | undefined> = {}) {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value) query.set(key, value);
+  }
+  const suffix = query.size > 0 ? `?${query.toString()}` : "";
+  return `/admin/members/${memberId}${suffix}#billing`;
 }
 
 function requireClientAuthorization(formData: FormData, reasonFieldName: string): ActionResult & {
@@ -135,6 +145,74 @@ export async function updateMemberCrmProfile(formData: FormData): Promise<Action
 
   revalidatePath(`/admin/members/${memberId}`);
   redirect(memberPath(memberId, "profile_updated"));
+}
+
+export async function previewMemberPlanChange(formData: FormData): Promise<ActionResult> {
+  await requireAdminPermission("members.manage_billing");
+  const memberId = clean(formData.get("memberId"));
+  const targetKey = clean(formData.get("targetKey"));
+
+  if (!memberId || !targetKey) return { error: "Choose a member and target plan." };
+
+  redirect(memberBillingPath(memberId, { planTarget: targetKey }));
+}
+
+export async function applyMemberPlanChange(formData: FormData): Promise<ActionResult> {
+  const actor = await requireAdminPermission("members.manage_billing");
+  const memberId = clean(formData.get("memberId"));
+  const targetKey = clean(formData.get("targetKey"));
+
+  if (!memberId || !targetKey) return { error: "Choose a member and target plan." };
+
+  const authorization = requireClientAuthorization(formData, "changeReason");
+  if (authorization.error || !authorization.reason) return { error: authorization.error };
+
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  const { data: member, error: memberError } = await supabase
+    .from("member")
+    .select<{ stripe_customer_id: string | null }>("stripe_customer_id")
+    .eq("id", memberId)
+    .maybeSingle();
+
+  if (memberError || !member) {
+    console.error("[admin/member-actions] plan change member lookup failed:", memberError?.message);
+    return { error: "Could not load member billing record." };
+  }
+
+  const result = await applyAdminPlanChange({
+    memberId,
+    actorId: actor.id,
+    stripeCustomerId: member.stripe_customer_id,
+    targetKey,
+    reason: authorization.reason,
+  });
+
+  if (!result.ok) return { error: result.error };
+
+  await logAudit({
+    actorId: actor.id,
+    memberId,
+    action: result.kind === "upgrade" ? "billing.plan_upgraded" : "billing.plan_change_scheduled",
+    targetType: "stripe_subscription",
+    targetId: result.subscriptionId,
+    reason: authorization.reason,
+    metadata: {
+      target_key: result.targetKey,
+      current_plan_name: result.currentPlanName,
+      target_plan_name: result.targetPlanName,
+      amount_due_cents: result.amountDueCents,
+      currency: result.currency,
+      effective_label: result.effectiveLabel,
+      next_billing_label: result.nextBillingLabel,
+      client_authorization_confirmed: true,
+    },
+  });
+
+  revalidatePath(`/admin/members/${memberId}`);
+  revalidatePath("/admin/members");
+  redirect(memberBillingPath(memberId, {
+    success: result.kind === "upgrade" ? "plan_upgraded" : "plan_change_scheduled",
+  }));
 }
 
 export async function grantCourseToMember(formData: FormData): Promise<ActionResult> {
