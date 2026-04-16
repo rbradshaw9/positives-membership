@@ -224,6 +224,14 @@ export default function AffiliateProgramPage() {
                 >
                   support@positives.life
                 </a>
+                . If you would like to apply to the program, visit{" "}
+                <a
+                  href="/partners/apply"
+                  className="underline underline-offset-2"
+                  style={{ color: "#2F6FED" }}
+                >
+                  /partners/apply
+                </a>
                 .
               </p>
             </Section>
