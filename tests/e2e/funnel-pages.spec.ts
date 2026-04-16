@@ -10,6 +10,7 @@ const FUNNEL_ROUTES = [
   {
     pathname: "/",
     heading: "A few minutes each day. A more positive life.",
+    secondaryHeading: "You do not need to overhaul your life to begin.",
   },
   {
     pathname: "/watch",
@@ -32,6 +33,11 @@ for (const viewport of [
       const response = await page.goto(route.pathname);
       await expectHealthyResponse(route.pathname, response);
       await expect(page.getByRole("heading", { level: 1, name: route.heading })).toBeVisible();
+      if ("secondaryHeading" in route) {
+        await expect(
+          page.getByRole("heading", { level: 2, name: route.secondaryHeading })
+        ).toBeVisible();
+      }
     }
   });
 }

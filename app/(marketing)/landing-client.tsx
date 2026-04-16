@@ -63,6 +63,7 @@ function LandingPageShell({
         navLinks={[
           { href: "#how-it-works", label: "How it Works", hiddenOnMobile: true },
           { href: "#dr-paul", label: "Dr. Paul", hiddenOnMobile: true },
+          { href: "#faq", label: "FAQ", hiddenOnMobile: true },
         ]}
       />
 
@@ -115,9 +116,9 @@ function LandingPageShell({
               letterSpacing: "-0.01em",
             }}
           >
-            Positives is a guided daily practice designed to help you think
-            more clearly, respond more calmly, and build a life you actually
-            enjoy living.
+            Positives gives you a simple daily rhythm with Dr. Paul so you can
+            think more clearly, respond more calmly, and come back to life with
+            more intention.
           </p>
 
           {/* Specificity anchor */}
@@ -153,10 +154,42 @@ function LandingPageShell({
             </Link>
           </div>
 
-          {/* Micro pricing anchor */}
-          <p className="text-sm" style={{ color: "#B0A89E" }}>
-            From <span style={{ color: "#68707A" }}>$37/month</span> · Cancel anytime · 30-day guarantee
-          </p>
+          <div className="grid w-full max-w-3xl grid-cols-1 gap-3 text-left sm:grid-cols-3">
+            {[
+              {
+                title: "5-15 minutes",
+                body: "Short enough to return to daily, even when life is full.",
+              },
+              {
+                title: "No catching up",
+                body: "Miss a day and come back. Positives is a practice, not a program.",
+              },
+              {
+                title: "30-day guarantee",
+                body: "Give the rhythm a real try, then decide with clarity.",
+              },
+            ].map((item) => (
+              <div
+                key={item.title}
+                className="rounded-[1.4rem] px-4 py-4"
+                style={{
+                  background: "rgba(255,255,255,0.72)",
+                  border: "1px solid rgba(221,215,207,0.72)",
+                  boxShadow: "0 12px 30px rgba(18,20,23,0.05)",
+                }}
+              >
+                <p
+                  className="mb-1.5 text-sm font-semibold"
+                  style={{ color: "#121417", letterSpacing: "-0.015em" }}
+                >
+                  {item.title}
+                </p>
+                <p style={{ fontSize: "0.82rem", color: "#68707A", lineHeight: "1.6" }}>
+                  {item.body}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -320,6 +353,105 @@ function LandingPageShell({
             <Link href={trackedPaidHref} className="font-medium underline underline-offset-2" style={{ color: "#2F6FED" }}>
               {session.hasMemberAccess ? "Open your practice" : "Start your practice"}
             </Link>
+          </p>
+        </div>
+      </section>
+
+      {/* ━━ 5b. FIRST WEEK ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <section className="w-full" style={{ background: "#FFFFFF", borderTop: "1px solid rgba(221,215,207,0.72)" }}>
+        <div
+          className="max-w-6xl mx-auto px-5 sm:px-8"
+          style={{ paddingTop: "clamp(4rem, 7vw, 6.5rem)", paddingBottom: "clamp(4rem, 7vw, 6.5rem)" }}
+        >
+          <div className="mb-12 max-w-3xl">
+            <p className="mb-4 text-xs font-semibold uppercase" style={{ color: "#4E8C78", letterSpacing: "0.14em" }}>
+              Your first week
+            </p>
+            <h2
+              className="font-heading font-bold"
+              style={{
+                fontSize: "clamp(2rem, 4vw, 3.25rem)",
+                letterSpacing: "-0.045em",
+                lineHeight: "1.08",
+                color: "#121417",
+                textWrap: "balance",
+              }}
+            >
+              You do not need to overhaul your life to begin.
+            </h2>
+            <p
+              className="mt-4"
+              style={{
+                fontSize: "1.02rem",
+                color: "#68707A",
+                lineHeight: "1.75",
+                maxWidth: "760px",
+              }}
+            >
+              Most members start with one short listen, return when life gets noisy,
+              and begin noticing small but meaningful shifts in how they think,
+              decide, and respond.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+            {[
+              {
+                step: "Day 1",
+                title: "Listen to today's practice.",
+                body: "Start with a few guided minutes to settle your mind and reset your direction for the day ahead.",
+              },
+              {
+                step: "This week",
+                title: "Come back when you need it.",
+                body: "Use the daily rhythm and weekly reflection when you want a steadier perspective, not because you are trying to keep up.",
+              },
+              {
+                step: "By week's end",
+                title: "Notice what feels softer.",
+                body: "A calmer reaction. A clearer decision. A little more room to breathe before life pulls at you again.",
+              },
+            ].map((item) => (
+              <div
+                key={item.step}
+                className="rounded-[1.75rem] p-6"
+                style={{
+                  background: "linear-gradient(180deg, rgba(246,243,238,0.78) 0%, #FFFFFF 100%)",
+                  border: "1px solid rgba(221,215,207,0.8)",
+                  boxShadow: "0 14px 38px rgba(18,20,23,0.05)",
+                }}
+              >
+                <p
+                  className="mb-4 inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase"
+                  style={{
+                    color: "#2F6FED",
+                    background: "rgba(47,111,237,0.08)",
+                    letterSpacing: "0.12em",
+                  }}
+                >
+                  {item.step}
+                </p>
+                <h3
+                  className="font-heading font-semibold"
+                  style={{
+                    fontSize: "1.25rem",
+                    lineHeight: "1.2",
+                    letterSpacing: "-0.03em",
+                    color: "#121417",
+                    textWrap: "balance",
+                  }}
+                >
+                  {item.title}
+                </h3>
+                <p className="mt-3" style={{ fontSize: "0.96rem", color: "#68707A", lineHeight: "1.72" }}>
+                  {item.body}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <p className="mt-8 text-sm" style={{ color: "#9AA0A8", lineHeight: "1.7" }}>
+            No streak pressure. No falling behind. Just a practice you can return to.
           </p>
         </div>
       </section>
@@ -717,14 +849,14 @@ function LandingPageShell({
               letterSpacing: "-0.05em",
               color: "#FFFFFF",
             }}
-            >
-              <span className="block sm:whitespace-nowrap">A few minutes each day.</span>
-              <span
-                className="block sm:whitespace-nowrap"
-                style={{
-                  background: "linear-gradient(135deg, #6B9BF2 0%, #8FC4B5 100%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
+          >
+            <span className="block sm:whitespace-nowrap">A few minutes each day.</span>
+            <span
+              className="block sm:whitespace-nowrap"
+              style={{
+                background: "linear-gradient(135deg, #6B9BF2 0%, #8FC4B5 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
                 backgroundClip: "text",
               }}
             >
@@ -750,6 +882,18 @@ function LandingPageShell({
           <p className="mt-5 text-sm" style={{ color: "#68707A" }}>
             From $37/month · Cancel anytime · 30-day guarantee
           </p>
+
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm">
+            <Link href="#how-it-works" style={{ color: "#9AA0A8" }}>
+              See how it works
+            </Link>
+            <Link href="#faq" style={{ color: "#9AA0A8" }}>
+              Read the FAQ
+            </Link>
+            <Link href={trackedSupportHref} style={{ color: "#9AA0A8" }}>
+              Contact support
+            </Link>
+          </div>
         </div>
       </section>
 

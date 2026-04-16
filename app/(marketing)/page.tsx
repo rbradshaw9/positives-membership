@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ANONYMOUS_PUBLIC_SESSION_STATE } from "@/lib/marketing/public-session";
+import { getPublicSessionState } from "@/lib/marketing/public-session";
 import { LandingPageClient } from "./landing-client";
 
 export const metadata: Metadata = {
@@ -11,8 +11,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default function LandingPage() {
-  const session = ANONYMOUS_PUBLIC_SESSION_STATE;
+export default async function LandingPage() {
+  const session = await getPublicSessionState();
 
   return (
     <LandingPageClient
