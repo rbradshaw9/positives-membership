@@ -64,34 +64,27 @@ export default async function TodayPage() {
   ) as string[];
 
   const archiveContentIds = monthGroups.flatMap((group) => group.audios.map((audio) => audio.id));
-  const listenedArchiveIdsPromise =
-    archiveContentIds.length > 0
+  const listenedDailyIds = Array.from(
+    new Set([todayContent?.id, ...archiveContentIds].filter(Boolean) as string[])
+  );
+  const listenedDailyIdsPromise =
+    listenedDailyIds.length > 0
       ? supabase
           .from("activity_event")
           .select("content_id")
           .eq("member_id", member.id)
           .eq("event_type", "daily_listened")
-          .in("content_id", archiveContentIds)
+          .in("content_id", listenedDailyIds)
           .then(({ data }) => new Set((data ?? []).map((row) => row.content_id).filter(Boolean)))
       : Promise.resolve(new Set<string>());
 
-  const [noteCounts, listenedToday, listenedArchiveIds] = await Promise.all([
+  const [noteCounts, listenedDailyIdSet] = await Promise.all([
     contentIds.length > 0
       ? getMemberNoteCounts(member.id, contentIds)
       : Promise.resolve<Record<string, number>>({}),
-    todayContent
-      ? supabase
-          .from("activity_event")
-          .select("id")
-          .eq("member_id", member.id)
-          .eq("event_type", "daily_listened")
-          .eq("content_id", todayContent.id)
-          .limit(1)
-          .maybeSingle()
-          .then((r) => !!r.data)
-      : Promise.resolve(false),
-    listenedArchiveIdsPromise,
+    listenedDailyIdsPromise,
   ]);
+  const listenedToday = todayContent ? listenedDailyIdSet.has(todayContent.id) : false;
 
   // Only show a non-zero streak if the member practiced today or yesterday.
   // If they missed a day the DB value is stale — display 0 until they listen again.
@@ -210,7 +203,7 @@ export default async function TodayPage() {
           <MonthlyAudioArchive
             monthGroups={monthGroups}
             currentMonthName={currentMonthName}
-            listenedContentIds={[...listenedArchiveIds].filter(
+            listenedContentIds={[...listenedDailyIdSet].filter(
               (contentId): contentId is string => Boolean(contentId)
             )}
           />

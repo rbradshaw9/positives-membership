@@ -1,4 +1,6 @@
-import { createClient } from "@/lib/supabase/server";
+import { unstable_cache } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
+import { getAdminClient } from "@/lib/supabase/admin";
 import type { Tables } from "@/types/supabase";
 
 /**
@@ -40,7 +42,18 @@ function monthYearToLabel(monthYear: string): string {
 export async function getMonthlyDailyAudios(
   excludeDate: string
 ): Promise<MonthGroup[]> {
-  const supabase = await createClient();
+  return unstable_cache(
+    () => fetchMonthlyDailyAudios(excludeDate),
+    ["monthly-daily-audios", excludeDate],
+    {
+      tags: [CACHE_TAGS.libraryContent],
+      revalidate: 60 * 30,
+    }
+  )();
+}
+
+async function fetchMonthlyDailyAudios(excludeDate: string): Promise<MonthGroup[]> {
+  const supabase = getAdminClient();
 
   // Scope to current month only — the /today page is a "living document"
   // for the current month. Closed months are accessed via /library/months/[monthYear].
@@ -108,7 +121,18 @@ export async function getMonthlyDailyAudios(
 export async function getArchiveDailyAudios(
   monthYear: string
 ): Promise<MonthGroup | null> {
-  const supabase = await createClient();
+  return unstable_cache(
+    () => fetchArchiveDailyAudios(monthYear),
+    ["archive-daily-audios", monthYear],
+    {
+      tags: [CACHE_TAGS.libraryContent],
+      revalidate: 60 * 60,
+    }
+  )();
+}
+
+async function fetchArchiveDailyAudios(monthYear: string): Promise<MonthGroup | null> {
+  const supabase = getAdminClient();
 
   const { data, error } = await supabase
     .from("content")

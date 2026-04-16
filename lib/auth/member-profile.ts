@@ -19,10 +19,11 @@ export type MemberProfile = Pick<
   | "timezone"
   | "fp_ref_id"
   | "fp_promoter_id"
+  | "paypal_email"
 >;
 
 const MEMBER_PROFILE_SELECT =
-  "id, email, name, avatar_url, subscription_status, subscription_tier, password_set, email_unsubscribed, practice_streak, last_practiced_at, created_at, stripe_customer_id, timezone, fp_ref_id, fp_promoter_id";
+  "id, email, name, avatar_url, subscription_status, subscription_tier, password_set, email_unsubscribed, practice_streak, last_practiced_at, created_at, stripe_customer_id, timezone, fp_ref_id, fp_promoter_id, paypal_email";
 
 export const getCurrentMemberProfile = cache(async () => {
   const supabase = await createClient();

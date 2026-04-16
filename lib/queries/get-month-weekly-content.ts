@@ -1,4 +1,6 @@
-import { createClient } from "@/lib/supabase/server";
+import { unstable_cache } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
+import { getAdminClient } from "@/lib/supabase/admin";
 import type { Tables } from "@/types/supabase";
 
 /**
@@ -35,7 +37,20 @@ export type MonthWeeklyContent = Pick<
 export async function getMonthWeeklyContent(
   monthYear: string
 ): Promise<MonthWeeklyContent[]> {
-  const supabase = await createClient();
+  return unstable_cache(
+    () => fetchMonthWeeklyContent(monthYear),
+    ["month-weekly-content", monthYear],
+    {
+      tags: [CACHE_TAGS.libraryContent],
+      revalidate: 60 * 30,
+    }
+  )();
+}
+
+async function fetchMonthWeeklyContent(
+  monthYear: string
+): Promise<MonthWeeklyContent[]> {
+  const supabase = getAdminClient();
 
   const { data, error } = await supabase
     .from("content")
