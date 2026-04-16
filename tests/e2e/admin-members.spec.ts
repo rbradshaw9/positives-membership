@@ -120,8 +120,14 @@ test.describe("admin member operations", () => {
 
     await expect(page.getByRole("heading", { name: /Ryan \(L1 Test\)|rbradshaw\+l1@gmail\.com/ })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+
+    const tabNav = page.getByRole("navigation", { name: "Member management tabs" });
+    await expect(tabNav.getByRole("link", { name: "Access", exact: true })).toBeVisible();
+    await expect(tabNav.getByRole("link", { name: "Billing", exact: true })).toBeVisible();
+
+    await tabNav.getByRole("link", { name: "Access", exact: true }).click();
+    await expect(page).toHaveURL(/tab=access/);
     await expect(page.getByRole("heading", { name: "Access" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Billing" })).toBeVisible();
 
     const assignedCoachOptions = await page
       .locator('select[name="assignedCoachId"] option')
@@ -174,8 +180,15 @@ test.describe("admin member operations", () => {
       await expect(page.getByRole("heading", { name: MEMBER_EMAIL })).toBeVisible();
       await expect(page.getByText("Canceled", { exact: true }).first()).toBeVisible();
       await expect(page.getByText("No active access", { exact: true }).first()).toBeVisible();
-      await expect(page.getByText("Magic-link / password not set")).toBeVisible();
       await expect(page.getByText("No practice tracked yet.")).toBeVisible();
+
+      const tabNav = page.getByRole("navigation", { name: "Member management tabs" });
+      await tabNav.getByRole("link", { name: "Communication", exact: true }).click();
+      await expect(page).toHaveURL(/tab=communication/);
+      await expect(page.getByText("Magic-link / password not set")).toBeVisible();
+
+      await tabNav.getByRole("link", { name: "Billing", exact: true }).click();
+      await expect(page).toHaveURL(/tab=billing/);
       await expect(page.getByText("Not linked")).toBeVisible();
     } finally {
       await updateAdminMemberSupportFields(MEMBER_EMAIL, originalMemberSupportState);
@@ -205,9 +218,10 @@ test.describe("admin member operations", () => {
       await page.getByRole("button", { name: "Search" }).click();
       await page.getByRole("link", { name: MEMBER_EMAIL }).click();
 
-      await page.goto(`${page.url()}?planTarget=level_3_monthly#billing`);
+      await page.goto(`${page.url()}?tab=billing&planTarget=level_3_monthly`);
 
       await expect(page.getByRole("heading", { name: /Ryan \(L1 Test\)|rbradshaw\+l1@gmail\.com/ })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Billing" })).toBeVisible();
       await expect(
         page.getByText(
           "The linked Stripe customer could not be found in Stripe. Reconnect billing before previewing or changing this plan."
@@ -242,8 +256,14 @@ test.describe("admin member operations", () => {
       await page.getByRole("button", { name: "Search" }).click();
       await page.getByRole("link", { name: MEMBER_EMAIL }).click();
 
-      const communicationSection = page.locator("section#communication");
-      const assignRoleForm = communicationSection
+      await page
+        .getByRole("navigation", { name: "Member management tabs" })
+        .getByRole("link", { name: "Admin Access" })
+        .click();
+      await expect(page).toHaveURL(/tab=admin-access/);
+
+      const adminAccessSection = page.locator("section#admin-access");
+      const assignRoleForm = adminAccessSection
         .locator("form")
         .filter({ has: page.getByRole("button", { name: "Assign role" }) });
 
@@ -258,7 +278,7 @@ test.describe("admin member operations", () => {
 
       await expect(assignRoleForm.getByRole("status")).toContainText("Admin role assigned.");
       await expect(
-        communicationSection.locator(".member-crm-record__title", { hasText: "Read Only" }).first()
+        adminAccessSection.locator(".member-crm-record__title", { hasText: "Read Only" }).first()
       ).toBeVisible();
 
       const memberContext = await browser.newContext();
@@ -275,7 +295,7 @@ test.describe("admin member operations", () => {
       await memberPage.goto("/admin/roles");
       await expect(memberPage).toHaveURL(/\/admin\/members\?error=permission_denied$/);
 
-      const overrideForm = communicationSection
+      const overrideForm = adminAccessSection
         .locator("form")
         .filter({ has: page.getByRole("button", { name: "Save override" }) });
 
@@ -293,7 +313,7 @@ test.describe("admin member operations", () => {
 
       await expect(overrideForm.getByRole("status")).toContainText("Permission override saved.");
       await expect(
-        communicationSection.locator(".member-crm-chip", { hasText: "Manage roles" }).first()
+        adminAccessSection.locator(".member-crm-chip", { hasText: "Manage roles" }).first()
       ).toBeVisible();
 
       await memberPage.goto("/admin/roles");

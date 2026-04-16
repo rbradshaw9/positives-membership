@@ -25,6 +25,7 @@ import {
 import {
   getCurrentOpenFollowupTask,
   getMemberFollowupTasks,
+  type MemberFollowupTask,
 } from "@/lib/admin/member-followup";
 import {
   getAdminPlanChangeOptions,
@@ -198,6 +199,134 @@ function isCoachOnlyRoleSet(roles: { role_key: string }[]) {
     !keys.has("support") &&
     !keys.has("readonly")
   );
+}
+
+type UnifiedTimelineItem = {
+  id: string;
+  title: string;
+  detail: string;
+  occurredAt: string;
+  tab: MemberCrmTab;
+};
+
+function formatAuditAction(action: string) {
+  return action
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function truncateDetail(value: string, max = 140) {
+  const compact = value.replace(/\s+/g, " ").trim();
+  if (compact.length <= max) return compact;
+  return `${compact.slice(0, max - 1)}…`;
+}
+
+function buildUnifiedTimeline(args: {
+  activity: Array<{ id: string; event_type: string; occurred_at: string; content_id: string | null }>;
+  notes: Array<{ id: string; body: string; created_at: string; author?: { email: string; name: string | null } | null }>;
+  audit: Array<{ id: string; action: string; reason: string | null; created_at: string }>;
+  entitlements: Array<{
+    id: string;
+    source: string;
+    status: string;
+    granted_at: string;
+    revoked_at: string | null;
+    purchased_at: string | null;
+    course: { title: string } | null;
+  }>;
+  points: Array<{ id: string; delta: number; reason: string; description: string | null; created_at: string }>;
+  followupTasks: MemberFollowupTask[];
+  contentTitleMap: Map<string, string>;
+}) {
+  const items: UnifiedTimelineItem[] = [];
+
+  for (const event of args.activity) {
+    items.push({
+      id: `activity:${event.id}`,
+      title: EVENT_LABEL[event.event_type] ?? formatAuditAction(event.event_type),
+      detail:
+        event.content_id && args.contentTitleMap.get(event.content_id)
+          ? args.contentTitleMap.get(event.content_id) ?? "Product activity"
+          : "Product activity",
+      occurredAt: event.occurred_at,
+      tab: "activity",
+    });
+  }
+
+  for (const note of args.notes) {
+    items.push({
+      id: `note:${note.id}`,
+      title: "Internal note added",
+      detail: `${note.author?.name ?? note.author?.email ?? "Admin"} · ${truncateDetail(note.body)}`,
+      occurredAt: note.created_at,
+      tab: "notes",
+    });
+  }
+
+  for (const entry of args.audit) {
+    items.push({
+      id: `audit:${entry.id}`,
+      title: formatAuditAction(entry.action),
+      detail: truncateDetail(entry.reason ?? "Admin workflow update"),
+      occurredAt: entry.created_at,
+      tab: "audit",
+    });
+  }
+
+  for (const entitlement of args.entitlements) {
+    const courseTitle = entitlement.course?.title ?? "Course";
+    if (entitlement.revoked_at) {
+      items.push({
+        id: `entitlement:revoked:${entitlement.id}`,
+        title: "Course access revoked",
+        detail: `${courseTitle} · ${SOURCE_LABEL[entitlement.source] ?? entitlement.source}`,
+        occurredAt: entitlement.revoked_at,
+        tab: "access",
+      });
+    } else {
+      items.push({
+        id: `entitlement:active:${entitlement.id}`,
+        title: entitlement.source === "purchase" ? "Course purchased" : "Course access granted",
+        detail: `${courseTitle} · ${SOURCE_LABEL[entitlement.source] ?? entitlement.source}`,
+        occurredAt: entitlement.purchased_at ?? entitlement.granted_at,
+        tab: "access",
+      });
+    }
+  }
+
+  for (const point of args.points) {
+    items.push({
+      id: `points:${point.id}`,
+      title: point.delta >= 0 ? "Points added" : "Points removed",
+      detail: `${point.delta > 0 ? "+" : ""}${point.delta} · ${truncateDetail(point.description ?? point.reason.replaceAll("_", " "))}`,
+      occurredAt: point.created_at,
+      tab: "access",
+    });
+  }
+
+  for (const task of args.followupTasks) {
+    items.push({
+      id: `followup:created:${task.id}`,
+      title: "Follow-up created",
+      detail: truncateDetail(task.summary),
+      occurredAt: task.created_at,
+      tab: "notes",
+    });
+
+    if (task.completed_at) {
+      items.push({
+        id: `followup:resolved:${task.id}`,
+        title: "Follow-up resolved",
+        detail: truncateDetail(task.summary),
+        occurredAt: task.completed_at,
+        tab: "notes",
+      });
+    }
+  }
+
+  return items
+    .filter((item) => Boolean(item.occurredAt))
+    .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime());
 }
 
 function Section({
@@ -1084,6 +1213,16 @@ export default async function AdminMemberDetailPage({
   const overviewCardOrder = viewerCoachOnly
     ? ["needs", "engagement", "coach", "revenue", "communication"]
     : ["needs", "membership", "revenue", "communication", "coach"];
+  const unifiedTimeline = buildUnifiedTimeline({
+    activity,
+    notes,
+    audit,
+    entitlements,
+    points,
+    followupTasks,
+    contentTitleMap,
+  });
+  const timelinePreview = unifiedTimeline.slice(0, 6);
 
   return (
     <div className="member-crm-shell">
@@ -1384,6 +1523,33 @@ export default async function AdminMemberDetailPage({
               </div>
             </div>
 
+            <div className="member-crm-card" style={{ marginBottom: "1rem" }}>
+              <p className="member-crm-card-title member-crm-card-title--row">
+                Recent timeline
+                <Link className="member-crm-link" href={tabHref("activity")}>
+                  Open activity
+                </Link>
+              </p>
+              {timelinePreview.length > 0 ? (
+                <div className="member-crm-timeline" style={{ marginTop: "0.75rem" }}>
+                  {timelinePreview.map((item) => (
+                    <Link key={item.id} href={tabHref(item.tab)} className="member-crm-timeline-item member-crm-record--link">
+                      <span className="member-crm-timeline-dot" aria-hidden="true" />
+                      <div>
+                        <p className="member-crm-record__title">{item.title}</p>
+                        <p className="member-crm-record__meta">
+                          {formatDateTime(item.occurredAt)} · {CRM_TABS.find(([tab]) => tab === item.tab)?.[1] ?? item.tab}
+                        </p>
+                        <p className="member-crm-record__note">{item.detail}</p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState>No recent member timeline yet.</EmptyState>
+              )}
+            </div>
+
             <dl className="member-crm-profile-grid">
               <ProfileField label="Email">{member.email}</ProfileField>
               <ProfileField label="Name">{member.name ?? "Not set"}</ProfileField>
@@ -1663,28 +1829,55 @@ export default async function AdminMemberDetailPage({
             </div>
           </div>
 
-          {activity.length > 0 ? (
-            <div className="member-crm-timeline">
-              {activity.map((event) => (
-                <div key={event.id} className="member-crm-timeline-item">
-                  <span className="member-crm-timeline-dot" aria-hidden="true" />
-                  <div>
-                    <p className="member-crm-record__title">
-                      {EVENT_LABEL[event.event_type] ?? event.event_type}
-                    </p>
-                    <p className="member-crm-record__meta">
-                      {formatDateTime(event.occurred_at)}
-                      {event.content_id && contentTitleMap.get(event.content_id)
-                        ? ` · ${contentTitleMap.get(event.content_id)}`
-                        : ""}
-                    </p>
-                  </div>
+          <div className="member-crm-grid-2">
+            <div className="member-crm-card">
+              <p className="member-crm-card-title">Unified timeline</p>
+              {unifiedTimeline.length > 0 ? (
+                <div className="member-crm-timeline" style={{ marginTop: "0.75rem" }}>
+                  {unifiedTimeline.slice(0, 20).map((item) => (
+                    <Link key={item.id} href={tabHref(item.tab)} className="member-crm-timeline-item member-crm-record--link">
+                      <span className="member-crm-timeline-dot" aria-hidden="true" />
+                      <div>
+                        <p className="member-crm-record__title">{item.title}</p>
+                        <p className="member-crm-record__meta">
+                          {formatDateTime(item.occurredAt)} · {CRM_TABS.find(([tab]) => tab === item.tab)?.[1] ?? item.tab}
+                        </p>
+                        <p className="member-crm-record__note">{item.detail}</p>
+                      </div>
+                    </Link>
+                  ))}
                 </div>
-              ))}
+              ) : (
+                <EmptyState>No timeline entries yet.</EmptyState>
+              )}
             </div>
-          ) : (
-            <EmptyState>No activity yet.</EmptyState>
-          )}
+
+            <div className="member-crm-card">
+              <p className="member-crm-card-title">Product activity events</p>
+              {activity.length > 0 ? (
+                <div className="member-crm-timeline" style={{ marginTop: "0.75rem" }}>
+                  {activity.map((event) => (
+                    <div key={event.id} className="member-crm-timeline-item">
+                      <span className="member-crm-timeline-dot" aria-hidden="true" />
+                      <div>
+                        <p className="member-crm-record__title">
+                          {EVENT_LABEL[event.event_type] ?? event.event_type}
+                        </p>
+                        <p className="member-crm-record__meta">
+                          {formatDateTime(event.occurred_at)}
+                          {event.content_id && contentTitleMap.get(event.content_id)
+                            ? ` · ${contentTitleMap.get(event.content_id)}`
+                            : ""}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState>No product activity yet.</EmptyState>
+              )}
+            </div>
+          </div>
         </Section>
       ) : null}
 

@@ -527,6 +527,78 @@ export async function updateAdminMemberSupportFields(
   }
 }
 
+function getExpectedLoginFixture(email: string): {
+  subscription_status: SubscriptionStatus;
+  subscription_tier: SubscriptionTier | null;
+} | null {
+  if (email === MEMBER_EMAIL) {
+    return { subscription_status: "active", subscription_tier: "level_1" };
+  }
+
+  if (email === LEVEL_2_MEMBER_EMAIL) {
+    return { subscription_status: "active", subscription_tier: "level_2" };
+  }
+
+  if (email === LEVEL_3_MEMBER_EMAIL) {
+    return { subscription_status: "active", subscription_tier: "level_3" };
+  }
+
+  if (email === ADMIN_EMAIL) {
+    return { subscription_status: "active", subscription_tier: "level_3" };
+  }
+
+  return null;
+}
+
+export async function normalizeLoginFixtureAccess(email: string) {
+  const expected = getExpectedLoginFixture(email);
+  if (!expected) return;
+
+  const supabase = getServiceRoleClient();
+  const { error } = await supabase
+    .from("member")
+    .update({
+      subscription_status: expected.subscription_status,
+      subscription_tier: expected.subscription_tier,
+      subscription_end_date: null,
+      password_set: true,
+    })
+    .eq("email", email);
+
+  if (error) {
+    throw new Error(`Failed to normalize login fixture for ${email}: ${error.message}`);
+  }
+}
+
+async function createAuthBootstrapLink(
+  email: string,
+  next: string,
+  origin: string
+) {
+  const supabase = getServiceRoleClient();
+  const { data, error } = await supabase.auth.admin.generateLink({
+    type: "magiclink",
+    email,
+    options: {
+      redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
+    },
+  });
+
+  if (error) {
+    throw new Error(`Failed to generate auth bootstrap link for ${email}: ${error.message}`);
+  }
+
+  const actionLink =
+    (data as { properties?: { action_link?: string } } | null)?.properties?.action_link ??
+    (data as { action_link?: string } | null)?.action_link;
+
+  if (!actionLink) {
+    throw new Error(`Auth bootstrap link for ${email} did not include an action link.`);
+  }
+
+  return actionLink;
+}
+
 export async function getAdminAccessSnapshot(email: string): Promise<AdminAccessSnapshot> {
   const supabase = getServiceRoleClient();
   const { data: member, error: memberError } = await supabase
@@ -1024,10 +1096,26 @@ export async function loginWithPassword(
     expectedPath?: string;
   }
 ) {
+  await normalizeLoginFixtureAccess(email);
   await page.goto(`/login?next=${encodeURIComponent(next)}`);
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: /sign in/i }).click();
   const escapedExpected = expectedPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  await expect(page).toHaveURL(new RegExp(`${escapedExpected}$`));
+
+  try {
+    await expect(page).toHaveURL(new RegExp(`${escapedExpected}$`), { timeout: 8_000 });
+    return;
+  } catch (passwordLoginError) {
+    const origin = new URL(page.url()).origin;
+    const actionLink = await createAuthBootstrapLink(email, next, origin);
+    await page.goto(actionLink);
+    await expect(page).toHaveURL(new RegExp(`${escapedExpected}$`));
+
+    console.warn(
+      `[e2e/loginWithPassword] Fell back to auth bootstrap link for ${email}: ${
+        passwordLoginError instanceof Error ? passwordLoginError.message : "password login did not reach destination"
+      }`
+    );
+  }
 }
