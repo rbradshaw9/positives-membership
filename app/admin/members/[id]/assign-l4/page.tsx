@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireAdmin } from "@/lib/auth/require-admin";
+import { requireAdminPermission } from "@/lib/auth/require-admin";
 import { getMemberDetail } from "@/lib/queries/get-admin-members";
 import { config } from "@/lib/config";
 import { getStripe } from "@/lib/stripe/config";
@@ -33,7 +33,7 @@ export type SavedPrice = {
 type PageParams = Promise<{ id: string }>;
 
 export default async function AssignL4Page({ params }: { params: PageParams }) {
-  await requireAdmin();
+  await requireAdminPermission("members.manage_billing");
 
   const { id } = await params;
   const member = await getMemberDetail(id);

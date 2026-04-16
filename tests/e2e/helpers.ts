@@ -91,6 +91,16 @@ export type AdminMemberSupportSnapshot = {
   last_practiced_at: string | null;
 };
 
+export type AdminAccessSnapshot = {
+  roleKeys: string[];
+  permissionOverrides: Array<{ permission: string; allowed: boolean }>;
+};
+
+export type AdminRolePermissionsSnapshot = {
+  roleKey: string;
+  permissions: string[];
+};
+
 export async function getMemberBillingState(email: string) {
   const supabase = getServiceRoleClient();
   const { data, error } = await supabase
@@ -322,6 +332,221 @@ export async function updateAdminMemberSupportFields(
 
   if (error) {
     throw new Error(`Failed to update admin member support fields for ${email}: ${error.message}`);
+  }
+}
+
+export async function getAdminAccessSnapshot(email: string): Promise<AdminAccessSnapshot> {
+  const supabase = getServiceRoleClient();
+  const { data: member, error: memberError } = await supabase
+    .from("member")
+    .select("id")
+    .eq("email", email)
+    .single();
+
+  if (memberError || !member) {
+    throw new Error(
+      `Failed to fetch member for admin access snapshot ${email}: ${memberError?.message ?? "member not found"}`
+    );
+  }
+
+  const { data: assignments, error: assignmentError } = await supabase
+    .from("admin_user_role")
+    .select("role_id")
+    .eq("member_id", member.id);
+
+  if (assignmentError) {
+    throw new Error(`Failed to fetch admin roles for ${email}: ${assignmentError.message}`);
+  }
+
+  const roleIds = (assignments ?? []).map((row) => String(row.role_id));
+  let roleKeys: string[] = [];
+
+  if (roleIds.length > 0) {
+    const { data: roles, error: roleError } = await supabase
+      .from("admin_role")
+      .select("id, key")
+      .in("id", roleIds);
+
+    if (roleError) {
+      throw new Error(`Failed to resolve admin role keys for ${email}: ${roleError.message}`);
+    }
+
+    const roleKeyById = new Map((roles ?? []).map((role) => [String(role.id), String(role.key)]));
+    roleKeys = roleIds
+      .map((roleId) => roleKeyById.get(roleId))
+      .filter((value): value is string => Boolean(value));
+  }
+
+  const { data: overrides, error: overrideError } = await supabase
+    .from("admin_user_permission_override")
+    .select("permission, allowed")
+    .eq("member_id", member.id)
+    .order("permission", { ascending: true });
+
+  if (overrideError) {
+    throw new Error(`Failed to fetch permission overrides for ${email}: ${overrideError.message}`);
+  }
+
+  return {
+    roleKeys,
+    permissionOverrides: (overrides ?? []).map((override) => ({
+      permission: String(override.permission),
+      allowed: Boolean(override.allowed),
+    })),
+  };
+}
+
+export async function replaceAdminAccess(email: string, snapshot: AdminAccessSnapshot) {
+  const supabase = getServiceRoleClient();
+  const { data: member, error: memberError } = await supabase
+    .from("member")
+    .select("id")
+    .eq("email", email)
+    .single();
+
+  if (memberError || !member) {
+    throw new Error(
+      `Failed to fetch member for admin access restore ${email}: ${memberError?.message ?? "member not found"}`
+    );
+  }
+
+  const memberId = String(member.id);
+
+  const { error: deleteRoleError } = await supabase
+    .from("admin_user_role")
+    .delete()
+    .eq("member_id", memberId);
+  if (deleteRoleError) {
+    throw new Error(`Failed to clear admin roles for ${email}: ${deleteRoleError.message}`);
+  }
+
+  const { error: deleteOverrideError } = await supabase
+    .from("admin_user_permission_override")
+    .delete()
+    .eq("member_id", memberId);
+  if (deleteOverrideError) {
+    throw new Error(`Failed to clear permission overrides for ${email}: ${deleteOverrideError.message}`);
+  }
+
+  if (snapshot.roleKeys.length > 0) {
+    const { data: roles, error: roleLookupError } = await supabase
+      .from("admin_role")
+      .select("id, key")
+      .in("key", snapshot.roleKeys);
+
+    if (roleLookupError) {
+      throw new Error(`Failed to resolve role ids for ${email}: ${roleLookupError.message}`);
+    }
+
+    const roleIdByKey = new Map((roles ?? []).map((role) => [String(role.key), String(role.id)]));
+    const inserts = snapshot.roleKeys
+      .map((roleKey) => roleIdByKey.get(roleKey))
+      .filter((value): value is string => Boolean(value))
+      .map((roleId) => ({
+        member_id: memberId,
+        role_id: roleId,
+      }));
+
+    if (inserts.length > 0) {
+      const { error: insertRoleError } = await supabase.from("admin_user_role").insert(inserts);
+      if (insertRoleError) {
+        throw new Error(`Failed to restore admin roles for ${email}: ${insertRoleError.message}`);
+      }
+    }
+  }
+
+  if (snapshot.permissionOverrides.length > 0) {
+    const { error: insertOverrideError } = await supabase
+      .from("admin_user_permission_override")
+      .insert(
+        snapshot.permissionOverrides.map((override) => ({
+          member_id: memberId,
+          permission: override.permission,
+          allowed: override.allowed,
+        }))
+      );
+
+    if (insertOverrideError) {
+      throw new Error(
+        `Failed to restore permission overrides for ${email}: ${insertOverrideError.message}`
+      );
+    }
+  }
+}
+
+export async function getAdminRolePermissionsSnapshot(
+  roleKey: string
+): Promise<AdminRolePermissionsSnapshot> {
+  const supabase = getServiceRoleClient();
+  const { data: role, error: roleError } = await supabase
+    .from("admin_role")
+    .select("id, key")
+    .eq("key", roleKey)
+    .single();
+
+  if (roleError || !role) {
+    throw new Error(
+      `Failed to fetch admin role ${roleKey}: ${roleError?.message ?? "role not found"}`
+    );
+  }
+
+  const { data: permissions, error: permissionError } = await supabase
+    .from("admin_role_permission")
+    .select("permission")
+    .eq("role_id", role.id)
+    .order("permission", { ascending: true });
+
+  if (permissionError) {
+    throw new Error(
+      `Failed to fetch admin role permissions for ${roleKey}: ${permissionError.message}`
+    );
+  }
+
+  return {
+    roleKey: String(role.key),
+    permissions: (permissions ?? []).map((row) => String(row.permission)),
+  };
+}
+
+export async function replaceAdminRolePermissions(snapshot: AdminRolePermissionsSnapshot) {
+  const supabase = getServiceRoleClient();
+  const { data: role, error: roleError } = await supabase
+    .from("admin_role")
+    .select("id")
+    .eq("key", snapshot.roleKey)
+    .single();
+
+  if (roleError || !role) {
+    throw new Error(
+      `Failed to fetch admin role ${snapshot.roleKey} for restore: ${roleError?.message ?? "role not found"}`
+    );
+  }
+
+  const roleId = String(role.id);
+  const { error: deleteError } = await supabase
+    .from("admin_role_permission")
+    .delete()
+    .eq("role_id", roleId);
+
+  if (deleteError) {
+    throw new Error(
+      `Failed to clear admin role permissions for ${snapshot.roleKey}: ${deleteError.message}`
+    );
+  }
+
+  if (snapshot.permissions.length > 0) {
+    const { error: insertError } = await supabase.from("admin_role_permission").insert(
+      snapshot.permissions.map((permission) => ({
+        role_id: roleId,
+        permission,
+      }))
+    );
+
+    if (insertError) {
+      throw new Error(
+        `Failed to restore admin role permissions for ${snapshot.roleKey}: ${insertError.message}`
+      );
+    }
   }
 }
 

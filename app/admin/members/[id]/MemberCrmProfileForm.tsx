@@ -44,6 +44,9 @@ function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
 
 export function MemberCrmProfileForm({ member, coaches, action }: Props) {
   const [state, formAction, isPending] = useActionState(action, {});
+  const hasAssignableCoaches = coaches.length > 0;
+  const currentAssignmentMissing =
+    !!member.assignedCoachId && !coaches.some((coach) => coach.id === member.assignedCoachId);
 
   return (
     <form action={formAction} className="member-crm-form-grid">
@@ -77,12 +80,23 @@ export function MemberCrmProfileForm({ member, coaches, action }: Props) {
         <span className="admin-search-bar__label">Assigned Coach</span>
         <Select name="assignedCoachId" defaultValue={member.assignedCoachId ?? ""}>
           <option value="">Unassigned</option>
+          {currentAssignmentMissing ? (
+            <option value={member.assignedCoachId ?? ""}>
+              Current assignment (not currently an admin/coach)
+            </option>
+          ) : null}
           {coaches.map((coach) => (
             <option key={coach.id} value={coach.id}>
               {coach.label}
             </option>
           ))}
         </Select>
+        <span className="member-crm-muted">
+          Only members with an admin or coach role appear here.
+          {hasAssignableCoaches
+            ? " Use /admin/roles to adjust who is assignable."
+            : " No assignable coach/admin users are seeded yet."}
+        </span>
       </label>
       <label className="admin-form-field">
         <span className="admin-search-bar__label">Follow-up Status</span>
@@ -94,10 +108,11 @@ export function MemberCrmProfileForm({ member, coaches, action }: Props) {
         </Select>
       </label>
       <label className="admin-form-field" style={{ gridColumn: "1 / -1" }}>
-        <span className="admin-search-bar__label">Follow-up Note</span>
+        <span className="admin-search-bar__label">Current Follow-up / Next Step</span>
         <TextArea name="followupNote" defaultValue={member.followupNote ?? ""} />
         <span className="member-crm-muted">
-          Use this for the current next action. Use Notes below for dated history and coaching/support context.
+          Use this for the one current open thread or next action. Use Notes below for dated history,
+          coaching context, and longer internal documentation.
         </span>
       </label>
       <div className="member-crm-authorization" style={{ gridColumn: "1 / -1" }}>

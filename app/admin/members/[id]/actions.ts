@@ -876,6 +876,8 @@ export async function assignAdminRoleToMember(formData: FormData): Promise<Actio
   const roleId = clean(formData.get("roleId"));
 
   if (!memberId || !roleId) return { error: "Missing member or role." };
+  const authorization = requireClientAuthorization(formData, "roleReason");
+  if (authorization.error || !authorization.reason) return { error: authorization.error };
 
   const supabase = asLooseSupabaseClient(getAdminClient());
   const { error } = await supabase.from("admin_user_role").upsert(
@@ -898,10 +900,13 @@ export async function assignAdminRoleToMember(formData: FormData): Promise<Actio
     action: "admin_role.assigned",
     targetType: "admin_role",
     targetId: roleId,
-    reason: "Admin role assignment",
+    reason: authorization.reason,
+    metadata: { client_authorization_confirmed: true },
   });
 
   revalidatePath(`/admin/members/${memberId}`);
+  revalidatePath("/admin/members");
+  revalidatePath("/admin/roles");
   if (formData.get("returnState") === "true") {
     return { success: "Admin role assigned." };
   }
@@ -923,6 +928,8 @@ export async function removeAdminRoleFromMember(formData: FormData): Promise<Act
   const roleKey = clean(formData.get("roleKey"));
 
   if (!memberId || !roleKey) return { error: "Missing member or role." };
+  const authorization = requireClientAuthorization(formData, "roleReason");
+  if (authorization.error || !authorization.reason) return { error: authorization.error };
 
   const supabase = asLooseSupabaseClient(getAdminClient());
   const { data: role } = await supabase
@@ -950,11 +957,13 @@ export async function removeAdminRoleFromMember(formData: FormData): Promise<Act
     action: "admin_role.removed",
     targetType: "admin_role",
     targetId: role.id,
-    reason: "Admin role removal",
-    metadata: { role_key: roleKey },
+    reason: authorization.reason,
+    metadata: { role_key: roleKey, client_authorization_confirmed: true },
   });
 
   revalidatePath(`/admin/members/${memberId}`);
+  revalidatePath("/admin/members");
+  revalidatePath("/admin/roles");
   if (formData.get("returnState") === "true") {
     return { success: "Admin role removed." };
   }

@@ -1,5 +1,10 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/get-session";
+import {
+  ADMIN_PERMISSION_KEYS,
+  isAdminPermissionKey,
+  type AdminPermissionKey,
+} from "@/lib/admin/permissions";
 import { config } from "@/lib/config";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
@@ -15,6 +20,11 @@ import { asLooseSupabaseClient } from "@/lib/supabase/loose";
  * ADMIN_EMAILS remains a bootstrap fallback. Role-based admin access is read
  * from admin_user_role/admin_role_permission once roles are seeded.
  */
+export function isBootstrapAdminEmail(email?: string | null) {
+  const normalizedEmail = email?.trim().toLowerCase() ?? "";
+  return config.app.adminEmails.includes(normalizedEmail);
+}
+
 export async function requireAdmin() {
   const user = await getSession();
 
@@ -22,10 +32,7 @@ export async function requireAdmin() {
     redirect("/login");
   }
 
-  const adminEmails = config.app.adminEmails;
-  const normalizedEmail = user.email?.trim().toLowerCase() ?? "";
-
-  if (!adminEmails.includes(normalizedEmail)) {
+  if (!isBootstrapAdminEmail(user.email)) {
     const hasRole = await memberHasAnyAdminRole(user.id);
     if (!hasRole) {
       // Not an admin — return them to the member app entry point.
@@ -52,23 +59,26 @@ async function memberHasAnyAdminRole(memberId: string): Promise<boolean> {
   return (data ?? []).length > 0;
 }
 
-export async function hasAdminPermission(
+export async function getAdminPermissionSet(
   memberId: string,
-  permission: string,
   email?: string | null
-): Promise<boolean> {
-  const normalizedEmail = email?.trim().toLowerCase() ?? "";
-  if (config.app.adminEmails.includes(normalizedEmail)) return true;
+): Promise<Set<AdminPermissionKey>> {
+  if (isBootstrapAdminEmail(email)) {
+    return new Set(ADMIN_PERMISSION_KEYS);
+  }
 
   const supabase = asLooseSupabaseClient(getAdminClient());
-  const { data: override } = await supabase
+  const { data: overrideRows } = await supabase
     .from("admin_user_permission_override")
-    .select<{ allowed: boolean }>("allowed")
-    .eq("member_id", memberId)
-    .eq("permission", permission)
-    .maybeSingle();
+    .select<{ permission: string; allowed: boolean }[]>("permission, allowed")
+    .eq("member_id", memberId);
 
-  if (override) return Boolean(override.allowed);
+  const overrideMap = new Map<AdminPermissionKey, boolean>();
+  for (const row of overrideRows ?? []) {
+    if (isAdminPermissionKey(row.permission)) {
+      overrideMap.set(row.permission, Boolean(row.allowed));
+    }
+  }
 
   const { data: roles, error: roleError } = await supabase
     .from("admin_user_role")
@@ -76,22 +86,49 @@ export async function hasAdminPermission(
     .eq("member_id", memberId);
 
   if (roleError || !roles?.length) {
-    if (roleError) console.error("[requireAdmin] permission role lookup failed:", roleError.message);
-    return false;
+    if (roleError) console.error("[requireAdmin] permission set role lookup failed:", roleError.message);
+    return new Set(
+      [...overrideMap.entries()]
+        .filter(([, allowed]) => allowed)
+        .map(([permission]) => permission)
+    );
   }
 
   const { data: rolePermissions, error: permissionError } = await supabase
     .from("admin_role_permission")
     .select<{ permission: string }[]>("permission")
-    .in("role_id", roles.map((role: { role_id: string }) => role.role_id))
-    .eq("permission", permission);
+    .in("role_id", roles.map((role: { role_id: string }) => role.role_id));
 
   if (permissionError) {
-    console.error("[requireAdmin] permission lookup failed:", permissionError.message);
+    console.error("[requireAdmin] permission set lookup failed:", permissionError.message);
+  }
+
+  const permissionSet = new Set<AdminPermissionKey>();
+  for (const row of rolePermissions ?? []) {
+    if (isAdminPermissionKey(row.permission)) {
+      permissionSet.add(row.permission);
+    }
+  }
+
+  for (const [permission, allowed] of overrideMap.entries()) {
+    if (allowed) permissionSet.add(permission);
+    else permissionSet.delete(permission);
+  }
+
+  return permissionSet;
+}
+
+export async function hasAdminPermission(
+  memberId: string,
+  permission: string,
+  email?: string | null
+): Promise<boolean> {
+  if (!isAdminPermissionKey(permission)) {
     return false;
   }
 
-  return (rolePermissions ?? []).length > 0;
+  const permissionSet = await getAdminPermissionSet(memberId, email);
+  return permissionSet.has(permission);
 }
 
 export async function requireAdminPermission(permission: string) {

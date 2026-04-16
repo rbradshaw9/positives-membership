@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireAdmin } from "@/lib/auth/require-admin";
+import {
+  getAdminPermissionSet,
+  isBootstrapAdminEmail,
+  requireAdminPermission,
+} from "@/lib/auth/require-admin";
 import {
   getAdminAssignableMembers,
   getAdminRolesForMember,
@@ -716,6 +720,25 @@ function MemberCrmStyles() {
         font-weight: 750;
       }
 
+      .member-crm-chip-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+      }
+
+      .member-crm-chip {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        border: 1px solid color-mix(in srgb, var(--color-primary) 18%, var(--color-border));
+        background: color-mix(in srgb, var(--color-primary) 8%, white);
+        color: color-mix(in srgb, var(--color-primary) 68%, var(--color-fg));
+        font-size: 0.72rem;
+        font-weight: 775;
+        line-height: 1;
+        padding: 0.42rem 0.65rem;
+      }
+
       .member-crm-empty {
         border: 1px dashed rgba(148, 163, 184, 0.55);
         border-radius: 1rem;
@@ -802,7 +825,7 @@ export default async function AdminMemberDetailPage({
   params: PageParams;
   searchParams: SearchParams;
 }) {
-  const adminUser = await requireAdmin();
+  const adminUser = await requireAdminPermission("members.read");
 
   const { id } = await params;
   const sp = await searchParams;
@@ -858,6 +881,13 @@ export default async function AdminMemberDetailPage({
       : "No active access";
   const lastSeen = member.last_seen_at ?? member.last_practiced_at;
   const displayName = member.name ?? member.email;
+  const bootstrapAdmin = isBootstrapAdminEmail(member.email);
+  const targetPermissionSet = await getAdminPermissionSet(member.id, member.email);
+  const effectivePermissions = ADMIN_PERMISSION_OPTIONS.filter((permission) =>
+    targetPermissionSet.has(permission.key)
+  );
+  const viewerPermissionSet = await getAdminPermissionSet(adminUser.id, adminUser.email);
+  const canManageRoles = viewerPermissionSet.has("roles.manage");
 
   return (
     <div className="member-crm-shell">
@@ -1402,6 +1432,31 @@ export default async function AdminMemberDetailPage({
           </div>
           <div className="member-crm-card">
             <p className="member-crm-card-title">Assigned admin roles</p>
+            {!canManageRoles ? (
+              <p className="member-crm-muted" style={{ marginBottom: "0.85rem" }}>
+                You can review this member&apos;s admin access here. Assigning roles or changing
+                overrides requires the <strong>Manage roles</strong> permission.
+              </p>
+            ) : null}
+            {bootstrapAdmin ? (
+              <div
+                className="member-crm-record"
+                style={{
+                  marginBottom: "0.85rem",
+                  borderColor: "color-mix(in srgb, var(--color-primary) 30%, var(--color-border))",
+                  background:
+                    "linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 7%, white), rgba(255,255,255,0.92))",
+                }}
+              >
+                <div>
+                  <p className="member-crm-record__title">Bootstrap admin access</p>
+                  <p className="member-crm-record__meta">
+                    This member has full admin access through <span className="member-crm-mono">ADMIN_EMAILS</span>
+                    {" "}even if no database role is assigned yet.
+                  </p>
+                </div>
+              </div>
+            ) : null}
             {roles.length > 0 ? (
               <div className="member-crm-list">
                 {roles.map((role) => (
@@ -1412,42 +1467,76 @@ export default async function AdminMemberDetailPage({
                         {role.permissions.length} permission{role.permissions.length === 1 ? "" : "s"}
                       </p>
                     </div>
-                    <MemberCrmInlineForm
-                      action={removeAdminRoleFromMemberInline}
-                      submitLabel="Remove"
-                      pendingLabel="Removing..."
-                      buttonClassName="admin-btn admin-btn--outline"
-                      buttonStyle={{ fontSize: "0.75rem" }}
-                      resetOnSuccess={false}
-                    >
-                      <input type="hidden" name="memberId" value={member.id} />
-                      <input type="hidden" name="roleKey" value={role.role_key} />
-                    </MemberCrmInlineForm>
+                    {canManageRoles ? (
+                      <MemberCrmInlineForm
+                        action={removeAdminRoleFromMemberInline}
+                        submitLabel="Remove"
+                        pendingLabel="Removing..."
+                        buttonClassName="admin-btn admin-btn--outline"
+                        buttonStyle={{ fontSize: "0.75rem" }}
+                        resetOnSuccess={false}
+                      >
+                        <input type="hidden" name="memberId" value={member.id} />
+                        <input type="hidden" name="roleKey" value={role.role_key} />
+                        <ClientAuthorizationFields
+                          reasonName="roleReason"
+                          reasonLabel="Removal reason"
+                          reasonPlaceholder="Why should this admin role be removed?"
+                        />
+                      </MemberCrmInlineForm>
+                    ) : null}
                   </div>
                 ))}
               </div>
             ) : (
               <EmptyState>No admin role assigned.</EmptyState>
             )}
+            <div style={{ marginTop: "0.85rem" }}>
+              <p className="member-crm-record__title" style={{ marginBottom: "0.45rem" }}>
+                Effective permissions
+              </p>
+              {effectivePermissions.length > 0 ? (
+                <div className="member-crm-chip-list">
+                  {effectivePermissions.map((permission) => (
+                    <span key={permission.key} className="member-crm-chip">
+                      {permission.label}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="member-crm-muted">
+                  No admin permissions are currently effective for this member.
+                </p>
+              )}
+            </div>
           </div>
-          <MemberCrmInlineForm
-            action={assignAdminRoleToMemberInline}
-            className="member-crm-card"
-            submitLabel="Assign role"
-            pendingLabel="Assigning..."
-            buttonStyle={{ marginTop: "0.75rem" }}
-          >
-            <input type="hidden" name="memberId" value={member.id} />
-            <p className="member-crm-card-title">Assign role</p>
-            <Select name="roleId" required>
-              <option value="">Choose role...</option>
-              {availableRoles.map((role) => (
-                <option key={role.id} value={role.id}>
-                  {role.name}
-                </option>
-              ))}
-            </Select>
-          </MemberCrmInlineForm>
+          {canManageRoles ? (
+            <MemberCrmInlineForm
+              action={assignAdminRoleToMemberInline}
+              className="member-crm-card"
+              submitLabel="Assign role"
+              pendingLabel="Assigning..."
+              buttonStyle={{ marginTop: "0.75rem" }}
+            >
+              <input type="hidden" name="memberId" value={member.id} />
+              <p className="member-crm-card-title">Assign role</p>
+              <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
+                Use role defaults for standard access, then use per-user overrides below only for true exceptions.
+              </p>
+              <Select name="roleId" required>
+                <option value="">Choose role...</option>
+                {availableRoles.map((role) => (
+                  <option key={role.id} value={role.id}>
+                    {role.name}
+                  </option>
+                ))}
+              </Select>
+              <ClientAuthorizationFields
+                reasonName="roleReason"
+                reasonPlaceholder="Why is this member being given admin access?"
+              />
+            </MemberCrmInlineForm>
+          ) : null}
 
           <div className="member-crm-card">
             <p className="member-crm-card-title">Permission overrides</p>
@@ -1455,6 +1544,12 @@ export default async function AdminMemberDetailPage({
               Use sparingly for one-off exceptions. Role defaults should still be managed from{" "}
               <Link href="/admin/roles" className="member-crm-link">Admin Roles</Link>.
             </p>
+            {!canManageRoles ? (
+              <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
+                You can review overrides here, but only admins with <strong>Manage roles</strong>
+                can add or remove them.
+              </p>
+            ) : null}
             {permissionOverrides.length > 0 ? (
               <div className="member-crm-list" style={{ marginBottom: "1rem" }}>
                 {permissionOverrides.map((override) => (
@@ -1467,63 +1562,71 @@ export default async function AdminMemberDetailPage({
                         {override.allowed ? "Explicitly allowed" : "Explicitly denied"} · Updated {formatDateTime(override.updated_at)}
                       </p>
                     </div>
-                    <MemberCrmInlineForm
-                      action={removeAdminPermissionOverrideInline}
-                      submitLabel="Remove"
-                      pendingLabel="Removing..."
-                      buttonClassName="admin-btn admin-btn--outline"
-                      buttonStyle={{ marginTop: "0.5rem", fontSize: "0.75rem" }}
-                    >
-                      <input type="hidden" name="memberId" value={member.id} />
-                      <input type="hidden" name="permission" value={override.permission} />
-                      <ClientAuthorizationFields
-                        reasonName="overrideReason"
-                        reasonLabel="Removal reason"
-                        reasonPlaceholder="Why should this member return to role defaults?"
-                      />
-                    </MemberCrmInlineForm>
+                    {canManageRoles ? (
+                      <MemberCrmInlineForm
+                        action={removeAdminPermissionOverrideInline}
+                        submitLabel="Remove"
+                        pendingLabel="Removing..."
+                        buttonClassName="admin-btn admin-btn--outline"
+                        buttonStyle={{ marginTop: "0.5rem", fontSize: "0.75rem" }}
+                      >
+                        <input type="hidden" name="memberId" value={member.id} />
+                        <input type="hidden" name="permission" value={override.permission} />
+                        <ClientAuthorizationFields
+                          reasonName="overrideReason"
+                          reasonLabel="Removal reason"
+                          reasonPlaceholder="Why should this member return to role defaults?"
+                        />
+                      </MemberCrmInlineForm>
+                    ) : null}
                   </div>
                 ))}
               </div>
             ) : (
               <EmptyState>No per-user permission overrides.</EmptyState>
             )}
-            <MemberCrmInlineForm
-              action={setAdminPermissionOverrideInline}
-              submitLabel="Save override"
-              pendingLabel="Saving..."
-              buttonClassName="admin-btn admin-btn--primary"
-              buttonStyle={{ marginTop: "0.75rem" }}
-            >
-              <input type="hidden" name="memberId" value={member.id} />
-              <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
-                <span className="admin-search-bar__label">Permission</span>
-                <Select name="permission" required>
-                  <option value="">Choose permission...</option>
-                  {ADMIN_PERMISSION_OPTIONS.map((permission) => (
-                    <option key={permission.key} value={permission.key}>
-                      {permission.label}
-                    </option>
-                  ))}
-                </Select>
-              </label>
-              <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
-                <span className="admin-search-bar__label">Override</span>
-                <Select name="allowed" required>
-                  <option value="true">Allow even if role does not allow it</option>
-                  <option value="false">Deny even if role allows it</option>
-                </Select>
-              </label>
-              <ClientAuthorizationFields
-                reasonName="overrideReason"
-                reasonPlaceholder="Why does this admin need a one-off permission override?"
-              />
-            </MemberCrmInlineForm>
+            {canManageRoles ? (
+              <MemberCrmInlineForm
+                action={setAdminPermissionOverrideInline}
+                submitLabel="Save override"
+                pendingLabel="Saving..."
+                buttonClassName="admin-btn admin-btn--primary"
+                buttonStyle={{ marginTop: "0.75rem" }}
+              >
+                <input type="hidden" name="memberId" value={member.id} />
+                <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
+                  <span className="admin-search-bar__label">Permission</span>
+                  <Select name="permission" required>
+                    <option value="">Choose permission...</option>
+                    {ADMIN_PERMISSION_OPTIONS.map((permission) => (
+                      <option key={permission.key} value={permission.key}>
+                        {permission.label}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+                <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
+                  <span className="admin-search-bar__label">Override</span>
+                  <Select name="allowed" required>
+                    <option value="true">Allow even if role does not allow it</option>
+                    <option value="false">Deny even if role allows it</option>
+                  </Select>
+                </label>
+                <ClientAuthorizationFields
+                  reasonName="overrideReason"
+                  reasonPlaceholder="Why does this admin need a one-off permission override?"
+                />
+              </MemberCrmInlineForm>
+            ) : null}
           </div>
         </div>
       </Section>
 
-      <Section id="notes" title="Notes" description="Internal-only admin and coaching notes.">
+      <Section
+        id="notes"
+        title="Notes"
+        description="Internal-only admin and coaching notes. Use these for historical context; keep the Access follow-up field focused on the one current next step."
+      >
         <div className="member-crm-grid-2">
           <div className="member-crm-list">
             {notes.length > 0 ? notes.map((note) => (
@@ -1556,7 +1659,11 @@ export default async function AdminMemberDetailPage({
         </div>
       </Section>
 
-      <Section id="documents" title="Documents" description="Internal document uploads and references for coaching and support.">
+      <Section
+        id="documents"
+        title="Documents"
+        description="Internal document uploads and references for coaching and support."
+      >
         <div className="member-crm-grid-2">
           <div className="member-crm-list">
             {documents.length > 0 ? documents.map((document) => (
@@ -1597,17 +1704,26 @@ export default async function AdminMemberDetailPage({
           >
             <input type="hidden" name="memberId" value={member.id} />
             <p className="member-crm-card-title">Add document</p>
+            <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
+              Upload a private file directly to the member record, or save an external reference link.
+            </p>
             <label className="admin-form-field">
               <span className="admin-search-bar__label">Title</span>
               <TextInput name="title" required placeholder="Coaching worksheet" />
             </label>
             <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
-              <span className="admin-search-bar__label">Upload file</span>
-              <TextInput name="documentFile" type="file" />
-              <span className="member-crm-muted">Private files are limited to 10 MB.</span>
+              <span className="admin-search-bar__label">Upload File</span>
+              <TextInput
+                name="documentFile"
+                type="file"
+                accept=".pdf,.doc,.docx,.txt,.rtf,.png,.jpg,.jpeg,.webp"
+              />
+              <span className="member-crm-muted">
+                Recommended for internal worksheets, screenshots, and support docs. Private uploads are limited to 10 MB.
+              </span>
             </label>
             <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
-              <span className="admin-search-bar__label">Or URL</span>
+              <span className="admin-search-bar__label">External URL Instead</span>
               <TextInput name="externalUrl" placeholder="https://..." />
             </label>
             <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>

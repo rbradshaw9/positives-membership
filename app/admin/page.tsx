@@ -5,6 +5,7 @@
  */
 
 import Link from "next/link";
+import { requireAdminPermission } from "@/lib/auth/require-admin";
 import { getContentReadiness } from "@/lib/queries/get-content-readiness";
 import { getAdminMemberOpsSnapshot } from "@/lib/queries/get-admin-members";
 import type { ReadinessAlert } from "@/lib/queries/get-content-readiness";
@@ -91,6 +92,8 @@ const tiles = [
 ];
 
 export default async function AdminPage() {
+  await requireAdminPermission("members.read");
+
   const [alerts, memberOps] = await Promise.all([
     getContentReadiness(),
     getAdminMemberOpsSnapshot(),

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireAdmin } from "@/lib/auth/require-admin";
+import { getAdminPermissionSet, requireAdmin } from "@/lib/auth/require-admin";
 
 /**
  * app/admin/layout.tsx
@@ -12,6 +12,9 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   const user = await requireAdmin();
+  const permissionSet = await getAdminPermissionSet(user.id, user.email);
+  const canReadMembers = permissionSet.has("members.read");
+  const canManageRoles = permissionSet.has("roles.manage");
 
   const navItems = [
     {
@@ -55,7 +58,7 @@ export default async function AdminLayout({
   ];
 
   const managementItems = [
-    {
+    ...(canReadMembers ? [{
       href: "/admin/members",
       label: "Members",
       icon: (
@@ -63,7 +66,7 @@ export default async function AdminLayout({
           <path d="M7.5 0.875C5.49797 0.875 3.875 2.49797 3.875 4.5C3.875 6.15288 4.98124 7.54738 6.49373 7.98351L5.42128 13.2907C5.36683 13.5613 5.54851 13.8267 5.81912 13.882C6.08974 13.9373 6.35494 13.7557 6.40939 13.485L7.5 7.99414L8.59061 13.485C8.64506 13.7557 8.91026 13.9373 9.18088 13.882C9.45149 13.8267 9.63317 13.5613 9.57872 13.2907L8.50627 7.98351C10.0188 7.54738 11.125 6.15288 11.125 4.5C11.125 2.49797 9.50203 0.875 7.5 0.875ZM4.875 4.5C4.875 3.05025 6.05025 1.875 7.5 1.875C8.94975 1.875 10.125 3.05025 10.125 4.5C10.125 5.94975 8.94975 7.125 7.5 7.125C6.05025 7.125 4.875 5.94975 4.875 4.5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"/>
         </svg>
       ),
-    },
+    }] : []),
     {
       href: "/admin/ingestion",
       label: "Ingestion",
@@ -73,7 +76,7 @@ export default async function AdminLayout({
         </svg>
       ),
     },
-    {
+    ...(canManageRoles ? [{
       href: "/admin/roles",
       label: "Roles",
       icon: (
@@ -81,7 +84,7 @@ export default async function AdminLayout({
           <path d="M7.5 1.25C5.84315 1.25 4.5 2.59315 4.5 4.25C4.5 5.90685 5.84315 7.25 7.5 7.25C9.15685 7.25 10.5 5.90685 10.5 4.25C10.5 2.59315 9.15685 1.25 7.5 1.25ZM5.5 4.25C5.5 3.14543 6.39543 2.25 7.5 2.25C8.60457 2.25 9.5 3.14543 9.5 4.25C9.5 5.35457 8.60457 6.25 7.5 6.25C6.39543 6.25 5.5 5.35457 5.5 4.25ZM3.25 12.75C3.25 10.5409 5.04086 8.75 7.25 8.75H7.75C9.95914 8.75 11.75 10.5409 11.75 12.75C11.75 13.0261 11.5261 13.25 11.25 13.25C10.9739 13.25 10.75 13.0261 10.75 12.75C10.75 11.0931 9.40685 9.75 7.75 9.75H7.25C5.59315 9.75 4.25 11.0931 4.25 12.75C4.25 13.0261 4.02614 13.25 3.75 13.25C3.47386 13.25 3.25 13.0261 3.25 12.75Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"/>
         </svg>
       ),
-    },
+    }] : []),
   ];
 
 

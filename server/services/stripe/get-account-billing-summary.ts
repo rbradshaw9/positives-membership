@@ -157,6 +157,16 @@ export async function getAccountBillingSummary(
       nextRenewalDate: renewalAt ? formatDate(renewalAt) : null,
     };
   } catch (error) {
+    if (
+      error instanceof Stripe.errors.StripeInvalidRequestError &&
+      error.code === "resource_missing"
+    ) {
+      console.warn(
+        `[account] Stripe customer ${stripeCustomerId} is missing; skipping billing summary.`
+      );
+      return { scheduledBillingChange: null, nextRenewalDate: null };
+    }
+
     console.error("[account] Failed to load account billing summary:", error);
     return { scheduledBillingChange: null, nextRenewalDate: null };
   }

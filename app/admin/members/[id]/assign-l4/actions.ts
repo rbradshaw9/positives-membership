@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import Stripe from "stripe";
-import { requireAdmin } from "@/lib/auth/require-admin";
+import { requireAdminPermission } from "@/lib/auth/require-admin";
 import { getStripe } from "@/lib/stripe/config";
 import { config } from "@/lib/config";
 import { createClient } from "@/lib/supabase/server";
@@ -118,7 +118,7 @@ export async function assignL4Subscription(
   _prev: ActionResult,
   formData: FormData
 ): Promise<ActionResult> {
-  await requireAdmin();
+  await requireAdminPermission("members.manage_billing");
 
   const memberId = (formData.get("memberId") as string)?.trim();
   const packageType = (formData.get("packageType") as PackageType) ?? "pay_in_full";

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireAdmin } from "@/lib/auth/require-admin";
+import { requireAdminPermission } from "@/lib/auth/require-admin";
 import {
   getAdminAssignableMembers,
   getAdminRolesForMember,
@@ -128,7 +128,7 @@ export default async function AdminMembersPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const adminUser = await requireAdmin();
+  const adminUser = await requireAdminPermission("members.read");
 
   const params = await searchParams;
   const filters: MemberCrmListFilters = {

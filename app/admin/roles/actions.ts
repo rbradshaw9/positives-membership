@@ -20,12 +20,14 @@ export async function updateAdminRolePermissions(formData: FormData) {
   const actor = await requireAdminPermission("roles.manage");
   const roleId = clean(formData.get("roleId"));
   const reason = clean(formData.get("reason"));
+  const confirmed = formData.get("clientAuthorizationConfirmed") === "on";
   const selected = formData
     .getAll("permissions")
     .map((value) => value.toString())
     .filter(isAdminPermissionKey);
 
   if (!roleId) redirect("/admin/roles?error=missing_role");
+  if (!confirmed) redirect("/admin/roles?error=missing_authorization");
   if (!reason || reason.length < 3) redirect("/admin/roles?error=missing_reason");
 
   const supabase = asLooseSupabaseClient(getAdminClient());
@@ -85,6 +87,7 @@ export async function updateAdminRolePermissions(formData: FormData) {
       role_key: role.key,
       role_name: role.name,
       permissions: nextPermissions,
+      client_authorization_confirmed: true,
     },
   });
 

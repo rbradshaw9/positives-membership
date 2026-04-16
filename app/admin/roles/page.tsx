@@ -12,6 +12,8 @@ type SearchParams = Promise<{ success?: string; error?: string }>;
 
 const ERROR_COPY: Record<string, string> = {
   missing_role: "Choose a role before saving.",
+  missing_authorization:
+    "Confirm the permission change is authorized before saving role defaults.",
   missing_reason: "Add a short reason before changing role permissions.",
   role_not_found: "That role could not be found.",
   update_failed: "Role permissions could not be updated.",
@@ -45,6 +47,8 @@ export default async function AdminRolesPage({ searchParams }: { searchParams: S
       <div className="admin-role-note">
         <strong>Guardrail:</strong> Super Admin is always kept as the full-permission role to avoid
         accidental lockouts. Use per-admin overrides from a member record for temporary exceptions.
+        Assigned counts only reflect database role assignments; bootstrap admins from{" "}
+        <code>ADMIN_EMAILS</code> are separate.
       </div>
 
       <div className="admin-role-grid">
@@ -83,6 +87,16 @@ export default async function AdminRolesPage({ searchParams }: { searchParams: S
                     </span>
                   </label>
                 ))}
+              </div>
+
+              <div className="admin-form-field">
+                <span className="admin-search-bar__label">Authorization</span>
+                <label className="admin-role-checkbox-row" style={{ marginTop: "0.35rem" }}>
+                  <input type="checkbox" name="clientAuthorizationConfirmed" required />
+                  <span>
+                    I verified this role-permission change is approved by the team and safe to apply.
+                  </span>
+                </label>
               </div>
 
               <label className="admin-form-field">
@@ -234,6 +248,20 @@ export default async function AdminRolesPage({ searchParams }: { searchParams: S
           color: var(--color-muted-fg);
           font-size: 0.76rem;
           line-height: 1.45;
+        }
+
+        .admin-role-checkbox-row {
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr);
+          gap: 0.55rem;
+          align-items: start;
+          color: var(--color-fg);
+          font-size: 0.84rem;
+          line-height: 1.55;
+        }
+
+        .admin-role-checkbox-row input {
+          margin-top: 0.2rem;
         }
 
         .admin-role-back-link {
