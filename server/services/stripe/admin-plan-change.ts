@@ -3,6 +3,7 @@ import { comparePlanLevels, getSubscriptionAnalyticsFromPriceId } from "@/lib/an
 import { config } from "@/lib/config";
 import { getPlanName } from "@/lib/plans";
 import { getStripe } from "@/lib/stripe/config";
+import { isStripeResourceMissingError } from "@/lib/stripe/errors";
 
 export type AdminPlanChangeTargetKey =
   | "level_1_monthly"
@@ -154,71 +155,99 @@ export async function getAdminPlanChangePreview(params: {
     return { ok: false, targetKey: target.key, error: "This member does not have a Stripe customer linked." };
   }
 
-  const stripe = getStripe();
-  const subscription = await getActiveSubscription(params.stripeCustomerId);
-  if (!subscription) {
-    return { ok: false, targetKey: target.key, error: "No active Stripe subscription was found for this customer." };
+  try {
+    const stripe = getStripe();
+    const subscription = await getActiveSubscription(params.stripeCustomerId);
+    if (!subscription) {
+      return {
+        ok: false,
+        targetKey: target.key,
+        error: "No active Stripe subscription was found for this customer.",
+      };
+    }
+
+    const item = getPrimarySubscriptionItem(subscription);
+    if (!item?.id || !item.price?.id) {
+      return {
+        ok: false,
+        targetKey: target.key,
+        error: "This subscription does not have a supported primary price item.",
+      };
+    }
+
+    const currentPriceId = item.price.id;
+    const prorationDate = Math.floor(Date.now() / 1000);
+    const nextBillingAt = item.current_period_end;
+    const kind = getChangeKind(currentPriceId, target);
+    let amountDueCents = 0;
+    let currency = item.price.currency ?? "usd";
+
+    if (kind === "upgrade") {
+      const invoice = await stripe.invoices.createPreview({
+        customer: params.stripeCustomerId,
+        subscription: subscription.id,
+        subscription_details: {
+          items: [{
+            id: item.id,
+            price: target.priceId,
+            quantity: item.quantity ?? 1,
+          }],
+          proration_behavior: "always_invoice",
+          proration_date: prorationDate,
+        },
+      });
+
+      amountDueCents = invoice.amount_due ?? invoice.total ?? 0;
+      currency = invoice.currency ?? currency;
+    }
+
+    const currentPlanName = formatPlanLabel(currentPriceId);
+    const targetPlanName = target.label;
+    const nextBillingLabel = formatDate(nextBillingAt);
+    const effectiveLabel =
+      kind === "upgrade" ? "Immediately after confirmation" : nextBillingLabel;
+
+    return {
+      ok: true,
+      targetKey: target.key,
+      subscriptionId: subscription.id,
+      subscriptionItemId: item.id,
+      currentPriceId,
+      targetPriceId: target.priceId,
+      currentPlanName,
+      targetPlanName,
+      kind,
+      amountDueCents,
+      currency,
+      prorationDate,
+      nextBillingAt,
+      nextBillingLabel,
+      effectiveLabel,
+      message:
+        kind === "same_plan"
+          ? "This member is already on that plan."
+          : kind === "upgrade"
+            ? "Stripe will apply this upgrade now and attempt to collect the prorated amount immediately."
+            : "Stripe will schedule this change for the next billing date. There is no immediate charge.",
+    };
+  } catch (error) {
+    if (isStripeResourceMissingError(error)) {
+      return {
+        ok: false,
+        targetKey: target.key,
+        error:
+          "The linked Stripe customer could not be found in Stripe. Reconnect billing before previewing or changing this plan.",
+      };
+    }
+
+    console.error("[admin-plan-change] preview failed:", error);
+    return {
+      ok: false,
+      targetKey: target.key,
+      error:
+        "Stripe could not preview this change right now. Try again, or review the member directly in Stripe if the issue persists.",
+    };
   }
-
-  const item = getPrimarySubscriptionItem(subscription);
-  if (!item?.id || !item.price?.id) {
-    return { ok: false, targetKey: target.key, error: "This subscription does not have a supported primary price item." };
-  }
-
-  const currentPriceId = item.price.id;
-  const prorationDate = Math.floor(Date.now() / 1000);
-  const nextBillingAt = item.current_period_end;
-  const kind = getChangeKind(currentPriceId, target);
-  let amountDueCents = 0;
-  let currency = item.price.currency ?? "usd";
-
-  if (kind === "upgrade") {
-    const invoice = await stripe.invoices.createPreview({
-      customer: params.stripeCustomerId,
-      subscription: subscription.id,
-      subscription_details: {
-        items: [{
-          id: item.id,
-          price: target.priceId,
-          quantity: item.quantity ?? 1,
-        }],
-        proration_behavior: "always_invoice",
-        proration_date: prorationDate,
-      },
-    });
-
-    amountDueCents = invoice.amount_due ?? invoice.total ?? 0;
-    currency = invoice.currency ?? currency;
-  }
-
-  const currentPlanName = formatPlanLabel(currentPriceId);
-  const targetPlanName = target.label;
-  const nextBillingLabel = formatDate(nextBillingAt);
-  const effectiveLabel = kind === "upgrade" ? "Immediately after confirmation" : nextBillingLabel;
-
-  return {
-    ok: true,
-    targetKey: target.key,
-    subscriptionId: subscription.id,
-    subscriptionItemId: item.id,
-    currentPriceId,
-    targetPriceId: target.priceId,
-    currentPlanName,
-    targetPlanName,
-    kind,
-    amountDueCents,
-    currency,
-    prorationDate,
-    nextBillingAt,
-    nextBillingLabel,
-    effectiveLabel,
-    message:
-      kind === "same_plan"
-        ? "This member is already on that plan."
-        : kind === "upgrade"
-          ? "Stripe will apply this upgrade now and attempt to collect the prorated amount immediately."
-          : "Stripe will schedule this change for the next billing date. There is no immediate charge.",
-  };
 }
 
 export async function applyAdminPlanChange(params: {

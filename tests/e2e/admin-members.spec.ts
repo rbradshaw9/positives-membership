@@ -167,6 +167,44 @@ test.describe("admin member operations", () => {
     }
   });
 
+  test("admin billing preview handles a stale Stripe customer without crashing", async ({
+    page,
+  }) => {
+    originalMemberSupportState = await getAdminMemberSupportSnapshot(MEMBER_EMAIL);
+
+    await updateAdminMemberSupportFields(MEMBER_EMAIL, {
+      stripe_customer_id: "cus_missing_preview_fixture",
+      subscription_status: "active",
+      subscription_tier: "level_1",
+    });
+
+    try {
+      await loginWithPassword(page, {
+        email: ADMIN_EMAIL,
+        password: ADMIN_PASSWORD,
+        next: "/admin/members",
+      });
+
+      await page.getByLabel("Search members").fill(MEMBER_EMAIL);
+      await page.getByRole("button", { name: "Search" }).click();
+      await page.getByRole("link", { name: MEMBER_EMAIL }).click();
+
+      await page.goto(`${page.url()}?planTarget=level_3_monthly#billing`);
+
+      await expect(page.getByRole("heading", { name: /Ryan \(L1 Test\)|rbradshaw\+l1@gmail\.com/ })).toBeVisible();
+      await expect(
+        page.getByText(
+          "The linked Stripe customer could not be found in Stripe. Reconnect billing before previewing or changing this plan."
+        )
+      ).toBeVisible();
+    } finally {
+      if (originalMemberSupportState) {
+        await updateAdminMemberSupportFields(MEMBER_EMAIL, originalMemberSupportState);
+        originalMemberSupportState = null;
+      }
+    }
+  });
+
   test("admin can assign a role and use per-user overrides to expand access", async ({
     page,
     browser,
