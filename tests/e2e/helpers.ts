@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { expect, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
+import Stripe from "stripe";
 import type { Enums } from "@/types/supabase";
 import { getPromoterPayPalEmail } from "@/lib/firstpromoter/client";
 
@@ -74,6 +75,19 @@ function getServiceRoleClient() {
   });
 }
 
+function getStripeClient() {
+  ensureLocalEnvLoaded();
+
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) {
+    throw new Error("Missing STRIPE_SECRET_KEY for e2e Stripe setup.");
+  }
+
+  return new Stripe(secretKey, {
+    apiVersion: "2026-03-25.dahlia",
+  });
+}
+
 type SubscriptionStatus = Enums<"subscription_status">;
 type SubscriptionTier = Enums<"subscription_tier">;
 type LifecycleSequenceTable =
@@ -116,6 +130,42 @@ export async function getMemberBillingState(email: string) {
   }
 
   return data;
+}
+
+export async function ensureMemberStripeCustomer(email: string) {
+  const supabase = getServiceRoleClient();
+  const stripe = getStripeClient();
+  const member = await getMemberBillingState(email);
+
+  if (member.stripe_customer_id) {
+    try {
+      await stripe.customers.retrieve(member.stripe_customer_id);
+      return member.stripe_customer_id;
+    } catch {
+      // Fall through to recreate the missing customer.
+    }
+  }
+
+  const customer = await stripe.customers.create({
+    email: member.email,
+    metadata: {
+      source: "e2e-fixture-repair",
+      member_id: member.id,
+    },
+  });
+
+  const { error } = await supabase
+    .from("member")
+    .update({ stripe_customer_id: customer.id })
+    .eq("id", member.id);
+
+  if (error) {
+    throw new Error(
+      `Failed to persist repaired stripe_customer_id for ${email}: ${error.message}`
+    );
+  }
+
+  return customer.id;
 }
 
 export async function createCourseEntitlementWebhookFixture({

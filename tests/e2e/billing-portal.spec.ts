@@ -1,8 +1,15 @@
 import { expect, test } from "@playwright/test";
-import { loginWithPassword, MEMBER_EMAIL, MEMBER_PASSWORD } from "./helpers";
+import {
+  ensureMemberStripeCustomer,
+  loginWithPassword,
+  MEMBER_EMAIL,
+  MEMBER_PASSWORD,
+} from "./helpers";
 
 test.describe("member billing portal", () => {
   test("member can launch the Stripe billing center from /account", async ({ page }) => {
+    await ensureMemberStripeCustomer(MEMBER_EMAIL);
+
     await loginWithPassword(page, {
       email: MEMBER_EMAIL,
       password: MEMBER_PASSWORD,
@@ -27,6 +34,8 @@ test.describe("member billing portal", () => {
   test("legacy /upgrade route hands active members into the billing center", async ({
     page,
   }) => {
+    await ensureMemberStripeCustomer(MEMBER_EMAIL);
+
     await loginWithPassword(page, {
       email: MEMBER_EMAIL,
       password: MEMBER_PASSWORD,

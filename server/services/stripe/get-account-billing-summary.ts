@@ -5,6 +5,7 @@ import {
 } from "@/lib/analytics/subscription";
 import { getPositivesPlanName } from "@/lib/plans";
 import { getStripe } from "@/lib/stripe/config";
+import { isStripeResourceMissingError } from "@/lib/stripe/errors";
 import type { ScheduledBillingChange } from "@/server/services/stripe/get-scheduled-billing-change";
 
 type BillingChangeKind = ScheduledBillingChange["kind"];
@@ -12,6 +13,7 @@ type BillingChangeKind = ScheduledBillingChange["kind"];
 export interface AccountBillingSummary {
   scheduledBillingChange: ScheduledBillingChange | null;
   nextRenewalDate: string | null;
+  billingPortalAvailable: boolean;
 }
 
 function formatDate(timestamp: number) {
@@ -130,7 +132,11 @@ export async function getAccountBillingSummary(
   stripeCustomerId: string | null | undefined
 ): Promise<AccountBillingSummary> {
   if (!stripeCustomerId) {
-    return { scheduledBillingChange: null, nextRenewalDate: null };
+    return {
+      scheduledBillingChange: null,
+      nextRenewalDate: null,
+      billingPortalAvailable: false,
+    };
   }
 
   try {
@@ -147,7 +153,11 @@ export async function getAccountBillingSummary(
     );
 
     if (!subscription) {
-      return { scheduledBillingChange: null, nextRenewalDate: null };
+      return {
+        scheduledBillingChange: null,
+        nextRenewalDate: null,
+        billingPortalAvailable: true,
+      };
     }
 
     const renewalAt = subscription.items.data[0]?.current_period_end ?? null;
@@ -155,19 +165,25 @@ export async function getAccountBillingSummary(
     return {
       scheduledBillingChange: getScheduledChangeFromSubscription(subscription),
       nextRenewalDate: renewalAt ? formatDate(renewalAt) : null,
+      billingPortalAvailable: true,
     };
   } catch (error) {
-    if (
-      error instanceof Stripe.errors.StripeInvalidRequestError &&
-      error.code === "resource_missing"
-    ) {
+    if (isStripeResourceMissingError(error)) {
       console.warn(
         `[account] Stripe customer ${stripeCustomerId} is missing; skipping billing summary.`
       );
-      return { scheduledBillingChange: null, nextRenewalDate: null };
+      return {
+        scheduledBillingChange: null,
+        nextRenewalDate: null,
+        billingPortalAvailable: false,
+      };
     }
 
     console.error("[account] Failed to load account billing summary:", error);
-    return { scheduledBillingChange: null, nextRenewalDate: null };
+    return {
+      scheduledBillingChange: null,
+      nextRenewalDate: null,
+      billingPortalAvailable: false,
+    };
   }
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { track } from "@/lib/analytics/ga";
 
 /**
@@ -12,6 +13,7 @@ import { track } from "@/lib/analytics/ga";
 
 export function BillingButton() {
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   async function handleClick() {
     setLoading(true);
@@ -22,6 +24,8 @@ export function BillingButton() {
         source_path: "/account",
       });
       window.location.href = data.url;
+    } else if (data?.code === "billing_unavailable") {
+      router.replace("/account?error=billing_unavailable");
     } else {
       setLoading(false);
     }

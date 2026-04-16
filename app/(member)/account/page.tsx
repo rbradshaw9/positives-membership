@@ -39,13 +39,12 @@ export default async function AccountPage({
   const tier = member?.subscription_tier ?? "level_1";
   const planName = getPositivesPlanName(tier);
   const timezone = member?.timezone ?? "America/New_York";
-  const hasBillingPortal = !!member?.stripe_customer_id;
   const status = member?.subscription_status ?? "active";
   const memberName = member?.name?.trim() || "Member";
   const initials = memberName.charAt(0).toUpperCase();
-  const { scheduledBillingChange, nextRenewalDate } = await getAccountBillingSummary(
-    member?.stripe_customer_id
-  );
+  const { scheduledBillingChange, nextRenewalDate, billingPortalAvailable } =
+    await getAccountBillingSummary(member?.stripe_customer_id);
+  const hasBillingPortal = billingPortalAvailable;
   const billingUnavailable = resolvedSearchParams.error === "billing_unavailable";
   const joinedLabel = member?.created_at
     ? new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getStripe } from "@/lib/stripe/config";
-import { config } from "@/lib/config";
+import { createBillingPortalSessionUrl } from "@/server/services/stripe/create-billing-portal-session";
 
 /**
  * app/api/stripe/billing-portal/route.ts
@@ -45,19 +44,23 @@ export async function POST() {
   }
 
   // 3. Create the portal session
-  const stripe = getStripe();
-  const returnUrl = `${config.app.url}/account`;
+  const result = await createBillingPortalSessionUrl(member.stripe_customer_id);
 
-  try {
-    const session = await stripe.billingPortal.sessions.create({
-      customer: member.stripe_customer_id,
-      return_url: returnUrl,
-    });
-
-    return NextResponse.json({ url: session.url });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Stripe error";
-    console.error("[billing-portal] Failed to create portal session:", message);
-    return NextResponse.json({ error: message }, { status: 500 });
+  if (result.ok) {
+    return NextResponse.json({ url: result.url });
   }
+
+  if (result.reason === "customer_missing") {
+    console.warn("[billing-portal] Missing Stripe customer:", member.stripe_customer_id);
+    return NextResponse.json(
+      {
+        error: "Billing isn't available for this account yet.",
+        code: "billing_unavailable",
+      },
+      { status: 422 }
+    );
+  }
+
+  console.error("[billing-portal] Failed to create portal session:", result.message);
+  return NextResponse.json({ error: result.message }, { status: 500 });
 }

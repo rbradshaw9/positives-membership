@@ -5,9 +5,10 @@ import { formatSupabaseAuthError } from "@/lib/auth/client-error";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getStripe } from "@/lib/stripe/config";
+import { config } from "@/lib/config";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
+import { createBillingPortalSessionUrl } from "@/server/services/stripe/create-billing-portal-session";
 
 type ActionResult = { error?: string; success?: true };
 const MEMBER_AVATAR_BUCKET = "member-avatars";
@@ -216,7 +217,6 @@ export async function updateTimezone(
  * redirectToBillingPortal — creates a Stripe Customer Portal session for the
  * member's stripe_customer_id and redirects them there.
  *
- * Requires NEXT_PUBLIC_BASE_URL env var for the return URL.
  * Fails gracefully: returns error string rather than throwing.
  */
 export async function redirectToBillingPortal(): Promise<void> {
@@ -239,16 +239,22 @@ export async function redirectToBillingPortal(): Promise<void> {
     redirect("/account?error=billing_unavailable");
   }
 
-  const stripe = getStripe();
-  const baseUrl =
-    process.env.NEXT_PUBLIC_BASE_URL ?? "https://app.getpositives.com";
+  const portal = await createBillingPortalSessionUrl(
+    member.stripe_customer_id,
+    `${config.app.url}/account`
+  );
 
-  const session = await stripe.billingPortal.sessions.create({
-    customer: member.stripe_customer_id,
-    return_url: `${baseUrl}/account`,
-  });
+  if (portal.ok) {
+    redirect(portal.url);
+  }
 
-  redirect(session.url);
+  if (portal.reason === "customer_missing") {
+    console.warn("[Account] Stripe customer is missing for member:", user.id);
+    redirect("/account?error=billing_unavailable");
+  }
+
+  console.error("[Account] Failed to create billing portal session:", portal.message);
+  redirect("/account?error=billing_unavailable");
 }
 
 /**

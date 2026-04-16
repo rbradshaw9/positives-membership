@@ -20,20 +20,11 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getStripe } from "@/lib/stripe/config";
 import { config } from "@/lib/config";
 import { verifyBillingToken } from "@/lib/auth/billing-token";
+import { createBillingPortalSessionUrl } from "@/server/services/stripe/create-billing-portal-session";
 
 const RETURN_URL = `${config.app.url}/account`;
-
-async function createPortalSession(stripeCustomerId: string): Promise<string> {
-  const stripe = getStripe();
-  const session = await stripe.billingPortal.sessions.create({
-    customer: stripeCustomerId,
-    return_url: RETURN_URL,
-  });
-  return session.url;
-}
 
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token");
@@ -43,15 +34,23 @@ export async function GET(req: NextRequest) {
     const result = verifyBillingToken(token);
 
     if (result.ok) {
-      try {
-        const portalUrl = await createPortalSession(
-          result.payload.stripeCustomerId
-        );
-        return NextResponse.redirect(portalUrl);
-      } catch (err) {
-        console.error("[billing-redirect] Stripe portal session failed:", err);
-        // Fall through to session-based auth below
+      const portal = await createBillingPortalSessionUrl(
+        result.payload.stripeCustomerId,
+        RETURN_URL
+      );
+
+      if (portal.ok) {
+        return NextResponse.redirect(portal.url);
       }
+
+      if (portal.reason === "customer_missing") {
+        return NextResponse.redirect(
+          new URL("/account?error=billing_unavailable", config.app.url)
+        );
+      }
+
+      console.error("[billing-redirect] Stripe portal session failed:", portal.message);
+      // Fall through to session-based auth below
     } else if (result.reason === "expired") {
       // Token expired — redirect to login with next param so they end up here
       // (minus the token, which would just fail again)
@@ -86,10 +85,22 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const portalUrl = await createPortalSession(member.stripe_customer_id);
-    return NextResponse.redirect(portalUrl);
-  } catch (err) {
-    console.error("[billing-redirect] Stripe portal session failed:", err);
+    const portal = await createBillingPortalSessionUrl(member.stripe_customer_id, RETURN_URL);
+
+    if (portal.ok) {
+      return NextResponse.redirect(portal.url);
+    }
+
+    if (portal.reason === "customer_missing") {
+      return NextResponse.redirect(
+        new URL("/account?error=billing_unavailable", config.app.url)
+      );
+    }
+
+    console.error("[billing-redirect] Stripe portal session failed:", portal.message);
+    return NextResponse.redirect(new URL("/account", config.app.url));
+  } catch (error) {
+    console.error("[billing-redirect] Stripe portal session failed:", error);
     return NextResponse.redirect(new URL("/account", config.app.url));
   }
 }
