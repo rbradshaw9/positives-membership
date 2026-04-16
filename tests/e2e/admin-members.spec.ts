@@ -35,6 +35,22 @@ test.afterAll(async () => {
 });
 
 test.describe("admin member operations", () => {
+  test("admin sees admin navigation from the member shell", async ({ page }) => {
+    await loginWithPassword(page, {
+      email: ADMIN_EMAIL,
+      password: ADMIN_PASSWORD,
+      next: "/today",
+    });
+
+    const memberNav = page.getByRole("navigation", { name: "Member navigation" });
+    await expect(memberNav.getByRole("link", { name: "Admin", exact: true })).toBeVisible();
+
+    await page.getByRole("button", { name: /open profile menu/i }).click();
+    await expect(
+      page.getByRole("menu", { name: "Profile menu" }).getByRole("menuitem", { name: "Admin" })
+    ).toBeVisible();
+  });
+
   test("admin can open role permission management", async ({ page }) => {
     await loginWithPassword(page, {
       email: ADMIN_EMAIL,

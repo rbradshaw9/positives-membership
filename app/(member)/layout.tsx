@@ -6,6 +6,7 @@ import { config } from "@/lib/config";
 import { isStreakActive } from "@/lib/streak/compute-streak";
 import { getEffectiveDate } from "@/lib/dates/effective-date";
 import { trackFirstMemberLogin } from "@/lib/member/track-first-login";
+import { getAdminPermissionSet } from "@/lib/auth/require-admin";
 
 /**
  * app/(member)/layout.tsx
@@ -30,6 +31,8 @@ export default async function MemberLayout({
 
   const showPasswordNudge = member.password_set === false;
   const marketingOptedOut = member.email_unsubscribed === true;
+  const adminPermissionSet = await getAdminPermissionSet(member.id, member.email);
+  const showAdminNav = adminPermissionSet.size > 0;
 
   // Only show a non-zero streak if the member practiced today or yesterday.
   // If they missed a day, show 0 — the DB value itself gets corrected on next listen.
@@ -47,6 +50,7 @@ export default async function MemberLayout({
       communityPreviewEnabled={config.app.communityPreviewEnabled}
       needsPasswordSetup={showPasswordNudge}
       marketingOptedOut={marketingOptedOut}
+      showAdminNav={showAdminNav}
     >
       <ServiceWorkerRegistration />
       {showPasswordNudge && <PasswordNudgeBanner />}

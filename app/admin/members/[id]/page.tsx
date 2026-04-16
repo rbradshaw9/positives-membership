@@ -16,19 +16,34 @@ import { PLAN_NAME_BY_TIER } from "@/lib/plans";
 import { ADMIN_PERMISSION_OPTIONS, getAdminPermissionLabel } from "@/lib/admin/permissions";
 import { getAdminPermissionOverridesForMember } from "@/lib/admin/roles";
 import {
+  deriveNeedsAttention,
+  deriveRecommendedNextAction,
+  getMemberBillingSummary,
+  refreshMemberHealthSnapshot,
+  type MemberNeedsAttentionCard,
+} from "@/lib/admin/member-crm-insights";
+import {
+  getCurrentOpenFollowupTask,
+  getMemberFollowupTasks,
+} from "@/lib/admin/member-followup";
+import {
   getAdminPlanChangeOptions,
   getAdminPlanChangePreview,
 } from "@/server/services/stripe/admin-plan-change";
+import { backfillMemberBillingSummary } from "@/server/services/stripe/member-billing-summary";
+import { ClipboardCopyButton } from "@/components/admin/ClipboardCopyButton";
 import {
   addMemberAdminNoteInline,
   addMemberDocumentReferenceInline,
   applyMemberPlanChangeInline,
   assignAdminRoleToMemberInline,
   adjustMemberPointsInline,
+  createMemberFollowupTaskInline,
   grantCourseToMemberInline,
   previewMemberPlanChange,
   removeAdminRoleFromMemberInline,
   removeAdminPermissionOverrideInline,
+  resolveMemberFollowupTaskInline,
   revokeCourseEntitlementInline,
   setAdminPermissionOverrideInline,
   unlockCourseWithPointsForMemberInline,
@@ -105,6 +120,25 @@ const EVENT_LABEL: Record<string, string> = {
   admin_course_granted: "Course granted",
   admin_course_revoked: "Course revoked",
 };
+
+const CRM_TABS = [
+  ["overview", "Overview"],
+  ["activity", "Activity"],
+  ["access", "Access"],
+  ["billing", "Billing"],
+  ["communication", "Communication"],
+  ["notes", "Notes"],
+  ["documents", "Documents"],
+  ["admin-access", "Admin Access"],
+  ["audit", "Audit"],
+] as const;
+
+type MemberCrmTab = (typeof CRM_TABS)[number][0];
+const DEFAULT_MEMBER_CRM_TAB: MemberCrmTab = "overview";
+
+function isMemberCrmTab(value: string | undefined): value is MemberCrmTab {
+  return CRM_TABS.some(([tab]) => tab === value);
+}
 
 function formatDateTime(iso: string | null): string {
   if (!iso) return "—";
@@ -444,6 +478,13 @@ function MemberCrmStyles() {
         transform: translateY(-1px);
       }
 
+      .member-crm-nav a[aria-current="page"],
+      .member-crm-nav__active {
+        background: linear-gradient(135deg, rgba(46, 196, 182, 0.18), rgba(68, 168, 216, 0.16));
+        color: var(--color-foreground);
+        box-shadow: inset 0 0 0 1px rgba(46, 196, 182, 0.16);
+      }
+
       .member-crm-metrics {
         display: grid;
         grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -663,6 +704,18 @@ function MemberCrmStyles() {
         box-shadow: 0 10px 24px rgba(14, 16, 21, 0.035);
       }
 
+      .member-crm-record--link {
+        color: inherit;
+        text-decoration: none;
+        transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+      }
+
+      .member-crm-record--link:hover {
+        transform: translateY(-1px);
+        border-color: color-mix(in srgb, var(--color-primary) 28%, var(--color-border));
+        box-shadow: 0 16px 34px rgba(14, 16, 21, 0.06);
+      }
+
       .member-crm-record__title {
         margin: 0;
         font-weight: 800;
@@ -679,6 +732,28 @@ function MemberCrmStyles() {
 
       .member-crm-record__note {
         font-size: 0.82rem;
+      }
+
+      .member-crm-severity {
+        display: inline-flex;
+        align-items: center;
+        margin-left: 0.45rem;
+        padding: 0.18rem 0.45rem;
+        border-radius: 999px;
+        font-size: 0.625rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .member-crm-severity--urgent {
+        background: rgba(239, 68, 68, 0.12);
+        color: #b91c1c;
+      }
+
+      .member-crm-severity--watch {
+        background: rgba(245, 158, 11, 0.14);
+        color: #92400e;
       }
 
       .member-crm-timeline {
@@ -770,6 +845,34 @@ function MemberCrmStyles() {
         text-decoration: underline;
       }
 
+      .member-crm-inline-actions {
+        display: inline-flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+      }
+
+      .member-crm-copy-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(226, 232, 240, 0.92);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.9);
+        color: var(--color-muted-fg);
+        padding: 0.34rem 0.6rem;
+        font-size: 0.7rem;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
+      }
+
+      .member-crm-copy-btn:hover {
+        border-color: color-mix(in srgb, var(--color-primary) 24%, var(--color-border));
+        color: var(--color-foreground);
+        background: color-mix(in srgb, var(--color-primary) 8%, white);
+      }
+
       @media (max-width: 1100px) {
         .member-crm-hero__inner,
         .member-crm-grid-2 {
@@ -816,7 +919,7 @@ function MemberCrmStyles() {
 }
 
 type PageParams = Promise<{ id: string }>;
-type SearchParams = Promise<{ success?: string; planTarget?: string }>;
+type SearchParams = Promise<{ success?: string; planTarget?: string; tab?: string }>;
 
 export default async function AdminMemberDetailPage({
   params,
@@ -861,6 +964,7 @@ export default async function AdminMemberDetailPage({
   } = detail;
 
   const contentTitleMap = await getContentTitleMap(activity.map((event) => event.content_id));
+  const activeTab: MemberCrmTab = isMemberCrmTab(sp.tab) ? sp.tab : DEFAULT_MEMBER_CRM_TAB;
   const stripeUrl = member.stripe_customer_id
     ? `https://dashboard.stripe.com/customers/${member.stripe_customer_id}`
     : null;
@@ -888,6 +992,98 @@ export default async function AdminMemberDetailPage({
   );
   const viewerPermissionSet = await getAdminPermissionSet(adminUser.id, adminUser.email);
   const canManageRoles = viewerPermissionSet.has("roles.manage");
+  const viewerCoachOnly = isCoachOnlyRoleSet(currentAdminRoles);
+
+  let billingSummary = await getMemberBillingSummary(member.id);
+  if (!billingSummary && member.stripe_customer_id) {
+    billingSummary = await backfillMemberBillingSummary({
+      memberId: member.id,
+      stripeCustomerId: member.stripe_customer_id,
+    });
+  }
+
+  const [healthSnapshot, currentFollowupTask, followupTasks] = await Promise.all([
+    refreshMemberHealthSnapshot({
+      id: member.id,
+      email: member.email,
+      subscription_status: member.subscription_status,
+      subscription_tier: member.subscription_tier,
+      password_set: member.password_set,
+      last_practiced_at: member.last_practiced_at,
+      last_seen_at: member.last_seen_at,
+      first_login_at: member.first_login_at,
+      paypal_email: member.paypal_email,
+      fp_promoter_id: member.fp_promoter_id,
+      stripe_customer_id: member.stripe_customer_id,
+      email_unsubscribed: member.email_unsubscribed,
+      assigned_coach_id: member.assigned_coach_id,
+      followup_status: member.followup_status,
+      followup_note: member.followup_note,
+      followup_at: member.followup_at,
+    }),
+    getCurrentOpenFollowupTask(member.id),
+    getMemberFollowupTasks(member.id),
+  ]);
+
+  const needsAttention = deriveNeedsAttention({
+    member: {
+      id: member.id,
+      email: member.email,
+      subscription_status: member.subscription_status,
+      subscription_tier: member.subscription_tier,
+      password_set: member.password_set,
+      last_practiced_at: member.last_practiced_at,
+      last_seen_at: member.last_seen_at,
+      first_login_at: member.first_login_at,
+      paypal_email: member.paypal_email,
+      fp_promoter_id: member.fp_promoter_id,
+      stripe_customer_id: member.stripe_customer_id,
+      email_unsubscribed: member.email_unsubscribed,
+      assigned_coach_id: member.assigned_coach_id,
+      followup_status: member.followup_status,
+      followup_note: member.followup_note,
+      followup_at: member.followup_at,
+    },
+    billingSummary,
+    healthSnapshot,
+    currentFollowupTask,
+  });
+
+  const recommendedAction = deriveRecommendedNextAction({
+    member: {
+      id: member.id,
+      email: member.email,
+      subscription_status: member.subscription_status,
+      subscription_tier: member.subscription_tier,
+      password_set: member.password_set,
+      last_practiced_at: member.last_practiced_at,
+      last_seen_at: member.last_seen_at,
+      first_login_at: member.first_login_at,
+      paypal_email: member.paypal_email,
+      fp_promoter_id: member.fp_promoter_id,
+      stripe_customer_id: member.stripe_customer_id,
+      email_unsubscribed: member.email_unsubscribed,
+      assigned_coach_id: member.assigned_coach_id,
+      followup_status: member.followup_status,
+      followup_note: member.followup_note,
+      followup_at: member.followup_at,
+    },
+    billingSummary,
+    healthSnapshot,
+    currentFollowupTask,
+    needsAttention,
+  });
+
+  function tabHref(tab: MemberCrmTab) {
+    const query = new URLSearchParams();
+    query.set("tab", tab);
+    if (tab === "billing" && sp.planTarget) query.set("planTarget", sp.planTarget);
+    return `/admin/members/${member.id}?${query.toString()}`;
+  }
+
+  const overviewCardOrder = viewerCoachOnly
+    ? ["needs", "engagement", "coach", "revenue", "communication"]
+    : ["needs", "membership", "revenue", "communication", "coach"];
 
   return (
     <div className="member-crm-shell">
@@ -919,6 +1115,25 @@ export default async function AdminMemberDetailPage({
               <p className="member-crm-eyebrow">Member Management</p>
               <h1 className="member-crm-title">{displayName}</h1>
               <p className="member-crm-email">{member.email}</p>
+              <div className="member-crm-quick-links" style={{ marginTop: "0.75rem" }}>
+                <ClipboardCopyButton
+                  text={member.email}
+                  label="Copy email"
+                  className="member-crm-copy-btn"
+                />
+                <ClipboardCopyButton
+                  text={member.id}
+                  label="Copy member ID"
+                  className="member-crm-copy-btn"
+                />
+                {member.stripe_customer_id ? (
+                  <ClipboardCopyButton
+                    text={member.stripe_customer_id}
+                    label="Copy Stripe ID"
+                    className="member-crm-copy-btn"
+                  />
+                ) : null}
+              </div>
               <div className="member-crm-badge-row">
                 <span className={STATUS_BADGE[member.subscription_status] ?? STATUS_BADGE.inactive}>
                   {STATUS_LABEL[member.subscription_status] ?? member.subscription_status}
@@ -945,47 +1160,55 @@ export default async function AdminMemberDetailPage({
             <div className="member-crm-quick-links">
               {stripeUrl ? (
                 <a className="admin-btn admin-btn--outline" href={stripeUrl} target="_blank" rel="noopener noreferrer">
-                  Stripe
+                  Open Stripe
                 </a>
               ) : null}
-              <a className="admin-btn admin-btn--outline" href="#courses">
-                Manage courses
-              </a>
-              <a className="admin-btn admin-btn--primary" href="#notes">
+              {member.fp_promoter_id ? (
+                <a
+                  className="admin-btn admin-btn--outline"
+                  href="https://positives.firstpromoter.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Open affiliate portal
+                </a>
+              ) : null}
+              <Link className="admin-btn admin-btn--outline" href={tabHref("access")}>
+                Manage access
+              </Link>
+              <Link className="admin-btn admin-btn--outline" href={tabHref("notes")}>
+                Set follow-up
+              </Link>
+              <Link className="admin-btn admin-btn--primary" href={tabHref("notes")}>
                 Add note
-              </a>
+              </Link>
             </div>
           </aside>
         </div>
       </section>
 
       <nav
-        aria-label="Member management sections"
+        aria-label="Member management tabs"
         className="member-crm-nav"
       >
-        {[
-          ["overview", "Overview"],
-          ["access", "Access"],
-          ["courses", "Courses"],
-          ["points", "Points"],
-          ["activity", "Activity"],
-          ["billing", "Billing"],
-          ["communication", "Communication"],
-          ["notes", "Notes"],
-          ["documents", "Documents"],
-          ["audit", "Audit"],
-        ].map(([href, label]) => (
-          <a key={href} href={`#${href}`}>
+        {CRM_TABS.map(([tab, label]) => (
+          <Link
+            key={tab}
+            href={tabHref(tab)}
+            aria-current={activeTab === tab ? "page" : undefined}
+            className={activeTab === tab ? "member-crm-nav__active" : undefined}
+          >
             {label}
-          </a>
+          </Link>
         ))}
       </nav>
 
       <div className="member-crm-metrics" aria-label="Member summary metrics">
         {[
           ["Access", accessType, isSubscriber ? "Membership access is active." : activeEntitlements.length > 0 ? "Permanent course access remains." : "No protected access right now."],
-          ["Courses", String(activeEntitlements.length), `${inactiveEntitlements.length} inactive history item${inactiveEntitlements.length === 1 ? "" : "s"}.`],
-          ["Points", String(pointBalance), "Available unlock balance."],
+          ["Health", healthSnapshot.health_status.replaceAll("_", " "), `Engagement is ${healthSnapshot.engagement_status.replaceAll("_", " ")} right now.`],
+          ["LTV", formatMoney(billingSummary?.lifetime_value_cents ?? 0, billingSummary?.currency ?? "usd"), billingSummary ? `${billingSummary.successful_payment_count} successful payment${billingSummary.successful_payment_count === 1 ? "" : "s"} tracked.` : "Stripe-linked summary has not been backfilled yet."],
+          ["Follow-up", currentFollowupTask ? FOLLOWUP_LABEL[currentFollowupTask.status] ?? currentFollowupTask.status : "Clear", currentFollowupTask ? currentFollowupTask.summary : "No open follow-up task."],
           ["Last Seen", formatRelativeDate(lastSeen), member.last_practiced_at ? `Last practice ${formatRelativeDate(member.last_practiced_at)}.` : "No practice tracked yet."],
           ["Listens", String(stats.listenCount), "Completed audio events."],
           ["Journal", String(stats.journalCount), "Reflection activity."],
@@ -998,766 +1221,1204 @@ export default async function AdminMemberDetailPage({
         ))}
       </div>
 
-      <Section id="overview" title="Overview" description="Fast support context for this member.">
-        <dl className="member-crm-profile-grid">
-          <ProfileField label="Email">{member.email}</ProfileField>
-          <ProfileField label="Name">{member.name ?? "Not set"}</ProfileField>
-          <ProfileField label="Member Since">{formatDate(member.created_at)}</ProfileField>
-          <ProfileField label="First Login">{formatDateTime(member.first_login_at)}</ProfileField>
-          <ProfileField label="Last Seen">{formatDateTime(lastSeen)}</ProfileField>
-          <ProfileField label="Follow-up">
-            {FOLLOWUP_LABEL[member.followup_status] ?? member.followup_status}
-          </ProfileField>
-          <ProfileField label="Assigned Coach">
-            {coaches.find((coach) => coach.id === member.assigned_coach_id)?.label ?? "Unassigned"}
-          </ProfileField>
-          <ProfileField label="Legacy Ref">{member.legacy_member_ref ?? "—"}</ProfileField>
-        </dl>
-        <MemberCrmInlineForm
-          action={updateMemberAvatarInline}
-          className="member-crm-card"
-          style={{ marginTop: "1rem" }}
-          submitLabel="Upload profile photo"
-          pendingLabel="Uploading..."
-          buttonClassName="admin-btn admin-btn--outline"
-          buttonStyle={{ marginTop: "0.75rem" }}
-        >
-          <input type="hidden" name="memberId" value={member.id} />
-          <p className="member-crm-card-title">Profile photo</p>
-          <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
-            Upload a member avatar for the admin CRM and future member-facing profile surfaces.
-            JPEG, PNG, WebP, or GIF. Max 3 MB.
-          </p>
-          <label className="admin-form-field">
-            <span className="admin-search-bar__label">Avatar image</span>
-            <TextInput name="avatarFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" required />
-          </label>
-          <ClientAuthorizationFields
-            reasonName="avatarReason"
-            reasonPlaceholder="Example: Member sent updated profile photo by email."
-          />
-        </MemberCrmInlineForm>
-      </Section>
-
-      <Section id="access" title="Access" description="Operational member fields and access context. Billing/tier changes must go through Stripe-backed plan-change tooling.">
-        <MemberCrmProfileForm
-          action={updateMemberCrmProfileInline}
-          coaches={coaches}
-          member={{
-            id: member.id,
-            name: member.name,
-            timezone: member.timezone,
-            assignedCoachId: member.assigned_coach_id,
-            followupStatus: member.followup_status,
-            followupNote: member.followup_note,
-            subscriptionStatusLabel: STATUS_LABEL[member.subscription_status] ?? member.subscription_status,
-            tierLabel: member.subscription_tier
-              ? PLAN_NAME_BY_TIER[member.subscription_tier] ?? member.subscription_tier
-              : "No tier",
-          }}
-        />
-
-        {overrides.length > 0 ? (
-          <div style={{ marginTop: "1rem" }}>
-            <p className="admin-search-bar__label">Manual access overrides</p>
-            <div className="member-crm-list" style={{ marginTop: "0.6rem" }}>
-              {overrides.map((override) => (
-                <div key={override.id} className="member-crm-card">
-                  <p className="member-crm-record__title">{override.active ? "Active" : "Inactive"} override</p>
-                  <p className="member-crm-record__meta">
-                    {override.reason} · {formatDate(override.starts_at)}
-                    {override.ends_at ? ` through ${formatDate(override.ends_at)}` : ""}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : null}
-      </Section>
-
-      <Section id="courses" title="Courses" description="Permanent ownership, grants, revokes, and point unlocks.">
-        <div className="member-crm-grid-2">
-          <div className="member-crm-list">
-            {activeEntitlements.length > 0 ? (
-              activeEntitlements.map((entitlement) => (
-                <div key={entitlement.id} className="member-crm-record">
-                  <div style={{ minWidth: 0 }}>
-                    <div>
-                      <p className="member-crm-record__title">{entitlement.course?.title ?? "Unknown course"}</p>
-                      <p className="member-crm-record__meta">
-                        {SOURCE_LABEL[entitlement.source] ?? entitlement.source} · Granted {formatDate(entitlement.granted_at)}
-                        {entitlement.legacy_ref ? ` · Legacy ${entitlement.legacy_ref}` : ""}
-                      </p>
-                      {entitlement.grant_note ? (
-                        <p className="member-crm-record__note">
-                          {entitlement.grant_note}
-                        </p>
-                      ) : null}
-                    </div>
+      {activeTab === "overview" ? (
+        <>
+          <Section id="overview" title="Overview" description="A support-first command center for this member record.">
+            <div className="member-crm-grid-2" style={{ marginBottom: "1rem" }}>
+              <div className="member-crm-card">
+                <p className="member-crm-card-title">Needs attention</p>
+                {needsAttention.length > 0 ? (
+                  <div className="member-crm-list" style={{ marginTop: "0.75rem" }}>
+                    {needsAttention.map((card: MemberNeedsAttentionCard) => (
+                      <Link key={card.key} href={tabHref(card.tab)} className="member-crm-record member-crm-record--link">
+                        <div>
+                          <p className="member-crm-record__title">
+                            {card.label}{" "}
+                            <span className={`member-crm-severity member-crm-severity--${card.severity}`}>
+                              {card.severity === "urgent" ? "Urgent" : "Watch"}
+                            </span>
+                          </p>
+                          <p className="member-crm-record__note">{card.detail}</p>
+                        </div>
+                      </Link>
+                    ))}
                   </div>
-                  <MemberCrmInlineForm
-                    action={revokeCourseEntitlementInline}
-                    style={{ minWidth: "14rem" }}
-                    submitLabel="Revoke access"
-                    pendingLabel="Revoking..."
-                    buttonClassName="admin-btn admin-btn--outline"
-                    buttonStyle={{ marginTop: "0.5rem" }}
-                    resetOnSuccess={false}
-                  >
-                    <input type="hidden" name="memberId" value={member.id} />
-                    <input type="hidden" name="entitlementId" value={entitlement.id} />
-                    <TextInput name="revokeNote" required placeholder="Reason to revoke..." />
-                    <div style={{ marginTop: "0.5rem" }}>
-                      <ClientAuthorizationCheckbox />
-                    </div>
-                  </MemberCrmInlineForm>
+                ) : (
+                  <EmptyState>No urgent support or coaching flags right now.</EmptyState>
+                )}
+              </div>
+
+              <div className="member-crm-card">
+                <p className="member-crm-card-title">Recommended next action</p>
+                <p className="member-crm-record__title" style={{ marginTop: "0.75rem" }}>
+                  {recommendedAction.label}
+                </p>
+                <p className="member-crm-record__note">{recommendedAction.detail}</p>
+                <div className="member-crm-quick-links" style={{ marginTop: "1rem" }}>
+                  <Link className="admin-btn admin-btn--primary" href={tabHref(recommendedAction.tab)}>
+                    Go to recommended area
+                  </Link>
+                  <Link className="admin-btn admin-btn--outline" href={tabHref("notes")}>
+                    {currentFollowupTask ? "Resolve follow-up" : "Create follow-up"}
+                  </Link>
                 </div>
-              ))
-            ) : (
-              <EmptyState>No active course entitlements yet.</EmptyState>
-            )}
+              </div>
+            </div>
 
-            {inactiveEntitlements.length > 0 ? (
-              <details className="member-crm-card">
-                <summary style={{ cursor: "pointer", fontWeight: 700 }}>
-                  Inactive entitlement history ({inactiveEntitlements.length})
-                </summary>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "0.75rem" }}>
-                  {inactiveEntitlements.map((entitlement) => (
-                    <div key={entitlement.id} style={{ fontSize: "0.8125rem", color: "var(--color-muted-fg)" }}>
-                      <strong>{entitlement.course?.title ?? "Unknown course"}</strong> · {entitlement.status}
-                      {entitlement.revoke_note ? ` · ${entitlement.revoke_note}` : ""}
-                    </div>
-                  ))}
+            <div className="member-crm-grid-2" style={{ marginBottom: "1rem" }}>
+              {overviewCardOrder.includes("membership") ? (
+                <div className="member-crm-card">
+                  <p className="member-crm-card-title">Membership snapshot</p>
+                  <dl className="member-crm-profile-grid" style={{ marginTop: "0.75rem" }}>
+                    <ProfileField label="Access">{accessType}</ProfileField>
+                    <ProfileField label="Tier">
+                      {member.subscription_tier
+                        ? PLAN_NAME_BY_TIER[member.subscription_tier as keyof typeof PLAN_NAME_BY_TIER] ?? member.subscription_tier
+                        : "No tier"}
+                    </ProfileField>
+                    <ProfileField label="Subscription Status">
+                      {STATUS_LABEL[member.subscription_status] ?? member.subscription_status}
+                    </ProfileField>
+                    <ProfileField label="Course Ownership">{String(activeEntitlements.length)}</ProfileField>
+                  </dl>
                 </div>
-              </details>
-            ) : null}
-          </div>
+              ) : null}
 
-          <div className="member-crm-list">
-            <MemberCrmInlineForm
-              action={grantCourseToMemberInline}
-              className="member-crm-card"
-              submitLabel="Grant access"
-              pendingLabel="Granting..."
-              buttonStyle={{ marginTop: "0.75rem" }}
-            >
-              <input type="hidden" name="memberId" value={member.id} />
-              <p className="member-crm-card-title">Grant course</p>
-              <label className="admin-form-field">
-                <span className="admin-search-bar__label">Course</span>
-                <Select name="courseId" required>
-                  <option value="">Choose course...</option>
-                  {grantableCourses.map((course) => (
-                    <option key={course.id} value={course.id}>
-                      {course.title} ({course.status})
-                    </option>
-                  ))}
-                </Select>
-              </label>
-              <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
-                <span className="admin-search-bar__label">Grant reason</span>
-                <TextArea name="grantNote" required placeholder="Coach bonus, migration correction, support fix..." />
-              </label>
-              <ClientAuthorizationCheckbox />
-            </MemberCrmInlineForm>
+              <div className="member-crm-card">
+                <p className="member-crm-card-title">
+                  {overviewCardOrder.includes("engagement") ? "Engagement snapshot" : "Revenue snapshot"}
+                </p>
+                {overviewCardOrder.includes("engagement") ? (
+                  <dl className="member-crm-profile-grid" style={{ marginTop: "0.75rem" }}>
+                    <ProfileField label="Health">{healthSnapshot.health_status.replaceAll("_", " ")}</ProfileField>
+                    <ProfileField label="Engagement">{healthSnapshot.engagement_status.replaceAll("_", " ")}</ProfileField>
+                    <ProfileField label="Practice Days / 30">{String(healthSnapshot.practice_days_30)}</ProfileField>
+                    <ProfileField label="Logins / 30">{String(healthSnapshot.logins_30)}</ProfileField>
+                  </dl>
+                ) : (
+                  <dl className="member-crm-profile-grid" style={{ marginTop: "0.75rem" }}>
+                    <ProfileField label="Lifetime Value">
+                      {formatMoney(billingSummary?.lifetime_value_cents ?? 0, billingSummary?.currency ?? "usd")}
+                    </ProfileField>
+                    <ProfileField label="Subscription Value">
+                      {formatMoney(billingSummary?.subscription_lifetime_value_cents ?? 0, billingSummary?.currency ?? "usd")}
+                    </ProfileField>
+                    <ProfileField label="Course Value">
+                      {formatMoney(billingSummary?.course_lifetime_value_cents ?? 0, billingSummary?.currency ?? "usd")}
+                    </ProfileField>
+                    <ProfileField label="Failed Payments">{String(billingSummary?.failed_payment_count ?? 0)}</ProfileField>
+                  </dl>
+                )}
+              </div>
+
+              <div className="member-crm-card">
+                <p className="member-crm-card-title">
+                  {overviewCardOrder.includes("coach") ? "Coach context" : "Communication snapshot"}
+                </p>
+                {overviewCardOrder.includes("coach") ? (
+                  <dl className="member-crm-profile-grid" style={{ marginTop: "0.75rem" }}>
+                    <ProfileField label="Assigned Coach">
+                      {coaches.find((coach) => coach.id === member.assigned_coach_id)?.label ?? "Unassigned"}
+                    </ProfileField>
+                    <ProfileField label="Current Follow-up">
+                      {currentFollowupTask?.summary ?? member.followup_note ?? "No open follow-up"}
+                    </ProfileField>
+                    <ProfileField label="Last Meaningful Activity">
+                      {formatDateTime(healthSnapshot.last_meaningful_activity_at)}
+                    </ProfileField>
+                    <ProfileField label="Pinned Notes">
+                      {String(notes.filter((note) => note.pinned).length)}
+                    </ProfileField>
+                  </dl>
+                ) : (
+                  <dl className="member-crm-profile-grid" style={{ marginTop: "0.75rem" }}>
+                    <ProfileField label="Marketing Email">
+                      {member.email_unsubscribed ? "Unsubscribed" : "Subscribed"}
+                    </ProfileField>
+                    <ProfileField label="Password">
+                      {member.password_set ? "Password set" : "Password not set"}
+                    </ProfileField>
+                    <ProfileField label="Affiliate">
+                      {member.fp_promoter_id ? "Affiliate enabled" : "No affiliate profile"}
+                    </ProfileField>
+                    <ProfileField label="Payout Email">
+                      {member.paypal_email ?? "Not set"}
+                    </ProfileField>
+                  </dl>
+                )}
+              </div>
+
+              <div className="member-crm-card">
+                <p className="member-crm-card-title">
+                  {overviewCardOrder.includes("revenue") ? "Revenue snapshot" : "Coach context"}
+                </p>
+                {overviewCardOrder.includes("revenue") ? (
+                  <dl className="member-crm-profile-grid" style={{ marginTop: "0.75rem" }}>
+                    <ProfileField label="Lifetime Value">
+                      {formatMoney(billingSummary?.lifetime_value_cents ?? 0, billingSummary?.currency ?? "usd")}
+                    </ProfileField>
+                    <ProfileField label="Subscription Value">
+                      {formatMoney(billingSummary?.subscription_lifetime_value_cents ?? 0, billingSummary?.currency ?? "usd")}
+                    </ProfileField>
+                    <ProfileField label="Course Value">
+                      {formatMoney(billingSummary?.course_lifetime_value_cents ?? 0, billingSummary?.currency ?? "usd")}
+                    </ProfileField>
+                    <ProfileField label="Failed Payments">{String(billingSummary?.failed_payment_count ?? 0)}</ProfileField>
+                  </dl>
+                ) : (
+                  <dl className="member-crm-profile-grid" style={{ marginTop: "0.75rem" }}>
+                    <ProfileField label="Assigned Coach">
+                      {coaches.find((coach) => coach.id === member.assigned_coach_id)?.label ?? "Unassigned"}
+                    </ProfileField>
+                    <ProfileField label="Current Follow-up">
+                      {currentFollowupTask?.summary ?? member.followup_note ?? "No open follow-up"}
+                    </ProfileField>
+                    <ProfileField label="Last Meaningful Activity">
+                      {formatDateTime(healthSnapshot.last_meaningful_activity_at)}
+                    </ProfileField>
+                    <ProfileField label="Pinned Notes">
+                      {String(notes.filter((note) => note.pinned).length)}
+                    </ProfileField>
+                  </dl>
+                )}
+              </div>
+            </div>
+
+            <dl className="member-crm-profile-grid">
+              <ProfileField label="Email">{member.email}</ProfileField>
+              <ProfileField label="Name">{member.name ?? "Not set"}</ProfileField>
+              <ProfileField label="Member Since">{formatDate(member.created_at)}</ProfileField>
+              <ProfileField label="First Login">{formatDateTime(member.first_login_at)}</ProfileField>
+              <ProfileField label="Last Seen">{formatDateTime(lastSeen)}</ProfileField>
+              <ProfileField label="Assigned Coach">
+                {coaches.find((coach) => coach.id === member.assigned_coach_id)?.label ?? "Unassigned"}
+              </ProfileField>
+              <ProfileField label="Legacy Ref">{member.legacy_member_ref ?? "—"}</ProfileField>
+              <ProfileField label="Member ID">
+                <span className="member-crm-mono">{member.id}</span>
+              </ProfileField>
+            </dl>
 
             <MemberCrmInlineForm
-              action={unlockCourseWithPointsForMemberInline}
+              action={updateMemberAvatarInline}
               className="member-crm-card"
-              submitLabel="Unlock course"
-              pendingLabel="Unlocking..."
+              style={{ marginTop: "1rem" }}
+              submitLabel="Upload profile photo"
+              pendingLabel="Uploading..."
               buttonClassName="admin-btn admin-btn--outline"
               buttonStyle={{ marginTop: "0.75rem" }}
             >
               <input type="hidden" name="memberId" value={member.id} />
-              <p className="member-crm-card-title" style={{ marginBottom: "0.35rem" }}>Unlock with points</p>
+              <p className="member-crm-card-title">Profile photo</p>
               <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
-                Current balance: {pointBalance} points
+                Upload a member avatar for the admin CRM and future member-facing profile surfaces.
+                JPEG, PNG, WebP, or GIF. Max 3 MB.
               </p>
               <label className="admin-form-field">
-                <span className="admin-search-bar__label">Course</span>
-                <Select name="courseId" required>
-                  <option value="">Choose course...</option>
-                  {grantableCourses.map((course) => (
-                    <option key={course.id} value={course.id}>
-                      {course.title} · {course.points_price ?? Math.round((course.price_cents ?? 0) / 100)} pts
+                <span className="admin-search-bar__label">Avatar image</span>
+                <TextInput name="avatarFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" required />
+              </label>
+              <ClientAuthorizationFields
+                reasonName="avatarReason"
+                reasonPlaceholder="Example: Member sent updated profile photo by email."
+              />
+            </MemberCrmInlineForm>
+          </Section>
+        </>
+      ) : null}
+
+      {activeTab === "access" ? (
+        <>
+          <Section id="access" title="Access" description="Operational access, profile context, course ownership, and point-based unlocks in one place.">
+            <MemberCrmProfileForm
+              action={updateMemberCrmProfileInline}
+              coaches={coaches}
+              member={{
+                id: member.id,
+                name: member.name,
+                timezone: member.timezone,
+                assignedCoachId: member.assigned_coach_id,
+                subscriptionStatusLabel: STATUS_LABEL[member.subscription_status] ?? member.subscription_status,
+                tierLabel: member.subscription_tier
+                  ? PLAN_NAME_BY_TIER[member.subscription_tier] ?? member.subscription_tier
+                  : "No tier",
+              }}
+            />
+
+            {overrides.length > 0 ? (
+              <div style={{ marginTop: "1rem" }}>
+                <p className="admin-search-bar__label">Manual access overrides</p>
+                <div className="member-crm-list" style={{ marginTop: "0.6rem" }}>
+                  {overrides.map((override) => (
+                    <div key={override.id} className="member-crm-card">
+                      <p className="member-crm-record__title">{override.active ? "Active" : "Inactive"} override</p>
+                      <p className="member-crm-record__meta">
+                        {override.reason} · {formatDate(override.starts_at)}
+                        {override.ends_at ? ` through ${formatDate(override.ends_at)}` : ""}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </Section>
+
+          <Section id="courses" title="Courses" description="Permanent ownership, grants, revokes, and points-based unlocks.">
+            <div className="member-crm-grid-2">
+              <div className="member-crm-list">
+                {activeEntitlements.length > 0 ? (
+                  activeEntitlements.map((entitlement) => (
+                    <div key={entitlement.id} className="member-crm-record">
+                      <div style={{ minWidth: 0 }}>
+                        <p className="member-crm-record__title">{entitlement.course?.title ?? "Unknown course"}</p>
+                        <p className="member-crm-record__meta">
+                          {SOURCE_LABEL[entitlement.source] ?? entitlement.source} · Granted {formatDate(entitlement.granted_at)}
+                          {entitlement.legacy_ref ? ` · Legacy ${entitlement.legacy_ref}` : ""}
+                        </p>
+                        {entitlement.grant_note ? (
+                          <p className="member-crm-record__note">{entitlement.grant_note}</p>
+                        ) : null}
+                      </div>
+                      <MemberCrmInlineForm
+                        action={revokeCourseEntitlementInline}
+                        style={{ minWidth: "14rem" }}
+                        submitLabel="Revoke access"
+                        pendingLabel="Revoking..."
+                        buttonClassName="admin-btn admin-btn--outline"
+                        buttonStyle={{ marginTop: "0.5rem" }}
+                        resetOnSuccess={false}
+                      >
+                        <input type="hidden" name="memberId" value={member.id} />
+                        <input type="hidden" name="entitlementId" value={entitlement.id} />
+                        <TextInput name="revokeNote" required placeholder="Reason to revoke..." />
+                        <div style={{ marginTop: "0.5rem" }}>
+                          <ClientAuthorizationCheckbox />
+                        </div>
+                      </MemberCrmInlineForm>
+                    </div>
+                  ))
+                ) : (
+                  <EmptyState>No active course entitlements yet.</EmptyState>
+                )}
+
+                {inactiveEntitlements.length > 0 ? (
+                  <details className="member-crm-card">
+                    <summary style={{ cursor: "pointer", fontWeight: 700 }}>
+                      Inactive entitlement history ({inactiveEntitlements.length})
+                    </summary>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "0.75rem" }}>
+                      {inactiveEntitlements.map((entitlement) => (
+                        <div key={entitlement.id} style={{ fontSize: "0.8125rem", color: "var(--color-muted-fg)" }}>
+                          <strong>{entitlement.course?.title ?? "Unknown course"}</strong> · {entitlement.status}
+                          {entitlement.revoke_note ? ` · ${entitlement.revoke_note}` : ""}
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                ) : null}
+              </div>
+
+              <div className="member-crm-list">
+                <MemberCrmInlineForm
+                  action={grantCourseToMemberInline}
+                  className="member-crm-card"
+                  submitLabel="Grant access"
+                  pendingLabel="Granting..."
+                  buttonStyle={{ marginTop: "0.75rem" }}
+                >
+                  <input type="hidden" name="memberId" value={member.id} />
+                  <p className="member-crm-card-title">Grant course</p>
+                  <label className="admin-form-field">
+                    <span className="admin-search-bar__label">Course</span>
+                    <Select name="courseId" required>
+                      <option value="">Choose course...</option>
+                      {grantableCourses.map((course) => (
+                        <option key={course.id} value={course.id}>
+                          {course.title} ({course.status})
+                        </option>
+                      ))}
+                    </Select>
+                  </label>
+                  <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
+                    <span className="admin-search-bar__label">Grant reason</span>
+                    <TextArea name="grantNote" required placeholder="Coach bonus, migration correction, support fix..." />
+                  </label>
+                  <ClientAuthorizationCheckbox />
+                </MemberCrmInlineForm>
+
+                <MemberCrmInlineForm
+                  action={unlockCourseWithPointsForMemberInline}
+                  className="member-crm-card"
+                  submitLabel="Unlock course"
+                  pendingLabel="Unlocking..."
+                  buttonClassName="admin-btn admin-btn--outline"
+                  buttonStyle={{ marginTop: "0.75rem" }}
+                >
+                  <input type="hidden" name="memberId" value={member.id} />
+                  <p className="member-crm-card-title" style={{ marginBottom: "0.35rem" }}>Unlock with points</p>
+                  <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
+                    Current balance: {pointBalance} points
+                  </p>
+                  <label className="admin-form-field">
+                    <span className="admin-search-bar__label">Course</span>
+                    <Select name="courseId" required>
+                      <option value="">Choose course...</option>
+                      {grantableCourses.map((course) => (
+                        <option key={course.id} value={course.id}>
+                          {course.title} · {course.points_price ?? Math.round((course.price_cents ?? 0) / 100)} pts
+                        </option>
+                      ))}
+                    </Select>
+                  </label>
+                  <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
+                    <span className="admin-search-bar__label">Point cost</span>
+                    <TextInput name="pointsCost" type="number" min="1" required placeholder="97" />
+                  </label>
+                  <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
+                    <span className="admin-search-bar__label">Note</span>
+                    <TextInput name="note" required placeholder="Course unlocked with points" />
+                  </label>
+                  <ClientAuthorizationCheckbox />
+                </MemberCrmInlineForm>
+              </div>
+            </div>
+          </Section>
+
+          <Section id="points" title="Points" description="Immutable ledger for engagement rewards, manual corrections, and unlock history.">
+            <div className="member-crm-grid-2">
+              <div className="member-crm-card">
+                <p className="member-crm-card-title">Recent ledger</p>
+                {points.length > 0 ? (
+                  <div className="member-crm-list">
+                    {points.map((entry) => (
+                      <div key={entry.id} className="member-crm-record" style={{ alignItems: "center" }}>
+                        <div>
+                          <p className="member-crm-record__title">{entry.description ?? entry.reason.replaceAll("_", " ")}</p>
+                          <p className="member-crm-record__meta">
+                            {formatDateTime(entry.created_at)}
+                            {entry.course?.title ? ` · ${entry.course.title}` : ""}
+                          </p>
+                        </div>
+                        <span style={{ fontWeight: 800, color: entry.delta > 0 ? "var(--color-primary)" : "#b45309" }}>
+                          {entry.delta > 0 ? "+" : ""}{entry.delta}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState>No points activity yet.</EmptyState>
+                )}
+              </div>
+
+              <MemberCrmInlineForm
+                action={adjustMemberPointsInline}
+                className="member-crm-card"
+                submitLabel="Save point adjustment"
+                pendingLabel="Saving..."
+                buttonStyle={{ marginTop: "0.75rem" }}
+              >
+                <input type="hidden" name="memberId" value={member.id} />
+                <p className="member-crm-card-title" style={{ marginBottom: "0.35rem" }}>Adjust points</p>
+                <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
+                  Balance: {pointBalance}
+                </p>
+                <label className="admin-form-field">
+                  <span className="admin-search-bar__label">Delta</span>
+                  <TextInput name="delta" type="number" required placeholder="+25 or -10" />
+                </label>
+                <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
+                  <span className="admin-search-bar__label">Reason</span>
+                  <TextArea name="description" required placeholder="Manual correction, bonus, event attendance..." />
+                </label>
+                <ClientAuthorizationCheckbox />
+              </MemberCrmInlineForm>
+            </div>
+          </Section>
+        </>
+      ) : null}
+
+      {activeTab === "activity" ? (
+        <Section id="activity" title="Activity" description="Recent product activity, lifecycle signals, and engagement health.">
+          <div className="member-crm-grid-2" style={{ marginBottom: "1rem" }}>
+            <div className="member-crm-card">
+              <p className="member-crm-card-title">Health snapshot</p>
+              <dl className="member-crm-profile-grid" style={{ marginTop: "0.75rem" }}>
+                <ProfileField label="Health">{healthSnapshot.health_status.replaceAll("_", " ")}</ProfileField>
+                <ProfileField label="Engagement">{healthSnapshot.engagement_status.replaceAll("_", " ")}</ProfileField>
+                <ProfileField label="Last Meaningful Activity">{formatDateTime(healthSnapshot.last_meaningful_activity_at)}</ProfileField>
+                <ProfileField label="Risk Flags">
+                  {healthSnapshot.risk_flags.length > 0 ? healthSnapshot.risk_flags.join(", ").replaceAll("_", " ") : "None"}
+                </ProfileField>
+              </dl>
+            </div>
+
+            <div className="member-crm-card">
+              <p className="member-crm-card-title">30-day momentum</p>
+              <dl className="member-crm-profile-grid" style={{ marginTop: "0.75rem" }}>
+                <ProfileField label="Practice Days">{String(healthSnapshot.practice_days_30)}</ProfileField>
+                <ProfileField label="Logins">{String(healthSnapshot.logins_30)}</ProfileField>
+                <ProfileField label="Listens">{String(healthSnapshot.listens_30)}</ProfileField>
+                <ProfileField label="Journal Entries">{String(healthSnapshot.journal_entries_30)}</ProfileField>
+              </dl>
+            </div>
+          </div>
+
+          {activity.length > 0 ? (
+            <div className="member-crm-timeline">
+              {activity.map((event) => (
+                <div key={event.id} className="member-crm-timeline-item">
+                  <span className="member-crm-timeline-dot" aria-hidden="true" />
+                  <div>
+                    <p className="member-crm-record__title">
+                      {EVENT_LABEL[event.event_type] ?? event.event_type}
+                    </p>
+                    <p className="member-crm-record__meta">
+                      {formatDateTime(event.occurred_at)}
+                      {event.content_id && contentTitleMap.get(event.content_id)
+                        ? ` · ${contentTitleMap.get(event.content_id)}`
+                        : ""}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState>No activity yet.</EmptyState>
+          )}
+        </Section>
+      ) : null}
+
+      {activeTab === "billing" ? (
+        <Section id="billing" title="Billing" description="Stripe remains the source of truth; this view adds local revenue context and review-first plan changes.">
+          <dl className="member-crm-profile-grid">
+            <ProfileField label="Stripe Customer">
+              {stripeUrl ? (
+                <span className="member-crm-inline-actions">
+                  <a href={stripeUrl} target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-primary)" }} className="member-crm-mono">
+                    {member.stripe_customer_id} ↗
+                  </a>
+                  <ClipboardCopyButton
+                    text={member.stripe_customer_id ?? ""}
+                    label="Copy"
+                    className="member-crm-copy-btn"
+                  />
+                </span>
+              ) : "Not linked"}
+            </ProfileField>
+            <ProfileField label="Subscription End">
+              {member.subscription_end_date ? formatDate(member.subscription_end_date) : "Ongoing / not set"}
+            </ProfileField>
+            <ProfileField label="Lifetime Value">
+              {formatMoney(billingSummary?.lifetime_value_cents ?? 0, billingSummary?.currency ?? "usd")}
+            </ProfileField>
+            <ProfileField label="Successful Payments">{String(billingSummary?.successful_payment_count ?? 0)}</ProfileField>
+            <ProfileField label="Billing Edit Policy">
+              Use Stripe for invoice/payment-method changes; use admin fields only for operational corrections.
+            </ProfileField>
+          </dl>
+
+          <div className="member-crm-grid-2" style={{ marginTop: "1.25rem" }}>
+            <form action={asFormAction(previewMemberPlanChange)} className="member-crm-card">
+              <input type="hidden" name="memberId" value={member.id} />
+              <p className="member-crm-card-title">Preview admin plan change</p>
+              <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
+                This only previews the Stripe impact. The change is not applied until the confirmation
+                step below is submitted.
+              </p>
+              <label className="admin-form-field">
+                <span className="admin-search-bar__label">Target plan</span>
+                <Select name="targetKey" defaultValue={sp.planTarget ?? ""} required>
+                  <option value="">Choose target plan...</option>
+                  {planChangeOptions.map((option) => (
+                    <option key={option.key} value={option.key}>
+                      {option.label}
                     </option>
                   ))}
                 </Select>
               </label>
-              <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
-                <span className="admin-search-bar__label">Point cost</span>
-                <TextInput name="pointsCost" type="number" min="1" required placeholder="97" />
-              </label>
-              <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
-                <span className="admin-search-bar__label">Note</span>
-                <TextInput name="note" required placeholder="Course unlocked with points" />
-              </label>
-              <ClientAuthorizationCheckbox />
-            </MemberCrmInlineForm>
-          </div>
-        </div>
-      </Section>
-
-      <Section id="points" title="Points" description="Immutable ledger for engagement rewards and course unlocks.">
-        <div className="member-crm-grid-2">
-          <div className="member-crm-card">
-            <p className="member-crm-card-title">Recent ledger</p>
-            {points.length > 0 ? (
-              <div className="member-crm-list">
-                {points.map((entry) => (
-                  <div key={entry.id} className="member-crm-record" style={{ alignItems: "center" }}>
-                    <div>
-                      <p className="member-crm-record__title">{entry.description ?? entry.reason.replaceAll("_", " ")}</p>
-                      <p className="member-crm-record__meta">
-                        {formatDateTime(entry.created_at)}
-                        {entry.course?.title ? ` · ${entry.course.title}` : ""}
-                      </p>
-                    </div>
-                    <span style={{ fontWeight: 800, color: entry.delta > 0 ? "var(--color-primary)" : "#b45309" }}>
-                      {entry.delta > 0 ? "+" : ""}{entry.delta}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <EmptyState>No points activity yet.</EmptyState>
-            )}
-          </div>
-          <MemberCrmInlineForm
-            action={adjustMemberPointsInline}
-            className="member-crm-card"
-            submitLabel="Save point adjustment"
-            pendingLabel="Saving..."
-            buttonStyle={{ marginTop: "0.75rem" }}
-          >
-            <input type="hidden" name="memberId" value={member.id} />
-            <p className="member-crm-card-title" style={{ marginBottom: "0.35rem" }}>Adjust points</p>
-            <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
-              Balance: {pointBalance}
-            </p>
-            <label className="admin-form-field">
-              <span className="admin-search-bar__label">Delta</span>
-              <TextInput name="delta" type="number" required placeholder="+25 or -10" />
-            </label>
-            <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
-              <span className="admin-search-bar__label">Reason</span>
-              <TextArea name="description" required placeholder="Manual correction, bonus, event attendance..." />
-            </label>
-            <ClientAuthorizationCheckbox />
-          </MemberCrmInlineForm>
-        </div>
-      </Section>
-
-      <Section id="activity" title="Activity" description="Recent product activity and lifecycle signals.">
-        {activity.length > 0 ? (
-          <div className="member-crm-timeline">
-            {activity.map((event) => (
-              <div key={event.id} className="member-crm-timeline-item">
-                <span className="member-crm-timeline-dot" aria-hidden="true" />
-                <div>
-                  <p className="member-crm-record__title">
-                    {EVENT_LABEL[event.event_type] ?? event.event_type}
-                  </p>
-                  <p className="member-crm-record__meta">
-                    {formatDateTime(event.occurred_at)}
-                    {event.content_id && contentTitleMap.get(event.content_id)
-                      ? ` · ${contentTitleMap.get(event.content_id)}`
-                      : ""}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <EmptyState>No activity yet.</EmptyState>
-        )}
-      </Section>
-
-      <Section id="billing" title="Billing" description="Billing remains Stripe-authoritative; admin shows operational context and links.">
-        <dl className="member-crm-profile-grid">
-          <ProfileField label="Stripe Customer">
-            {stripeUrl ? (
-              <a href={stripeUrl} target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-primary)" }} className="member-crm-mono">
-                {member.stripe_customer_id} ↗
-              </a>
-            ) : "Not linked"}
-          </ProfileField>
-          <ProfileField label="Subscription End">
-            {member.subscription_end_date ? formatDate(member.subscription_end_date) : "Ongoing / not set"}
-          </ProfileField>
-          <ProfileField label="Billing Edit Policy">
-            Use Stripe for invoice/payment-method changes; use admin fields only for operational corrections.
-          </ProfileField>
-        </dl>
-        <div className="member-crm-grid-2" style={{ marginTop: "1.25rem" }}>
-          <form action={asFormAction(previewMemberPlanChange)} className="member-crm-card">
-            <input type="hidden" name="memberId" value={member.id} />
-            <p className="member-crm-card-title">Preview admin plan change</p>
-            <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
-              This only previews the Stripe impact. The change is not applied until the confirmation
-              step below is submitted.
-            </p>
-            <label className="admin-form-field">
-              <span className="admin-search-bar__label">Target plan</span>
-              <Select name="targetKey" defaultValue={sp.planTarget ?? ""} required>
-                <option value="">Choose target plan...</option>
-                {planChangeOptions.map((option) => (
-                  <option key={option.key} value={option.key}>
-                    {option.label}
-                  </option>
-                ))}
-              </Select>
-            </label>
-            {planChangeOptions.length === 0 ? (
-              <p className="member-crm-record__note">
-                No plan-change prices are configured in this environment.
-              </p>
-            ) : null}
-            <button type="submit" className="admin-btn admin-btn--outline" style={{ marginTop: "0.75rem" }}>
-              Preview Stripe impact
-            </button>
-          </form>
-
-          <div className="member-crm-card">
-            <p className="member-crm-card-title">Stripe impact</p>
-            {!planChangePreview ? (
-              <EmptyState>Choose a target plan to preview the billing impact.</EmptyState>
-            ) : !planChangePreview.ok ? (
-              <EmptyState>{planChangePreview.error}</EmptyState>
-            ) : (
-              <div className="member-crm-list">
-                <dl className="member-crm-profile-grid">
-                  <ProfileField label="Current Plan">{planChangePreview.currentPlanName}</ProfileField>
-                  <ProfileField label="Target Plan">{planChangePreview.targetPlanName}</ProfileField>
-                  <ProfileField label="Effective">
-                    {planChangePreview.effectiveLabel}
-                  </ProfileField>
-                  <ProfileField label={planChangePreview.kind === "upgrade" ? "Prorated Charge Now" : "Charge Now"}>
-                    {planChangePreview.kind === "upgrade"
-                      ? formatMoney(planChangePreview.amountDueCents, planChangePreview.currency)
-                      : formatMoney(0, planChangePreview.currency)}
-                  </ProfileField>
-                  <ProfileField label="Next Billing Date">{planChangePreview.nextBillingLabel}</ProfileField>
-                </dl>
-                <p className="member-crm-record__note">{planChangePreview.message}</p>
-                {planChangePreview.kind !== "same_plan" ? (
-                  <MemberCrmInlineForm
-                    action={applyMemberPlanChangeInline}
-                    submitLabel={planChangePreview.kind === "upgrade" ? "Apply upgrade in Stripe" : "Schedule change in Stripe"}
-                    pendingLabel="Applying..."
-                    buttonStyle={{ marginTop: "0.75rem" }}
-                    resetOnSuccess={false}
-                  >
-                    <input type="hidden" name="memberId" value={member.id} />
-                    <input type="hidden" name="targetKey" value={planChangePreview.targetKey} />
-                    <ClientAuthorizationFields
-                      reasonName="changeReason"
-                      reasonPlaceholder="Example: Member requested upgrade by phone on Apr 15; confirmed immediate prorated charge."
-                    />
-                  </MemberCrmInlineForm>
-                ) : null}
-              </div>
-            )}
-          </div>
-        </div>
-      </Section>
-
-      <Section id="communication" title="Communication" description="Email preferences, referral context, lifecycle context, and role scaffolding.">
-        <dl className="member-crm-profile-grid">
-          <ProfileField label="Marketing Email">
-            {member.email_unsubscribed ? "Unsubscribed" : "Subscribed / not opted out"}
-            <span className="member-crm-muted">
-              App flag from member.email_unsubscribed. App unsubscribe links sync to AC; AC subscribe/unsubscribe webhooks sync back into the app.
-            </span>
-          </ProfileField>
-          <ProfileField label="Password">
-            {member.password_set ? "Password set" : "Magic-link / password not set"}
-          </ProfileField>
-          <ProfileField label="Admin Roles">
-            {roles.length > 0 ? roles.map((role) => role.role_name).join(", ") : "No role assigned"}
-          </ProfileField>
-          <ProfileField label="Member ID">
-            <span className="member-crm-mono">{member.id}</span>
-          </ProfileField>
-        </dl>
-        <div className="member-crm-grid-2" style={{ marginTop: "1.25rem" }}>
-          <div className="member-crm-card">
-            <p className="member-crm-card-title member-crm-card-title--row">
-              Affiliate & referral
-              {member.fp_promoter_id ? (
-                <a
-                  href="https://positives.firstpromoter.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="member-crm-link"
-                >
-                  Open portal
-                </a>
-              ) : null}
-            </p>
-            <dl className="member-crm-profile-grid">
-              <ProfileField label="Promoter ID">
-                {member.fp_promoter_id ? (
-                  <span className="member-crm-mono">{member.fp_promoter_id}</span>
-                ) : "Not an affiliate"}
-              </ProfileField>
-              <ProfileField label="Referral Code">
-                {member.fp_ref_id ? (
-                  <span className="member-crm-mono">{member.fp_ref_id}</span>
-                ) : "Not set"}
-              </ProfileField>
-              <ProfileField label="Referral Link">
-                {member.fp_ref_id ? (
-                  <a
-                    href={`https://positives.life?fpr=${member.fp_ref_id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="member-crm-link member-crm-mono"
-                  >
-                    positives.life?fpr={member.fp_ref_id}
-                  </a>
-                ) : "Not available"}
-              </ProfileField>
-              <ProfileField label="Referred By">
-                {member.referred_by_fpr ? (
-                  <span className="member-crm-mono">{member.referred_by_fpr}</span>
-                ) : "No referral source stored"}
-              </ProfileField>
-              <ProfileField label="Payout Email">
-                {member.paypal_email ?? "Not set"}
-              </ProfileField>
-            </dl>
-          </div>
-          <div className="member-crm-card">
-            <p className="member-crm-card-title">Assigned admin roles</p>
-            {!canManageRoles ? (
-              <p className="member-crm-muted" style={{ marginBottom: "0.85rem" }}>
-                You can review this member&apos;s admin access here. Assigning roles or changing
-                overrides requires the <strong>Manage roles</strong> permission.
-              </p>
-            ) : null}
-            {bootstrapAdmin ? (
-              <div
-                className="member-crm-record"
-                style={{
-                  marginBottom: "0.85rem",
-                  borderColor: "color-mix(in srgb, var(--color-primary) 30%, var(--color-border))",
-                  background:
-                    "linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 7%, white), rgba(255,255,255,0.92))",
-                }}
-              >
-                <div>
-                  <p className="member-crm-record__title">Bootstrap admin access</p>
-                  <p className="member-crm-record__meta">
-                    This member has full admin access through <span className="member-crm-mono">ADMIN_EMAILS</span>
-                    {" "}even if no database role is assigned yet.
-                  </p>
-                </div>
-              </div>
-            ) : null}
-            {roles.length > 0 ? (
-              <div className="member-crm-list">
-                {roles.map((role) => (
-                  <div key={role.role_key} className="member-crm-record" style={{ alignItems: "center" }}>
-                    <div>
-                      <p className="member-crm-record__title">{role.role_name}</p>
-                      <p className="member-crm-record__meta">
-                        {role.permissions.length} permission{role.permissions.length === 1 ? "" : "s"}
-                      </p>
-                    </div>
-                    {canManageRoles ? (
-                      <MemberCrmInlineForm
-                        action={removeAdminRoleFromMemberInline}
-                        submitLabel="Remove"
-                        pendingLabel="Removing..."
-                        buttonClassName="admin-btn admin-btn--outline"
-                        buttonStyle={{ fontSize: "0.75rem" }}
-                        resetOnSuccess={false}
-                      >
-                        <input type="hidden" name="memberId" value={member.id} />
-                        <input type="hidden" name="roleKey" value={role.role_key} />
-                        <ClientAuthorizationFields
-                          reasonName="roleReason"
-                          reasonLabel="Removal reason"
-                          reasonPlaceholder="Why should this admin role be removed?"
-                        />
-                      </MemberCrmInlineForm>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <EmptyState>No admin role assigned.</EmptyState>
-            )}
-            <div style={{ marginTop: "0.85rem" }}>
-              <p className="member-crm-record__title" style={{ marginBottom: "0.45rem" }}>
-                Effective permissions
-              </p>
-              {effectivePermissions.length > 0 ? (
-                <div className="member-crm-chip-list">
-                  {effectivePermissions.map((permission) => (
-                    <span key={permission.key} className="member-crm-chip">
-                      {permission.label}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="member-crm-muted">
-                  No admin permissions are currently effective for this member.
+              {planChangeOptions.length === 0 ? (
+                <p className="member-crm-record__note">
+                  No plan-change prices are configured in this environment.
                 </p>
+              ) : null}
+              <button type="submit" className="admin-btn admin-btn--outline" style={{ marginTop: "0.75rem" }}>
+                Preview Stripe impact
+              </button>
+            </form>
+
+            <div className="member-crm-card">
+              <p className="member-crm-card-title">Stripe impact</p>
+              {!planChangePreview ? (
+                <EmptyState>Choose a target plan to preview the billing impact.</EmptyState>
+              ) : !planChangePreview.ok ? (
+                <EmptyState>{planChangePreview.error}</EmptyState>
+              ) : (
+                <div className="member-crm-list">
+                  <dl className="member-crm-profile-grid">
+                    <ProfileField label="Current Plan">{planChangePreview.currentPlanName}</ProfileField>
+                    <ProfileField label="Target Plan">{planChangePreview.targetPlanName}</ProfileField>
+                    <ProfileField label="Effective">{planChangePreview.effectiveLabel}</ProfileField>
+                    <ProfileField label={planChangePreview.kind === "upgrade" ? "Prorated Charge Now" : "Charge Now"}>
+                      {planChangePreview.kind === "upgrade"
+                        ? formatMoney(planChangePreview.amountDueCents, planChangePreview.currency)
+                        : formatMoney(0, planChangePreview.currency)}
+                    </ProfileField>
+                    <ProfileField label="Next Billing Date">{planChangePreview.nextBillingLabel}</ProfileField>
+                  </dl>
+                  <p className="member-crm-record__note">{planChangePreview.message}</p>
+                  {planChangePreview.kind !== "same_plan" ? (
+                    <MemberCrmInlineForm
+                      action={applyMemberPlanChangeInline}
+                      submitLabel={planChangePreview.kind === "upgrade" ? "Apply upgrade in Stripe" : "Schedule change in Stripe"}
+                      pendingLabel="Applying..."
+                      buttonStyle={{ marginTop: "0.75rem" }}
+                      resetOnSuccess={false}
+                    >
+                      <input type="hidden" name="memberId" value={member.id} />
+                      <input type="hidden" name="targetKey" value={planChangePreview.targetKey} />
+                      <ClientAuthorizationFields
+                        reasonName="changeReason"
+                        reasonPlaceholder="Example: Member requested upgrade by phone on Apr 15; confirmed immediate prorated charge."
+                      />
+                    </MemberCrmInlineForm>
+                  ) : null}
+                </div>
               )}
             </div>
           </div>
-          {canManageRoles ? (
-            <MemberCrmInlineForm
-              action={assignAdminRoleToMemberInline}
-              className="member-crm-card"
-              submitLabel="Assign role"
-              pendingLabel="Assigning..."
-              buttonStyle={{ marginTop: "0.75rem" }}
-            >
-              <input type="hidden" name="memberId" value={member.id} />
-              <p className="member-crm-card-title">Assign role</p>
-              <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
-                Use role defaults for standard access, then use per-user overrides below only for true exceptions.
-              </p>
-              <Select name="roleId" required>
-                <option value="">Choose role...</option>
-                {availableRoles.map((role) => (
-                  <option key={role.id} value={role.id}>
-                    {role.name}
-                  </option>
-                ))}
-              </Select>
-              <ClientAuthorizationFields
-                reasonName="roleReason"
-                reasonPlaceholder="Why is this member being given admin access?"
-              />
-            </MemberCrmInlineForm>
-          ) : null}
+        </Section>
+      ) : null}
 
-          <div className="member-crm-card">
-            <p className="member-crm-card-title">Permission overrides</p>
-            <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
-              Use sparingly for one-off exceptions. Role defaults should still be managed from{" "}
-              <Link href="/admin/roles" className="member-crm-link">Admin Roles</Link>.
-            </p>
-            {!canManageRoles ? (
-              <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
-                You can review overrides here, but only admins with <strong>Manage roles</strong>
-                can add or remove them.
+      {activeTab === "communication" ? (
+        <Section id="communication" title="Communication" description="Email preferences, affiliate/referral context, and lifecycle communication readiness.">
+          <dl className="member-crm-profile-grid">
+            <ProfileField label="Marketing Email">
+              {member.email_unsubscribed ? "Unsubscribed" : "Subscribed / not opted out"}
+              <span className="member-crm-muted">
+                App flag from member.email_unsubscribed. App unsubscribe links sync to AC; AC subscribe/unsubscribe webhooks sync back into the app.
+              </span>
+            </ProfileField>
+            <ProfileField label="Password">
+              {member.password_set ? "Password set" : "Magic-link / password not set"}
+            </ProfileField>
+            <ProfileField label="Member ID">
+              <span className="member-crm-inline-actions">
+                <span className="member-crm-mono">{member.id}</span>
+                <ClipboardCopyButton
+                  text={member.id}
+                  label="Copy"
+                  className="member-crm-copy-btn"
+                />
+              </span>
+            </ProfileField>
+            <ProfileField label="First Login">{formatDateTime(member.first_login_at)}</ProfileField>
+          </dl>
+
+          <div className="member-crm-grid-2" style={{ marginTop: "1.25rem" }}>
+            <div className="member-crm-card">
+              <p className="member-crm-card-title member-crm-card-title--row">
+                Affiliate & referral
+                {member.fp_promoter_id ? (
+                  <a
+                    href="https://positives.firstpromoter.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="member-crm-link"
+                  >
+                    Open portal
+                  </a>
+                ) : null}
               </p>
-            ) : null}
-            {permissionOverrides.length > 0 ? (
-              <div className="member-crm-list" style={{ marginBottom: "1rem" }}>
-                {permissionOverrides.map((override) => (
-                  <div key={override.permission} className="member-crm-record">
-                    <div>
-                      <p className="member-crm-record__title">
-                        {getAdminPermissionLabel(override.permission)}
-                      </p>
-                      <p className="member-crm-record__meta">
-                        {override.allowed ? "Explicitly allowed" : "Explicitly denied"} · Updated {formatDateTime(override.updated_at)}
-                      </p>
-                    </div>
-                    {canManageRoles ? (
-                      <MemberCrmInlineForm
-                        action={removeAdminPermissionOverrideInline}
-                        submitLabel="Remove"
-                        pendingLabel="Removing..."
-                        buttonClassName="admin-btn admin-btn--outline"
-                        buttonStyle={{ marginTop: "0.5rem", fontSize: "0.75rem" }}
+              <dl className="member-crm-profile-grid">
+                <ProfileField label="Promoter ID">
+                  {member.fp_promoter_id ? (
+                    <span className="member-crm-inline-actions">
+                      <span className="member-crm-mono">{member.fp_promoter_id}</span>
+                      <ClipboardCopyButton
+                        text={String(member.fp_promoter_id)}
+                        label="Copy"
+                        className="member-crm-copy-btn"
+                      />
+                    </span>
+                  ) : "Not an affiliate"}
+                </ProfileField>
+                <ProfileField label="Referral Code">
+                  {member.fp_ref_id ? (
+                    <span className="member-crm-inline-actions">
+                      <span className="member-crm-mono">{member.fp_ref_id}</span>
+                      <ClipboardCopyButton
+                        text={member.fp_ref_id}
+                        label="Copy"
+                        className="member-crm-copy-btn"
+                      />
+                    </span>
+                  ) : "Not set"}
+                </ProfileField>
+                <ProfileField label="Referral Link">
+                  {member.fp_ref_id ? (
+                    <span className="member-crm-inline-actions">
+                      <a
+                        href={`https://positives.life?fpr=${member.fp_ref_id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="member-crm-link member-crm-mono"
                       >
-                        <input type="hidden" name="memberId" value={member.id} />
-                        <input type="hidden" name="permission" value={override.permission} />
-                        <ClientAuthorizationFields
-                          reasonName="overrideReason"
-                          reasonLabel="Removal reason"
-                          reasonPlaceholder="Why should this member return to role defaults?"
-                        />
-                      </MemberCrmInlineForm>
-                    ) : null}
+                        positives.life?fpr={member.fp_ref_id}
+                      </a>
+                      <ClipboardCopyButton
+                        text={`https://positives.life?fpr=${member.fp_ref_id}`}
+                        label="Copy"
+                        className="member-crm-copy-btn"
+                      />
+                    </span>
+                  ) : "Not available"}
+                </ProfileField>
+                <ProfileField label="Referred By">
+                  {member.referred_by_fpr ? (
+                    <span className="member-crm-mono">{member.referred_by_fpr}</span>
+                  ) : "No referral source stored"}
+                </ProfileField>
+                <ProfileField label="Payout Email">
+                  {member.paypal_email ?? "Not set"}
+                </ProfileField>
+              </dl>
+            </div>
+
+            <div className="member-crm-card">
+              <p className="member-crm-card-title">Lifecycle communication context</p>
+              <dl className="member-crm-profile-grid" style={{ marginTop: "0.75rem" }}>
+                <ProfileField label="Last Seen">{formatDateTime(lastSeen)}</ProfileField>
+                <ProfileField label="Current Follow-up">{currentFollowupTask?.summary ?? "No open follow-up"}</ProfileField>
+                <ProfileField label="Recommended Action">{recommendedAction.label}</ProfileField>
+                <ProfileField label="Health">{healthSnapshot.health_status.replaceAll("_", " ")}</ProfileField>
+              </dl>
+            </div>
+          </div>
+        </Section>
+      ) : null}
+
+      {activeTab === "notes" ? (
+        <Section
+          id="notes"
+          title="Notes"
+          description="Internal follow-up workflow plus support and coaching notes for durable context."
+        >
+          <div className="member-crm-grid-2">
+            <div className="member-crm-list">
+              <div className="member-crm-card">
+                <p className="member-crm-card-title">Follow-up workflow</p>
+                {followupTasks.length > 0 ? (
+                  <div className="member-crm-list" style={{ marginTop: "0.75rem" }}>
+                    {followupTasks.map((task) => (
+                      <div key={task.id} className="member-crm-record">
+                        <div>
+                          <p className="member-crm-record__title">{task.summary}</p>
+                          <p className="member-crm-record__meta">
+                            {FOLLOWUP_LABEL[task.status] ?? task.status}
+                            {task.due_at ? ` · Due ${formatDateTime(task.due_at)}` : ""}
+                            {task.owner?.email ? ` · Owner ${task.owner.name ?? task.owner.email}` : ""}
+                          </p>
+                          {task.details ? (
+                            <p className="member-crm-record__note">{task.details}</p>
+                          ) : null}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                ) : (
+                  <EmptyState>No follow-up tasks yet.</EmptyState>
+                )}
               </div>
-            ) : (
-              <EmptyState>No per-user permission overrides.</EmptyState>
-            )}
-            {canManageRoles ? (
+
+              {notes.length > 0 ? notes.map((note) => (
+                <div key={note.id} className="member-crm-card" style={{ borderColor: note.pinned ? "rgba(245,158,11,0.35)" : undefined }}>
+                  <p style={{ whiteSpace: "pre-wrap", fontSize: "0.9rem", lineHeight: 1.65 }}>{note.body}</p>
+                  <p className="member-crm-record__meta">
+                    {note.pinned ? "Pinned · " : ""}
+                    {note.author?.name ?? note.author?.email ?? "Admin"} · {formatDateTime(note.created_at)}
+                  </p>
+                </div>
+              )) : (
+                <EmptyState>No internal notes yet.</EmptyState>
+              )}
+            </div>
+
+            <div className="member-crm-list">
               <MemberCrmInlineForm
-                action={setAdminPermissionOverrideInline}
-                submitLabel="Save override"
+                action={createMemberFollowupTaskInline}
+                className="member-crm-card"
+                submitLabel="Save follow-up"
                 pendingLabel="Saving..."
-                buttonClassName="admin-btn admin-btn--primary"
                 buttonStyle={{ marginTop: "0.75rem" }}
               >
                 <input type="hidden" name="memberId" value={member.id} />
+                <p className="member-crm-card-title">Create follow-up</p>
+                <label className="admin-form-field">
+                  <span className="admin-search-bar__label">Summary</span>
+                  <TextInput name="summary" required placeholder="Check in about billing recovery" />
+                </label>
                 <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
-                  <span className="admin-search-bar__label">Permission</span>
-                  <Select name="permission" required>
-                    <option value="">Choose permission...</option>
-                    {ADMIN_PERMISSION_OPTIONS.map((permission) => (
-                      <option key={permission.key} value={permission.key}>
-                        {permission.label}
+                  <span className="admin-search-bar__label">Status</span>
+                  <Select name="status" defaultValue="needs_followup" required>
+                    <option value="needs_followup">Needs follow-up</option>
+                    <option value="waiting_on_member">Waiting on member</option>
+                  </Select>
+                </label>
+                <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
+                  <span className="admin-search-bar__label">Owner</span>
+                  <Select name="ownerMemberId" defaultValue={member.assigned_coach_id ?? ""}>
+                    <option value="">Unassigned</option>
+                    {coaches.map((coach) => (
+                      <option key={coach.id} value={coach.id}>
+                        {coach.label}
                       </option>
                     ))}
                   </Select>
                 </label>
                 <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
-                  <span className="admin-search-bar__label">Override</span>
-                  <Select name="allowed" required>
-                    <option value="true">Allow even if role does not allow it</option>
-                    <option value="false">Deny even if role allows it</option>
-                  </Select>
+                  <span className="admin-search-bar__label">Due date</span>
+                  <TextInput name="dueAt" type="datetime-local" />
                 </label>
-                <ClientAuthorizationFields
-                  reasonName="overrideReason"
-                  reasonPlaceholder="Why does this admin need a one-off permission override?"
-                />
+                <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
+                  <span className="admin-search-bar__label">Category</span>
+                  <TextInput name="category" placeholder="billing, support, coaching, migration..." />
+                </label>
+                <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
+                  <span className="admin-search-bar__label">Details</span>
+                  <TextArea name="details" placeholder="What should happen next and why?" />
+                </label>
               </MemberCrmInlineForm>
-            ) : null}
-          </div>
-        </div>
-      </Section>
 
-      <Section
-        id="notes"
-        title="Notes"
-        description="Internal-only admin and coaching notes. Use these for historical context; keep the Access follow-up field focused on the one current next step."
-      >
-        <div className="member-crm-grid-2">
-          <div className="member-crm-list">
-            {notes.length > 0 ? notes.map((note) => (
-              <div key={note.id} className="member-crm-card" style={{ borderColor: note.pinned ? "rgba(245,158,11,0.35)" : undefined }}>
-                <p style={{ whiteSpace: "pre-wrap", fontSize: "0.9rem", lineHeight: 1.65 }}>{note.body}</p>
-                <p className="member-crm-record__meta">
-                  {note.pinned ? "Pinned · " : ""}
-                  {note.author?.name ?? note.author?.email ?? "Admin"} · {formatDateTime(note.created_at)}
-                </p>
-              </div>
-            )) : (
-              <EmptyState>No internal notes yet.</EmptyState>
-            )}
-          </div>
-          <MemberCrmInlineForm
-            action={addMemberAdminNoteInline}
-            className="member-crm-card"
-            submitLabel="Save note"
-            pendingLabel="Saving..."
-            buttonStyle={{ marginTop: "0.75rem" }}
-          >
-            <input type="hidden" name="memberId" value={member.id} />
-            <p className="member-crm-card-title">Add note</p>
-            <TextArea name="body" required placeholder="Internal coaching/support note..." />
-            <label style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginTop: "0.75rem", fontSize: "0.8125rem" }}>
-              <input type="checkbox" name="pinned" />
-              Pin this note
-            </label>
-          </MemberCrmInlineForm>
-        </div>
-      </Section>
+              {currentFollowupTask ? (
+                <MemberCrmInlineForm
+                  action={resolveMemberFollowupTaskInline}
+                  className="member-crm-card"
+                  submitLabel="Resolve follow-up"
+                  pendingLabel="Resolving..."
+                  buttonClassName="admin-btn admin-btn--outline"
+                  buttonStyle={{ marginTop: "0.75rem" }}
+                  resetOnSuccess={false}
+                >
+                  <input type="hidden" name="memberId" value={member.id} />
+                  <input type="hidden" name="followupTaskId" value={currentFollowupTask.id} />
+                  <p className="member-crm-card-title">Resolve open follow-up</p>
+                  <p className="member-crm-record__note" style={{ marginBottom: "0.75rem" }}>
+                    {currentFollowupTask.summary}
+                  </p>
+                  <TextArea
+                    name="resolutionNote"
+                    required
+                    placeholder="What changed, and why is this follow-up now resolved?"
+                  />
+                </MemberCrmInlineForm>
+              ) : null}
 
-      <Section
-        id="documents"
-        title="Documents"
-        description="Internal document uploads and references for coaching and support."
-      >
-        <div className="member-crm-grid-2">
-          <div className="member-crm-list">
-            {documents.length > 0 ? documents.map((document) => (
-              <div key={document.id} className="member-crm-card">
-                <p className="member-crm-record__title">{document.title}</p>
-                {document.storage_path || document.external_url ? (
-                  <a
-                    href={
-                      document.storage_path
-                        ? `/admin/members/${member.id}/documents/${document.id}`
-                        : document.external_url ?? "#"
-                    }
-                    target={document.storage_path ? undefined : "_blank"}
-                    rel={document.storage_path ? undefined : "noopener noreferrer"}
-                    style={{ color: "var(--color-primary)", fontSize: "0.8125rem" }}
-                  >
-                    Open document ↗
-                  </a>
-                ) : null}
-                {document.note ? (
-                  <p className="member-crm-record__note">{document.note}</p>
-                ) : null}
-                <p className="member-crm-record__meta">
-                  {document.file_name ? `${document.file_name} ${formatBytes(document.size_bytes) ? `· ${formatBytes(document.size_bytes)}` : ""} · ` : ""}
-                  Internal only · {formatDateTime(document.created_at)}
-                </p>
-              </div>
-            )) : (
-              <EmptyState>No internal documents yet.</EmptyState>
-            )}
+              <MemberCrmInlineForm
+                action={addMemberAdminNoteInline}
+                className="member-crm-card"
+                submitLabel="Save note"
+                pendingLabel="Saving..."
+                buttonStyle={{ marginTop: "0.75rem" }}
+              >
+                <input type="hidden" name="memberId" value={member.id} />
+                <p className="member-crm-card-title">Add note</p>
+                <TextArea name="body" required placeholder="Internal coaching/support note..." />
+                <label style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginTop: "0.75rem", fontSize: "0.8125rem" }}>
+                  <input type="checkbox" name="pinned" />
+                  Pin this note
+                </label>
+              </MemberCrmInlineForm>
+            </div>
           </div>
-          <MemberCrmInlineForm
-            action={addMemberDocumentReferenceInline}
-            className="member-crm-card"
-            submitLabel="Save document"
-            pendingLabel="Saving..."
-            buttonStyle={{ marginTop: "0.75rem" }}
-          >
-            <input type="hidden" name="memberId" value={member.id} />
-            <p className="member-crm-card-title">Add document</p>
-            <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
-              Upload a private file directly to the member record, or save an external reference link.
-            </p>
-            <label className="admin-form-field">
-              <span className="admin-search-bar__label">Title</span>
-              <TextInput name="title" required placeholder="Coaching worksheet" />
-            </label>
-            <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
-              <span className="admin-search-bar__label">Upload File</span>
-              <TextInput
-                name="documentFile"
-                type="file"
-                accept=".pdf,.doc,.docx,.txt,.rtf,.png,.jpg,.jpeg,.webp"
-              />
-              <span className="member-crm-muted">
-                Recommended for internal worksheets, screenshots, and support docs. Private uploads are limited to 10 MB.
-              </span>
-            </label>
-            <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
-              <span className="admin-search-bar__label">External URL Instead</span>
-              <TextInput name="externalUrl" placeholder="https://..." />
-            </label>
-            <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
-              <span className="admin-search-bar__label">Note</span>
-              <TextArea name="note" placeholder="Internal context..." />
-            </label>
-            <ClientAuthorizationFields
-              reasonName="documentReason"
-              reasonPlaceholder="Why is this document being added to the member record?"
-            />
-          </MemberCrmInlineForm>
-        </div>
-      </Section>
+        </Section>
+      ) : null}
 
-      <Section id="audit" title="Audit Log" description="Immutable record of admin mutations on this member.">
-        {audit.length > 0 ? (
-          <div className="member-crm-timeline">
-            {audit.map((entry) => (
-              <div key={entry.id} className="member-crm-timeline-item">
-                <span className="member-crm-timeline-dot" aria-hidden="true" />
-                <div>
-                  <p className="member-crm-record__title">{entry.action}</p>
+      {activeTab === "documents" ? (
+        <Section
+          id="documents"
+          title="Documents"
+          description="Internal document uploads and references for coaching and support."
+        >
+          <div className="member-crm-grid-2">
+            <div className="member-crm-list">
+              {documents.length > 0 ? documents.map((document) => (
+                <div key={document.id} className="member-crm-card">
+                  <p className="member-crm-record__title">{document.title}</p>
+                  {document.storage_path || document.external_url ? (
+                    <a
+                      href={
+                        document.storage_path
+                          ? `/admin/members/${member.id}/documents/${document.id}`
+                          : document.external_url ?? "#"
+                      }
+                      target={document.storage_path ? undefined : "_blank"}
+                      rel={document.storage_path ? undefined : "noopener noreferrer"}
+                      style={{ color: "var(--color-primary)", fontSize: "0.8125rem" }}
+                    >
+                      Open document ↗
+                    </a>
+                  ) : null}
+                  {document.note ? (
+                    <p className="member-crm-record__note">{document.note}</p>
+                  ) : null}
                   <p className="member-crm-record__meta">
-                    {formatDateTime(entry.created_at)}
-                    {entry.reason ? ` · ${entry.reason}` : ""}
+                    {document.file_name ? `${document.file_name} ${formatBytes(document.size_bytes) ? `· ${formatBytes(document.size_bytes)}` : ""} · ` : ""}
+                    Internal only · {formatDateTime(document.created_at)}
                   </p>
                 </div>
-              </div>
-            ))}
+              )) : (
+                <EmptyState>No internal documents yet.</EmptyState>
+              )}
+            </div>
+
+            <MemberCrmInlineForm
+              action={addMemberDocumentReferenceInline}
+              className="member-crm-card"
+              submitLabel="Save document"
+              pendingLabel="Saving..."
+              buttonStyle={{ marginTop: "0.75rem" }}
+            >
+              <input type="hidden" name="memberId" value={member.id} />
+              <p className="member-crm-card-title">Add document</p>
+              <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
+                Upload a private file directly to the member record, or save an external reference link.
+              </p>
+              <label className="admin-form-field">
+                <span className="admin-search-bar__label">Title</span>
+                <TextInput name="title" required placeholder="Coaching worksheet" />
+              </label>
+              <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
+                <span className="admin-search-bar__label">Upload File</span>
+                <TextInput
+                  name="documentFile"
+                  type="file"
+                  accept=".pdf,.doc,.docx,.txt,.rtf,.png,.jpg,.jpeg,.webp"
+                />
+                <span className="member-crm-muted">
+                  Recommended for internal worksheets, screenshots, and support docs. Private uploads are limited to 10 MB.
+                </span>
+              </label>
+              <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
+                <span className="admin-search-bar__label">External URL Instead</span>
+                <TextInput name="externalUrl" placeholder="https://..." />
+              </label>
+              <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
+                <span className="admin-search-bar__label">Note</span>
+                <TextArea name="note" placeholder="Internal context..." />
+              </label>
+              <ClientAuthorizationFields
+                reasonName="documentReason"
+                reasonPlaceholder="Why is this document being added to the member record?"
+              />
+            </MemberCrmInlineForm>
           </div>
-        ) : (
-          <EmptyState>No audit entries yet.</EmptyState>
-        )}
-      </Section>
+        </Section>
+      ) : null}
+
+      {activeTab === "admin-access" ? (
+        <Section id="admin-access" title="Admin Access" description="Roles, overrides, and effective admin permissions for this member.">
+          <div className="member-crm-grid-2">
+            <div className="member-crm-card">
+              <p className="member-crm-card-title">Assigned admin roles</p>
+              {!canManageRoles ? (
+                <p className="member-crm-muted" style={{ marginBottom: "0.85rem" }}>
+                  You can review this member&apos;s admin access here. Assigning roles or changing
+                  overrides requires the <strong>Manage roles</strong> permission.
+                </p>
+              ) : null}
+              {bootstrapAdmin ? (
+                <div
+                  className="member-crm-record"
+                  style={{
+                    marginBottom: "0.85rem",
+                    borderColor: "color-mix(in srgb, var(--color-primary) 30%, var(--color-border))",
+                    background:
+                      "linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 7%, white), rgba(255,255,255,0.92))",
+                  }}
+                >
+                  <div>
+                    <p className="member-crm-record__title">Bootstrap admin access</p>
+                    <p className="member-crm-record__meta">
+                      This member has full admin access through <span className="member-crm-mono">ADMIN_EMAILS</span>
+                      {" "}even if no database role is assigned yet.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+
+              {roles.length > 0 ? (
+                <div className="member-crm-list">
+                  {roles.map((role) => (
+                    <div key={role.role_key} className="member-crm-record" style={{ alignItems: "center" }}>
+                      <div>
+                        <p className="member-crm-record__title">{role.role_name}</p>
+                        <p className="member-crm-record__meta">
+                          {role.permissions.length} permission{role.permissions.length === 1 ? "" : "s"}
+                        </p>
+                      </div>
+                      {canManageRoles ? (
+                        <MemberCrmInlineForm
+                          action={removeAdminRoleFromMemberInline}
+                          submitLabel="Remove"
+                          pendingLabel="Removing..."
+                          buttonClassName="admin-btn admin-btn--outline"
+                          buttonStyle={{ fontSize: "0.75rem" }}
+                          resetOnSuccess={false}
+                        >
+                          <input type="hidden" name="memberId" value={member.id} />
+                          <input type="hidden" name="roleKey" value={role.role_key} />
+                          <ClientAuthorizationFields
+                            reasonName="roleReason"
+                            reasonLabel="Removal reason"
+                            reasonPlaceholder="Why should this admin role be removed?"
+                          />
+                        </MemberCrmInlineForm>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState>No admin role assigned.</EmptyState>
+              )}
+
+              <div style={{ marginTop: "0.85rem" }}>
+                <p className="member-crm-record__title" style={{ marginBottom: "0.45rem" }}>
+                  Effective permissions
+                </p>
+                {effectivePermissions.length > 0 ? (
+                  <div className="member-crm-chip-list">
+                    {effectivePermissions.map((permission) => (
+                      <span key={permission.key} className="member-crm-chip">
+                        {permission.label}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="member-crm-muted">
+                    No admin permissions are currently effective for this member.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="member-crm-list">
+              {canManageRoles ? (
+                <MemberCrmInlineForm
+                  action={assignAdminRoleToMemberInline}
+                  className="member-crm-card"
+                  submitLabel="Assign role"
+                  pendingLabel="Assigning..."
+                  buttonStyle={{ marginTop: "0.75rem" }}
+                >
+                  <input type="hidden" name="memberId" value={member.id} />
+                  <p className="member-crm-card-title">Assign role</p>
+                  <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
+                    Use role defaults for standard access, then use per-user overrides below only for true exceptions.
+                  </p>
+                  <Select name="roleId" required>
+                    <option value="">Choose role...</option>
+                    {availableRoles.map((role) => (
+                      <option key={role.id} value={role.id}>
+                        {role.name}
+                      </option>
+                    ))}
+                  </Select>
+                  <ClientAuthorizationFields
+                    reasonName="roleReason"
+                    reasonPlaceholder="Why is this member being given admin access?"
+                  />
+                </MemberCrmInlineForm>
+              ) : null}
+
+              <div className="member-crm-card">
+                <p className="member-crm-card-title">Permission overrides</p>
+                <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
+                  Use sparingly for one-off exceptions. Role defaults should still be managed from{" "}
+                  <Link href="/admin/roles" className="member-crm-link">Admin Roles</Link>.
+                </p>
+                {!canManageRoles ? (
+                  <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
+                    You can review overrides here, but only admins with <strong>Manage roles</strong>
+                    can add or remove them.
+                  </p>
+                ) : null}
+                {permissionOverrides.length > 0 ? (
+                  <div className="member-crm-list" style={{ marginBottom: "1rem" }}>
+                    {permissionOverrides.map((override) => (
+                      <div key={override.permission} className="member-crm-record">
+                        <div>
+                          <p className="member-crm-record__title">
+                            {getAdminPermissionLabel(override.permission)}
+                          </p>
+                          <p className="member-crm-record__meta">
+                            {override.allowed ? "Explicitly allowed" : "Explicitly denied"} · Updated {formatDateTime(override.updated_at)}
+                          </p>
+                        </div>
+                        {canManageRoles ? (
+                          <MemberCrmInlineForm
+                            action={removeAdminPermissionOverrideInline}
+                            submitLabel="Remove"
+                            pendingLabel="Removing..."
+                            buttonClassName="admin-btn admin-btn--outline"
+                            buttonStyle={{ marginTop: "0.5rem", fontSize: "0.75rem" }}
+                          >
+                            <input type="hidden" name="memberId" value={member.id} />
+                            <input type="hidden" name="permission" value={override.permission} />
+                            <ClientAuthorizationFields
+                              reasonName="overrideReason"
+                              reasonLabel="Removal reason"
+                              reasonPlaceholder="Why should this member return to role defaults?"
+                            />
+                          </MemberCrmInlineForm>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState>No per-user permission overrides.</EmptyState>
+                )}
+                {canManageRoles ? (
+                  <MemberCrmInlineForm
+                    action={setAdminPermissionOverrideInline}
+                    submitLabel="Save override"
+                    pendingLabel="Saving..."
+                    buttonClassName="admin-btn admin-btn--primary"
+                    buttonStyle={{ marginTop: "0.75rem" }}
+                  >
+                    <input type="hidden" name="memberId" value={member.id} />
+                    <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
+                      <span className="admin-search-bar__label">Permission</span>
+                      <Select name="permission" required>
+                        <option value="">Choose permission...</option>
+                        {ADMIN_PERMISSION_OPTIONS.map((permission) => (
+                          <option key={permission.key} value={permission.key}>
+                            {permission.label}
+                          </option>
+                        ))}
+                      </Select>
+                    </label>
+                    <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
+                      <span className="admin-search-bar__label">Override</span>
+                      <Select name="allowed" required>
+                        <option value="true">Allow even if role does not allow it</option>
+                        <option value="false">Deny even if role allows it</option>
+                      </Select>
+                    </label>
+                    <ClientAuthorizationFields
+                      reasonName="overrideReason"
+                      reasonPlaceholder="Why does this admin need a one-off permission override?"
+                    />
+                  </MemberCrmInlineForm>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </Section>
+      ) : null}
+
+      {activeTab === "documents" ? (
+        <Section
+          id="documents"
+          title="Documents"
+          description="Internal document uploads and references for coaching and support."
+        >
+          <div className="member-crm-grid-2">
+            <div className="member-crm-list">
+              {documents.length > 0 ? documents.map((document) => (
+                <div key={document.id} className="member-crm-card">
+                  <p className="member-crm-record__title">{document.title}</p>
+                  {document.storage_path || document.external_url ? (
+                    <a
+                      href={
+                        document.storage_path
+                          ? `/admin/members/${member.id}/documents/${document.id}`
+                          : document.external_url ?? "#"
+                      }
+                      target={document.storage_path ? undefined : "_blank"}
+                      rel={document.storage_path ? undefined : "noopener noreferrer"}
+                      style={{ color: "var(--color-primary)", fontSize: "0.8125rem" }}
+                    >
+                      Open document ↗
+                    </a>
+                  ) : null}
+                  {document.note ? (
+                    <p className="member-crm-record__note">{document.note}</p>
+                  ) : null}
+                  <p className="member-crm-record__meta">
+                    {document.file_name ? `${document.file_name} ${formatBytes(document.size_bytes) ? `· ${formatBytes(document.size_bytes)}` : ""} · ` : ""}
+                    Internal only · {formatDateTime(document.created_at)}
+                  </p>
+                </div>
+              )) : (
+                <EmptyState>No internal documents yet.</EmptyState>
+              )}
+            </div>
+            <MemberCrmInlineForm
+              action={addMemberDocumentReferenceInline}
+              className="member-crm-card"
+              submitLabel="Save document"
+              pendingLabel="Saving..."
+              buttonStyle={{ marginTop: "0.75rem" }}
+            >
+              <input type="hidden" name="memberId" value={member.id} />
+              <p className="member-crm-card-title">Add document</p>
+              <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
+                Upload a private file directly to the member record, or save an external reference link.
+              </p>
+              <label className="admin-form-field">
+                <span className="admin-search-bar__label">Title</span>
+                <TextInput name="title" required placeholder="Coaching worksheet" />
+              </label>
+              <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
+                <span className="admin-search-bar__label">Upload File</span>
+                <TextInput
+                  name="documentFile"
+                  type="file"
+                  accept=".pdf,.doc,.docx,.txt,.rtf,.png,.jpg,.jpeg,.webp"
+                />
+                <span className="member-crm-muted">
+                  Recommended for internal worksheets, screenshots, and support docs. Private uploads are limited to 10 MB.
+                </span>
+              </label>
+              <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
+                <span className="admin-search-bar__label">External URL Instead</span>
+                <TextInput name="externalUrl" placeholder="https://..." />
+              </label>
+              <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
+                <span className="admin-search-bar__label">Note</span>
+                <TextArea name="note" placeholder="Internal context..." />
+              </label>
+              <ClientAuthorizationFields
+                reasonName="documentReason"
+                reasonPlaceholder="Why is this document being added to the member record?"
+              />
+            </MemberCrmInlineForm>
+          </div>
+        </Section>
+      ) : null}
+
+      {activeTab === "audit" ? (
+        <Section id="audit" title="Audit Log" description="Immutable record of admin mutations on this member.">
+          {audit.length > 0 ? (
+            <div className="member-crm-timeline">
+              {audit.map((entry) => (
+                <div key={entry.id} className="member-crm-timeline-item">
+                  <span className="member-crm-timeline-dot" aria-hidden="true" />
+                  <div>
+                    <p className="member-crm-record__title">{entry.action}</p>
+                    <p className="member-crm-record__meta">
+                      {formatDateTime(entry.created_at)}
+                      {entry.reason ? ` · ${entry.reason}` : ""}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState>No audit entries yet.</EmptyState>
+          )}
+        </Section>
+      ) : null}
     </div>
   );
 }

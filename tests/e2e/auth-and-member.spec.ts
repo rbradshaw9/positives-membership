@@ -30,6 +30,7 @@ test("member can navigate launch routes and use practice tabs", async ({ page })
 
   await expect(page.getByRole("region", { name: /daily practice/i })).toBeVisible();
   await expect(memberNav.getByRole("link", { name: "Community", exact: true })).toHaveCount(0);
+  await expect(memberNav.getByRole("link", { name: "Admin", exact: true })).toHaveCount(0);
 
   await memberNav.getByRole("link", { name: "Library", exact: true }).click();
   await expect(page).toHaveURL(/\/library$/);
@@ -60,6 +61,9 @@ test("member can navigate launch routes and use practice tabs", async ({ page })
   await expect(
     page.getByRole("menu", { name: "Profile menu" }).getByRole("menuitem", { name: "Journal" })
   ).toBeVisible();
+  await expect(
+    page.getByRole("menu", { name: "Profile menu" }).getByRole("menuitem", { name: "Admin" })
+  ).toHaveCount(0);
   await page
     .getByRole("menu", { name: "Profile menu" })
     .getByRole("menuitem", { name: "Account", exact: true })

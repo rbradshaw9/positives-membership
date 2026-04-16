@@ -25,6 +25,8 @@ export type MemberCrmListFilters = {
   search?: string;
   status?: MemberCrmStatusFilter;
   tier?: MemberCrmTierFilter;
+  health?: MemberHealthStatusFilter;
+  attention?: MemberAttentionFilter;
   billing?: "linked" | "missing" | "";
   password?: "set" | "missing" | "";
   access?: "subscriber" | "course_only" | "inactive_no_courses" | "";
@@ -41,6 +43,9 @@ export type MemberFollowupStatus =
   | "needs_followup"
   | "waiting_on_member"
   | "resolved";
+
+export type MemberHealthStatusFilter = "healthy" | "watch" | "at_risk" | "";
+export type MemberAttentionFilter = "needs_attention" | "clear" | "";
 
 export type CourseEntitlementSource =
   | "purchase"
@@ -65,6 +70,8 @@ export type MemberCrmRow = Pick<
   | "password_set"
   | "created_at"
   | "stripe_customer_id"
+  | "paypal_email"
+  | "fp_promoter_id"
   | "practice_streak"
   | "last_practiced_at"
 > & {
@@ -79,6 +86,9 @@ export type MemberCrmRow = Pick<
   active_course_count: number;
   points_balance: number;
   access_type: "subscriber" | "course_only" | "inactive_no_courses";
+  health_status: MemberHealthStatusFilter;
+  engagement_status: "engaged" | "warming_up" | "inactive" | "";
+  needs_attention: boolean;
 };
 
 export type MemberCrmDetailMember = Tables<"member"> & {
@@ -318,6 +328,50 @@ async function fetchCoachNames(coachIds: string[]) {
   return names;
 }
 
+async function fetchHealthSnapshots(memberIds: string[]) {
+  const snapshots = new Map<string, {
+    health_status: Exclude<MemberHealthStatusFilter, "">;
+    engagement_status: "engaged" | "warming_up" | "inactive";
+    risk_flags: string[];
+  }>();
+  if (memberIds.length === 0) return snapshots;
+
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  const { data, error } = await supabase
+    .from("member_health_snapshot")
+    .select<{ member_id: string; health_status: "healthy" | "watch" | "at_risk"; engagement_status: "engaged" | "warming_up" | "inactive"; risk_flags: string[] }[]>(
+      "member_id, health_status, engagement_status, risk_flags"
+    )
+    .in("member_id", memberIds);
+
+  if (error) {
+    console.error("[member-crm] health snapshot fetch failed:", error.message);
+    return snapshots;
+  }
+
+  for (const row of data ?? []) snapshots.set(row.member_id, row);
+  return snapshots;
+}
+
+async function fetchBillingSummaryPresence(memberIds: string[]) {
+  const present = new Set<string>();
+  if (memberIds.length === 0) return present;
+
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  const { data, error } = await supabase
+    .from("member_billing_summary")
+    .select<{ member_id: string }[]>("member_id")
+    .in("member_id", memberIds);
+
+  if (error) {
+    console.error("[member-crm] billing summary presence fetch failed:", error.message);
+    return present;
+  }
+
+  for (const row of data ?? []) present.add(row.member_id);
+  return present;
+}
+
 export async function getMemberCrmList(filters: MemberCrmListFilters = {}): Promise<{
   members: MemberCrmRow[];
   total: number;
@@ -330,7 +384,7 @@ export async function getMemberCrmList(filters: MemberCrmListFilters = {}): Prom
   let query = supabase
     .from("member")
     .select<RawMember[]>(
-      "id, email, name, subscription_status, subscription_tier, password_set, created_at, stripe_customer_id, practice_streak, last_practiced_at, assigned_coach_id, followup_status, followup_at, followup_note, last_seen_at, first_login_at, legacy_member_ref"
+      "id, email, name, subscription_status, subscription_tier, password_set, created_at, stripe_customer_id, paypal_email, fp_promoter_id, practice_streak, last_practiced_at, assigned_coach_id, followup_status, followup_at, followup_note, last_seen_at, first_login_at, legacy_member_ref"
     )
     .order("created_at", { ascending: false })
     .limit(2000);
@@ -355,10 +409,12 @@ export async function getMemberCrmList(filters: MemberCrmListFilters = {}): Prom
 
   const rawMembers = (data ?? []) as RawMember[];
   const memberIds = rawMembers.map((member) => member.id);
-  const [entitlements, pointBalances, coachNames] = await Promise.all([
+  const [entitlements, pointBalances, coachNames, healthSnapshots, billingSummaryPresence] = await Promise.all([
     fetchEntitlementsForMembers(memberIds),
     fetchPointBalances(memberIds),
     fetchCoachNames(rawMembers.map((member) => member.assigned_coach_id).filter(Boolean) as string[]),
+    fetchHealthSnapshots(memberIds),
+    fetchBillingSummaryPresence(memberIds),
   ]);
 
   const entitlementByMember = new Map<string, CourseEntitlement[]>();
@@ -375,6 +431,15 @@ export async function getMemberCrmList(filters: MemberCrmListFilters = {}): Prom
         (entitlement) => entitlement.status === "active"
       );
       const pointsBalance = pointBalances.get(member.id) ?? 0;
+      const healthSnapshot = healthSnapshots.get(member.id);
+      const needsAttention =
+        member.subscription_status === "past_due" ||
+        !member.password_set ||
+        member.followup_status === "needs_followup" ||
+        (member.followup_status === "waiting_on_member" && !!member.followup_at) ||
+        (member.fp_promoter_id !== null && !member.paypal_email) ||
+        (Boolean(member.stripe_customer_id) && !billingSummaryPresence.has(member.id)) ||
+        (healthSnapshot?.health_status ?? "healthy") !== "healthy";
       return {
         ...member,
         followup_status: member.followup_status ?? "none",
@@ -384,10 +449,18 @@ export async function getMemberCrmList(filters: MemberCrmListFilters = {}): Prom
         active_course_count: activeEntitlements.length,
         points_balance: pointsBalance,
         access_type: computeAccessType(member, activeEntitlements.length),
+        health_status: healthSnapshot?.health_status ?? "",
+        engagement_status: healthSnapshot?.engagement_status ?? "",
+        needs_attention: needsAttention,
       } satisfies MemberCrmRow;
     })
     .filter((member) => memberMatchesSearch(member, search, entitlementByMember))
     .filter((member) => !filters.access || member.access_type === filters.access)
+    .filter((member) => !filters.health || member.health_status === filters.health)
+    .filter((member) => {
+      if (!filters.attention) return true;
+      return filters.attention === "needs_attention" ? member.needs_attention : !member.needs_attention;
+    })
     .filter((member) => matchesLastSeenFilter(member, filters.lastSeen))
     .filter((member) => {
       if (!filters.entitlementSource) return true;

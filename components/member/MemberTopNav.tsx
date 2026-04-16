@@ -22,6 +22,7 @@ interface MemberTopNavProps {
   memberName?: string | null;
   memberAvatarUrl?: string | null;
   communityPreviewEnabled?: boolean;
+  showAdminNav?: boolean;
 }
 
 export function MemberTopNav({
@@ -29,6 +30,7 @@ export function MemberTopNav({
   memberName,
   memberAvatarUrl,
   communityPreviewEnabled = false,
+  showAdminNav = false,
 }: MemberTopNavProps) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -54,6 +56,7 @@ export function MemberTopNav({
     : communityPreviewEnabled
       ? [BASE_NAV_ITEMS[0], BASE_NAV_ITEMS[1], COMMUNITY_NAV_ITEM, BASE_NAV_ITEMS[2]]
       : [...BASE_NAV_ITEMS];
+  const adminMenuItem = showAdminNav ? { href: "/admin", label: "Admin", mobileLabel: "Admin" } : null;
 
   useEffect(() => {
     function handleOutsideClick(event: MouseEvent) {
@@ -117,7 +120,7 @@ export function MemberTopNav({
 
 
           <nav aria-label="Member navigation" className="hidden items-center gap-1 md:flex">
-            {navItems.map(({ href, label }) => {
+            {[...navItems, ...(adminMenuItem ? [adminMenuItem] : [])].map(({ href, label }) => {
               const isActive = pathname === href || (href !== "/today" && pathname.startsWith(href));
               return (
                 <Link
@@ -187,6 +190,18 @@ export function MemberTopNav({
                   <span>Journal</span>
                 </Link>
 
+                {adminMenuItem ? (
+                  <Link
+                    href={adminMenuItem.href}
+                    role="menuitem"
+                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-white/82 transition-colors hover:bg-white/6 hover:text-white"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <NavIcon href={adminMenuItem.href} />
+                    <span>{adminMenuItem.label}</span>
+                  </Link>
+                ) : null}
+
                 <form action={signOut}>
                   <button
                     type="submit"
@@ -224,7 +239,7 @@ export function MemberTopNav({
         style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}
       >
         <ul className="flex items-center justify-around px-2">
-          {[...navItems, { href: "/account", label: "Account", mobileLabel: "Account" }].map(
+          {[...navItems, ...(adminMenuItem ? [adminMenuItem] : []), { href: "/account", label: "Account", mobileLabel: "Account" }].map(
             ({ href, label, mobileLabel }) => {
             const isActive = pathname === href || (href !== "/today" && pathname.startsWith(href));
             return (
@@ -336,6 +351,16 @@ function NavIcon({ href }: { href: string }) {
       <svg {...props}>
         <path d="M15 10l4.553-2.069A1 1 0 0 1 21 8.868v6.264a1 1 0 0 1-1.447.899L15 14" />
         <rect x="1" y="6" width="15" height="12" rx="2" ry="2" />
+      </svg>
+    );
+  }
+
+  if (href === "/admin") {
+    return (
+      <svg {...props}>
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+        <path d="M9 3v18" />
+        <path d="M3 9h18" />
       </svg>
     );
   }

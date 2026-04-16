@@ -11,6 +11,7 @@ import { hasActiveMemberAccess } from "@/lib/subscription/access";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import { applyAdminPlanChange } from "@/server/services/stripe/admin-plan-change";
+import { syncMemberFollowupSummary } from "@/lib/admin/member-followup";
 import type { Enums } from "@/types/supabase";
 
 type ActionResult = { error?: string; success?: string };
@@ -53,11 +54,12 @@ function sanitizeFileName(fileName: string) {
   return cleaned || "document";
 }
 
-function memberPath(memberId: string, success?: string, hash?: string) {
-  const path = success
-    ? `/admin/members/${memberId}?success=${encodeURIComponent(success)}`
-    : `/admin/members/${memberId}`;
-  return hash ? `${path}#${hash}` : path;
+function memberPath(memberId: string, success?: string, tab?: string) {
+  const query = new URLSearchParams();
+  if (success) query.set("success", success);
+  if (tab) query.set("tab", tab);
+  const suffix = query.size > 0 ? `?${query.toString()}` : "";
+  return `/admin/members/${memberId}${suffix}`;
 }
 
 function memberBillingPath(memberId: string, params: Record<string, string | null | undefined> = {}) {
@@ -65,8 +67,9 @@ function memberBillingPath(memberId: string, params: Record<string, string | nul
   for (const [key, value] of Object.entries(params)) {
     if (value) query.set(key, value);
   }
+  query.set("tab", "billing");
   const suffix = query.size > 0 ? `?${query.toString()}` : "";
-  return `/admin/members/${memberId}${suffix}#billing`;
+  return `/admin/members/${memberId}${suffix}`;
 }
 
 function requireClientAuthorization(formData: FormData, reasonFieldName: string): ActionResult & {
@@ -181,20 +184,11 @@ export async function updateMemberCrmProfile(formData: FormData): Promise<Action
   const name = clean(formData.get("name"));
   const timezone = clean(formData.get("timezone"));
   const assignedCoachId = clean(formData.get("assignedCoachId"));
-  const followupStatus = clean(formData.get("followupStatus"));
-  const followupNote = clean(formData.get("followupNote"));
-
-  if (followupStatus && !FOLLOWUP_STATUSES.has(followupStatus)) {
-    return { error: "Invalid follow-up status." };
-  }
 
   const updates = {
     name,
     timezone: timezone ?? "America/New_York",
     assigned_coach_id: assignedCoachId,
-    followup_status: followupStatus ?? "none",
-    followup_note: followupNote,
-    followup_at: followupStatus && followupStatus !== "none" ? new Date().toISOString() : null,
   };
 
   const supabase = asLooseSupabaseClient(getAdminClient());
@@ -454,7 +448,7 @@ export async function grantCourseToMember(formData: FormData): Promise<ActionRes
     return { success: "Course access granted." };
   }
 
-  redirect(memberPath(memberId, "course_granted", "courses"));
+  redirect(memberPath(memberId, "course_granted", "access"));
 }
 
 export async function grantCourseToMemberInline(
@@ -528,7 +522,7 @@ export async function revokeCourseEntitlement(formData: FormData): Promise<Actio
     return { success: "Course access revoked." };
   }
 
-  redirect(memberPath(memberId, "course_revoked", "courses"));
+  redirect(memberPath(memberId, "course_revoked", "access"));
 }
 
 export async function revokeCourseEntitlementInline(
@@ -584,7 +578,7 @@ export async function adjustMemberPoints(formData: FormData): Promise<ActionResu
     return { success: "Points adjusted." };
   }
 
-  redirect(memberPath(memberId, "points_adjusted", "points"));
+  redirect(memberPath(memberId, "points_adjusted", "access"));
 }
 
 export async function adjustMemberPointsInline(
@@ -859,7 +853,7 @@ export async function unlockCourseWithPointsForMember(formData: FormData): Promi
     return { success: "Course unlocked with points." };
   }
 
-  redirect(memberPath(memberId, "course_unlocked", "courses"));
+  redirect(memberPath(memberId, "course_unlocked", "access"));
 }
 
 export async function unlockCourseWithPointsForMemberInline(
@@ -911,7 +905,7 @@ export async function assignAdminRoleToMember(formData: FormData): Promise<Actio
     return { success: "Admin role assigned." };
   }
 
-  redirect(memberPath(memberId, "role_assigned", "communication"));
+  redirect(memberPath(memberId, "role_assigned", "admin-access"));
 }
 
 export async function assignAdminRoleToMemberInline(
@@ -968,7 +962,7 @@ export async function removeAdminRoleFromMember(formData: FormData): Promise<Act
     return { success: "Admin role removed." };
   }
 
-  redirect(memberPath(memberId, "role_removed", "communication"));
+  redirect(memberPath(memberId, "role_removed", "admin-access"));
 }
 
 export async function removeAdminRoleFromMemberInline(
@@ -1025,7 +1019,7 @@ export async function setAdminPermissionOverride(formData: FormData): Promise<Ac
     return { success: "Permission override saved." };
   }
 
-  redirect(memberPath(memberId, "permission_override_saved", "communication"));
+  redirect(memberPath(memberId, "permission_override_saved", "admin-access"));
 }
 
 export async function setAdminPermissionOverrideInline(
@@ -1075,7 +1069,7 @@ export async function removeAdminPermissionOverride(formData: FormData): Promise
     return { success: "Permission override removed." };
   }
 
-  redirect(memberPath(memberId, "permission_override_removed", "communication"));
+  redirect(memberPath(memberId, "permission_override_removed", "admin-access"));
 }
 
 export async function removeAdminPermissionOverrideInline(
@@ -1084,4 +1078,141 @@ export async function removeAdminPermissionOverrideInline(
 ): Promise<ActionResult> {
   formData.set("returnState", "true");
   return removeAdminPermissionOverride(formData);
+}
+
+export async function createMemberFollowupTask(formData: FormData): Promise<ActionResult> {
+  const actor = await requireAdminPermission("notes.write");
+  const memberId = clean(formData.get("memberId"));
+  const ownerMemberId = clean(formData.get("ownerMemberId"));
+  const status = clean(formData.get("status"));
+  const dueAt = clean(formData.get("dueAt"));
+  const category = clean(formData.get("category"));
+  const summary = clean(formData.get("summary"));
+  const details = clean(formData.get("details"));
+
+  if (!memberId || !summary || summary.length < 3) {
+    return { error: "Add a short summary for the follow-up before saving." };
+  }
+
+  if (!status || !FOLLOWUP_STATUSES.has(status) || status === "none" || status === "resolved") {
+    return { error: "Choose an open follow-up status." };
+  }
+
+  const scopeError = await requireAssignedCoachScope(actor, memberId);
+  if (scopeError) return { error: scopeError };
+
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  const { data, error } = await supabase
+    .from("member_followup_task")
+    .insert({
+      member_id: memberId,
+      owner_member_id: ownerMemberId,
+      status,
+      due_at: dueAt,
+      category,
+      summary,
+      details,
+      created_by: actor.id,
+    })
+    .select<IdRow>("id")
+    .single();
+
+  if (error || !data) {
+    console.error("[admin/member-actions] follow-up task insert failed:", error?.message);
+    return { error: "Could not save follow-up task." };
+  }
+
+  await Promise.all([
+    syncMemberFollowupSummary(memberId),
+    logAudit({
+      actorId: actor.id,
+      memberId,
+      action: "followup.created",
+      targetType: "member_followup_task",
+      targetId: data.id,
+      reason: summary,
+      metadata: {
+        owner_member_id: ownerMemberId,
+        status,
+        due_at: dueAt,
+        category,
+      },
+    }),
+  ]);
+
+  revalidatePath(`/admin/members/${memberId}`);
+  revalidatePath("/admin/members");
+  if (formData.get("returnState") === "true") {
+    return { success: "Follow-up saved." };
+  }
+
+  redirect(memberPath(memberId, "followup_saved", "notes"));
+}
+
+export async function createMemberFollowupTaskInline(
+  _previousState: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  formData.set("returnState", "true");
+  return createMemberFollowupTask(formData);
+}
+
+export async function resolveMemberFollowupTask(formData: FormData): Promise<ActionResult> {
+  const actor = await requireAdminPermission("notes.write");
+  const memberId = clean(formData.get("memberId"));
+  const followupTaskId = clean(formData.get("followupTaskId"));
+  const resolutionNote = clean(formData.get("resolutionNote"));
+
+  if (!memberId || !followupTaskId) return { error: "Missing follow-up task." };
+  if (!resolutionNote || resolutionNote.length < 3) {
+    return { error: "Add a short resolution note before closing the follow-up." };
+  }
+
+  const scopeError = await requireAssignedCoachScope(actor, memberId);
+  if (scopeError) return { error: scopeError };
+
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  const { error } = await supabase
+    .from("member_followup_task")
+    .update({
+      status: "resolved",
+      completed_at: new Date().toISOString(),
+      details: resolutionNote,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", followupTaskId)
+    .eq("member_id", memberId);
+
+  if (error) {
+    console.error("[admin/member-actions] follow-up task resolution failed:", error.message);
+    return { error: "Could not resolve follow-up task." };
+  }
+
+  await Promise.all([
+    syncMemberFollowupSummary(memberId),
+    logAudit({
+      actorId: actor.id,
+      memberId,
+      action: "followup.resolved",
+      targetType: "member_followup_task",
+      targetId: followupTaskId,
+      reason: resolutionNote,
+    }),
+  ]);
+
+  revalidatePath(`/admin/members/${memberId}`);
+  revalidatePath("/admin/members");
+  if (formData.get("returnState") === "true") {
+    return { success: "Follow-up resolved." };
+  }
+
+  redirect(memberPath(memberId, "followup_resolved", "notes"));
+}
+
+export async function resolveMemberFollowupTaskInline(
+  _previousState: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  formData.set("returnState", "true");
+  return resolveMemberFollowupTask(formData);
 }

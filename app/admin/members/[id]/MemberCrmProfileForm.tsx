@@ -10,8 +10,6 @@ type MemberProfileFormData = {
   name: string | null;
   timezone: string | null;
   assignedCoachId: string | null;
-  followupStatus: string | null;
-  followupNote: string | null;
   subscriptionStatusLabel: string;
   tierLabel: string;
 };
@@ -96,23 +94,6 @@ export function MemberCrmProfileForm({ member, coaches, action }: Props) {
           {hasAssignableCoaches
             ? " Use /admin/roles to adjust who is assignable."
             : " No assignable coach/admin users are seeded yet."}
-        </span>
-      </label>
-      <label className="admin-form-field">
-        <span className="admin-search-bar__label">Follow-up Status</span>
-        <Select name="followupStatus" defaultValue={member.followupStatus ?? "none"}>
-          <option value="none">No follow-up</option>
-          <option value="needs_followup">Needs follow-up</option>
-          <option value="waiting_on_member">Waiting on member</option>
-          <option value="resolved">Resolved</option>
-        </Select>
-      </label>
-      <label className="admin-form-field" style={{ gridColumn: "1 / -1" }}>
-        <span className="admin-search-bar__label">Current Follow-up / Next Step</span>
-        <TextArea name="followupNote" defaultValue={member.followupNote ?? ""} />
-        <span className="member-crm-muted">
-          Use this for the one current open thread or next action. Use Notes below for dated history,
-          coaching context, and longer internal documentation.
         </span>
       </label>
       <div className="member-crm-authorization" style={{ gridColumn: "1 / -1" }}>

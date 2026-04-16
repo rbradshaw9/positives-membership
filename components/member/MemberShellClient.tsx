@@ -15,6 +15,7 @@ interface MemberShellClientProps {
   communityPreviewEnabled?: boolean;
   needsPasswordSetup?: boolean;
   marketingOptedOut?: boolean;
+  showAdminNav?: boolean;
   children: React.ReactNode;
 }
 
@@ -26,6 +27,7 @@ export function MemberShellClient({
   communityPreviewEnabled = false,
   needsPasswordSetup = false,
   marketingOptedOut = false,
+  showAdminNav = false,
   children,
 }: MemberShellClientProps) {
   return (
@@ -37,6 +39,7 @@ export function MemberShellClient({
           memberName={memberName}
           memberAvatarUrl={memberAvatarUrl}
           communityPreviewEnabled={communityPreviewEnabled}
+          showAdminNav={showAdminNav}
         />
         <InstallAppPrompt />
         <main className="member-shell__content flex-1">{children}</main>

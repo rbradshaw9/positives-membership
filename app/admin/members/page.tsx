@@ -5,10 +5,12 @@ import {
   getAdminRolesForMember,
   getMemberCrmList,
   type CourseEntitlementSource,
+  type MemberAttentionFilter,
   type MemberCrmListFilters,
   type MemberCrmStatusFilter,
   type MemberCrmTierFilter,
   type MemberFollowupStatus,
+  type MemberHealthStatusFilter,
 } from "@/lib/admin/member-crm";
 import { ADMIN_PLAN_SHORT_LABEL_BY_TIER, PLAN_NAME_BY_TIER } from "@/lib/plans";
 
@@ -58,6 +60,12 @@ const FOLLOWUP_LABEL: Record<string, string> = {
   needs_followup: "Needs follow-up",
   waiting_on_member: "Waiting on member",
   resolved: "Resolved",
+};
+
+const HEALTH_LABEL: Record<Exclude<MemberHealthStatusFilter, "">, string> = {
+  healthy: "Healthy",
+  watch: "Watch",
+  at_risk: "At Risk",
 };
 
 function formatDate(iso: string | null): string {
@@ -135,6 +143,8 @@ export default async function AdminMembersPage({
     search: params.search ?? "",
     status: (params.status ?? "") as MemberCrmStatusFilter,
     tier: (params.tier ?? "") as MemberCrmTierFilter,
+    health: (params.health ?? "") as MemberHealthStatusFilter,
+    attention: (params.attention ?? "") as MemberAttentionFilter,
     billing: (params.billing ?? "") as MemberCrmListFilters["billing"],
     password: (params.password ?? "") as MemberCrmListFilters["password"],
     access: (params.access ?? "") as MemberCrmListFilters["access"],
@@ -163,6 +173,8 @@ export default async function AdminMembersPage({
       search: effectiveFilters.search,
       status: effectiveFilters.status,
       tier: effectiveFilters.tier,
+      health: effectiveFilters.health,
+      attention: effectiveFilters.attention,
       billing: effectiveFilters.billing,
       password: effectiveFilters.password,
       access: effectiveFilters.access,
@@ -248,6 +260,25 @@ export default async function AdminMembersPage({
             <option value="subscriber">Subscriber</option>
             <option value="course_only">Course only</option>
             <option value="inactive_no_courses">No active access</option>
+          </select>
+        </div>
+
+        <div className="admin-search-bar__field">
+          <label htmlFor="health-filter" className="admin-search-bar__label">Health</label>
+          <select id="health-filter" name="health" defaultValue={filters.health}>
+            <option value="">All health states</option>
+            <option value="healthy">Healthy</option>
+            <option value="watch">Watch</option>
+            <option value="at_risk">At risk</option>
+          </select>
+        </div>
+
+        <div className="admin-search-bar__field">
+          <label htmlFor="attention-filter" className="admin-search-bar__label">Attention</label>
+          <select id="attention-filter" name="attention" defaultValue={filters.attention}>
+            <option value="">All records</option>
+            <option value="needs_attention">Needs attention</option>
+            <option value="clear">Clear</option>
           </select>
         </div>
 
@@ -357,9 +388,10 @@ export default async function AdminMembersPage({
                 <th>Member</th>
                 <th className="hidden sm:table-cell">Status</th>
                 <th className="hidden md:table-cell">Access</th>
+                <th className="hidden lg:table-cell">Health</th>
                 <th className="hidden lg:table-cell">Courses</th>
                 <th className="hidden lg:table-cell">Points</th>
-                <th className="hidden xl:table-cell">Follow-up</th>
+                <th className="hidden xl:table-cell">Queue</th>
                 <th className="hidden xl:table-cell">Coach</th>
                 <th className="hidden md:table-cell">Last seen</th>
                 <th className="hidden lg:table-cell">Joined</th>
@@ -418,6 +450,23 @@ export default async function AdminMembersPage({
                       </span>
                     </td>
                     <td className="hidden lg:table-cell">
+                      {member.health_status ? (
+                        <span
+                          className={
+                            member.health_status === "at_risk"
+                              ? "admin-badge admin-badge--past-due"
+                              : member.health_status === "watch"
+                                ? "admin-badge admin-badge--review"
+                                : "admin-badge admin-badge--active"
+                          }
+                        >
+                          {HEALTH_LABEL[member.health_status]}
+                        </span>
+                      ) : (
+                        <span style={{ color: "var(--color-muted-fg)", fontSize: "0.75rem" }}>—</span>
+                      )}
+                    </td>
+                    <td className="hidden lg:table-cell">
                       <span style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
                         {member.active_course_count}
                       </span>
@@ -428,17 +477,22 @@ export default async function AdminMembersPage({
                       </span>
                     </td>
                     <td className="hidden xl:table-cell">
-                      <span
-                        className={
-                          member.followup_status === "needs_followup"
-                            ? "admin-badge admin-badge--past-due"
-                            : member.followup_status === "waiting_on_member"
-                              ? "admin-badge admin-badge--review"
-                              : "admin-badge admin-badge--inactive"
-                        }
-                      >
-                        {FOLLOWUP_LABEL[member.followup_status] ?? member.followup_status}
-                      </span>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+                        <span
+                          className={
+                            member.followup_status === "needs_followup"
+                              ? "admin-badge admin-badge--past-due"
+                              : member.followup_status === "waiting_on_member"
+                                ? "admin-badge admin-badge--review"
+                                : "admin-badge admin-badge--inactive"
+                          }
+                        >
+                          {FOLLOWUP_LABEL[member.followup_status] ?? member.followup_status}
+                        </span>
+                        {member.needs_attention ? (
+                          <span className="admin-badge admin-badge--review">Needs attention</span>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="hidden xl:table-cell" style={{ fontSize: "0.75rem", color: "var(--color-muted-fg)" }}>
                       {member.assigned_coach_name ?? "—"}
