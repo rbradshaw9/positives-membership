@@ -4,6 +4,7 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth/require-admin";
+import { getStripe } from "@/lib/stripe/config";
 
 /**
  * app/admin/courses/actions.ts
@@ -45,6 +46,119 @@ function stripHtml(html: string): string {
     .replace(/<[^>]*>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function cleanFormValue(formData: FormData, key: string) {
+  const value = formData.get(key)?.toString().trim() ?? "";
+  return value.length > 0 ? value : null;
+}
+
+async function getCourseRow(courseId: string) {
+  const { data, error } = await adminClient()
+    .from("course")
+    .select("id, title, description, slug, stripe_product_id, stripe_price_id, is_standalone_purchasable")
+    .eq("id", courseId)
+    .single();
+
+  if (error || !data) {
+    throw new Error(error?.message ?? "Course not found.");
+  }
+
+  return data as {
+    id: string;
+    title: string;
+    description: string | null;
+    slug: string | null;
+    stripe_product_id: string | null;
+    stripe_price_id: string | null;
+    is_standalone_purchasable: boolean;
+  };
+}
+
+async function syncCourseToStripePrice(args: {
+  courseId: string;
+  stripePriceId: string;
+  standalonePurchasable?: boolean;
+}) {
+  const stripe = getStripe();
+  const price = await stripe.prices.retrieve(args.stripePriceId, {
+    expand: ["product"],
+  });
+
+  if (!price.active) {
+    throw new Error("This Stripe price is inactive. Attach an active one-time price instead.");
+  }
+
+  if (price.type !== "one_time") {
+    throw new Error("Standalone courses require a one-time Stripe price.");
+  }
+
+  if (!price.unit_amount) {
+    throw new Error("This Stripe price does not have a fixed amount.");
+  }
+
+  const productId =
+    typeof price.product === "string" ? price.product : price.product?.id ?? null;
+
+  if (!productId) {
+    throw new Error("This Stripe price is missing a product.");
+  }
+
+  await adminClient()
+    .from("course")
+    .update({
+      stripe_product_id: productId,
+      stripe_price_id: price.id,
+      price_cents: price.unit_amount,
+      is_standalone_purchasable: args.standalonePurchasable ?? true,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", args.courseId);
+
+  return {
+    productId,
+    priceId: price.id,
+    amountCents: price.unit_amount,
+    currency: price.currency,
+  };
+}
+
+async function ensureCourseStripeProduct(courseId: string) {
+  const stripe = getStripe();
+  const course = await getCourseRow(courseId);
+
+  if (course.stripe_product_id) {
+    await stripe.products.update(course.stripe_product_id, {
+      name: course.title,
+      description: course.description ?? undefined,
+      metadata: {
+        course_id: course.id,
+        course_slug: course.slug ?? "",
+        source: "positives-course-editor",
+      },
+    });
+    return course.stripe_product_id;
+  }
+
+  const product = await stripe.products.create({
+    name: course.title,
+    description: course.description ?? undefined,
+    metadata: {
+      course_id: course.id,
+      course_slug: course.slug ?? "",
+      source: "positives-course-editor",
+    },
+  });
+
+  await adminClient()
+    .from("course")
+    .update({
+      stripe_product_id: product.id,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", course.id);
+
+  return product.id;
 }
 
 async function fetchJsonWithTimeout<T>(
@@ -149,12 +263,8 @@ export async function updateCourse(formData: FormData) {
       slug: slugify(title!),
       description: formData.get("description")?.toString().trim() || null,
       status: formData.get("status")?.toString() || "draft",
-      stripe_price_id: formData.get("stripe_price_id")?.toString().trim() || null,
       is_standalone_purchasable:
         formData.get("is_standalone_purchasable")?.toString() === "true",
-      price_cents: formData.get("price_cents")?.toString()
-        ? parseInt(formData.get("price_cents")!.toString(), 10)
-        : null,
       points_unlock_enabled:
         formData.get("points_unlock_enabled")?.toString() === "true",
       points_price: formData.get("points_price")?.toString()
@@ -164,8 +274,90 @@ export async function updateCourse(formData: FormData) {
     })
     .eq("id", id!);
 
+  const course = await getCourseRow(id);
   revalidatePath(`/admin/courses/${id}`);
+  revalidatePath("/courses");
+  if (course.slug) {
+    revalidatePath(`/courses/${course.slug}`);
+  }
   redirect(`/admin/courses/${id}?success=updated`);
+}
+
+export async function attachExistingCourseStripePrice(formData: FormData) {
+  await requireAdmin();
+  const courseId = cleanFormValue(formData, "course_id");
+  const stripePriceId = cleanFormValue(formData, "stripe_price_id");
+
+  if (!courseId || !stripePriceId) {
+    redirect(`/admin/courses/${courseId ?? ""}?error=missing_fields`);
+  }
+
+  try {
+    await syncCourseToStripePrice({
+      courseId,
+      stripePriceId,
+      standalonePurchasable: true,
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? encodeURIComponent(error.message) : "stripe_attach_failed";
+    redirect(`/admin/courses/${courseId}?error=${message}`);
+  }
+
+  const course = await getCourseRow(courseId);
+  revalidatePath(`/admin/courses/${courseId}`);
+  revalidatePath("/courses");
+  if (course.slug) {
+    revalidatePath(`/courses/${course.slug}`);
+  }
+  redirect(`/admin/courses/${courseId}?success=stripe_price_attached`);
+}
+
+export async function createCourseStripePrice(formData: FormData) {
+  await requireAdmin();
+  const courseId = cleanFormValue(formData, "course_id");
+  const amountRaw = cleanFormValue(formData, "price_cents");
+
+  if (!courseId || !amountRaw) {
+    redirect(`/admin/courses/${courseId ?? ""}?error=missing_fields`);
+  }
+
+  const amountCents = parseInt(amountRaw, 10);
+  if (!Number.isFinite(amountCents) || amountCents < 50) {
+    redirect(`/admin/courses/${courseId}?error=invalid_price`);
+  }
+
+  try {
+    const productId = await ensureCourseStripeProduct(courseId);
+    const stripe = getStripe();
+    const price = await stripe.prices.create({
+      currency: "usd",
+      unit_amount: amountCents,
+      product: productId,
+      metadata: {
+        course_id: courseId,
+        source: "positives-course-editor",
+      },
+    });
+
+    await syncCourseToStripePrice({
+      courseId,
+      stripePriceId: price.id,
+      standalonePurchasable: true,
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? encodeURIComponent(error.message) : "stripe_price_create_failed";
+    redirect(`/admin/courses/${courseId}?error=${message}`);
+  }
+
+  const course = await getCourseRow(courseId);
+  revalidatePath(`/admin/courses/${courseId}`);
+  revalidatePath("/courses");
+  if (course.slug) {
+    revalidatePath(`/courses/${course.slug}`);
+  }
+  redirect(`/admin/courses/${courseId}?success=stripe_price_created`);
 }
 
 export async function deleteCourse(formData: FormData) {

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
-import { CourseCheckoutButton } from "./CourseCheckoutButton";
 
 export const metadata = {
   title: "Courses — Positives",
@@ -160,7 +159,7 @@ export default async function CoursesPage({
             }}
           >
             {rows.map((course) => {
-              const hasPrice = Boolean(course.stripe_price_id && course.price_cents);
+              const courseHref = course.slug ? `/courses/${course.slug}` : null;
               return (
                 <article
                   key={course.id}
@@ -173,28 +172,60 @@ export default async function CoursesPage({
                     gap: "1rem",
                   }}
                 >
-                  <div
-                    style={{
-                      minHeight: "8rem",
-                      borderRadius: "1rem",
-                      background: course.cover_image_url
-                        ? `center / cover url(${course.cover_image_url})`
-                        : "linear-gradient(135deg, rgba(46,196,182,0.16), rgba(47,111,237,0.12))",
-                    }}
-                  />
-                  <div style={{ flex: 1 }}>
-                    <p
+                  {courseHref ? (
+                    <Link
+                      href={courseHref}
                       style={{
-                        color: "#121417",
-                        fontWeight: 800,
-                        fontSize: "1.15rem",
-                        lineHeight: 1.2,
-                        textWrap: "balance",
-                        marginBottom: "0.45rem",
+                        display: "block",
+                        minHeight: "8rem",
+                        borderRadius: "1rem",
+                        background: course.cover_image_url
+                          ? `center / cover url(${course.cover_image_url})`
+                          : "linear-gradient(135deg, rgba(46,196,182,0.16), rgba(47,111,237,0.12))",
                       }}
-                    >
-                      {course.title}
-                    </p>
+                      aria-label={`View details for ${course.title}`}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        minHeight: "8rem",
+                        borderRadius: "1rem",
+                        background: course.cover_image_url
+                          ? `center / cover url(${course.cover_image_url})`
+                          : "linear-gradient(135deg, rgba(46,196,182,0.16), rgba(47,111,237,0.12))",
+                      }}
+                    />
+                  )}
+                  <div style={{ flex: 1 }}>
+                    {courseHref ? (
+                      <Link
+                        href={courseHref}
+                        style={{
+                          display: "inline-block",
+                          color: "#121417",
+                          fontWeight: 800,
+                          fontSize: "1.15rem",
+                          lineHeight: 1.2,
+                          textWrap: "balance",
+                          marginBottom: "0.45rem",
+                        }}
+                      >
+                        {course.title}
+                      </Link>
+                    ) : (
+                      <p
+                        style={{
+                          color: "#121417",
+                          fontWeight: 800,
+                          fontSize: "1.15rem",
+                          lineHeight: 1.2,
+                          textWrap: "balance",
+                          marginBottom: "0.45rem",
+                        }}
+                      >
+                        {course.title}
+                      </p>
+                    )}
                     {course.description && (
                       <p style={{ color: "#68707A", fontSize: "0.9rem", lineHeight: 1.6 }}>
                         {course.description}
@@ -212,12 +243,28 @@ export default async function CoursesPage({
                       </p>
                     )}
                   </div>
-                  <CourseCheckoutButton
-                    courseId={course.id}
-                    disabled={!hasPrice}
-                    signedIn={Boolean(user)}
-                    priceLabel={formatUsd(course.price_cents)}
-                  />
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: "0.75rem",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <p style={{ color: "#68707A", fontSize: "0.82rem", lineHeight: 1.5, margin: 0 }}>
+                      Permanent access. See the outline before you buy.
+                    </p>
+                    {courseHref ? (
+                      <Link href={courseHref} className="btn-secondary">
+                        View details
+                      </Link>
+                    ) : (
+                      <span style={{ color: "#68707A", fontSize: "0.82rem" }}>
+                        Details coming soon
+                      </span>
+                    )}
+                  </div>
                 </article>
               );
             })}

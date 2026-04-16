@@ -168,6 +168,38 @@ export async function ensureMemberStripeCustomer(email: string) {
   return customer.id;
 }
 
+export async function ensureMemberSavedPaymentMethod(email: string) {
+  const stripe = getStripeClient();
+  const customerId = await ensureMemberStripeCustomer(email);
+
+  const customer = await stripe.customers.retrieve(customerId, {
+    expand: ["invoice_settings.default_payment_method"],
+  });
+
+  if (!customer.deleted && customer.invoice_settings.default_payment_method) {
+    return customerId;
+  }
+
+  const paymentMethod = await stripe.paymentMethods.create({
+    type: "card",
+    card: {
+      token: "tok_visa",
+    },
+  });
+
+  await stripe.paymentMethods.attach(paymentMethod.id, {
+    customer: customerId,
+  });
+
+  await stripe.customers.update(customerId, {
+    invoice_settings: {
+      default_payment_method: paymentMethod.id,
+    },
+  });
+
+  return customerId;
+}
+
 export async function createCourseEntitlementWebhookFixture({
   memberId,
   paymentIntentId,
@@ -227,19 +259,55 @@ export async function createCourseEntitlementWebhookFixture({
   };
 }
 
-export async function createStandaloneCourseFixture(slugSeed: string) {
+export async function createStandaloneCourseFixture(
+  slugSeed: string,
+  options?: {
+    withOutline?: boolean;
+    grantToMemberId?: string | null;
+    priceCents?: number;
+    title?: string;
+    description?: string | null;
+  }
+) {
   const supabase = getServiceRoleClient();
+  const stripe = getStripeClient();
   const slug = `e2e-course-${slugSeed}`;
+  const amountCents = options?.priceCents ?? 5000;
+  const title = options?.title ?? "E2E Standalone Course Fixture";
+  const description =
+    options?.description ?? "A focused course fixture for checkout and course-store verification.";
+
+  const product = await stripe.products.create({
+    name: title,
+    description,
+    metadata: {
+      source: "positives-e2e",
+      slug,
+    },
+  });
+
+  const price = await stripe.prices.create({
+    product: product.id,
+    currency: "usd",
+    unit_amount: amountCents,
+    metadata: {
+      source: "positives-e2e",
+      slug,
+    },
+  });
 
   const { data: course, error } = await supabase
     .from("course")
     .insert({
-      title: "E2E Standalone Course Fixture",
+      title,
       slug,
       status: "published",
       tier_min: "level_1",
       is_standalone_purchasable: true,
-      price_cents: 5000,
+      description,
+      price_cents: amountCents,
+      stripe_product_id: product.id,
+      stripe_price_id: price.id,
       admin_notes: "e2e-standalone-course-fixture",
     })
     .select("id")
@@ -251,17 +319,91 @@ export async function createStandaloneCourseFixture(slugSeed: string) {
     );
   }
 
+  if (options?.withOutline) {
+    const { data: module, error: moduleError } = await supabase
+      .from("course_module")
+      .insert({
+        course_id: course.id,
+        title: "Module 1: Foundations",
+        description: "A calm first section for previewing the course outline.",
+        sort_order: 1,
+      })
+      .select("id")
+      .single();
+
+    if (moduleError || !module) {
+      throw new Error(
+        `Failed to create standalone course module fixture: ${moduleError?.message ?? "unknown error"}`
+      );
+    }
+
+    const { error: lessonError } = await supabase.from("course_lesson").insert([
+      {
+        module_id: module.id,
+        title: "Lesson 1: Setting a gentler rhythm",
+        description: "The first preview lesson.",
+        sort_order: 1,
+      },
+      {
+        module_id: module.id,
+        title: "Lesson 2: Returning without pressure",
+        description: "The second preview lesson.",
+        sort_order: 2,
+      },
+    ]);
+
+    if (lessonError) {
+      throw new Error(
+        `Failed to create standalone course lesson fixtures: ${lessonError.message}`
+      );
+    }
+  }
+
+  if (options?.grantToMemberId) {
+    const { error: entitlementError } = await supabase.from("course_entitlement").insert({
+      member_id: options.grantToMemberId,
+      course_id: course.id,
+      source: "purchase",
+      status: "active",
+      grant_note: "E2E standalone course fixture ownership grant.",
+    });
+
+    if (entitlementError) {
+      throw new Error(
+        `Failed to create standalone course entitlement fixture: ${entitlementError.message}`
+      );
+    }
+  }
+
   return {
     courseId: course.id,
+    courseSlug: slug,
+    stripePriceId: price.id,
+    stripeProductId: product.id,
   };
 }
 
 export async function deleteCourseFixture(courseId: string) {
   const supabase = getServiceRoleClient();
+  const stripe = getStripeClient();
+  const { data: course } = await supabase
+    .from("course")
+    .select("stripe_product_id")
+    .eq("id", courseId)
+    .maybeSingle();
+
   const { error } = await supabase.from("course").delete().eq("id", courseId);
 
   if (error) {
     throw new Error(`Failed to delete course fixture ${courseId}: ${error.message}`);
+  }
+
+  if (course?.stripe_product_id) {
+    try {
+      await stripe.products.update(course.stripe_product_id, { active: false });
+    } catch {
+      // Test cleanup should not fail just because Stripe fixture archival did not complete.
+    }
   }
 }
 

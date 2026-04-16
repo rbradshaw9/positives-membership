@@ -9,6 +9,7 @@ type CourseCheckoutButtonProps = {
   owned?: boolean;
   signedIn?: boolean;
   priceLabel?: string;
+  sourcePath?: string;
 };
 
 export function CourseCheckoutButton({
@@ -17,6 +18,7 @@ export function CourseCheckoutButton({
   owned = false,
   signedIn = false,
   priceLabel,
+  sourcePath,
 }: CourseCheckoutButtonProps) {
   const [isPending, startTransition] = useTransition();
   const [confirming, setConfirming] = useState(false);
@@ -34,6 +36,9 @@ export function CourseCheckoutButton({
 
     const formData = new FormData();
     formData.set("courseId", courseId);
+    if (sourcePath) {
+      formData.set("sourcePath", sourcePath);
+    }
 
     startTransition(async () => {
       const result = await getCourseCheckoutUrl(formData);

@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
+import { getStripe } from "@/lib/stripe/config";
 import {
   updateCourse,
   deleteCourse,
+  attachExistingCourseStripePrice,
   createModule,
+  createCourseStripePrice,
   updateModule,
   deleteModule,
   createLesson,
@@ -47,7 +50,7 @@ type ModuleRow = {
 type CourseRow = {
   id: string; title: string; slug: string | null; description: string | null;
   status: string; admin_notes: string | null;
-  stripe_price_id: string | null; is_standalone_purchasable: boolean;
+  stripe_product_id: string | null; stripe_price_id: string | null; is_standalone_purchasable: boolean;
   price_cents: number | null; points_price: number | null;
   points_unlock_enabled: boolean;
   course_module: ModuleRow[];
@@ -58,6 +61,8 @@ const BANNER: Record<string, string> = {
   module_deleted: "Module deleted.", lesson_created: "Lesson created.", lesson_updated: "Lesson saved.",
   lesson_deleted: "Lesson deleted.", session_created: "Session created.", session_updated: "Session saved.",
   session_deleted: "Session deleted.",
+  stripe_price_attached: "Stripe selling price attached.",
+  stripe_price_created: "New Stripe selling price created and connected.",
 };
 
 /** Inline editor for a lesson or topic/session */
@@ -113,7 +118,7 @@ export default async function CourseEditorPage({
     .from("course")
     .select(`
       id, title, slug, description, status, admin_notes,
-      stripe_price_id, is_standalone_purchasable, price_cents, points_price, points_unlock_enabled,
+      stripe_product_id, stripe_price_id, is_standalone_purchasable, price_cents, points_price, points_unlock_enabled,
       course_module(
         id, title, description, sort_order,
         course_lesson(
@@ -136,6 +141,39 @@ export default async function CourseEditorPage({
 
   // ?el=type:id — which item is being edited inline
   const elParam = sp.el ?? "";
+  const decodedError = sp.error ? decodeURIComponent(sp.error) : null;
+  let stripeCommerceSummary:
+    | {
+        priceId: string;
+        productId: string | null;
+        amountCents: number | null;
+        currency: string;
+        active: boolean;
+        nickname: string | null;
+      }
+    | null = null;
+
+  if (c.stripe_price_id) {
+    try {
+      const stripe = getStripe();
+      const price = await stripe.prices.retrieve(c.stripe_price_id, {
+        expand: ["product"],
+      });
+      stripeCommerceSummary = {
+        priceId: price.id,
+        productId: typeof price.product === "string" ? price.product : price.product?.id ?? null,
+        amountCents: price.unit_amount,
+        currency: price.currency,
+        active: price.active,
+        nickname: price.nickname ?? null,
+      };
+    } catch (stripeError) {
+      console.error(
+        "[admin/course-editor] failed to load stripe commerce summary:",
+        stripeError instanceof Error ? stripeError.message : String(stripeError)
+      );
+    }
+  }
 
   return (
     <div style={{ maxWidth: "60rem" }}>
@@ -144,7 +182,11 @@ export default async function CourseEditorPage({
       {sp.success && <div className="admin-banner admin-banner--success">{BANNER[sp.success] ?? "Done."}</div>}
       {sp.error && (
         <div className="admin-banner admin-banner--error">
-          {sp.error === "missing_fields" ? "Required fields missing." : "Something went wrong."}
+          {decodedError === "missing_fields"
+            ? "Required fields missing."
+            : decodedError === "invalid_price"
+              ? "Enter a valid USD price in cents. Stripe requires at least 50 cents."
+              : decodedError ?? "Something went wrong."}
         </div>
       )}
 
@@ -217,28 +259,6 @@ export default async function CourseEditorPage({
                 </select>
               </div>
               <div className="admin-form-field">
-                <label className="admin-label">Stripe one-time Price ID</label>
-                <input
-                  name="stripe_price_id"
-                  type="text"
-                  defaultValue={c.stripe_price_id ?? ""}
-                  className="admin-input"
-                  placeholder="price_..."
-                />
-              </div>
-              <div className="admin-form-field">
-                <label className="admin-label">Price (USD cents)</label>
-                <input
-                  name="price_cents"
-                  type="number"
-                  min="0"
-                  step="1"
-                  defaultValue={c.price_cents ?? ""}
-                  className="admin-input"
-                  placeholder="9700"
-                />
-              </div>
-              <div className="admin-form-field">
                 <label className="admin-label">Points unlock</label>
                 <select
                   name="points_unlock_enabled"
@@ -266,6 +286,103 @@ export default async function CourseEditorPage({
               Save Course
             </button>
           </form>
+        </div>
+      </div>
+
+      <div className="admin-section" style={{ marginBottom: "1.5rem" }}>
+        <div className="admin-section__header">
+          <span className="admin-section__title">💳 Course Commerce</span>
+        </div>
+        <div className="admin-section__body">
+          <div className="admin-form-grid-2">
+            <div className="surface-card" style={{ padding: "1rem" }}>
+              <h2 className="font-heading" style={{ fontSize: "1.1rem", marginBottom: "0.5rem" }}>
+                Current selling price
+              </h2>
+              <p style={{ color: "#68707A", lineHeight: 1.6, marginBottom: "1rem" }}>
+                Stripe is the payment source of truth for standalone course sales. Updating the
+                selling price here creates a new one-time Stripe price for future buyers and
+                leaves historical payments untouched.
+              </p>
+              <div style={{ display: "grid", gap: "0.55rem" }}>
+                <div><strong>Standalone status:</strong> {c.is_standalone_purchasable ? "Selling in store" : "Not currently selling"}</div>
+                <div><strong>Stripe product:</strong> {c.stripe_product_id ?? "Not connected yet"}</div>
+                <div><strong>Active Stripe price:</strong> {c.stripe_price_id ?? "Not connected yet"}</div>
+                <div>
+                  <strong>Display price:</strong>{" "}
+                  {c.price_cents
+                    ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(c.price_cents / 100)
+                    : "Price coming soon"}
+                </div>
+                {stripeCommerceSummary ? (
+                  <div style={{ color: "#68707A", fontSize: "0.9rem" }}>
+                    Stripe says: {stripeCommerceSummary.active ? "active" : "inactive"}
+                    {stripeCommerceSummary.amountCents
+                      ? ` · ${new Intl.NumberFormat("en-US", {
+                          style: "currency",
+                          currency: stripeCommerceSummary.currency.toUpperCase(),
+                        }).format(stripeCommerceSummary.amountCents / 100)}`
+                      : ""}
+                    {stripeCommerceSummary.nickname ? ` · ${stripeCommerceSummary.nickname}` : ""}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            <form action={attachExistingCourseStripePrice} className="surface-card" style={{ padding: "1rem" }}>
+              <input type="hidden" name="course_id" value={c.id} />
+              <h2 className="font-heading" style={{ fontSize: "1.1rem", marginBottom: "0.5rem" }}>
+                Attach existing Stripe price
+              </h2>
+              <p style={{ color: "#68707A", lineHeight: 1.6, marginBottom: "1rem" }}>
+                Use this when the Stripe product and one-time price already exist and you only need
+                to connect them to this course record.
+              </p>
+              <div className="admin-form-field">
+                <label className="admin-label">Stripe Price ID</label>
+                <input
+                  name="stripe_price_id"
+                  type="text"
+                  defaultValue={c.stripe_price_id ?? ""}
+                  className="admin-input"
+                  placeholder="price_..."
+                />
+              </div>
+              <button type="submit" className="admin-btn admin-btn--outline" style={{ marginTop: "0.85rem" }}>
+                Attach Stripe price
+              </button>
+            </form>
+
+            <form action={createCourseStripePrice} className="surface-card surface-card--editorial" style={{ padding: "1rem" }}>
+              <input type="hidden" name="course_id" value={c.id} />
+              <h2 className="font-heading" style={{ fontSize: "1.1rem", marginBottom: "0.5rem" }}>
+                Create new selling price
+              </h2>
+              <p style={{ color: "#68707A", lineHeight: 1.6, marginBottom: "1rem" }}>
+                Use this when you want to launch the course for the first time or change the future
+                selling price while keeping old Stripe price history intact.
+              </p>
+              <div className="admin-form-field">
+                <label className="admin-label">New price (USD cents)</label>
+                <input
+                  name="price_cents"
+                  type="number"
+                  min="50"
+                  step="1"
+                  defaultValue={c.price_cents ?? ""}
+                  className="admin-input"
+                  placeholder="9700"
+                />
+              </div>
+              <p style={{ color: "#68707A", fontSize: "0.88rem", lineHeight: 1.55, marginTop: "0.75rem" }}>
+                This creates a new Stripe one-time price and makes it the active course selling
+                price. Existing purchasers keep access and historical records stay unchanged.
+              </p>
+              <button type="submit" className="admin-btn admin-btn--primary" style={{ marginTop: "0.85rem" }}>
+                Create new Stripe price
+              </button>
+            </form>
+          </div>
         </div>
       </div>
 

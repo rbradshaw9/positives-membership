@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAccessibleCourses } from "@/lib/queries/get-courses";
 import { getMonthlyArchive } from "@/lib/queries/get-monthly-archive";
@@ -100,9 +101,9 @@ export default async function LibraryPage({
                   : "Courses"}
               </h2>
             </div>
-            <a href="/courses" className="btn-secondary inline-flex items-center text-sm">
+            <Link href="/courses" className="btn-secondary inline-flex items-center text-sm">
               Browse store
-            </a>
+            </Link>
           </div>
 
           {courses.length > 0 ? (
@@ -131,7 +132,11 @@ export default async function LibraryPage({
                   ? "Courses included with your membership will appear here as they are published."
                   : "Purchased or granted courses will appear here. You can also browse the course store."
               }
-              action={<a href="/courses" className="btn-primary inline-flex items-center">Browse courses</a>}
+              action={
+                <Link href="/courses" className="btn-primary inline-flex items-center">
+                  Browse courses
+                </Link>
+              }
             />
           )}
         </section>

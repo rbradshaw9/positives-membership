@@ -60,8 +60,38 @@ async function getSavedPaymentMethodId(stripe: Stripe, customerId: string) {
   return paymentMethods.data[0]?.id ?? null;
 }
 
+async function getActiveCoursePrice(stripePriceId: string) {
+  const stripe = getStripe();
+  const price = await stripe.prices.retrieve(stripePriceId, {
+    expand: ["product"],
+  });
+
+  if (!price) {
+    throw new Error("The connected Stripe price could not be found.");
+  }
+
+  if (price.type !== "one_time") {
+    throw new Error("Standalone course purchases require a one-time Stripe price.");
+  }
+
+  if (!price.active) {
+    throw new Error("The connected Stripe price is no longer active.");
+  }
+
+  if (!price.unit_amount) {
+    throw new Error("The connected Stripe price does not have a usable amount.");
+  }
+
+  return {
+    priceId: price.id,
+    amountCents: price.unit_amount,
+    currency: price.currency,
+  };
+}
+
 export async function getCourseCheckoutUrl(formData: FormData): Promise<CourseCheckoutResult> {
   const courseId = (formData.get("courseId") as string | null)?.trim();
+  const sourcePath = (formData.get("sourcePath") as string | null)?.trim();
 
   if (!courseId) {
     return { status: "error", error: "No course selected. Please try again." };
@@ -126,15 +156,17 @@ export async function getCourseCheckoutUrl(formData: FormData): Promise<CourseCh
   }
 
   try {
-    if (member?.stripe_customer_id && member.email && course.price_cents) {
+    const activePrice = await getActiveCoursePrice(course.stripe_price_id);
+
+    if (member?.stripe_customer_id && member.email) {
       const stripe = getStripe();
       const paymentMethodId = await getSavedPaymentMethodId(stripe, member.stripe_customer_id);
 
       if (paymentMethodId) {
         try {
           const paymentIntent = await stripe.paymentIntents.create({
-            amount: course.price_cents,
-            currency: "usd",
+            amount: activePrice.amountCents,
+            currency: activePrice.currency,
             customer: member.stripe_customer_id,
             payment_method: paymentMethodId,
             confirm: true,
@@ -148,6 +180,7 @@ export async function getCourseCheckoutUrl(formData: FormData): Promise<CourseCh
               member_id: member.id,
               userId: member.id,
               buyer_email: member.email,
+              stripe_price_id: activePrice.priceId,
             },
             expand: ["latest_charge"],
           });
@@ -182,11 +215,11 @@ export async function getCourseCheckoutUrl(formData: FormData): Promise<CourseCh
     const { url } = await createCourseCheckoutSession({
       courseId,
       courseTitle: course.title,
-      priceId: course.stripe_price_id,
+      priceId: activePrice.priceId,
       userId: member?.id ?? user?.id ?? null,
       customerId: member?.stripe_customer_id ?? null,
       customerEmail: member?.email ?? user?.email ?? null,
-      sourcePath: `/courses${course.slug ? `#${course.slug}` : ""}`,
+      sourcePath: sourcePath || (course.slug ? `/courses/${course.slug}` : `/courses`),
     });
 
     return { status: "checkout", url };
