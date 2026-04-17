@@ -12,6 +12,7 @@ import { trackServerEvent } from "@/lib/analytics/measurement-protocol";
 import { getSubscriptionAnalyticsFromPriceId } from "@/lib/analytics/subscription";
 import { PLAN_NAME_BY_TIER } from "@/lib/plans";
 import type { Enums } from "@/types/supabase";
+import { recordCoursePaymentSucceeded } from "./member-billing-summary";
 
 type SubscriptionTier = Enums<"subscription_tier">;
 type SubscriptionStatus = Enums<"subscription_status">;
@@ -665,6 +666,14 @@ async function handleCourseCheckout(
       source: "purchase",
       stripe_checkout_session_id: session.id,
     },
+  });
+
+  await recordCoursePaymentSucceeded({
+    memberId: userId,
+    stripeCustomerId: customerId,
+    amountPaidCents: session.amount_total ?? 0,
+    occurredAt: new Date().toISOString(),
+    currency: session.currency,
   });
 
   const { data: linkData, error: linkError } =

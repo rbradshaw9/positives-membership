@@ -1,6 +1,7 @@
 import type Stripe from "stripe";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
+import { recordChargeRefund, recordCoursePaymentSucceeded } from "./member-billing-summary";
 
 type CourseEntitlementStatus = "refunded" | "chargeback";
 
@@ -214,6 +215,11 @@ export async function handleChargeRefunded(charge: Stripe.Charge) {
     chargeId: charge.id,
     note: `Refunded through Stripe charge ${charge.id}.`,
   });
+
+  await recordChargeRefund({
+    customerId: idFromExpandable(charge.customer),
+    amountRefundedCents: refundAmount,
+  });
 }
 
 export async function handleCoursePaymentSucceeded(paymentIntent: Stripe.PaymentIntent) {
@@ -239,6 +245,14 @@ export async function handleCoursePaymentSucceeded(paymentIntent: Stripe.Payment
     stripePaymentIntentId: paymentIntent.id,
     stripeChargeId: chargeId,
     grantNote: `Purchased through saved-card payment ${paymentIntent.id}.`,
+  });
+
+  await recordCoursePaymentSucceeded({
+    memberId,
+    stripeCustomerId: customerId,
+    amountPaidCents: paymentIntent.amount_received || paymentIntent.amount || 0,
+    occurredAt: new Date(paymentIntent.created * 1000).toISOString(),
+    currency: paymentIntent.currency,
   });
 
   console.log(

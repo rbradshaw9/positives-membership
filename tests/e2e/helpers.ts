@@ -420,13 +420,40 @@ export async function createStandaloneCourseFixture(
 export async function deleteCourseFixture(courseId: string) {
   const supabase = getServiceRoleClient();
   const stripe = getStripeClient();
-  const { data: course } = await supabase
+  const [{ data: course }, { count: entitlementCount, error: entitlementCountError }] = await Promise.all([
+    supabase
     .from("course")
     .select("stripe_product_id")
     .eq("id", courseId)
-    .maybeSingle();
+      .maybeSingle(),
+    supabase
+      .from("course_entitlement")
+      .select("id", { count: "exact", head: true })
+      .eq("course_id", courseId),
+  ]);
 
-  const { error } = await supabase.from("course").delete().eq("id", courseId);
+  if (entitlementCountError) {
+    throw new Error(
+      `Failed to inspect entitlements before cleaning course fixture ${courseId}: ${entitlementCountError.message}`
+    );
+  }
+
+  let error: { message: string } | null = null;
+
+  if ((entitlementCount ?? 0) > 0) {
+    const archiveResult = await supabase
+      .from("course")
+      .update({
+        status: "archived",
+        is_standalone_purchasable: false,
+        admin_notes: "e2e-standalone-course-fixture-archived-after-purchase",
+      })
+      .eq("id", courseId);
+    error = archiveResult.error;
+  } else {
+    const deleteResult = await supabase.from("course").delete().eq("id", courseId);
+    error = deleteResult.error;
+  }
 
   if (error) {
     throw new Error(`Failed to delete course fixture ${courseId}: ${error.message}`);

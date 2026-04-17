@@ -8,6 +8,7 @@ type SummaryPatch = Partial<Omit<MemberBillingSummary, "member_id" | "created_at
 
 type CoursePurchaseRow = {
   purchased_at: string | null;
+  stripe_payment_intent_id: string | null;
   course: { price_cents: number | null } | null;
 };
 
@@ -240,6 +241,27 @@ async function listAllPaidInvoices(customerId: string) {
   return invoices;
 }
 
+async function listAllSucceededCoursePaymentIntents(customerId: string) {
+  const stripe = getStripe();
+  const intents: Stripe.PaymentIntent[] = [];
+  let startingAfter: string | undefined;
+
+  while (true) {
+    const response = await stripe.paymentIntents.list({
+      customer: customerId,
+      limit: 100,
+      ...(startingAfter ? { starting_after: startingAfter } : {}),
+    });
+    intents.push(...response.data);
+    if (!response.has_more || response.data.length === 0) break;
+    startingAfter = response.data[response.data.length - 1]?.id;
+  }
+
+  return intents.filter(
+    (intent) => intent.status === "succeeded" && intent.metadata?.purchase_type === "course"
+  );
+}
+
 export async function backfillMemberBillingSummary(params: {
   memberId: string;
   stripeCustomerId: string | null;
@@ -249,7 +271,7 @@ export async function backfillMemberBillingSummary(params: {
 
   const { data: coursePurchases, error: entitlementError } = await supabase
     .from("course_entitlement")
-    .select<CoursePurchaseRow[]>("purchased_at, course:course_id(price_cents)")
+    .select<CoursePurchaseRow[]>("purchased_at, stripe_payment_intent_id, course:course_id(price_cents)")
     .eq("member_id", params.memberId)
     .eq("source", "purchase");
 
@@ -257,11 +279,18 @@ export async function backfillMemberBillingSummary(params: {
     console.error("[stripe/member-billing-summary] entitlement backfill query failed:", entitlementError.message);
   }
 
-  const courseLifetimeValue = (coursePurchases ?? []).reduce(
+  const courseLifetimeValueFromEntitlements = (coursePurchases ?? []).reduce(
     (sum, row) => sum + (row.course?.price_cents ?? 0),
     0
   );
-  const coursePurchaseCount = (coursePurchases ?? []).length;
+  const entitlementPaymentIntentIds = new Set(
+    (coursePurchases ?? [])
+      .map((row) => row.stripe_payment_intent_id)
+      .filter((value): value is string => Boolean(value))
+  );
+  let extraCourseLifetimeValue = 0;
+  let extraCoursePurchaseCount = 0;
+  let extraCoursePurchaseDates: string[] = [];
 
   let subscriptionLifetimeValue = 0;
   let successfulInvoiceCount = 0;
@@ -274,6 +303,7 @@ export async function backfillMemberBillingSummary(params: {
 
   if (params.stripeCustomerId) {
     const invoices = await listAllPaidInvoices(params.stripeCustomerId);
+    const coursePaymentIntents = await listAllSucceededCoursePaymentIntents(params.stripeCustomerId);
     const paidInvoices = invoices.filter((invoice) => invoice.status === "paid");
     const failedInvoices = invoices.filter(
       (invoice) => invoice.status === "uncollectible" || (invoice.status === "open" && (invoice.attempt_count ?? 0) > 0)
@@ -296,6 +326,18 @@ export async function backfillMemberBillingSummary(params: {
     lastPaidAt = paidDates.length > 0 ? paidDates.slice().sort().at(-1) ?? null : null;
     currency = normalizeCurrency(paidInvoices[0]?.currency);
 
+    const extraCoursePaymentIntents = coursePaymentIntents.filter(
+      (intent) => !entitlementPaymentIntentIds.has(intent.id)
+    );
+    extraCourseLifetimeValue = extraCoursePaymentIntents.reduce(
+      (sum, intent) => sum + (intent.amount_received || intent.amount || 0),
+      0
+    );
+    extraCoursePurchaseCount = extraCoursePaymentIntents.length;
+    extraCoursePurchaseDates = extraCoursePaymentIntents.map((intent) =>
+      new Date(intent.created * 1000).toISOString()
+    );
+
     const subscriptions = await stripe.subscriptions.list({
       customer: params.stripeCustomerId,
       status: "all",
@@ -308,11 +350,18 @@ export async function backfillMemberBillingSummary(params: {
       ) ?? subscriptions.data[0] ?? null;
   }
 
+  const courseLifetimeValue = courseLifetimeValueFromEntitlements + extraCourseLifetimeValue;
+  const coursePurchaseCount = (coursePurchases ?? []).length + extraCoursePurchaseCount;
+  const coursePurchaseDates = [
+    ...((coursePurchases ?? []).map((row) => row.purchased_at).filter(Boolean) as string[]),
+    ...extraCoursePurchaseDates,
+  ].sort();
+
   return upsertMemberBillingSummary(params.memberId, {
     stripe_customer_id: params.stripeCustomerId,
     currency,
-    first_paid_at: firstPaidAt ?? (coursePurchases ?? []).map((row) => row.purchased_at).filter(Boolean).sort()[0] ?? null,
-    last_paid_at: lastPaidAt ?? (coursePurchases ?? []).map((row) => row.purchased_at).filter(Boolean).sort().at(-1) ?? null,
+    first_paid_at: firstPaidAt ?? coursePurchaseDates[0] ?? null,
+    last_paid_at: lastPaidAt ?? coursePurchaseDates.at(-1) ?? null,
     lifetime_value_cents: subscriptionLifetimeValue + courseLifetimeValue,
     subscription_lifetime_value_cents: subscriptionLifetimeValue,
     course_lifetime_value_cents: courseLifetimeValue,

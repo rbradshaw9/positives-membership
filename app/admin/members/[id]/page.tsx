@@ -1177,7 +1177,14 @@ export default async function AdminMemberDetailPage({
 
   let billingSummary = await getMemberBillingSummary(member.id);
   let billingCustomerMissingInStripe = false;
-  if (!billingSummary && member.stripe_customer_id) {
+  const shouldRefreshBillingSummary =
+    member.stripe_customer_id &&
+    (!billingSummary ||
+      (billingSummary.lifetime_value_cents === 0 &&
+        billingSummary.successful_payment_count === 0 &&
+        billingSummary.failed_payment_count === 0));
+
+  if (shouldRefreshBillingSummary && member.stripe_customer_id) {
     try {
       billingSummary = await backfillMemberBillingSummary({
         memberId: member.id,
@@ -1277,11 +1284,12 @@ export default async function AdminMemberDetailPage({
     needsAttention,
   });
 
-  function tabHref(tab: MemberCrmTab) {
+  function tabHref(tab: MemberCrmTab, hash?: string) {
     const query = new URLSearchParams();
     query.set("tab", tab);
     if (tab === "billing" && sp.planTarget) query.set("planTarget", sp.planTarget);
-    return `/admin/members/${member.id}?${query.toString()}`;
+    const href = `/admin/members/${member.id}?${query.toString()}`;
+    return hash ? `${href}#${hash}` : href;
   }
 
   const overviewCardOrder = viewerCoachOnly
@@ -1386,13 +1394,13 @@ export default async function AdminMemberDetailPage({
                   Open promoter record
                 </a>
               ) : null}
-              <Link className="admin-btn admin-btn--outline" href={tabHref("access")}>
+              <Link className="admin-btn admin-btn--outline" href={tabHref("access", "access")}>
                 Manage access
               </Link>
-              <Link className="admin-btn admin-btn--outline" href={tabHref("notes")}>
+              <Link className="admin-btn admin-btn--outline" href={tabHref("notes", "followup-form")}>
                 Set follow-up
               </Link>
-              <Link className="admin-btn admin-btn--primary" href={tabHref("notes")}>
+              <Link className="admin-btn admin-btn--primary" href={tabHref("notes", "note-form")}>
                 Add note
               </Link>
             </div>
@@ -2277,6 +2285,7 @@ export default async function AdminMemberDetailPage({
 
             <div className="member-crm-list">
               <MemberCrmInlineForm
+                id="followup-form"
                 action={createMemberFollowupTaskInline}
                 className="member-crm-card"
                 submitLabel="Save follow-up"
@@ -2346,6 +2355,7 @@ export default async function AdminMemberDetailPage({
               ) : null}
 
               <MemberCrmInlineForm
+                id="note-form"
                 action={addMemberAdminNoteInline}
                 className="member-crm-card"
                 submitLabel="Save note"

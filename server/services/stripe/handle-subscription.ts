@@ -18,6 +18,11 @@ import { trackServerEvent } from "@/lib/analytics/measurement-protocol";
 import { comparePlanLevels, getSubscriptionAnalyticsFromPriceId } from "@/lib/analytics/subscription";
 import { trackFpSale } from "@/lib/firstpromoter/client";
 import { PLAN_NAME_BY_TIER } from "@/lib/plans";
+import {
+  recordInvoicePaymentFailed,
+  recordInvoicePaymentSucceeded,
+  syncSubscriptionSnapshotFromStripe,
+} from "./member-billing-summary";
 
 type SubscriptionStatus = Enums<"subscription_status">;
 type SubscriptionTier = Enums<"subscription_tier">;
@@ -326,6 +331,7 @@ export async function handleSubscriptionCreated(
 ) {
   const customerId = subscription.customer as string;
   await updateMemberSubscription(customerId, subscription);
+  await syncSubscriptionSnapshotFromStripe({ customerId, subscription });
 }
 
 export async function handleSubscriptionUpdated(
@@ -333,6 +339,7 @@ export async function handleSubscriptionUpdated(
 ) {
   const customerId = subscription.customer as string;
   await updateMemberSubscription(customerId, subscription);
+  await syncSubscriptionSnapshotFromStripe({ customerId, subscription });
 }
 
 export async function handleSubscriptionDeleted(
@@ -363,6 +370,7 @@ export async function handleSubscriptionDeleted(
   }
 
   console.log(`[Stripe] Subscription canceled — customer: ${customerId}`);
+  await syncSubscriptionSnapshotFromStripe({ customerId, subscription });
 
   if (canceledMember?.email) {
     await syncCancellationState({
@@ -438,6 +446,7 @@ export async function handlePaymentFailed(invoice: Stripe.Invoice) {
   }
 
   console.log(`[Stripe] Payment failed — customer marked past_due: ${customerId}`);
+  await recordInvoicePaymentFailed(invoice);
 
   const memberId = await getMemberIdByCustomerId(customerId);
   try {
@@ -489,6 +498,8 @@ export async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
     console.warn("[Stripe] invoice.payment_succeeded — no customer ID found.");
     return;
   }
+
+  await recordInvoicePaymentSucceeded(invoice);
 
   // Non-fatal: sync receipt fields/tags to ActiveCampaign
   try {
