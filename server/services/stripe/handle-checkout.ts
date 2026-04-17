@@ -13,6 +13,7 @@ import { getSubscriptionAnalyticsFromPriceId } from "@/lib/analytics/subscriptio
 import { PLAN_NAME_BY_TIER } from "@/lib/plans";
 import type { Enums } from "@/types/supabase";
 import { recordCoursePaymentSucceeded } from "./member-billing-summary";
+import { resolveLaunchContext } from "@/lib/launch/context";
 
 type SubscriptionTier = Enums<"subscription_tier">;
 type SubscriptionStatus = Enums<"subscription_status">;
@@ -250,6 +251,13 @@ async function handleGuestCheckout(
   const lastName =
     nameParts.length > 1 ? nameParts.slice(1).join(" ") : undefined;
   const checkoutMode = session.metadata?.checkoutMode ?? "paid";
+  const launchContext = resolveLaunchContext({
+    cohort: session.metadata?.launchCohort ?? null,
+    source: session.metadata?.launchSource ?? null,
+    campaignCode: session.metadata?.launchCampaignCode ?? null,
+    fallbackCohort: "live",
+    fallbackSource: checkoutMode === "trial_7_day" ? "public_trial" : "public_join",
+  });
   const subscription = await getCheckoutSubscription(stripe, session);
   const subscriptionStatus = mapStripeSubscriptionStatus(subscription?.status);
   const trialEndDate = formatStripeDate(subscription?.trial_end);
@@ -289,7 +297,7 @@ async function handleGuestCheckout(
 
     const { data: memberRow, error: memberLookupError } = await supabase
       .from("member")
-      .select("id, email_unsubscribed, subscription_status")
+      .select("id, email_unsubscribed, subscription_status, launch_cohort, launch_source, launch_campaign_code")
       .eq("email", email)
       .maybeSingle();
 
@@ -325,6 +333,20 @@ async function handleGuestCheckout(
   // fprRefId from metadata is the canonical referral tracked server-side —
   // immune to cookie expiry and consistent across guest checkout replays.
 
+  const { data: existingMember } = await supabase
+    .from("member")
+    .select("id, launch_cohort, launch_source, launch_campaign_code")
+    .eq("id", userId)
+    .maybeSingle();
+
+  const finalLaunchCohort =
+    existingMember?.launch_cohort === "alpha" || existingMember?.launch_cohort === "beta"
+      ? existingMember.launch_cohort
+      : launchContext.launchCohort;
+  const finalLaunchSource = existingMember?.launch_source ?? launchContext.launchSource;
+  const finalLaunchCampaignCode =
+    existingMember?.launch_campaign_code ?? launchContext.launchCampaignCode;
+
   const { error: upsertError } = await supabase
     .from("member")
     .upsert(
@@ -334,6 +356,9 @@ async function handleGuestCheckout(
         ...(customerName ? { name: customerName } : {}),
         stripe_customer_id: customerId,
         subscription_status: subscriptionStatus,
+        launch_cohort: finalLaunchCohort,
+        launch_source: finalLaunchSource,
+        launch_campaign_code: finalLaunchCampaignCode,
         // Store FP referrer permanently — first referrer wins (never overwritten)
         ...(fprRefId ? { referred_by_fpr: fprRefId } : {}),
       },
@@ -347,8 +372,23 @@ async function handleGuestCheckout(
   }
 
   console.log(
-    `[Stripe] Member activated — userId: ${userId}, customerId: ${customerId}, email: ${email}`
+    `[Stripe] Member activated — userId: ${userId}, customerId: ${customerId}, email: ${email}, cohort: ${finalLaunchCohort}, source: ${finalLaunchSource}`
   );
+
+  try {
+    await stripe.customers.update(customerId, {
+      metadata: {
+        launch_cohort: finalLaunchCohort,
+        launch_source: finalLaunchSource,
+        ...(finalLaunchCampaignCode ? { launch_campaign_code: finalLaunchCampaignCode } : {}),
+      },
+    });
+  } catch (stripeMetadataError) {
+    console.error(
+      `[Stripe] Failed to persist launch metadata on customer ${customerId}: ` +
+        `${stripeMetadataError instanceof Error ? stripeMetadataError.message : String(stripeMetadataError)}`
+    );
+  }
 
   // ── Step 4: Generate one-time login token ────────────────────────────────
   // admin.generateLink produces a hashed_token that can be exchanged for a

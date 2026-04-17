@@ -1,5 +1,6 @@
 import { getStripe } from "@/lib/stripe/config";
 import { config } from "@/lib/config";
+import type { LaunchCohort } from "@/lib/launch/context";
 
 /**
  * server/services/stripe/create-guest-checkout.ts
@@ -31,6 +32,9 @@ type CreateGuestCheckoutOptions = {
   fprRefId?: string | null;
   checkoutMode?: CheckoutMode;
   sourcePath?: string | null;
+  launchCohort?: LaunchCohort;
+  launchSource?: string | null;
+  launchCampaignCode?: string | null;
 };
 
 export async function createGuestCheckoutSession(
@@ -42,6 +46,9 @@ export async function createGuestCheckoutSession(
   const trialDays = checkoutMode === "trial_7_day" ? 7 : 0;
   const fprRefId = options.fprRefId ?? null;
   const sourcePath = options.sourcePath?.trim() || "/join";
+  const launchCohort = options.launchCohort ?? "live";
+  const launchSource = options.launchSource?.trim() || "public_join";
+  const launchCampaignCode = options.launchCampaignCode?.trim() || null;
 
   // Resolve price — the caller must pass a valid priceId.
   // No fallback here: guest checkout always has an explicit selection.
@@ -100,6 +107,9 @@ export async function createGuestCheckoutSession(
       priceId,
       checkoutMode,
       sourcePath,
+      launchCohort,
+      launchSource,
+      ...(launchCampaignCode ? { launchCampaignCode } : {}),
       ...(trialDays > 0 ? { trialDays: String(trialDays) } : {}),
       ...(fprRefId ? { fpr: fprRefId } : {}),
     },

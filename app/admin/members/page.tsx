@@ -109,6 +109,16 @@ const TIER_FILTERS: { label: string; value: MemberCrmTierFilter }[] = [
   { label: PLAN_NAME_BY_TIER.level_4, value: "level_4" },
 ];
 
+const LAUNCH_COHORT_FILTERS: {
+  label: string;
+  value: NonNullable<MemberCrmListFilters["launchCohort"]>;
+}[] = [
+  { label: "All cohorts", value: "" },
+  { label: "Alpha", value: "alpha" },
+  { label: "Beta", value: "beta" },
+  { label: "Live", value: "live" },
+];
+
 const ENTITLEMENT_SOURCE_FILTERS: { label: string; value: CourseEntitlementSource | "" }[] = [
   { label: "All course sources", value: "" },
   { label: "Purchase", value: "purchase" },
@@ -143,6 +153,7 @@ export default async function AdminMembersPage({
     search: params.search ?? "",
     status: (params.status ?? "") as MemberCrmStatusFilter,
     tier: (params.tier ?? "") as MemberCrmTierFilter,
+    launchCohort: (params.launchCohort ?? "") as MemberCrmListFilters["launchCohort"],
     health: (params.health ?? "") as MemberHealthStatusFilter,
     attention: (params.attention ?? "") as MemberAttentionFilter,
     billing: (params.billing ?? "") as MemberCrmListFilters["billing"],
@@ -173,6 +184,7 @@ export default async function AdminMembersPage({
       search: effectiveFilters.search,
       status: effectiveFilters.status,
       tier: effectiveFilters.tier,
+      launchCohort: effectiveFilters.launchCohort,
       health: effectiveFilters.health,
       attention: effectiveFilters.attention,
       billing: effectiveFilters.billing,
@@ -246,6 +258,17 @@ export default async function AdminMembersPage({
           <label htmlFor="member-tier" className="admin-search-bar__label">Tier</label>
           <select id="member-tier" name="tier" defaultValue={filters.tier}>
             {TIER_FILTERS.map((filter) => (
+              <option key={filter.value || "all"} value={filter.value}>
+                {filter.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="admin-search-bar__field">
+          <label htmlFor="launch-cohort" className="admin-search-bar__label">Cohort</label>
+          <select id="launch-cohort" name="launchCohort" defaultValue={filters.launchCohort}>
+            {LAUNCH_COHORT_FILTERS.map((filter) => (
               <option key={filter.value || "all"} value={filter.value}>
                 {filter.label}
               </option>
@@ -420,6 +443,11 @@ export default async function AdminMembersPage({
                         </span>
                       ) : null}
                       <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem", marginTop: "0.35rem" }}>
+                        {member.launch_cohort && member.launch_cohort !== "live" ? (
+                          <span className="admin-badge admin-badge--review">
+                            {member.launch_cohort === "alpha" ? "Alpha" : "Beta"}
+                          </span>
+                        ) : null}
                         {!member.stripe_customer_id ? (
                           <span className="admin-badge admin-badge--past-due">No Stripe</span>
                         ) : null}

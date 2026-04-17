@@ -45,6 +45,7 @@ export default async function MemberLayout({
     <MemberShellClient
       streak={streak}
       tier={member.subscription_tier}
+      launchCohort={member.launch_cohort}
       memberName={member.name}
       memberAvatarUrl={member.avatar_url}
       communityPreviewEnabled={config.app.communityPreviewEnabled}

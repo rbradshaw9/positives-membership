@@ -1,6 +1,7 @@
 "use server";
 
 import { createGuestCheckoutSession } from "@/server/services/stripe/create-guest-checkout";
+import { resolveLaunchContext } from "@/lib/launch/context";
 
 /**
  * app/join/actions.ts
@@ -50,6 +51,21 @@ export async function getGuestCheckoutUrl(
   const checkoutMode = ((formData.get("checkoutMode") as string | null)?.trim() ??
     "paid") as CheckoutMode;
   const sourcePath = (formData.get("sourcePath") as string | null)?.trim() || "/join";
+  const fallbackCohort =
+    sourcePath === "/beta" ? "beta" : sourcePath === "/try" ? "beta" : "live";
+  const fallbackSource =
+    sourcePath === "/beta"
+      ? "beta_invite"
+      : sourcePath === "/try"
+        ? "public_trial"
+        : "public_join";
+  const launchContext = resolveLaunchContext({
+    cohort: (formData.get("launchCohort") as string | null)?.trim() ?? null,
+    source: (formData.get("launchSource") as string | null)?.trim() ?? null,
+    campaignCode: (formData.get("launchCampaignCode") as string | null)?.trim() ?? null,
+    fallbackCohort,
+    fallbackSource,
+  });
 
   if (!priceId) {
     return { error: "No plan selected. Please choose a plan and try again." };
@@ -73,6 +89,9 @@ export async function getGuestCheckoutUrl(
       fprRefId,
       checkoutMode,
       sourcePath,
+      launchCohort: launchContext.launchCohort,
+      launchSource: launchContext.launchSource,
+      launchCampaignCode: launchContext.launchCampaignCode,
     });
     console.log(`[Join] Stripe session created — redirecting to checkout`);
     return { url };

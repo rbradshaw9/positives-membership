@@ -841,6 +841,9 @@ export type Database = {
           fp_ref_id: string | null
           id: string
           last_practiced_at: string | null
+          launch_campaign_code: string | null
+          launch_cohort: string
+          launch_source: string | null
           name: string | null
           onboarding_token: string | null
           password_set: boolean
@@ -867,6 +870,9 @@ export type Database = {
           fp_ref_id?: string | null
           id: string
           last_practiced_at?: string | null
+          launch_campaign_code?: string | null
+          launch_cohort?: string
+          launch_source?: string | null
           name?: string | null
           onboarding_token?: string | null
           password_set?: boolean
@@ -893,6 +899,9 @@ export type Database = {
           fp_ref_id?: string | null
           id?: string
           last_practiced_at?: string | null
+          launch_campaign_code?: string | null
+          launch_cohort?: string
+          launch_source?: string | null
           name?: string | null
           onboarding_token?: string | null
           password_set?: boolean

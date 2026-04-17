@@ -209,6 +209,9 @@ export default async function JoinPage({
             isAuthenticated={!!user}
             userEmail={user?.email ?? null}
             initialError={errorParam ?? null}
+            sourcePath="/join"
+            launchCohort="live"
+            launchSource="public_join"
             level1Monthly={level1Monthly}
             level1Annual={level1Annual}
             level2Monthly={level2Monthly}

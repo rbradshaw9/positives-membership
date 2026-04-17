@@ -39,6 +39,10 @@ interface PricingCardProps {
   billing: Billing;
   /** Stripe price ID — if empty/null the card renders "Notify me" */
   priceId?: string | null;
+  sourcePath?: string;
+  launchCohort?: "alpha" | "beta" | "live";
+  launchSource?: string;
+  launchCampaignCode?: string | null;
 }
 
 // ── Card content ─────────────────────────────────────────────────────────────
@@ -276,7 +280,15 @@ function CheckoutButton({ pending }: { pending: boolean }) {
 
 // ── Main card ────────────────────────────────────────────────────────────────
 
-export function PricingCard({ level, billing, priceId }: PricingCardProps) {
+export function PricingCard({
+  level,
+  billing,
+  priceId,
+  sourcePath = "/join",
+  launchCohort = "live",
+  launchSource = "public_join",
+  launchCampaignCode = null,
+}: PricingCardProps) {
   const card = CARDS[level];
   const isLive = !!priceId; // card is live when a real Stripe price ID is configured
   const isHighlighted = level === 1; // Level 1 gets the elevated visual treatment
@@ -314,7 +326,10 @@ export function PricingCard({ level, billing, priceId }: PricingCardProps) {
       price_id: priceId ?? undefined,
       affiliate_attributed: Boolean(fpr),
       affiliate_code: fpr ?? undefined,
-      source_path: "/join",
+      source_path: sourcePath,
+      launch_cohort: launchCohort,
+      launch_source: launchSource,
+      launch_campaign_code: launchCampaignCode ?? undefined,
     });
 
     startTransition(async () => {
@@ -329,7 +344,9 @@ export function PricingCard({ level, billing, priceId }: PricingCardProps) {
           billing_interval: billing,
           price_id: priceId ?? undefined,
           affiliate_attributed: Boolean(fpr),
-          source_path: "/join",
+          source_path: sourcePath,
+          launch_cohort: launchCohort,
+          launch_source: launchSource,
         });
         setCheckoutError(result.error ?? "Something went wrong. Please try again.");
       }
@@ -417,6 +434,12 @@ export function PricingCard({ level, billing, priceId }: PricingCardProps) {
       {isLive ? (
         <form onSubmit={handleCheckout}>
           <input type="hidden" name="priceId" value={priceId} />
+          <input type="hidden" name="sourcePath" value={sourcePath} />
+          <input type="hidden" name="launchCohort" value={launchCohort} />
+          <input type="hidden" name="launchSource" value={launchSource} />
+          {launchCampaignCode ? (
+            <input type="hidden" name="launchCampaignCode" value={launchCampaignCode} />
+          ) : null}
           <CheckoutButton pending={isPending} />
           {checkoutError && (
             <p

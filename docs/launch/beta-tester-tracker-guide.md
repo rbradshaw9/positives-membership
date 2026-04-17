@@ -15,6 +15,13 @@ Start with a simple Google Sheet or Airtable-style table. The goal is visibility
 - `cohort`
   - alpha
   - private beta
+  - live
+- `invite_path`
+  - alpha free
+  - alpha paid test
+  - beta discount
+  - public join
+- `campaign_code`
 - `invited_at`
 - `activated_at`
 - `billing_state`
@@ -49,6 +56,8 @@ Start with a simple Google Sheet or Airtable-style table. The goal is visibility
 - review the tracker during the daily beta triage pass
 - use `drifting` for testers who signed up but stopped engaging
 - use `blocked` for testers waiting on a bug fix or manual help
+- keep the invite path aligned with the actual link that was sent so billing-test
+  users do not get mixed into the free alpha group later
 
 ## What Good Looks Like
 

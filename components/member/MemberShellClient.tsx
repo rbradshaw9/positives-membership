@@ -12,6 +12,7 @@ import { BetaWelcomeBanner } from "@/components/member/BetaWelcomeBanner";
 interface MemberShellClientProps {
   streak: number;
   tier: string | null;
+  launchCohort?: string | null;
   memberName?: string | null;
   memberEmail?: string | null;
   memberAvatarUrl?: string | null;
@@ -27,6 +28,7 @@ interface MemberShellClientProps {
 export function MemberShellClient({
   streak,
   tier,
+  launchCohort,
   memberName,
   memberEmail,
   memberAvatarUrl,
@@ -50,7 +52,9 @@ export function MemberShellClient({
           showAdminNav={showAdminNav}
         />
         <InstallAppPrompt />
-        {betaWelcomeEnabled ? <BetaWelcomeBanner memberName={memberName} /> : null}
+        {betaWelcomeEnabled && (launchCohort === "alpha" || launchCohort === "beta") ? (
+          <BetaWelcomeBanner memberName={memberName} />
+        ) : null}
         <main className="member-shell__content flex-1">{children}</main>
         <PersistentAudioPlayer />
         {betaFeedbackEnabled ? (

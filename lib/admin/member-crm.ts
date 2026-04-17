@@ -25,6 +25,7 @@ export type MemberCrmListFilters = {
   search?: string;
   status?: MemberCrmStatusFilter;
   tier?: MemberCrmTierFilter;
+  launchCohort?: "alpha" | "beta" | "live" | "";
   health?: MemberHealthStatusFilter;
   attention?: MemberAttentionFilter;
   billing?: "linked" | "missing" | "";
@@ -65,6 +66,8 @@ export type MemberCrmRow = Pick<
   | "id"
   | "email"
   | "name"
+  | "launch_cohort"
+  | "launch_source"
   | "subscription_status"
   | "subscription_tier"
   | "password_set"
@@ -384,13 +387,14 @@ export async function getMemberCrmList(filters: MemberCrmListFilters = {}): Prom
   let query = supabase
     .from("member")
     .select<RawMember[]>(
-      "id, email, name, subscription_status, subscription_tier, password_set, created_at, stripe_customer_id, paypal_email, fp_promoter_id, practice_streak, last_practiced_at, assigned_coach_id, followup_status, followup_at, followup_note, last_seen_at, first_login_at, legacy_member_ref"
+      "id, email, name, launch_cohort, launch_source, subscription_status, subscription_tier, password_set, created_at, stripe_customer_id, paypal_email, fp_promoter_id, practice_streak, last_practiced_at, assigned_coach_id, followup_status, followup_at, followup_note, last_seen_at, first_login_at, legacy_member_ref"
     )
     .order("created_at", { ascending: false })
     .limit(2000);
 
   if (filters.status) query = query.eq("subscription_status", filters.status);
   if (filters.tier) query = query.eq("subscription_tier", filters.tier);
+  if (filters.launchCohort) query = query.eq("launch_cohort", filters.launchCohort);
   if (filters.billing === "linked") query = query.not("stripe_customer_id", "is", null);
   if (filters.billing === "missing") query = query.is("stripe_customer_id", null);
   if (filters.password === "set") query = query.eq("password_set", true);

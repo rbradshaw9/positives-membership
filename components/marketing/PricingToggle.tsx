@@ -31,6 +31,10 @@ interface PricingToggleProps {
   monthlyPriceId?: string;
   /** @deprecated Use level1Monthly/level1Annual instead */
   annualPriceId?: string;
+  sourcePath?: string;
+  launchCohort?: "alpha" | "beta" | "live";
+  launchSource?: string;
+  launchCampaignCode?: string | null;
 }
 
 export function PricingToggle({
@@ -40,6 +44,10 @@ export function PricingToggle({
   level2Annual,
   level3Monthly,
   level3Annual,
+  sourcePath = "/join",
+  launchCohort = "live",
+  launchSource = "public_join",
+  launchCampaignCode = null,
 }: PricingToggleProps) {
   const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
 
@@ -100,9 +108,33 @@ export function PricingToggle({
       </p>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-        <PricingCard level={1} billing={billing} priceId={prices[1]} />
-        <PricingCard level={2} billing={billing} priceId={prices[2]} />
-        <PricingCard level={3} billing={billing} priceId={prices[3]} />
+        <PricingCard
+          level={1}
+          billing={billing}
+          priceId={prices[1]}
+          sourcePath={sourcePath}
+          launchCohort={launchCohort}
+          launchSource={launchSource}
+          launchCampaignCode={launchCampaignCode}
+        />
+        <PricingCard
+          level={2}
+          billing={billing}
+          priceId={prices[2]}
+          sourcePath={sourcePath}
+          launchCohort={launchCohort}
+          launchSource={launchSource}
+          launchCampaignCode={launchCampaignCode}
+        />
+        <PricingCard
+          level={3}
+          billing={billing}
+          priceId={prices[3]}
+          sourcePath={sourcePath}
+          launchCohort={launchCohort}
+          launchSource={launchSource}
+          launchCampaignCode={launchCampaignCode}
+        />
       </div>
 
       <section
@@ -145,7 +177,10 @@ export function PricingToggle({
             rel="noopener noreferrer"
             onClick={() =>
               track("breakthrough_session_clicked", {
-                source_path: "/join",
+                source_path: sourcePath,
+                launch_cohort: launchCohort,
+                launch_source: launchSource,
+                launch_campaign_code: launchCampaignCode ?? undefined,
                 cta_location: "join_below_cards",
               })
             }

@@ -40,6 +40,11 @@ export const config = {
     },
   },
 
+  launch: {
+    get alphaFreePromoCode() { return optional("NEXT_PUBLIC_ALPHA_FREE_PROMO_CODE"); },
+    get betaDiscountPromoCode() { return optional("NEXT_PUBLIC_BETA_DISCOUNT_PROMO_CODE"); },
+  },
+
   supabase: {
     /** Public — safe for browser */
     get url() { return required("NEXT_PUBLIC_SUPABASE_URL"); },

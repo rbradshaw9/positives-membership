@@ -31,6 +31,24 @@ If you’d like to join, reply here or use this link:
 
 [Beta invitation link]
 
+### Recommended invite link patterns
+
+- Free alpha:
+  - `/beta?cohort=alpha&offer=free&code=alpha-wave-1`
+- Paid billing-test alpha:
+  - `/beta?cohort=alpha&offer=paid-test&code=alpha-billing`
+- Discounted private beta:
+  - `/beta?cohort=beta&offer=discount&code=beta-wave-1`
+
+These links let Positives persist:
+
+- `launch_cohort`
+- `launch_source`
+- `launch_campaign_code`
+
+on the member record and in Stripe metadata, so we can filter alpha vs beta vs
+live users later without guesswork.
+
 We’d be genuinely grateful to have your eyes on it.
 
 Ryan
@@ -43,3 +61,4 @@ Ryan
 - keep the ask warm and simple
 - do not over-explain the whole product
 - if offering a special beta rate, state it clearly
+- if using free or discounted invites, create the Stripe promotion code first

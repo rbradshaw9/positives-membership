@@ -2336,6 +2336,17 @@ export default async function AdminMemberDetailPage({
               </span>
             </ProfileField>
             <ProfileField label="First Login">{formatDateTime(member.first_login_at)}</ProfileField>
+            <ProfileField label="Launch Cohort">
+              <span className="member-crm-mono">{member.launch_cohort ?? "live"}</span>
+            </ProfileField>
+            <ProfileField label="Launch Source">
+              {member.launch_source ?? "Not tracked"}
+            </ProfileField>
+            <ProfileField label="Campaign Code">
+              {member.launch_campaign_code ? (
+                <span className="member-crm-mono">{member.launch_campaign_code}</span>
+              ) : "None"}
+            </ProfileField>
           </dl>
 
           <div className="member-crm-grid-2" style={{ marginTop: "1.25rem" }}>
