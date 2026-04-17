@@ -5,6 +5,7 @@ import { useActionState, useEffect, useRef, type CSSProperties, type ReactNode }
 type ActionResult = { error?: string; success?: string };
 
 type Props = {
+  id?: string;
   action: (previousState: ActionResult, formData: FormData) => Promise<ActionResult>;
   children: ReactNode;
   submitLabel: string;
@@ -32,6 +33,7 @@ export function MemberCrmInlineAlert({ state }: { state: ActionResult }) {
 }
 
 export function MemberCrmInlineForm({
+  id,
   action,
   children,
   submitLabel,
@@ -52,7 +54,7 @@ export function MemberCrmInlineForm({
   }, [resetOnSuccess, state.success]);
 
   return (
-    <form ref={formRef} action={formAction} className={className} style={style}>
+    <form id={id} ref={formRef} action={formAction} className={className} style={style}>
       {children}
       <MemberCrmInlineAlert state={state} />
       <button type="submit" className={buttonClassName} style={buttonStyle} disabled={isPending}>
