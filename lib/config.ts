@@ -29,6 +29,9 @@ export const config = {
     get betaFeedbackEnabled() {
       return optional("ENABLE_BETA_FEEDBACK", "false") === "true";
     },
+    get betaWelcomeEnabled() {
+      return optional("ENABLE_BETA_WELCOME", "false") === "true";
+    },
     get adminEmails() {
       return optional("ADMIN_EMAILS")
         .split(",")

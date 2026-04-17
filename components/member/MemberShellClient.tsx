@@ -7,6 +7,7 @@ import { PersistentAudioPlayer } from "@/components/member/PersistentAudioPlayer
 import { WelcomeModal } from "@/components/member/WelcomeModal";
 import { InstallAppPrompt } from "@/components/member/InstallAppPrompt";
 import { BetaFeedbackWidget } from "@/components/member/BetaFeedbackWidget";
+import { BetaWelcomeBanner } from "@/components/member/BetaWelcomeBanner";
 
 interface MemberShellClientProps {
   streak: number;
@@ -16,6 +17,7 @@ interface MemberShellClientProps {
   memberAvatarUrl?: string | null;
   communityPreviewEnabled?: boolean;
   betaFeedbackEnabled?: boolean;
+  betaWelcomeEnabled?: boolean;
   needsPasswordSetup?: boolean;
   marketingOptedOut?: boolean;
   showAdminNav?: boolean;
@@ -30,6 +32,7 @@ export function MemberShellClient({
   memberAvatarUrl,
   communityPreviewEnabled = false,
   betaFeedbackEnabled = true,
+  betaWelcomeEnabled = false,
   needsPasswordSetup = false,
   marketingOptedOut = false,
   showAdminNav = false,
@@ -47,6 +50,7 @@ export function MemberShellClient({
           showAdminNav={showAdminNav}
         />
         <InstallAppPrompt />
+        {betaWelcomeEnabled ? <BetaWelcomeBanner memberName={memberName} /> : null}
         <main className="member-shell__content flex-1">{children}</main>
         <PersistentAudioPlayer />
         {betaFeedbackEnabled ? (

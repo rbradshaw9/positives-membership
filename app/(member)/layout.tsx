@@ -49,6 +49,7 @@ export default async function MemberLayout({
       memberAvatarUrl={member.avatar_url}
       communityPreviewEnabled={config.app.communityPreviewEnabled}
       betaFeedbackEnabled={config.app.betaFeedbackEnabled}
+      betaWelcomeEnabled={config.app.betaWelcomeEnabled}
       needsPasswordSetup={showPasswordNudge}
       marketingOptedOut={marketingOptedOut}
       showAdminNav={showAdminNav}

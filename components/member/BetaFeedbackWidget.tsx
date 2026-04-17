@@ -75,6 +75,17 @@ export function BetaFeedbackWidget({ memberEmail, memberName }: Props) {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
+  useEffect(() => {
+    const onOpen = () => {
+      setBrowserContext(getBrowserContext());
+      setIsOpen(true);
+    };
+
+    window.addEventListener("positives:open-beta-feedback", onOpen as EventListener);
+    return () =>
+      window.removeEventListener("positives:open-beta-feedback", onOpen as EventListener);
+  }, []);
+
   useLayoutEffect(() => {
     return () => {
       setIsOpen(false);
