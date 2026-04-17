@@ -235,6 +235,53 @@ test.describe("admin member operations", () => {
     }
   });
 
+  test("admin member detail stays usable when the linked Stripe customer is stale", async ({
+    page,
+  }) => {
+    originalMemberSupportState = await getAdminMemberSupportSnapshot(LEVEL_3_MEMBER_EMAIL);
+
+    await updateAdminMemberSupportFields(LEVEL_3_MEMBER_EMAIL, {
+      stripe_customer_id: "cus_missing_member_detail_fixture",
+      subscription_status: "active",
+      subscription_tier: "level_3",
+    });
+
+    try {
+      await loginWithPassword(page, {
+        email: ADMIN_EMAIL,
+        password: ADMIN_PASSWORD,
+        next: "/admin/members",
+      });
+
+      await page.getByLabel("Search members").fill(LEVEL_3_MEMBER_EMAIL);
+      await page.getByRole("button", { name: "Search" }).click();
+      await page.getByRole("link", { name: LEVEL_3_MEMBER_EMAIL }).click();
+
+      await expect(
+        page.getByRole("heading", { name: /Ryan \(L3 Test\)|rbradshaw\+l3@gmail\.com/ })
+      ).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+      await expect(page.getByText("Reconnect Stripe billing")).toBeVisible();
+
+      await page
+        .getByRole("navigation", { name: "Member management tabs" })
+        .getByRole("link", { name: "Billing", exact: true })
+        .click();
+
+      await expect(page).toHaveURL(/tab=billing/);
+      await expect(
+        page.getByText(
+          "The linked Stripe customer could not be found in Stripe. Reconnect billing before previewing plan changes or relying on revenue history for this member."
+        )
+      ).toBeVisible();
+    } finally {
+      if (originalMemberSupportState) {
+        await updateAdminMemberSupportFields(LEVEL_3_MEMBER_EMAIL, originalMemberSupportState);
+        originalMemberSupportState = null;
+      }
+    }
+  });
+
   test("admin can assign a role and use per-user overrides to expand access", async ({
     page,
     browser,

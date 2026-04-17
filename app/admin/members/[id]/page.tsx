@@ -33,6 +33,7 @@ import {
   type AdminPlanChangePreview,
 } from "@/server/services/stripe/admin-plan-change";
 import { backfillMemberBillingSummary } from "@/server/services/stripe/member-billing-summary";
+import { isStripeResourceMissingError } from "@/lib/stripe/errors";
 import { ClipboardCopyButton } from "@/components/admin/ClipboardCopyButton";
 import {
   addMemberAdminNoteInline,
@@ -1171,11 +1172,23 @@ export default async function AdminMemberDetailPage({
   const viewerCoachOnly = isCoachOnlyRoleSet(currentAdminRoles);
 
   let billingSummary = await getMemberBillingSummary(member.id);
+  let billingCustomerMissingInStripe = false;
   if (!billingSummary && member.stripe_customer_id) {
-    billingSummary = await backfillMemberBillingSummary({
-      memberId: member.id,
-      stripeCustomerId: member.stripe_customer_id,
-    });
+    try {
+      billingSummary = await backfillMemberBillingSummary({
+        memberId: member.id,
+        stripeCustomerId: member.stripe_customer_id,
+      });
+    } catch (error) {
+      if (isStripeResourceMissingError(error)) {
+        billingCustomerMissingInStripe = true;
+        console.warn(
+          `[admin/member-detail] linked Stripe customer missing for member ${member.id}: ${member.stripe_customer_id}`
+        );
+      } else {
+        throw error;
+      }
+    }
   }
 
   const [healthSnapshot, currentFollowupTask, followupTasks] = await Promise.all([
@@ -1224,6 +1237,16 @@ export default async function AdminMemberDetailPage({
     healthSnapshot,
     currentFollowupTask,
   });
+  if (billingCustomerMissingInStripe) {
+    needsAttention.unshift({
+      key: "stripe_customer_missing",
+      label: "Reconnect Stripe billing",
+      detail:
+        "The linked Stripe customer no longer exists in Stripe. Reconnect billing before relying on LTV, plan changes, or billing support actions.",
+      tab: "billing",
+      severity: "urgent",
+    });
+  }
 
   const recommendedAction = deriveRecommendedNextAction({
     member: {
@@ -1393,7 +1416,7 @@ export default async function AdminMemberDetailPage({
         {[
           ["Access", accessType, isSubscriber ? "Membership access is active." : activeEntitlements.length > 0 ? "Permanent course access remains." : "No protected access right now."],
           ["Health", healthSnapshot.health_status.replaceAll("_", " "), `Engagement is ${healthSnapshot.engagement_status.replaceAll("_", " ")} right now.`],
-          ["LTV", formatMoney(billingSummary?.lifetime_value_cents ?? 0, billingSummary?.currency ?? "usd"), billingSummary ? `${billingSummary.successful_payment_count} successful payment${billingSummary.successful_payment_count === 1 ? "" : "s"} tracked.` : "Stripe-linked summary has not been backfilled yet."],
+          ["LTV", formatMoney(billingSummary?.lifetime_value_cents ?? 0, billingSummary?.currency ?? "usd"), billingCustomerMissingInStripe ? "The linked Stripe customer could not be found in Stripe." : billingSummary ? `${billingSummary.successful_payment_count} successful payment${billingSummary.successful_payment_count === 1 ? "" : "s"} tracked.` : "Stripe-linked summary has not been backfilled yet."],
           ["Follow-up", currentFollowupTask ? FOLLOWUP_LABEL[currentFollowupTask.status] ?? currentFollowupTask.status : "Clear", currentFollowupTask ? currentFollowupTask.summary : "No open follow-up task."],
           ["Last Seen", formatRelativeDate(lastSeen), member.last_practiced_at ? `Last practice ${formatRelativeDate(member.last_practiced_at)}.` : "No practice tracked yet."],
           ["Listens", String(stats.listenCount), "Completed audio events."],
@@ -1930,6 +1953,12 @@ export default async function AdminMemberDetailPage({
 
       {activeTab === "billing" ? (
         <Section id="billing" title="Billing" description="Stripe remains the source of truth; this view adds local revenue context and review-first plan changes.">
+          {billingCustomerMissingInStripe ? (
+            <div className="admin-banner admin-banner--error" style={{ marginBottom: "1rem" }}>
+              The linked Stripe customer could not be found in Stripe. Reconnect billing before
+              previewing plan changes or relying on revenue history for this member.
+            </div>
+          ) : null}
           <dl className="member-crm-profile-grid">
             <ProfileField label="Stripe Customer">
               {stripeUrl ? (
