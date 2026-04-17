@@ -14,3 +14,12 @@ export function getSentryEnvironment(fallback?: string | null) {
     ? "local-development"
     : "local-development-disabled";
 }
+
+export function getCurrentSentryRelease() {
+  return (
+    process.env.SENTRY_RELEASE ??
+    process.env.VERCEL_GIT_COMMIT_SHA ??
+    process.env.VERCEL_DEPLOYMENT_ID ??
+    null
+  );
+}

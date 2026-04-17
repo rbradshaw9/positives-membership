@@ -26,6 +26,9 @@ export const config = {
     get communityPreviewEnabled() {
       return optional("ENABLE_COMMUNITY_PREVIEW", "false") === "true";
     },
+    get betaFeedbackEnabled() {
+      return optional("ENABLE_BETA_FEEDBACK", "true") === "true";
+    },
     get adminEmails() {
       return optional("ADMIN_EMAILS")
         .split(",")

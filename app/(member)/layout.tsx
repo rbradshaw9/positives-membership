@@ -48,9 +48,11 @@ export default async function MemberLayout({
       memberName={member.name}
       memberAvatarUrl={member.avatar_url}
       communityPreviewEnabled={config.app.communityPreviewEnabled}
+      betaFeedbackEnabled={config.app.betaFeedbackEnabled}
       needsPasswordSetup={showPasswordNudge}
       marketingOptedOut={marketingOptedOut}
       showAdminNav={showAdminNav}
+      memberEmail={member.email}
     >
       <ServiceWorkerRegistration />
       {showPasswordNudge && <PasswordNudgeBanner />}
