@@ -26,6 +26,18 @@ const CRON_MONITORS = {
       isolateTrace: true,
     } satisfies MonitorConfig,
   },
+  siteHealth: {
+    slug: "cron-site-health",
+    config: {
+      schedule: { type: "crontab", value: "*/10 * * * *" },
+      checkinMargin: 10,
+      maxRuntime: 5,
+      timezone: "UTC",
+      failureIssueThreshold: 1,
+      recoveryThreshold: 1,
+      isolateTrace: true,
+    } satisfies MonitorConfig,
+  },
 } as const;
 
 export type CronMonitorKey = keyof typeof CRON_MONITORS;
