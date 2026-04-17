@@ -1,0 +1,3 @@
+name,email,cohort,invited_at,activated_at,billing_state,subscription_tier,course_access,last_seen_at,feedback_count,last_feedback_at,severity_flag,owner,status,notes
+,,alpha,,,,,,,,,,invited,
+,,private beta,,,,,,,,,,invited,
