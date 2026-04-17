@@ -172,11 +172,19 @@ During the rehearsal, monitor:
 
 - Stripe Dashboard → Webhooks → recent deliveries
 - Vercel runtime logs for checkout, webhook, and auth callback traffic
+- Sentry monitors:
+  - `cron-reminders`
+  - `cron-affiliate-payouts`
+- Sentry alert rules:
+  - `Alert on cron monitor failures`
+  - `Alert on Stripe webhook failures`
+  - `Alert on auth API failures`
 - Supabase member/content tables for expected writes
 
 Key things to confirm:
 
 - webhook deliveries return `200`
+- Sentry cron monitors show healthy check-ins after the handlers run
 - member activation happens once, not repeatedly
 - success-page token exchange signs the user in without inbox fallback
 - no server errors appear in runtime logs during `/today`, `/join`, `/subscribe/success`, or `/admin`

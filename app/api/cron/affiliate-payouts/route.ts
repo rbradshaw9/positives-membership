@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { syncFailedAffiliatePayouts } from "@/lib/affiliate/payout-failure-sync";
+import { withCronMonitor } from "@/lib/observability/sentry-cron";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,9 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const result = await syncFailedAffiliatePayouts();
+    const result = await withCronMonitor("affiliatePayouts", () =>
+      syncFailedAffiliatePayouts()
+    );
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
     console.error("[cron/affiliate-payouts] sync failed:", error);

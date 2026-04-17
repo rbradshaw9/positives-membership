@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dispatchReminderTriggers } from "@/lib/reminders/dispatch";
+import { withCronMonitor } from "@/lib/observability/sentry-cron";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,9 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const result = await dispatchReminderTriggers();
+    const result = await withCronMonitor("reminders", () =>
+      dispatchReminderTriggers()
+    );
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
     console.error("[cron/reminders] dispatch failed:", error);
