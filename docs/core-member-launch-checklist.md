@@ -23,6 +23,8 @@
 - Verify `/journal` still works as a standalone note archive.
 - Verify mobile safe-area spacing, bottom player offset, and no overlap with the tab bar.
 - Verify `/join` starts Level 1 checkout and `/subscribe/success` lands the member back in `/today`.
+- If `/subscribe/success` falls back instead of instant login, verify it still clearly states the membership is active and routes the member toward `/login`.
+- Verify `/account` can still open the Stripe billing portal for an active member.
 
 ## Admin QA
 - Sign in with an admin account.
@@ -40,6 +42,7 @@
 - `npm run audit:launch`
 - `npx playwright test tests/e2e/auth-and-member.spec.ts --project=chromium`
 - `npx playwright test tests/e2e/admin-calendar.spec.ts --project=chromium`
+- `npx playwright test tests/e2e/join-checkout.spec.ts tests/e2e/billing-portal.spec.ts tests/e2e/subscribe-success.spec.ts --project=chromium`
 - Confirm Vercel env vars from `.env.example` are set in production.
 - Confirm `ADMIN_EMAILS` includes the launch operators.
 - Confirm Stripe webhook and Supabase auth callback URLs match the production domain.

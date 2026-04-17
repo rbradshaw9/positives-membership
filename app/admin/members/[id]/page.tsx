@@ -30,6 +30,7 @@ import {
 import {
   getAdminPlanChangeOptions,
   getAdminPlanChangePreview,
+  type AdminPlanChangePreview,
 } from "@/server/services/stripe/admin-plan-change";
 import { backfillMemberBillingSummary } from "@/server/services/stripe/member-billing-summary";
 import { ClipboardCopyButton } from "@/components/admin/ClipboardCopyButton";
@@ -396,6 +397,52 @@ function Pill({ children }: { children: React.ReactNode }) {
 
 function EmptyState({ children }: { children: React.ReactNode }) {
   return <div className="member-crm-empty">{children}</div>;
+}
+
+type ReadyAdminPlanChangePreview = Extract<AdminPlanChangePreview, { ok: true }>;
+
+function getPlanChangeReviewDetails(preview: ReadyAdminPlanChangePreview) {
+  if (preview.kind === "upgrade") {
+    const chargeNow =
+      preview.amountDueCents > 0
+        ? `${formatMoney(preview.amountDueCents, preview.currency)} will be attempted immediately.`
+        : "Stripe is previewing no immediate prorated charge right now.";
+
+    return {
+      kindLabel: "Upgrade now",
+      timingLabel: "Immediate effect",
+      summary: "The member moves to the new plan as soon as this is confirmed.",
+      bullets: [
+        `${chargeNow}`,
+        `The member should have access to ${preview.targetPlanName} right away after Stripe accepts the change.`,
+        `Future recurring charges will follow the new plan on ${preview.nextBillingLabel}.`,
+      ],
+    };
+  }
+
+  if (preview.kind === "scheduled_change") {
+    return {
+      kindLabel: "Schedule next billing",
+      timingLabel: `Effective ${preview.nextBillingLabel}`,
+      summary: "Stripe keeps the current plan active until the next billing date, then switches the member automatically.",
+      bullets: [
+        "There is no immediate charge today.",
+        `The member keeps their current plan until ${preview.nextBillingLabel}.`,
+        `On ${preview.nextBillingLabel}, Stripe will renew on ${preview.targetPlanName}.`,
+      ],
+    };
+  }
+
+  return {
+    kindLabel: "No change",
+    timingLabel: "Already on target plan",
+    summary: "This preview matches the member's current Stripe plan.",
+    bullets: [
+      "No billing change is needed.",
+      "No immediate charge will be attempted.",
+      "No subscription schedule will be created.",
+    ],
+  };
 }
 
 function ClientAuthorizationFields({
@@ -1947,6 +1994,50 @@ export default async function AdminMemberDetailPage({
                 <EmptyState>{planChangePreview.error}</EmptyState>
               ) : (
                 <div className="member-crm-list">
+                  {(() => {
+                    const review = getPlanChangeReviewDetails(planChangePreview);
+                    return (
+                      <div
+                        className="member-crm-record"
+                        style={{
+                          borderColor:
+                            planChangePreview.kind === "upgrade"
+                              ? "color-mix(in srgb, var(--color-primary) 26%, var(--color-border))"
+                              : "color-mix(in srgb, #E8B86D 34%, var(--color-border))",
+                          background:
+                            planChangePreview.kind === "upgrade"
+                              ? "linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 8%, white), rgba(255,255,255,0.96))"
+                              : "linear-gradient(180deg, rgba(255, 244, 222, 0.72), rgba(255,255,255,0.96))",
+                        }}
+                      >
+                        <div>
+                          <div className="member-crm-badge-row" style={{ marginBottom: "0.6rem" }}>
+                            <Pill>{review.kindLabel}</Pill>
+                            <Pill>{review.timingLabel}</Pill>
+                          </div>
+                          <p className="member-crm-record__title">Review what happens next</p>
+                          <p className="member-crm-record__note" style={{ marginTop: "0.35rem" }}>
+                            {review.summary}
+                          </p>
+                          <ul
+                            style={{
+                              margin: "0.75rem 0 0",
+                              paddingLeft: "1rem",
+                              color: "var(--color-text-secondary)",
+                              fontSize: "0.85rem",
+                              lineHeight: 1.55,
+                            }}
+                          >
+                            {review.bullets.map((bullet) => (
+                              <li key={bullet} style={{ marginTop: "0.25rem" }}>
+                                {bullet}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    );
+                  })()}
                   <dl className="member-crm-profile-grid">
                     <ProfileField label="Current Plan">{planChangePreview.currentPlanName}</ProfileField>
                     <ProfileField label="Target Plan">{planChangePreview.targetPlanName}</ProfileField>
@@ -1962,7 +2053,11 @@ export default async function AdminMemberDetailPage({
                   {planChangePreview.kind !== "same_plan" ? (
                     <MemberCrmInlineForm
                       action={applyMemberPlanChangeInline}
-                      submitLabel={planChangePreview.kind === "upgrade" ? "Apply upgrade in Stripe" : "Schedule change in Stripe"}
+                      submitLabel={
+                        planChangePreview.kind === "upgrade"
+                          ? "Confirm and apply upgrade in Stripe"
+                          : "Confirm and schedule change in Stripe"
+                      }
                       pendingLabel="Applying..."
                       buttonStyle={{ marginTop: "0.75rem" }}
                       resetOnSuccess={false}
@@ -1971,6 +2066,7 @@ export default async function AdminMemberDetailPage({
                       <input type="hidden" name="targetKey" value={planChangePreview.targetKey} />
                       <ClientAuthorizationFields
                         reasonName="changeReason"
+                        reasonLabel="Authorization + change note"
                         reasonPlaceholder="Example: Member requested upgrade by phone on Apr 15; confirmed immediate prorated charge."
                       />
                     </MemberCrmInlineForm>

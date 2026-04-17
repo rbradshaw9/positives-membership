@@ -17,6 +17,7 @@ npm run build
 npm run audit:launch
 PLAYWRIGHT_PORT=3011 npx playwright test tests/e2e/auth-and-member.spec.ts --project=chromium
 PLAYWRIGHT_PORT=3012 npx playwright test tests/e2e/admin-calendar.spec.ts --project=chromium
+PLAYWRIGHT_PORT=3013 npx playwright test tests/e2e/join-checkout.spec.ts tests/e2e/billing-portal.spec.ts tests/e2e/subscribe-success.spec.ts --project=chromium
 ```
 
 Go / no-go rule:
@@ -25,6 +26,7 @@ Go / no-go rule:
 - `npm run lint` must pass
 - `npm run build` must pass
 - both Playwright smoke suites must pass
+- the hosted-billing / subscribe-success smoke suite must pass
 - `npm run audit:launch` must report zero blockers before launch day
 
 ---
@@ -125,6 +127,7 @@ Confirm both paths work:
 4. Complete checkout
 5. Confirm redirect to `/subscribe/success`
 6. Confirm the success flow signs the member in and lands them in `/today`
+7. If instant sign-in does not complete, confirm the fallback state still clearly tells the member their membership is active and routes them toward `/login`
 
 Stripe / member verification:
 
@@ -137,6 +140,7 @@ Expected result for the new checkout member:
 - `subscription_status = active`
 - `subscription_tier = level_1`
 - `stripe_customer_id` populated
+- the member should either be auto-signed into `/today` or see a clean `/subscribe/success` fallback with a sign-in CTA
 
 ### D. Level 1 member experience
 
@@ -149,6 +153,7 @@ Once signed in as an active member:
 5. Confirm the persistent player survives after leaving `/today`
 6. Save a note or reflection
 7. Open the billing portal from `/account`
+8. Confirm the billing portal opens cleanly and shows the correct current plan
 
 ### E. Admin checks
 
@@ -175,6 +180,13 @@ Key things to confirm:
 - member activation happens once, not repeatedly
 - success-page token exchange signs the user in without inbox fallback
 - no server errors appear in runtime logs during `/today`, `/join`, `/subscribe/success`, or `/admin`
+
+If `/subscribe/success` falls back to manual sign-in:
+
+- verify the member still reached `active` + correct tier in Supabase
+- verify the fallback copy says the membership is active
+- verify the sign-in CTA goes to `/login`
+- verify the member can still access `/today` immediately after login
 
 ---
 

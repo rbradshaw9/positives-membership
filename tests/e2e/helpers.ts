@@ -31,6 +31,40 @@ const ADMIN_MONTH_WORKSPACE_FIXTURE = {
 
 let envLoaded = false;
 
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryableSupabaseError(error: { message?: string } | null | undefined) {
+  return Boolean(error?.message && /fetch failed/i.test(error.message));
+}
+
+async function withSupabaseRetry<T extends { error?: { message?: string } | null }>(
+  label: string,
+  run: () => Promise<T>,
+  attempts = 3
+): Promise<T> {
+  let lastResult: T | null = null;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const result = await run();
+    lastResult = result;
+
+    if (!result.error || !isRetryableSupabaseError(result.error)) {
+      return result;
+    }
+
+    if (attempt < attempts) {
+      console.warn(
+        `[e2e/supabase-retry] ${label} hit a transient fetch error on attempt ${attempt}; retrying…`
+      );
+      await wait(250 * attempt);
+    }
+  }
+
+  return lastResult as T;
+}
+
 function ensureLocalEnvLoaded() {
   if (envLoaded) return;
 
@@ -555,17 +589,27 @@ export async function normalizeLoginFixtureAccess(email: string) {
   if (!expected) return;
 
   const supabase = getServiceRoleClient();
-  const { error } = await supabase
-    .from("member")
-    .update({
-      subscription_status: expected.subscription_status,
-      subscription_tier: expected.subscription_tier,
-      subscription_end_date: null,
-      password_set: true,
-    })
-    .eq("email", email);
+  const { error } = await withSupabaseRetry(
+    `normalizeLoginFixtureAccess:${email}`,
+    async () =>
+      await supabase
+        .from("member")
+        .update({
+          subscription_status: expected.subscription_status,
+          subscription_tier: expected.subscription_tier,
+          subscription_end_date: null,
+          password_set: true,
+        })
+        .eq("email", email)
+  );
 
   if (error) {
+    if (isRetryableSupabaseError(error)) {
+      console.warn(
+        `[e2e/loginWithPassword] Skipping fixture normalization for ${email} after repeated transient Supabase fetch errors.`
+      );
+      return;
+    }
     throw new Error(`Failed to normalize login fixture for ${email}: ${error.message}`);
   }
 }
@@ -576,13 +620,15 @@ async function createAuthBootstrapLink(
   origin: string
 ) {
   const supabase = getServiceRoleClient();
-  const { data, error } = await supabase.auth.admin.generateLink({
-    type: "magiclink",
-    email,
-    options: {
-      redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
-    },
-  });
+  const { data, error } = await withSupabaseRetry(`createAuthBootstrapLink:${email}`, () =>
+    supabase.auth.admin.generateLink({
+      type: "magiclink",
+      email,
+      options: {
+        redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
+      },
+    })
+  );
 
   if (error) {
     throw new Error(`Failed to generate auth bootstrap link for ${email}: ${error.message}`);
