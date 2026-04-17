@@ -18,6 +18,7 @@ type CoursePurchaseGrantInput = {
   stripeCheckoutSessionId?: string | null;
   stripePaymentIntentId?: string | null;
   stripeChargeId?: string | null;
+  purchasedAt?: string | null;
   grantNote: string;
 };
 
@@ -40,6 +41,7 @@ export async function grantPurchasedCourseEntitlement({
   stripeCheckoutSessionId = null,
   stripePaymentIntentId = null,
   stripeChargeId = null,
+  purchasedAt = null,
   grantNote,
 }: CoursePurchaseGrantInput): Promise<CoursePurchaseGrantResult> {
   const supabase = asLooseSupabaseClient(getAdminClient());
@@ -91,7 +93,7 @@ export async function grantPurchasedCourseEntitlement({
       stripe_checkout_session_id: stripeCheckoutSessionId,
       stripe_payment_intent_id: stripePaymentIntentId,
       stripe_charge_id: stripeChargeId,
-      purchased_at: new Date().toISOString(),
+      purchased_at: purchasedAt ?? new Date().toISOString(),
       grant_note: grantNote,
     })
     .select<{ id: string }>("id")

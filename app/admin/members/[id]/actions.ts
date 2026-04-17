@@ -11,6 +11,10 @@ import { hasActiveMemberAccess } from "@/lib/subscription/access";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import { applyAdminPlanChange } from "@/server/services/stripe/admin-plan-change";
+import {
+  backfillMemberBillingSummary,
+} from "@/server/services/stripe/member-billing-summary";
+import { repairMemberStripeCoursePurchases } from "@/server/services/stripe/member-course-purchase-repair";
 import { syncMemberFollowupSummary } from "@/lib/admin/member-followup";
 import type { Enums } from "@/types/supabase";
 
@@ -457,6 +461,88 @@ export async function grantCourseToMemberInline(
 ): Promise<ActionResult> {
   formData.set("returnState", "true");
   return grantCourseToMember(formData);
+}
+
+export async function repairMemberStripeCoursePurchasesAction(
+  formData: FormData
+): Promise<ActionResult> {
+  const actor = await requireAdminPermission("courses.grant");
+  const memberId = clean(formData.get("memberId"));
+  if (!memberId) return { error: "Missing member." };
+
+  const authorization = requireClientAuthorization(formData, "repairReason");
+  if (authorization.error || !authorization.reason) return { error: authorization.error };
+
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  const { data: member, error: memberError } = await supabase
+    .from("member")
+    .select<{ stripe_customer_id: string | null }>("stripe_customer_id")
+    .eq("id", memberId)
+    .maybeSingle();
+
+  if (memberError || !member) {
+    console.error("[admin/member-actions] repair purchase member lookup failed:", memberError?.message);
+    return { error: "Could not load the member record." };
+  }
+
+  if (!member.stripe_customer_id) {
+    return { error: "This member is not linked to Stripe yet." };
+  }
+
+  const result = await repairMemberStripeCoursePurchases({
+    memberId,
+    stripeCustomerId: member.stripe_customer_id,
+  });
+
+  await backfillMemberBillingSummary({
+    memberId,
+    stripeCustomerId: member.stripe_customer_id,
+  });
+
+  await logAudit({
+    actorId: actor.id,
+    memberId,
+    action: "course.purchase_repair_ran",
+    targetType: "stripe_customer",
+    targetId: member.stripe_customer_id,
+    reason: authorization.reason,
+    metadata: {
+      repaired_count: result.repairedCount,
+      repaired_course_ids: result.repairedCourseIds,
+      repairable_count: result.preview.repairableCount,
+      missing_course_count: result.preview.missingCourseCount,
+      member_mismatch_count: result.preview.memberMismatchCount,
+      missing_metadata_count: result.preview.missingMetadataCount,
+      client_authorization_confirmed: true,
+    },
+  });
+
+  revalidatePath(`/admin/members/${memberId}`);
+  revalidatePath("/admin/members");
+  revalidatePath("/library");
+
+  if (result.repairedCount > 0) {
+    return {
+      success:
+        result.repairedCount === 1
+          ? "Recovered one missing course purchase from Stripe."
+          : `Recovered ${result.repairedCount} missing course purchases from Stripe.`,
+    };
+  }
+
+  if (result.preview.repairableCount > 0) {
+    return { error: "Stripe purchases were found, but none could be repaired cleanly." };
+  }
+
+  return { success: "Stripe course purchases are already aligned with local access." };
+}
+
+export async function repairMemberStripeCoursePurchasesInline(
+  _previousState: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  formData.set("returnState", "true");
+  return repairMemberStripeCoursePurchasesAction(formData);
 }
 
 export async function revokeCourseEntitlement(formData: FormData): Promise<ActionResult> {

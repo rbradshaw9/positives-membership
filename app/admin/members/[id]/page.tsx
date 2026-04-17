@@ -33,6 +33,7 @@ import {
   type AdminPlanChangePreview,
 } from "@/server/services/stripe/admin-plan-change";
 import { backfillMemberBillingSummary } from "@/server/services/stripe/member-billing-summary";
+import { inspectMemberStripeCoursePurchases } from "@/server/services/stripe/member-course-purchase-repair";
 import { isStripeResourceMissingError } from "@/lib/stripe/errors";
 import { ClipboardCopyButton } from "@/components/admin/ClipboardCopyButton";
 import {
@@ -44,6 +45,7 @@ import {
   createMemberFollowupTaskInline,
   grantCourseToMemberInline,
   previewMemberPlanChange,
+  repairMemberStripeCoursePurchasesInline,
   removeAdminRoleFromMemberInline,
   removeAdminPermissionOverrideInline,
   resolveMemberFollowupTaskInline,
@@ -1202,6 +1204,23 @@ export default async function AdminMemberDetailPage({
     }
   }
 
+  let stripeCoursePurchaseRepairPreview =
+    member.stripe_customer_id && !billingCustomerMissingInStripe
+      ? await inspectMemberStripeCoursePurchases({
+          memberId: member.id,
+          stripeCustomerId: member.stripe_customer_id,
+        }).catch((error) => {
+          if (isStripeResourceMissingError(error)) {
+            billingCustomerMissingInStripe = true;
+            console.warn(
+              `[admin/member-detail] linked Stripe customer missing during course repair preview for member ${member.id}: ${member.stripe_customer_id}`
+            );
+            return null;
+          }
+          throw error;
+        })
+      : null;
+
   const [healthSnapshot, currentFollowupTask, followupTasks] = await Promise.all([
     refreshMemberHealthSnapshot({
       id: member.id,
@@ -1256,6 +1275,30 @@ export default async function AdminMemberDetailPage({
         "The linked Stripe customer no longer exists in Stripe. Reconnect billing before relying on LTV, plan changes, or billing support actions.",
       tab: "billing",
       severity: "urgent",
+    });
+  }
+  if ((stripeCoursePurchaseRepairPreview?.repairableCount ?? 0) > 0) {
+    needsAttention.unshift({
+      key: "course_purchase_repairable",
+      label: "Repair missing course access",
+      detail:
+        stripeCoursePurchaseRepairPreview?.repairableCount === 1
+          ? "Stripe shows one paid course purchase that is not linked to local access yet."
+          : `Stripe shows ${stripeCoursePurchaseRepairPreview?.repairableCount ?? 0} paid course purchases that are not linked to local access yet.`,
+      tab: "access",
+      severity: "urgent",
+    });
+  }
+  if ((stripeCoursePurchaseRepairPreview?.missingCourseCount ?? 0) > 0) {
+    needsAttention.unshift({
+      key: "course_purchase_missing_course",
+      label: "Historical course purchase needs review",
+      detail:
+        stripeCoursePurchaseRepairPreview?.missingCourseCount === 1
+          ? "Stripe shows one paid course purchase whose course no longer exists in the app."
+          : `Stripe shows ${stripeCoursePurchaseRepairPreview?.missingCourseCount ?? 0} paid course purchases whose courses no longer exist in the app.`,
+      tab: "access",
+      severity: "watch",
     });
   }
 
@@ -1692,6 +1735,102 @@ export default async function AdminMemberDetailPage({
                   : "No tier",
               }}
             />
+
+            {stripeCoursePurchaseRepairPreview?.items.length ? (
+              <div className="member-crm-card" style={{ marginTop: "1rem" }}>
+                <p className="member-crm-card-title">Stripe purchase reconciliation</p>
+                <p className="member-crm-muted" style={{ marginTop: "0.35rem" }}>
+                  {stripeCoursePurchaseRepairPreview.repairableCount > 0
+                    ? stripeCoursePurchaseRepairPreview.repairableCount === 1
+                      ? "One Stripe course purchase is missing local access and can be repaired here."
+                      : `${stripeCoursePurchaseRepairPreview.repairableCount} Stripe course purchases are missing local access and can be repaired here.`
+                    : stripeCoursePurchaseRepairPreview.missingCourseCount > 0 ||
+                        stripeCoursePurchaseRepairPreview.memberMismatchCount > 0 ||
+                        stripeCoursePurchaseRepairPreview.missingMetadataCount > 0
+                      ? "Stripe purchase history is visible here, but at least one item still needs manual review before local access can be corrected."
+                      : "Stripe course purchases and local course access look aligned for this member."}
+                </p>
+
+                <div className="member-crm-inline-actions" style={{ marginTop: "0.75rem" }}>
+                  <span className="member-crm-chip">
+                    {stripeCoursePurchaseRepairPreview.linkedCount} linked
+                  </span>
+                  {stripeCoursePurchaseRepairPreview.repairableCount > 0 ? (
+                    <span className="member-crm-chip">
+                      {stripeCoursePurchaseRepairPreview.repairableCount} repairable
+                    </span>
+                  ) : null}
+                  {stripeCoursePurchaseRepairPreview.missingCourseCount > 0 ? (
+                    <span className="member-crm-chip">
+                      {stripeCoursePurchaseRepairPreview.missingCourseCount} missing course
+                    </span>
+                  ) : null}
+                  {stripeCoursePurchaseRepairPreview.memberMismatchCount > 0 ? (
+                    <span className="member-crm-chip">
+                      {stripeCoursePurchaseRepairPreview.memberMismatchCount} member mismatch
+                    </span>
+                  ) : null}
+                  {stripeCoursePurchaseRepairPreview.missingMetadataCount > 0 ? (
+                    <span className="member-crm-chip">
+                      {stripeCoursePurchaseRepairPreview.missingMetadataCount} missing metadata
+                    </span>
+                  ) : null}
+                </div>
+
+                <div className="member-crm-list" style={{ marginTop: "0.85rem" }}>
+                  {stripeCoursePurchaseRepairPreview.items.slice(0, 5).map((item) => (
+                    <div key={item.paymentIntentId} className="member-crm-record">
+                      <div style={{ minWidth: 0 }}>
+                        <p className="member-crm-record__title">{item.courseTitle}</p>
+                        <p className="member-crm-record__meta">
+                          {formatMoney(item.amountPaidCents, item.currency ?? billingSummary?.currency ?? "usd")} ·{" "}
+                          {formatDateTime(item.occurredAt)}
+                          {item.courseId ? (
+                            <>
+                              {" "}· <span className="member-crm-mono">{item.courseId}</span>
+                            </>
+                          ) : null}
+                        </p>
+                        <p className="member-crm-record__note">{item.detail}</p>
+                      </div>
+                      <span className="member-crm-chip">
+                        {item.status.replaceAll("_", " ")}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {stripeCoursePurchaseRepairPreview.items.length > 5 ? (
+                  <p className="member-crm-muted" style={{ marginTop: "0.75rem" }}>
+                    Showing the latest 5 Stripe course purchases here.
+                  </p>
+                ) : null}
+
+                {stripeCoursePurchaseRepairPreview.repairableCount > 0 ? (
+                  <MemberCrmInlineForm
+                    action={repairMemberStripeCoursePurchasesInline}
+                    className="member-crm-card"
+                    style={{ marginTop: "1rem" }}
+                    submitLabel="Repair Stripe purchases"
+                    pendingLabel="Repairing..."
+                    buttonClassName="admin-btn admin-btn--outline"
+                    buttonStyle={{ marginTop: "0.75rem" }}
+                  >
+                    <input type="hidden" name="memberId" value={member.id} />
+                    <p className="member-crm-card-title">Recover missing course access</p>
+                    <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
+                      This will grant local course ownership for Stripe-paid courses that clearly belong
+                      to this member and are missing only in the app.
+                    </p>
+                    <ClientAuthorizationFields
+                      reasonName="repairReason"
+                      reasonLabel="Repair note"
+                      reasonPlaceholder="Example: Historical Stripe course purchase was missing in local entitlements."
+                    />
+                  </MemberCrmInlineForm>
+                ) : null}
+              </div>
+            ) : null}
 
             {overrides.length > 0 ? (
               <div style={{ marginTop: "1rem" }}>
