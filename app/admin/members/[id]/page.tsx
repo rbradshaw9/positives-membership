@@ -45,6 +45,7 @@ import {
   createMemberFollowupTaskInline,
   grantCourseToMemberInline,
   previewMemberPlanChange,
+  refreshMemberBillingSummaryInline,
   repairMemberStripeCoursePurchasesInline,
   removeAdminRoleFromMemberInline,
   removeAdminPermissionOverrideInline,
@@ -1204,7 +1205,7 @@ export default async function AdminMemberDetailPage({
     }
   }
 
-  let stripeCoursePurchaseRepairPreview =
+  const stripeCoursePurchaseRepairPreview =
     member.stripe_customer_id && !billingCustomerMissingInStripe
       ? await inspectMemberStripeCoursePurchases({
           memberId: member.id,
@@ -1298,6 +1299,34 @@ export default async function AdminMemberDetailPage({
           ? "Stripe shows one paid course purchase whose course no longer exists in the app."
           : `Stripe shows ${stripeCoursePurchaseRepairPreview?.missingCourseCount ?? 0} paid course purchases whose courses no longer exist in the app.`,
       tab: "access",
+      severity: "watch",
+    });
+  }
+  if ((stripeCoursePurchaseRepairPreview?.memberMismatchCount ?? 0) > 0) {
+    needsAttention.unshift({
+      key: "course_purchase_member_mismatch",
+      label: "Stripe purchase points at a different member",
+      detail:
+        stripeCoursePurchaseRepairPreview?.memberMismatchCount === 1
+          ? "Stripe shows one course payment whose metadata points at a different member ID."
+          : `Stripe shows ${stripeCoursePurchaseRepairPreview?.memberMismatchCount ?? 0} course payments whose metadata points at different member IDs.`,
+      tab: "access",
+      severity: "watch",
+    });
+  }
+  const billingLooksOutOfSync = Boolean(
+    member.stripe_customer_id &&
+      billingSummary &&
+      billingSummary.lifetime_value_cents === 0 &&
+      (stripeCoursePurchaseRepairPreview?.items.some((item) => item.amountPaidCents > 0) ?? false)
+  );
+  if (billingLooksOutOfSync) {
+    needsAttention.unshift({
+      key: "billing_summary_out_of_sync",
+      label: "Refresh billing snapshot from Stripe",
+      detail:
+        "Stripe shows payment activity for this linked customer, but the local revenue summary is still zero. Run a billing refresh before relying on LTV.",
+      tab: "billing",
       severity: "watch",
     });
   }
@@ -1792,6 +1821,11 @@ export default async function AdminMemberDetailPage({
                           ) : null}
                         </p>
                         <p className="member-crm-record__note">{item.detail}</p>
+                        {item.metadataMemberId ? (
+                          <p className="member-crm-record__meta" style={{ marginTop: "0.35rem" }}>
+                            Stripe metadata member: <span className="member-crm-mono">{item.metadataMemberId}</span>
+                          </p>
+                        ) : null}
                       </div>
                       <span className="member-crm-chip">
                         {item.status.replaceAll("_", " ")}
@@ -2138,6 +2172,27 @@ export default async function AdminMemberDetailPage({
           </dl>
 
           <div className="member-crm-grid-2" style={{ marginTop: "1.25rem" }}>
+            <MemberCrmInlineForm
+              action={refreshMemberBillingSummaryInline}
+              className="member-crm-card"
+              submitLabel="Refresh billing from Stripe"
+              pendingLabel="Refreshing..."
+              buttonClassName="admin-btn admin-btn--outline"
+              buttonStyle={{ marginTop: "0.75rem" }}
+            >
+              <input type="hidden" name="memberId" value={member.id} />
+              <p className="member-crm-card-title">Re-sync local billing snapshot</p>
+              <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
+                Rebuild the local LTV, payment counts, and revenue snapshot from the linked Stripe
+                customer before making support or retention decisions.
+              </p>
+              <ClientAuthorizationFields
+                reasonName="billingRefreshReason"
+                reasonLabel="Refresh note"
+                reasonPlaceholder="Example: Stripe shows payments, but the CRM revenue summary still looks stale."
+              />
+            </MemberCrmInlineForm>
+
             <form action={asFormAction(previewMemberPlanChange)} className="member-crm-card">
               <input type="hidden" name="memberId" value={member.id} />
               <p className="member-crm-card-title">Preview admin plan change</p>

@@ -125,15 +125,13 @@ export async function inspectMemberStripeCoursePurchases(params: {
         detail = "Stripe payment metadata is missing the course ID, so local ownership cannot be repaired automatically.";
       } else if (metadataMemberId && metadataMemberId !== params.memberId) {
         status = "member_mismatch";
-        detail =
-          "Stripe metadata points at a different member ID, so this needs a manual review before changing ownership.";
+        detail = `Stripe metadata points at member ${metadataMemberId}, so this needs a manual review before changing ownership here.`;
       } else if (activeCourseIds.has(courseId)) {
         status = "linked";
         detail = "Local course access is already in place for this Stripe purchase.";
       } else if (!course) {
         status = "missing_course";
-        detail =
-          "The Stripe payment exists, but the referenced course no longer exists in the app, so this needs a manual data repair.";
+        detail = `The Stripe payment exists, but course ${courseId} no longer exists in the app, so this needs a manual data repair.`;
       } else {
         status = "repairable";
         detail = "Stripe shows a successful course payment, but the local entitlement is missing and can be repaired.";

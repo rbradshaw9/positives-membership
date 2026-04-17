@@ -545,6 +545,73 @@ export async function repairMemberStripeCoursePurchasesInline(
   return repairMemberStripeCoursePurchasesAction(formData);
 }
 
+export async function refreshMemberBillingSummaryAction(
+  formData: FormData
+): Promise<ActionResult> {
+  const actor = await requireAdminPermission("members.manage_billing");
+  const memberId = clean(formData.get("memberId"));
+  if (!memberId) return { error: "Missing member." };
+
+  const authorization = requireClientAuthorization(formData, "billingRefreshReason");
+  if (authorization.error || !authorization.reason) return { error: authorization.error };
+
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  const { data: member, error: memberError } = await supabase
+    .from("member")
+    .select<{ stripe_customer_id: string | null }>("stripe_customer_id")
+    .eq("id", memberId)
+    .maybeSingle();
+
+  if (memberError || !member) {
+    console.error("[admin/member-actions] refresh billing member lookup failed:", memberError?.message);
+    return { error: "Could not load the member record." };
+  }
+
+  if (!member.stripe_customer_id) {
+    return { error: "This member is not linked to Stripe yet." };
+  }
+
+  const summary = await backfillMemberBillingSummary({
+    memberId,
+    stripeCustomerId: member.stripe_customer_id,
+  });
+
+  await logAudit({
+    actorId: actor.id,
+    memberId,
+    action: "billing.summary_refreshed",
+    targetType: "stripe_customer",
+    targetId: member.stripe_customer_id,
+    reason: authorization.reason,
+    metadata: {
+      lifetime_value_cents: summary.lifetime_value_cents,
+      subscription_lifetime_value_cents: summary.subscription_lifetime_value_cents,
+      course_lifetime_value_cents: summary.course_lifetime_value_cents,
+      successful_payment_count: summary.successful_payment_count,
+      failed_payment_count: summary.failed_payment_count,
+      client_authorization_confirmed: true,
+    },
+  });
+
+  revalidatePath(`/admin/members/${memberId}`);
+  revalidatePath("/admin/members");
+
+  return {
+    success:
+      summary.successful_payment_count > 0 || summary.lifetime_value_cents > 0
+        ? `Billing summary refreshed from Stripe. ${summary.successful_payment_count} successful payment${summary.successful_payment_count === 1 ? "" : "s"} tracked.`
+        : "Billing summary refreshed from Stripe.",
+  };
+}
+
+export async function refreshMemberBillingSummaryInline(
+  _previousState: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  formData.set("returnState", "true");
+  return refreshMemberBillingSummaryAction(formData);
+}
+
 export async function revokeCourseEntitlement(formData: FormData): Promise<ActionResult> {
   const actor = await requireAdminPermission("courses.revoke");
   const memberId = clean(formData.get("memberId"));
