@@ -1145,6 +1145,10 @@ export default async function AdminMemberDetailPage({
   const stripeUrl = member.stripe_customer_id
     ? `https://dashboard.stripe.com/customers/${member.stripe_customer_id}`
     : null;
+  const firstPromoterPortalUrl = "https://positives.firstpromoter.com";
+  const firstPromoterPromoterUrl = member.fp_promoter_id
+    ? `${firstPromoterPortalUrl}/promoters/${member.fp_promoter_id}`
+    : null;
   const planChangeOptions = getAdminPlanChangeOptions();
   const planChangePreview = sp.planTarget
     ? await getAdminPlanChangePreview({
@@ -1372,14 +1376,14 @@ export default async function AdminMemberDetailPage({
                   Open Stripe
                 </a>
               ) : null}
-              {member.fp_promoter_id ? (
+              {firstPromoterPromoterUrl ? (
                 <a
                   className="admin-btn admin-btn--outline"
-                  href="https://positives.firstpromoter.com"
+                  href={firstPromoterPromoterUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Open affiliate portal
+                  Open promoter record
                 </a>
               ) : null}
               <Link className="admin-btn admin-btn--outline" href={tabHref("access")}>
@@ -2136,15 +2140,25 @@ export default async function AdminMemberDetailPage({
             <div className="member-crm-card">
               <p className="member-crm-card-title member-crm-card-title--row">
                 Affiliate & referral
-                {member.fp_promoter_id ? (
-                  <a
-                    href="https://positives.firstpromoter.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="member-crm-link"
-                  >
-                    Open portal
-                  </a>
+                {firstPromoterPromoterUrl ? (
+                  <span className="member-crm-inline-actions">
+                    <a
+                      href={firstPromoterPromoterUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="member-crm-link"
+                    >
+                      Open promoter
+                    </a>
+                    <a
+                      href={firstPromoterPortalUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="member-crm-link"
+                    >
+                      Open portal
+                    </a>
+                  </span>
                 ) : null}
               </p>
               <dl className="member-crm-profile-grid">
