@@ -247,13 +247,15 @@ export async function handleCoursePaymentSucceeded(paymentIntent: Stripe.Payment
     grantNote: `Purchased through saved-card payment ${paymentIntent.id}.`,
   });
 
-  await recordCoursePaymentSucceeded({
-    memberId,
-    stripeCustomerId: customerId,
-    amountPaidCents: paymentIntent.amount_received || paymentIntent.amount || 0,
-    occurredAt: new Date(paymentIntent.created * 1000).toISOString(),
-    currency: paymentIntent.currency,
-  });
+  if (result.granted) {
+    await recordCoursePaymentSucceeded({
+      memberId,
+      stripeCustomerId: customerId,
+      amountPaidCents: paymentIntent.amount_received || paymentIntent.amount || 0,
+      occurredAt: new Date(paymentIntent.created * 1000).toISOString(),
+      currency: paymentIntent.currency,
+    });
+  }
 
   console.log(
     `[Stripe] Course payment intent processed — member: ${memberId}, course: ${courseId}, ` +

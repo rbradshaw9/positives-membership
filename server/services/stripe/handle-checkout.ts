@@ -657,6 +657,8 @@ async function handleCourseCheckout(
     );
   }
 
+  const grantedEntitlement = !entitlementError;
+
   await supabase.from("activity_event").insert({
     member_id: userId,
     event_type: "course_unlocked",
@@ -668,13 +670,15 @@ async function handleCourseCheckout(
     },
   });
 
-  await recordCoursePaymentSucceeded({
-    memberId: userId,
-    stripeCustomerId: customerId,
-    amountPaidCents: session.amount_total ?? 0,
-    occurredAt: new Date().toISOString(),
-    currency: session.currency,
-  });
+  if (grantedEntitlement) {
+    await recordCoursePaymentSucceeded({
+      memberId: userId,
+      stripeCustomerId: customerId,
+      amountPaidCents: session.amount_total ?? 0,
+      occurredAt: new Date().toISOString(),
+      currency: session.currency,
+    });
+  }
 
   const { data: linkData, error: linkError } =
     await supabase.auth.admin.generateLink({

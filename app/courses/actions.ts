@@ -3,7 +3,6 @@
 import type Stripe from "stripe";
 import { createCourseCheckoutSession } from "@/server/services/stripe/create-course-checkout";
 import { grantPurchasedCourseEntitlement } from "@/server/services/stripe/handle-course-entitlements";
-import { recordCoursePaymentSucceeded } from "@/server/services/stripe/member-billing-summary";
 import { getStripe } from "@/lib/stripe/config";
 import { createClient } from "@/lib/supabase/server";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
@@ -195,14 +194,6 @@ export async function getCourseCheckoutUrl(formData: FormData): Promise<CourseCh
               stripeChargeId: idFromExpandable(paymentIntent.latest_charge),
               grantNote: `Purchased through saved-card payment ${paymentIntent.id}.`,
             });
-            await recordCoursePaymentSucceeded({
-              memberId: member.id,
-              stripeCustomerId: member.stripe_customer_id,
-              amountPaidCents: paymentIntent.amount_received || paymentIntent.amount || activePrice.amountCents,
-              occurredAt: new Date(paymentIntent.created * 1000).toISOString(),
-              currency: paymentIntent.currency,
-            });
-
             return {
               status: "purchased",
               url: "/library",
