@@ -40,6 +40,8 @@ export function MemberShellClient({
   showAdminNav = false,
   children,
 }: MemberShellClientProps) {
+  const isEarlyReleaseMember = launchCohort === "alpha" || launchCohort === "beta";
+
   return (
     <MemberAudioProvider>
       <div className="member-shell min-h-dvh">
@@ -52,12 +54,12 @@ export function MemberShellClient({
           showAdminNav={showAdminNav}
         />
         <InstallAppPrompt />
-        {betaWelcomeEnabled && (launchCohort === "alpha" || launchCohort === "beta") ? (
+        {betaWelcomeEnabled && isEarlyReleaseMember ? (
           <BetaWelcomeBanner memberName={memberName} />
         ) : null}
         <main className="member-shell__content flex-1">{children}</main>
         <PersistentAudioPlayer />
-        {betaFeedbackEnabled ? (
+        {betaFeedbackEnabled && isEarlyReleaseMember ? (
           <BetaFeedbackWidget memberEmail={memberEmail ?? null} memberName={memberName ?? null} />
         ) : null}
         {/* WelcomeModal self-activates from ?welcome=1 — no-ops otherwise */}

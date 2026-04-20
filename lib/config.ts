@@ -19,18 +19,22 @@ function optional(key: string, fallback = ""): string {
   return process.env[key] ?? fallback;
 }
 
+function flag(key: string, fallback = "false"): boolean {
+  return optional(key, fallback).replaceAll("\\n", "\n").trim().toLowerCase() === "true";
+}
+
 export const config = {
   app: {
     get url() { return optional("NEXT_PUBLIC_APP_URL", "http://localhost:3000"); },
     get nodeEnv() { return optional("NODE_ENV", "development"); },
     get communityPreviewEnabled() {
-      return optional("ENABLE_COMMUNITY_PREVIEW", "false") === "true";
+      return flag("ENABLE_COMMUNITY_PREVIEW");
     },
     get betaFeedbackEnabled() {
-      return optional("ENABLE_BETA_FEEDBACK", "false") === "true";
+      return flag("ENABLE_BETA_FEEDBACK");
     },
     get betaWelcomeEnabled() {
-      return optional("ENABLE_BETA_WELCOME", "false") === "true";
+      return flag("ENABLE_BETA_WELCOME");
     },
     get adminEmails() {
       return optional("ADMIN_EMAILS")
