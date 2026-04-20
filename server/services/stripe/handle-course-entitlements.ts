@@ -1,6 +1,7 @@
 import type Stripe from "stripe";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
+import { metricCount } from "@/lib/observability/metrics";
 import { recordChargeRefund, recordCoursePaymentSucceeded } from "./member-billing-summary";
 
 type CourseEntitlementStatus = "refunded" | "chargeback";
@@ -53,6 +54,10 @@ export async function grantPurchasedCourseEntitlement({
     .maybeSingle();
 
   if (courseError || !course) {
+    metricCount("course_entitlement.purchase_grant", 1, {
+      outcome: "missing_course",
+      source: "purchase",
+    });
     throw new Error(
       `[Stripe] Course purchase references missing course ${courseId}: ` +
         `${courseError?.message ?? "not found"}`
@@ -68,12 +73,22 @@ export async function grantPurchasedCourseEntitlement({
     .maybeSingle();
 
   if (existingError) {
+    metricCount("course_entitlement.purchase_grant", 1, {
+      outcome: "lookup_error",
+      source: "purchase",
+    });
     throw new Error(
       `[Stripe] Failed to check existing course entitlement for ${memberId}: ${existingError.message}`
     );
   }
 
   if (existingEntitlement) {
+    metricCount("course_entitlement.purchase_grant", 1, {
+      outcome: "already_active",
+      source: "purchase",
+      has_checkout_session: Boolean(stripeCheckoutSessionId),
+      has_payment_intent: Boolean(stripePaymentIntentId),
+    });
     return {
       granted: false,
       entitlementId: existingEntitlement.id,
@@ -101,6 +116,12 @@ export async function grantPurchasedCourseEntitlement({
 
   if (entitlementError) {
     if (entitlementError.code === "23505") {
+      metricCount("course_entitlement.purchase_grant", 1, {
+        outcome: "duplicate",
+        source: "purchase",
+        has_checkout_session: Boolean(stripeCheckoutSessionId),
+        has_payment_intent: Boolean(stripePaymentIntentId),
+      });
       return {
         granted: false,
         entitlementId: null,
@@ -109,6 +130,12 @@ export async function grantPurchasedCourseEntitlement({
       };
     }
 
+    metricCount("course_entitlement.purchase_grant", 1, {
+      outcome: "insert_error",
+      source: "purchase",
+      has_checkout_session: Boolean(stripeCheckoutSessionId),
+      has_payment_intent: Boolean(stripePaymentIntentId),
+    });
     throw new Error(
       `[Stripe] Failed to grant course entitlement for ${memberId}: ${entitlementError.message}`
     );
@@ -125,6 +152,13 @@ export async function grantPurchasedCourseEntitlement({
       stripe_payment_intent_id: stripePaymentIntentId,
       stripe_charge_id: stripeChargeId,
     },
+  });
+
+  metricCount("course_entitlement.purchase_grant", 1, {
+    outcome: "granted",
+    source: "purchase",
+    has_checkout_session: Boolean(stripeCheckoutSessionId),
+    has_payment_intent: Boolean(stripePaymentIntentId),
   });
 
   return {
@@ -153,6 +187,10 @@ async function markCourseEntitlementInactive({
 
   if (identifiers.length === 0) {
     console.warn(`[Stripe] Course entitlement ${status} event had no payment identifier.`);
+    metricCount("course_entitlement.status_change", 1, {
+      outcome: "missing_identifier",
+      status,
+    });
     return;
   }
 
@@ -170,6 +208,10 @@ async function markCourseEntitlementInactive({
     .select<CourseEntitlementRow[]>("id, member_id, course_id");
 
   if (error) {
+    metricCount("course_entitlement.status_change", 1, {
+      outcome: "update_error",
+      status,
+    });
     throw new Error(`[Stripe] Failed to mark course entitlement ${status}: ${error.message}`);
   }
 
@@ -178,6 +220,10 @@ async function markCourseEntitlementInactive({
       `[Stripe] No active course entitlement matched ${status} identifiers ` +
         `(payment_intent=${paymentIntentId ?? "none"}, charge=${chargeId ?? "none"}).`
     );
+    metricCount("course_entitlement.status_change", 1, {
+      outcome: "no_match",
+      status,
+    });
     return;
   }
 
@@ -197,6 +243,10 @@ async function markCourseEntitlementInactive({
   );
 
   console.log(`[Stripe] Marked ${data.length} course entitlement(s) ${status}.`);
+  metricCount("course_entitlement.status_change", data.length, {
+    outcome: "updated",
+    status,
+  });
 }
 
 export async function handleChargeRefunded(charge: Stripe.Charge) {
@@ -208,6 +258,9 @@ export async function handleChargeRefunded(charge: Stripe.Charge) {
       `[Stripe] Ignoring partial/no refund for charge ${charge.id} ` +
         `(${refundAmount}/${capturedAmount}).`
     );
+    metricCount("course_entitlement.refund", 1, {
+      outcome: "ignored_partial_or_empty",
+    });
     return;
   }
 
@@ -225,7 +278,12 @@ export async function handleChargeRefunded(charge: Stripe.Charge) {
 }
 
 export async function handleCoursePaymentSucceeded(paymentIntent: Stripe.PaymentIntent) {
-  if (paymentIntent.metadata?.purchase_type !== "course") return;
+  if (paymentIntent.metadata?.purchase_type !== "course") {
+    metricCount("course_entitlement.payment_intent", 1, {
+      outcome: "ignored_non_course",
+    });
+    return;
+  }
 
   const courseId = paymentIntent.metadata.course_id ?? paymentIntent.metadata.courseId ?? null;
   const memberId = paymentIntent.metadata.member_id ?? paymentIntent.metadata.userId ?? null;
@@ -234,6 +292,9 @@ export async function handleCoursePaymentSucceeded(paymentIntent: Stripe.Payment
     console.error(
       `[Stripe] Course payment intent ${paymentIntent.id} missing course/member metadata.`
     );
+    metricCount("course_entitlement.payment_intent", 1, {
+      outcome: "missing_metadata",
+    });
     return;
   }
 
@@ -259,6 +320,12 @@ export async function handleCoursePaymentSucceeded(paymentIntent: Stripe.Payment
     });
   }
 
+  metricCount("course_entitlement.payment_intent", 1, {
+    outcome: result.granted ? "granted" : "already_active",
+    has_charge: Boolean(chargeId),
+    currency: paymentIntent.currency,
+  });
+
   console.log(
     `[Stripe] Course payment intent processed — member: ${memberId}, course: ${courseId}, ` +
       `granted: ${result.granted ? "yes" : "already_active"}.`
@@ -268,6 +335,10 @@ export async function handleCoursePaymentSucceeded(paymentIntent: Stripe.Payment
 export async function handleDisputeClosed(dispute: Stripe.Dispute) {
   if (dispute.status !== "lost") {
     console.log(`[Stripe] Dispute ${dispute.id} closed with status ${dispute.status}; no course access change.`);
+    metricCount("course_entitlement.dispute", 1, {
+      outcome: "ignored_not_lost",
+      dispute_status: dispute.status,
+    });
     return;
   }
 

@@ -69,6 +69,23 @@ Keep beta feedback fast to submit, rich in context, and easy for support/coaches
   - Asana `Beta Feedback Triage` workload
 - Local agents can run `npm run ops:beta-check` for the same lightweight operating review in Markdown form.
 
+## Sentry Metrics
+
+- Application metrics are enabled through `@sentry/nextjs` and the local helper in `lib/observability/metrics.ts`.
+- The first launch-critical metrics are intentionally focused on operational questions:
+  - are beta testers submitting feedback, and are urgent reports escalating to Asana?
+  - are Stripe webhooks being received, processed, or failing?
+  - are subscription and course checkouts creating Stripe sessions successfully?
+  - are course entitlements being granted, skipped as duplicates, refunded, or chargebacked?
+  - are cron jobs running successfully, and how long are they taking?
+- Metric attributes avoid member IDs, emails, Stripe IDs, raw URLs, and course IDs. Use low-cardinality buckets such as severity, event type, checkout path, cohort, source, outcome, and route bucket.
+- Recommended Sentry dashboard widgets:
+  - `beta_feedback.submit` by severity and outcome
+  - `stripe.webhook` by event type and outcome
+  - `checkout.subscription` and `checkout.course` by outcome
+  - `course_entitlement.purchase_grant` by outcome
+  - `cron.run` and `cron.duration` by cron key
+
 ## Status Model
 
 - `new`

@@ -8,6 +8,7 @@ import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import { checkAbuseGuard, getClientIp } from "@/lib/security/abuse-guard";
 import { getCurrentSentryRelease } from "@/lib/observability/sentry-env";
+import { metricCount, routeBucket } from "@/lib/observability/metrics";
 import { createAsanaTaskForBetaFeedback } from "@/lib/integrations/asana";
 import {
   isBetaFeedbackCategory,
@@ -83,6 +84,9 @@ export async function submitBetaFeedback(
   });
 
   if (!abuseGuard.allowed) {
+    metricCount("beta_feedback.submit", 1, {
+      outcome: "rate_limited",
+    });
     return {
       error: `You're sending feedback pretty quickly right now. Please wait about ${Math.max(abuseGuard.retryAfterSeconds, 60)} seconds and try again.`,
     };
@@ -157,6 +161,12 @@ export async function submitBetaFeedback(
 
     if (uploadError) {
       console.error("[beta-feedback] screenshot upload failed:", uploadError.message);
+      metricCount("beta_feedback.submit", 1, {
+        outcome: "screenshot_upload_failed",
+        severity: severityValue,
+        category: categoryValue,
+        has_screenshot: true,
+      });
       return { error: "We couldn't upload that screenshot right now. Please try again." };
     }
 
@@ -209,8 +219,25 @@ export async function submitBetaFeedback(
 
   if (error) {
     console.error("[beta-feedback] insert failed:", error.message);
+    metricCount("beta_feedback.submit", 1, {
+      outcome: "insert_failed",
+      severity: severityValue,
+      category: categoryValue,
+      has_screenshot: Boolean(screenshotStoragePath),
+      has_loom: Boolean(loomUrl),
+      page: routeBucket(pagePath),
+    });
     return { error: "We couldn't send your feedback right now. Please try again in a moment." };
   }
+
+  metricCount("beta_feedback.submit", 1, {
+    outcome: "success",
+    severity: severityValue,
+    category: categoryValue,
+    has_screenshot: Boolean(screenshotStoragePath),
+    has_loom: Boolean(loomUrl),
+    page: routeBucket(pagePath),
+  });
 
   if (insertedFeedback?.id && ["high", "blocker"].includes(severityValue)) {
     const asanaResult = await createAsanaTaskForBetaFeedback({
@@ -230,6 +257,12 @@ export async function submitBetaFeedback(
     });
 
     if (asanaResult.created) {
+      metricCount("beta_feedback.asana_escalation", 1, {
+        outcome: "created",
+        severity: severityValue,
+        category: categoryValue,
+      });
+
       const triageNote = [
         "Auto-escalated to Asana because this was submitted as high/blocker feedback.",
         asanaResult.taskUrl ? `Asana task: ${asanaResult.taskUrl}` : `Asana task ID: ${asanaResult.taskGid}`,
@@ -256,9 +289,20 @@ export async function submitBetaFeedback(
 
       if (escalationUpdateError) {
         console.error("[beta-feedback] Asana escalation metadata update failed:", escalationUpdateError.message);
+        metricCount("beta_feedback.asana_escalation", 1, {
+          outcome: "metadata_update_failed",
+          severity: severityValue,
+          category: categoryValue,
+        });
       }
     } else {
       console.warn("[beta-feedback] Asana escalation skipped or failed:", asanaResult.reason);
+      metricCount("beta_feedback.asana_escalation", 1, {
+        outcome: "skipped_or_failed",
+        reason: asanaResult.reason?.includes("ASANA_") ? "missing_config" : "api_error",
+        severity: severityValue,
+        category: categoryValue,
+      });
     }
   }
 

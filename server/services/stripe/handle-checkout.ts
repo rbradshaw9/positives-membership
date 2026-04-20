@@ -10,6 +10,7 @@ import {
 import { trackFpSale } from "@/lib/firstpromoter/client";
 import { trackServerEvent } from "@/lib/analytics/measurement-protocol";
 import { getSubscriptionAnalyticsFromPriceId } from "@/lib/analytics/subscription";
+import { metricCount } from "@/lib/observability/metrics";
 import { PLAN_NAME_BY_TIER } from "@/lib/plans";
 import type { Enums } from "@/types/supabase";
 import { recordCoursePaymentSucceeded } from "./member-billing-summary";
@@ -129,6 +130,11 @@ export async function handleCheckoutSessionCompleted(
       `[Stripe] checkout.session.completed has no customer ID — session: ${session.id}. ` +
         `Member cannot be activated. Check Stripe session configuration.`
     );
+    metricCount("checkout.completed", 1, {
+      outcome: "missing_customer",
+      path: session.metadata?.purchase_type === "course" ? "course" : "subscription",
+      livemode: session.livemode,
+    });
     return;
   }
 
@@ -174,6 +180,11 @@ async function handleAuthFirstCheckout(
       `[Stripe] checkout.session.completed — member row not found for userId: ${userId}. ` +
         `Auth trigger may not have run yet. No fallback for auth-first path.`
     );
+    metricCount("checkout.completed", 1, {
+      outcome: "missing_member",
+      path: "auth_first",
+      livemode: session.livemode,
+    });
     return;
   }
 
@@ -202,6 +213,12 @@ async function handleAuthFirstCheckout(
   console.log(
     `[Stripe] Member activated via auth-first checkout — userId: ${userId}, customerId: ${customerId}`
   );
+  metricCount("checkout.completed", 1, {
+    outcome: "activated",
+    path: "auth_first",
+    subscription_status: subscriptionStatus,
+    livemode: session.livemode,
+  });
 }
 
 // ─── PATH B: Guest checkout ───────────────────────────────────────────────────
@@ -235,6 +252,12 @@ async function handleGuestCheckout(
       `[Stripe] Guest checkout — no email in customer_details or Stripe customer — session: ${session.id}. ` +
         `Cannot create account. Member will not receive instant access.`
     );
+    metricCount("checkout.completed", 1, {
+      outcome: "missing_email",
+      path: "guest",
+      checkout_mode: session.metadata?.checkoutMode ?? "paid",
+      livemode: session.livemode,
+    });
     return;
   }
 
@@ -409,6 +432,15 @@ async function handleGuestCheckout(
         `${linkError?.message ?? "no hashed_token in response"}. ` +
         `Member is active but will not receive instant login.`
     );
+    metricCount("checkout.completed", 1, {
+      outcome: "activated_no_login_token",
+      path: "guest",
+      checkout_mode: checkoutMode,
+      launch_cohort: finalLaunchCohort,
+      launch_source: finalLaunchSource,
+      subscription_status: subscriptionStatus,
+      livemode: session.livemode,
+    });
     return;
   }
 
@@ -430,6 +462,15 @@ async function handleGuestCheckout(
       `[Stripe] Failed to store onboarding_token for userId ${userId}: ${tokenError.message}. ` +
         `Member is active. Success page will show manual login fallback.`
     );
+    metricCount("checkout.completed", 1, {
+      outcome: "activated_token_store_failed",
+      path: "guest",
+      checkout_mode: checkoutMode,
+      launch_cohort: finalLaunchCohort,
+      launch_source: finalLaunchSource,
+      subscription_status: subscriptionStatus,
+      livemode: session.livemode,
+    });
     return;
   }
 
@@ -561,6 +602,17 @@ async function handleGuestCheckout(
       );
     }
   }
+
+  metricCount("checkout.completed", 1, {
+    outcome: "activated",
+    path: "guest",
+    checkout_mode: checkoutMode,
+    launch_cohort: finalLaunchCohort,
+    launch_source: finalLaunchSource,
+    subscription_status: subscriptionStatus,
+    livemode: session.livemode,
+    affiliate_attributed: Boolean(fprRefId),
+  });
 }
 
 async function handleCourseCheckout(
@@ -573,6 +625,11 @@ async function handleCourseCheckout(
 
   if (!courseId) {
     console.error(`[Stripe] Course checkout ${session.id} missing metadata.courseId.`);
+    metricCount("checkout.completed", 1, {
+      outcome: "missing_course_metadata",
+      path: "course",
+      livemode: session.livemode,
+    });
     return;
   }
 
@@ -587,6 +644,11 @@ async function handleCourseCheckout(
       `[Stripe] Course checkout ${session.id} references missing course ${courseId}: ` +
         `${courseError?.message ?? "not found"}`
     );
+    metricCount("checkout.completed", 1, {
+      outcome: "missing_course",
+      path: "course",
+      livemode: session.livemode,
+    });
     return;
   }
 
@@ -621,6 +683,11 @@ async function handleCourseCheckout(
 
   if (!email) {
     console.error(`[Stripe] Course checkout ${session.id} has no customer email.`);
+    metricCount("checkout.completed", 1, {
+      outcome: "missing_email",
+      path: "course",
+      livemode: session.livemode,
+    });
     return;
   }
 
@@ -749,4 +816,9 @@ async function handleCourseCheckout(
   console.log(
     `[Stripe] Course checkout complete — userId: ${userId}, course: ${courseId}, session: ${session.id}`
   );
+  metricCount("checkout.completed", 1, {
+    outcome: grantedEntitlement ? "course_granted" : "course_already_active",
+    path: "course",
+    livemode: session.livemode,
+  });
 }

@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/nextjs";
 import type { MonitorConfig } from "@sentry/core";
+import { metricCount, metricDistribution } from "@/lib/observability/metrics";
 
 const CRON_MONITORS = {
   reminders: {
@@ -51,8 +52,29 @@ export async function withCronMonitor<T>(
   callback: () => Promise<T>
 ) {
   const monitor = getCronMonitor(key);
+  const startedAt = Date.now();
+
   try {
-    return await Sentry.withMonitor(monitor.slug, callback, monitor.config);
+    const result = await Sentry.withMonitor(monitor.slug, callback, monitor.config);
+    metricCount("cron.run", 1, {
+      cron: key,
+      outcome: "success",
+    });
+    metricDistribution("cron.duration", Date.now() - startedAt, {
+      cron: key,
+      outcome: "success",
+    });
+    return result;
+  } catch (error) {
+    metricCount("cron.run", 1, {
+      cron: key,
+      outcome: "error",
+    });
+    metricDistribution("cron.duration", Date.now() - startedAt, {
+      cron: key,
+      outcome: "error",
+    });
+    throw error;
   } finally {
     await Sentry.flush(2_000);
   }

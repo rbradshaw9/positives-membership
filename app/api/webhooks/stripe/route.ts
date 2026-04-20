@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { getStripe } from "@/lib/stripe/config";
+import { metricCount, metricDistribution } from "@/lib/observability/metrics";
 import {
   handleSubscriptionCreated,
   handleSubscriptionUpdated,
@@ -53,6 +54,7 @@ import {
  *   charge.dispute.closed
  */
 export async function POST(request: Request) {
+  const startedAt = Date.now();
   const body = await request.text();
   const headerStore = await headers();
   const signature = headerStore.get("stripe-signature");
@@ -61,6 +63,9 @@ export async function POST(request: Request) {
 
   if (!webhookSecret) {
     console.error("[Stripe Webhook] STRIPE_WEBHOOK_SECRET is not set.");
+    metricCount("stripe.webhook", 1, {
+      outcome: "missing_secret",
+    });
     return NextResponse.json(
       { error: "Webhook secret not configured." },
       { status: 500 }
@@ -69,6 +74,9 @@ export async function POST(request: Request) {
 
   if (!signature) {
     console.warn("[Stripe Webhook] Request received with no stripe-signature header.");
+    metricCount("stripe.webhook", 1, {
+      outcome: "missing_signature",
+    });
     return NextResponse.json(
       { error: "Missing stripe-signature header." },
       { status: 400 }
@@ -83,6 +91,9 @@ export async function POST(request: Request) {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("[Stripe Webhook] Signature verification failed:", message);
+    metricCount("stripe.webhook", 1, {
+      outcome: "invalid_signature",
+    });
     return NextResponse.json(
       { error: `Webhook signature verification failed: ${message}` },
       { status: 400 }
@@ -92,6 +103,7 @@ export async function POST(request: Request) {
   console.log(`[Stripe Webhook] Received verified event: ${event.type} (id: ${event.id})`);
 
   // Route verified events to their handlers
+  let handled = true;
   try {
     switch (event.type) {
       case "checkout.session.completed":
@@ -137,6 +149,7 @@ export async function POST(request: Request) {
         break;
 
       default:
+        handled = false;
         // Unhandled event type — log and return 200 so Stripe doesn't retry
         console.log(`[Stripe Webhook] Unhandled event type: ${event.type}`);
     }
@@ -146,11 +159,32 @@ export async function POST(request: Request) {
       `[Stripe Webhook] Handler error for ${event.type} (id: ${event.id}):`,
       message
     );
+    metricCount("stripe.webhook", 1, {
+      outcome: "handler_error",
+      event_type: event.type,
+      livemode: event.livemode,
+    });
+    metricDistribution("stripe.webhook.duration", Date.now() - startedAt, {
+      outcome: "handler_error",
+      event_type: event.type,
+      livemode: event.livemode,
+    });
     return NextResponse.json(
       { error: "Internal handler error." },
       { status: 500 }
     );
   }
+
+  metricCount("stripe.webhook", 1, {
+    outcome: handled ? "processed" : "unhandled",
+    event_type: event.type,
+    livemode: event.livemode,
+  });
+  metricDistribution("stripe.webhook.duration", Date.now() - startedAt, {
+    outcome: handled ? "processed" : "unhandled",
+    event_type: event.type,
+    livemode: event.livemode,
+  });
 
   console.log(`[Stripe Webhook] Successfully processed: ${event.type} (id: ${event.id})`);
   return NextResponse.json({ received: true }, { status: 200 });

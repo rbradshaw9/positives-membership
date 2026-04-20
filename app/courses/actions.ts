@@ -6,6 +6,7 @@ import { grantPurchasedCourseEntitlement } from "@/server/services/stripe/handle
 import { getStripe } from "@/lib/stripe/config";
 import { createClient } from "@/lib/supabase/server";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
+import { metricCount, metricDistribution, routeBucket } from "@/lib/observability/metrics";
 
 export type CourseCheckoutResult =
   | { status: "checkout"; url: string; message?: string; error?: never }
@@ -90,10 +91,16 @@ async function getActiveCoursePrice(stripePriceId: string) {
 }
 
 export async function getCourseCheckoutUrl(formData: FormData): Promise<CourseCheckoutResult> {
+  const startedAt = Date.now();
   const courseId = (formData.get("courseId") as string | null)?.trim();
   const sourcePath = (formData.get("sourcePath") as string | null)?.trim();
+  const source = routeBucket(sourcePath);
 
   if (!courseId) {
+    metricCount("checkout.course", 1, {
+      outcome: "missing_course",
+      source,
+    });
     return { status: "error", error: "No course selected. Please try again." };
   }
 
@@ -113,10 +120,20 @@ export async function getCourseCheckoutUrl(formData: FormData): Promise<CourseCh
 
   if (courseError || !course) {
     console.error("[courses] checkout course lookup failed:", courseError?.message);
+    metricCount("checkout.course", 1, {
+      outcome: "course_unavailable",
+      source,
+      logged_in: Boolean(user),
+    });
     return { status: "error", error: "That course is not available right now." };
   }
 
   if (!course.is_standalone_purchasable || !course.stripe_price_id) {
+    metricCount("checkout.course", 1, {
+      outcome: "not_sellable",
+      source,
+      logged_in: Boolean(user),
+    });
     return {
       status: "error",
       error: "This course is not available for standalone purchase yet.",
@@ -147,6 +164,11 @@ export async function getCourseCheckoutUrl(formData: FormData): Promise<CourseCh
       .maybeSingle();
 
     if (entitlement) {
+      metricCount("checkout.course", 1, {
+        outcome: "already_owned",
+        source,
+        logged_in: true,
+      });
       return {
         status: "owned",
         url: "/library",
@@ -157,6 +179,12 @@ export async function getCourseCheckoutUrl(formData: FormData): Promise<CourseCh
 
   try {
     const activePrice = await getActiveCoursePrice(course.stripe_price_id);
+    metricCount("checkout.course", 1, {
+      outcome: "started",
+      source,
+      logged_in: Boolean(member),
+      has_saved_customer: Boolean(member?.stripe_customer_id),
+    });
 
     if (member?.stripe_customer_id && member.email) {
       const stripe = getStripe();
@@ -194,6 +222,18 @@ export async function getCourseCheckoutUrl(formData: FormData): Promise<CourseCh
               stripeChargeId: idFromExpandable(paymentIntent.latest_charge),
               grantNote: `Purchased through saved-card payment ${paymentIntent.id}.`,
             });
+            metricCount("checkout.course", 1, {
+              outcome: "saved_card_purchased",
+              source,
+              logged_in: true,
+              has_saved_customer: true,
+            });
+            metricDistribution("checkout.course.duration", Date.now() - startedAt, {
+              outcome: "saved_card_purchased",
+              source,
+              logged_in: true,
+              has_saved_customer: true,
+            });
             return {
               status: "purchased",
               url: "/library",
@@ -207,6 +247,12 @@ export async function getCourseCheckoutUrl(formData: FormData): Promise<CourseCh
               ? quickPurchaseError.message
               : String(quickPurchaseError)
           );
+          metricCount("checkout.course", 1, {
+            outcome: "saved_card_fallback",
+            source,
+            logged_in: true,
+            has_saved_customer: true,
+          });
         }
       }
     }
@@ -221,12 +267,36 @@ export async function getCourseCheckoutUrl(formData: FormData): Promise<CourseCh
       sourcePath: sourcePath || (course.slug ? `/courses/${course.slug}` : `/courses`),
     });
 
+    metricCount("checkout.course", 1, {
+      outcome: "session_created",
+      source,
+      logged_in: Boolean(member),
+      has_saved_customer: Boolean(member?.stripe_customer_id),
+    });
+    metricDistribution("checkout.course.duration", Date.now() - startedAt, {
+      outcome: "session_created",
+      source,
+      logged_in: Boolean(member),
+      has_saved_customer: Boolean(member?.stripe_customer_id),
+    });
     return { status: "checkout", url };
   } catch (error) {
     console.error(
       "[courses] checkout creation failed:",
       error instanceof Error ? error.message : String(error)
     );
+    metricCount("checkout.course", 1, {
+      outcome: "error",
+      source,
+      logged_in: Boolean(member),
+      has_saved_customer: Boolean(member?.stripe_customer_id),
+    });
+    metricDistribution("checkout.course.duration", Date.now() - startedAt, {
+      outcome: "error",
+      source,
+      logged_in: Boolean(member),
+      has_saved_customer: Boolean(member?.stripe_customer_id),
+    });
     return { status: "error", error: "Could not start checkout. Please try again." };
   }
 }

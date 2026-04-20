@@ -1,7 +1,9 @@
 "use server";
 
 import { createGuestCheckoutSession } from "@/server/services/stripe/create-guest-checkout";
+import { getSubscriptionAnalyticsFromPriceId } from "@/lib/analytics/subscription";
 import { resolveLaunchContext } from "@/lib/launch/context";
+import { metricCount, metricDistribution, routeBucket } from "@/lib/observability/metrics";
 
 /**
  * app/join/actions.ts
@@ -47,6 +49,7 @@ type CheckoutMode = "paid" | "trial_7_day";
 export async function getGuestCheckoutUrl(
   formData: FormData
 ): Promise<CheckoutResult> {
+  const startedAt = Date.now();
   const priceId = (formData.get("priceId") as string | null)?.trim();
   const checkoutMode = ((formData.get("checkoutMode") as string | null)?.trim() ??
     "paid") as CheckoutMode;
@@ -68,8 +71,24 @@ export async function getGuestCheckoutUrl(
   });
 
   if (!priceId) {
+    metricCount("checkout.subscription", 1, {
+      outcome: "missing_price",
+      source: routeBucket(sourcePath),
+      checkout_mode: checkoutMode,
+    });
     return { error: "No plan selected. Please choose a plan and try again." };
   }
+
+  const planAnalytics = getSubscriptionAnalyticsFromPriceId(priceId);
+  const metricAttributes = {
+    source: routeBucket(sourcePath),
+    checkout_mode: checkoutMode,
+    launch_cohort: launchContext.launchCohort,
+    launch_source: launchContext.launchSource,
+    plan_level: planAnalytics.plan_level,
+    billing_interval: planAnalytics.billing_interval,
+    has_affiliate_ref: Boolean((formData.get("fpr") as string | null)?.trim()),
+  };
 
   // FirstPromoter ref_id — submitted as hidden 'fpr' input by PricingCard.
   // Set when visitor arrived via an affiliate link (?fpr=code).
@@ -83,6 +102,10 @@ export async function getGuestCheckoutUrl(
   console.log(
     `[Join] Guest checkout initiated — priceId: ${priceId}, mode: ${checkoutMode}, source: ${sourcePath}`
   );
+  metricCount("checkout.subscription", 1, {
+    ...metricAttributes,
+    outcome: "started",
+  });
 
   try {
     const { url } = await createGuestCheckoutSession(priceId, {
@@ -94,10 +117,26 @@ export async function getGuestCheckoutUrl(
       launchCampaignCode: launchContext.launchCampaignCode,
     });
     console.log(`[Join] Stripe session created — redirecting to checkout`);
+    metricCount("checkout.subscription", 1, {
+      ...metricAttributes,
+      outcome: "session_created",
+    });
+    metricDistribution("checkout.subscription.duration", Date.now() - startedAt, {
+      ...metricAttributes,
+      outcome: "session_created",
+    });
     return { url };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("[Join] Guest checkout creation failed:", message);
+    metricCount("checkout.subscription", 1, {
+      ...metricAttributes,
+      outcome: "error",
+    });
+    metricDistribution("checkout.subscription.duration", Date.now() - startedAt, {
+      ...metricAttributes,
+      outcome: "error",
+    });
     return { error: "Could not start checkout. Please try again." };
   }
 }
