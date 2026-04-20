@@ -15,10 +15,13 @@ test("free alpha invite page shows clear tester-facing guidance", async ({
   await expect(page.getByText("Private Alpha Invite")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Free alpha access" })).toBeVisible();
   await expect(
-    page.getByText("Your total should be $0 for the alpha period.", {
+    page.getByText("Your total should be $0 during the alpha period.", {
       exact: false,
     })
   ).toBeVisible();
+  await expect(page.getByText("Tell us what feels confusing")).toBeVisible();
+  await expect(page.getByText("How to get started")).toBeVisible();
+  await expect(page.getByText("Select a plan")).toBeVisible();
   await expect(page.getByText("Choose the membership level you want to test.")).toBeVisible();
 });
 
