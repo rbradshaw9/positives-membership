@@ -165,8 +165,8 @@ export function WelcomeModal({
               <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
             </svg>
           ),
-          label: "The full member library",
-          sub: "Every past session, available at any time",
+          label: "The member library",
+          sub: "Daily, weekly, and monthly sessions in one place",
           href: "/library",
         },
         {

@@ -50,13 +50,13 @@ interface PricingCardProps {
 const CARDS = {
   1: {
     title: "Membership",
-    tagline: "Daily practice, steady guidance, and the full core library.",
+    tagline: "Daily practice, steady guidance, and a growing member library.",
     badge: "Founding Member Rate",
     benefits: [
       "Daily guided audio practice · fresh every morning",
       "Weekly reflections and research-backed practices",
       "Monthly theme with guided reflection from Dr. Paul",
-      "Full member library access",
+      "Member library access as new sessions are released",
     ],
   },
   2: {

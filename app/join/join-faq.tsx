@@ -13,7 +13,7 @@ const JOIN_FAQS = [
   },
   {
     q: "What's included in Membership?",
-    a: "Everything you need to start and sustain the practice: daily guided audio sessions fresh every morning, weekly mindset principles backed by research, a monthly theme from Dr. Paul, and access to the complete member library of every past session.",
+    a: "Everything you need to start and sustain the practice: daily guided audio sessions fresh every morning, weekly mindset principles backed by research, a monthly theme from Dr. Paul, and access to the member library as new sessions are released.",
   },
   {
     q: "What are the other pricing tiers?",

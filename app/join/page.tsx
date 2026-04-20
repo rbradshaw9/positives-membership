@@ -272,7 +272,7 @@ export default async function JoinPage({
               { label: "Daily guided audio practice", sub: "Fresh every morning" },
               { label: "Weekly mindset principles", sub: "Backed by research" },
               { label: "Monthly theme from Dr. Paul", sub: "Guides the month" },
-              { label: "Complete member library", sub: "Every past session" },
+              { label: "Growing member library", sub: "Daily, weekly, and monthly sessions as they release" },
               { label: "Live events & coaching", sub: "With Membership + Events and Coaching Circle" },
             ].map(({ label, sub }) => (
               <div

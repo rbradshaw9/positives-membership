@@ -503,7 +503,7 @@ function LandingPageShell({
                 "Daily guided audio practices",
                 "Weekly reflections & mindset principles",
                 "Monthly themes with Dr. Paul",
-                "Full member library",
+                "Growing member library",
                 "Live member events with Membership + Events",
                 "Weekly coaching inside Coaching Circle",
               ].map((item) => (
