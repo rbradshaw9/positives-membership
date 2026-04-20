@@ -110,14 +110,11 @@ export function MemberTopNav({
         <div className="member-container flex h-14 items-center gap-4 md:h-16">
           <Logo
             href="/today"
-            kind="full"
+            kind="wordmark"
             variant="light"
-            height={32}
+            height={24}
             className="mr-auto flex-shrink-0"
           />
-
-
-
 
           <nav aria-label="Member navigation" className="hidden items-center gap-1 md:flex">
             {[...navItems, ...(adminMenuItem ? [adminMenuItem] : [])].map(({ href, label }) => {
