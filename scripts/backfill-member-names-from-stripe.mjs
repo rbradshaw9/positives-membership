@@ -60,6 +60,13 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   typescript: true,
 });
 
+function isStripeMissingCustomerError(error) {
+  return (
+    error instanceof Stripe.errors.StripeInvalidRequestError &&
+    error.code === "resource_missing"
+  );
+}
+
 async function main() {
   const { data: members, error } = await supabase
     .from("member")
@@ -80,7 +87,24 @@ async function main() {
   console.log(`\n[name-backfill] Backfilling ${members.length} member name(s)…\n`);
 
   for (const member of members) {
-    const customer = await stripe.customers.retrieve(member.stripe_customer_id);
+    let customer;
+    try {
+      customer = await stripe.customers.retrieve(member.stripe_customer_id);
+    } catch (error) {
+      if (isStripeMissingCustomerError(error)) {
+        console.log(
+          `- skipped ${member.email} (${member.stripe_customer_id}) — Stripe customer missing`
+        );
+        continue;
+      }
+      throw error;
+    }
+
+    if (customer.deleted) {
+      console.log(`- skipped ${member.email} (${member.stripe_customer_id}) — Stripe customer deleted`);
+      continue;
+    }
+
     const name =
       typeof customer === "string" ? null : customer.name?.trim() ?? null;
 
