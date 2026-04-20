@@ -98,6 +98,19 @@ export function BetaFeedbackWidget({ memberEmail, memberName }: Props) {
     }
   }, [state.success]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isOpen]);
+
   const memberLabel = useMemo(() => {
     if (memberName) return memberName;
     if (memberEmail) return memberEmail;
@@ -122,15 +135,26 @@ export function BetaFeedbackWidget({ memberEmail, memberName }: Props) {
       </button>
 
       {isOpen ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-end bg-slate-950/18 p-3 md:items-end md:p-6">
-          <div className="w-full max-w-xl overflow-hidden rounded-[28px] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(243,250,255,0.96))] shadow-[0_30px_90px_rgba(15,23,42,0.18)]">
-            <div className="border-b border-slate-200/80 px-5 py-4 md:px-6">
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-end overflow-y-auto bg-slate-950/18 p-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-[calc(env(safe-area-inset-bottom)+0.75rem)] md:p-6"
+          role="presentation"
+        >
+          <div
+            className="flex max-h-full w-full max-w-xl flex-col overflow-hidden rounded-[28px] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(243,250,255,0.96))] shadow-[0_30px_90px_rgba(15,23,42,0.18)]"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="beta-feedback-title"
+          >
+            <div className="shrink-0 border-b border-slate-200/80 bg-white/92 px-5 py-4 backdrop-blur md:px-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.24em] text-teal-600">
                     Beta feedback
                   </p>
-                  <h2 className="mt-2 text-[1.45rem] font-semibold tracking-[-0.03em] text-slate-950">
+                  <h2
+                    id="beta-feedback-title"
+                    className="mt-2 text-[1.45rem] font-semibold tracking-[-0.03em] text-slate-950"
+                  >
                     Tell us what slowed you down
                   </h2>
                   <p className="mt-2 max-w-lg text-sm leading-6 text-slate-600">
@@ -140,7 +164,8 @@ export function BetaFeedbackWidget({ memberEmail, memberName }: Props) {
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-medium text-slate-600"
+                  aria-label="Close feedback form"
+                  className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-medium text-slate-600 shadow-sm"
                 >
                   Close
                 </button>
@@ -150,7 +175,7 @@ export function BetaFeedbackWidget({ memberEmail, memberName }: Props) {
             <form
               ref={formRef}
               action={formAction}
-              className="max-h-[85dvh] overflow-y-auto px-5 py-5 md:px-6"
+              className="min-h-0 flex-1 overflow-y-auto px-5 py-5 md:px-6"
             >
               <div className="rounded-3xl border border-emerald-200/80 bg-emerald-50/70 px-4 py-3 text-sm text-emerald-900">
                 Sending this as <span className="font-semibold">{memberLabel}</span>.
@@ -270,13 +295,22 @@ export function BetaFeedbackWidget({ memberEmail, memberName }: Props) {
                 <p className="max-w-md text-xs leading-5 text-slate-500">
                   We automatically attach your page, device, and release context so you don&apos;t have to document all the technical details manually.
                 </p>
-                <button
-                  type="submit"
-                  disabled={pending}
-                  className="rounded-full bg-[linear-gradient(135deg,#2ec4b6,#3db6e7)] px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_48px_rgba(46,196,182,0.28)] disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                  {pending ? "Sending..." : "Send feedback"}
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsOpen(false)}
+                    className="rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700"
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={pending}
+                    className="rounded-full bg-[linear-gradient(135deg,#2ec4b6,#3db6e7)] px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_48px_rgba(46,196,182,0.28)] disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {pending ? "Sending..." : "Send feedback"}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
