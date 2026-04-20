@@ -67,33 +67,25 @@ export default async function BetaPage({
   }
 
   const cohortLabel = launchContext.launchCohort === "alpha" ? "Alpha" : "Beta";
-  const inviteHeadline =
+  const offerLabel =
     inviteOffer === "free"
-      ? "Your invite includes free access so you can focus on the product, not the billing."
+      ? "Free alpha access"
       : inviteOffer === "paid_test"
-        ? "This invite is for our billing-test group, so we can validate the real paid path before launch."
+        ? "Billing test access"
         : inviteOffer === "discount"
-          ? "Your invite uses the real paid path, with a beta discount when available."
-          : "Your invite uses the real signup and billing path so we get honest launch signal.";
-  const inviteSupportCopy =
+          ? "Discounted beta access"
+          : "Private invite access";
+  const checkoutNote =
     inviteOffer === "free"
-      ? "Use the promotion code shown below in Stripe Checkout. A zero-dollar alpha checkout still creates the real account, entitlement, and webhook trail, but it will not collect a payment method."
+      ? "Enter the promo code at checkout. Your total should be $0 for the alpha period."
       : inviteOffer === "paid_test"
-        ? "Please complete checkout with your normal card. This group helps us test real Stripe billing, portal behavior, prorations, and support edge cases before a wider rollout."
+        ? "This path uses a real payment so we can test Stripe, billing emails, and account access end to end."
         : inviteOffer === "discount"
-          ? "If your invite includes a promo code, enter it in Stripe Checkout so we can keep you on the real production path while honoring your beta rate."
-          : "Use the normal checkout flow so we validate the same activation, billing, and support path live members will use.";
-  const inviteLinkPath =
-    inviteOffer === "free"
-      ? `/beta?cohort=${launchContext.launchCohort}&offer=free${launchContext.launchCampaignCode ? `&code=${launchContext.launchCampaignCode}` : ""}`
-      : inviteOffer === "paid_test"
-        ? `/beta?cohort=${launchContext.launchCohort}&offer=paid-test${launchContext.launchCampaignCode ? `&code=${launchContext.launchCampaignCode}` : ""}`
-        : inviteOffer === "discount"
-          ? `/beta?cohort=${launchContext.launchCohort}&offer=discount${launchContext.launchCampaignCode ? `&code=${launchContext.launchCampaignCode}` : ""}`
-          : `/beta?cohort=${launchContext.launchCohort}${launchContext.launchCampaignCode ? `&code=${launchContext.launchCampaignCode}` : ""}`;
+          ? "Enter the promo code at checkout to apply your beta discount."
+          : "Complete checkout normally so we can validate the real member path.";
 
   return (
-    <div className="min-h-dvh flex flex-col" style={{ background: "#F7F4EE" }}>
+    <div className="min-h-dvh flex flex-col" style={{ background: "#F8F5EF" }}>
       <PublicSiteHeader
         signInHref={publicSession.signInHref}
         signInLabel={publicSession.signInLabel}
@@ -113,65 +105,184 @@ export default async function BetaPage({
 
           <div
             className="relative mx-auto max-w-6xl px-5 sm:px-8"
-            style={{ paddingTop: "clamp(4rem, 8vw, 6.5rem)", paddingBottom: "clamp(3rem, 6vw, 5rem)" }}
+            style={{
+              paddingTop: "clamp(3rem, 7vw, 5.5rem)",
+              paddingBottom: "clamp(3rem, 6vw, 5rem)",
+            }}
           >
-            <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
-              <div>
-                <p
-                  className="text-xs font-semibold uppercase mb-5"
-                  style={{ color: "#4E8C78", letterSpacing: "0.16em" }}
-                >
-                  Private {cohortLabel}
-                </p>
-                <h1
-                  className="font-heading font-bold"
+            <div className="mx-auto max-w-4xl text-center">
+              <p
+                className="text-xs font-semibold uppercase mb-4"
+                style={{ color: "#4E8C78", letterSpacing: "0.16em" }}
+              >
+                Private {cohortLabel} Invite
+              </p>
+              <h1
+                className="font-heading font-bold"
+                style={{
+                  fontSize: "clamp(2.4rem, 6vw, 5rem)",
+                  letterSpacing: "-0.055em",
+                  lineHeight: "1.01",
+                  color: "#121417",
+                  textWrap: "balance",
+                }}
+              >
+                Welcome to the early Positives release.
+              </h1>
+              <p
+                className="mx-auto mt-5 max-w-2xl"
+                style={{ fontSize: "1.05rem", color: "#5F6670", lineHeight: "1.78" }}
+              >
+                You are helping us test the real member experience before public launch.
+                Start by choosing your access level below, then use Positives naturally and
+                send feedback whenever something feels confusing, broken, or especially helpful.
+              </p>
+            </div>
+
+            <div className="mt-10 grid gap-5 lg:grid-cols-[0.88fr_1.12fr] lg:items-start">
+              <aside className="lg:sticky lg:top-28">
+                <div
+                  className="rounded-[2rem] border p-5 sm:p-6"
                   style={{
-                    fontSize: "clamp(2.4rem, 5.6vw, 4.8rem)",
-                    letterSpacing: "-0.055em",
-                    lineHeight: "1.01",
-                    color: "#121417",
-                    textWrap: "balance",
-                    maxWidth: "10ch",
+                    background: "rgba(255,255,255,0.94)",
+                    borderColor: "rgba(221,215,207,0.78)",
+                    boxShadow: "0 24px 80px rgba(18,20,23,0.08)",
                   }}
                 >
-                  You’re invited to help shape Positives before launch.
-                </h1>
-                <p
-                  className="mt-5 max-w-2xl"
-                  style={{ fontSize: "1.03rem", color: "#5F6670", lineHeight: "1.82" }}
-                >
-                  This is the real product, not a demo. We want honest usage, real friction,
-                  and fast signal on what feels calm, useful, awkward, incomplete, or broken.
-                </p>
+                  <p
+                    className="text-xs font-semibold uppercase"
+                    style={{ color: "#4E8C78", letterSpacing: "0.14em" }}
+                  >
+                    Your invite
+                  </p>
+                  <h2
+                    className="mt-3 font-heading font-bold tracking-[-0.045em]"
+                    style={{
+                      color: "#121417",
+                      fontSize: "clamp(1.7rem, 3vw, 2.25rem)",
+                      lineHeight: "1.06",
+                      textWrap: "balance",
+                    }}
+                  >
+                    {offerLabel}
+                  </h2>
 
-                <div className="mt-8 grid gap-4 sm:grid-cols-3">
+                  {promoCode ? (
+                    <div
+                      className="mt-5 rounded-[1.35rem] border p-4"
+                      style={{
+                        background: "rgba(47,111,237,0.06)",
+                        borderColor: "rgba(47,111,237,0.18)",
+                      }}
+                    >
+                      <p
+                        className="text-xs font-semibold uppercase"
+                        style={{ color: "#2F6FED", letterSpacing: "0.12em" }}
+                      >
+                        Promo code
+                      </p>
+                      <p
+                        className="mt-2 break-all font-mono text-lg font-semibold"
+                        style={{ color: "#121417" }}
+                      >
+                        {promoCode}
+                      </p>
+                    </div>
+                  ) : (
+                    <div
+                      className="mt-5 rounded-[1.35rem] border p-4"
+                      style={{
+                        background: "rgba(78,140,120,0.08)",
+                        borderColor: "rgba(78,140,120,0.18)",
+                      }}
+                    >
+                      <p className="text-sm font-semibold" style={{ color: "#121417" }}>
+                        No promo code needed.
+                      </p>
+                      <p className="mt-1 text-sm" style={{ color: "#68707A", lineHeight: "1.65" }}>
+                        Choose a plan and complete checkout normally.
+                      </p>
+                    </div>
+                  )}
+
+                  <p className="mt-4 text-sm" style={{ color: "#4A5360", lineHeight: "1.72" }}>
+                    {checkoutNote}
+                  </p>
+
+                  <div className="mt-6 space-y-3">
+                    {[
+                      "Choose the membership level you want to test.",
+                      promoCode ? "Enter your promo code in Stripe Checkout." : "Complete checkout with your normal card.",
+                      "Sign in, use the app, and send feedback from inside Positives.",
+                    ].map((step, index) => (
+                      <div key={step} className="flex gap-3">
+                        <span
+                          className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                          style={{ background: "#121417", color: "#FFFFFF" }}
+                        >
+                          {index + 1}
+                        </span>
+                        <p className="text-sm" style={{ color: "#4A5360", lineHeight: "1.6" }}>
+                          {step}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div
+                    className="mt-6 rounded-[1.25rem] border p-4"
+                    style={{
+                      background: "rgba(46,196,182,0.08)",
+                      borderColor: "rgba(46,196,182,0.22)",
+                    }}
+                  >
+                    <p className="text-sm font-semibold" style={{ color: "#121417" }}>
+                      What we are looking for
+                    </p>
+                    <p className="mt-2 text-sm" style={{ color: "#68707A", lineHeight: "1.68" }}>
+                      Honest notes about what is clear, confusing, helpful, awkward, or broken.
+                      You do not need to write long reports.
+                    </p>
+                  </div>
+                </div>
+              </aside>
+
+              <div>
+                <div className="mb-5 grid gap-3 sm:grid-cols-3">
                   {[
                     {
                       title: "Use it naturally",
-                      body: "Try Today, My Practice, the Library, and the account/billing flow the way you normally would.",
+                      body: "Try Today, Practice, Library, account, and billing like a real member.",
                     },
                     {
-                      title: "Tell us what happens",
-                      body: "Use the in-app beta feedback button for bugs, awkward UX, confusing copy, or missing pieces.",
+                      title: "Send quick feedback",
+                      body: "Use the feedback button for bugs, confusing moments, or ideas.",
                     },
                     {
-                      title: "Expect iteration",
-                      body: "Some edges will move quickly during beta. That’s part of what makes this valuable.",
+                      title: "Expect changes",
+                      body: "Small fixes and content updates will happen during the early release.",
                     },
                   ].map((item) => (
                     <div
                       key={item.title}
-                      className="rounded-[1.75rem] border p-5"
+                      className="rounded-[1.45rem] border p-4"
                       style={{
-                        background: "rgba(255,255,255,0.88)",
+                        background: "rgba(255,255,255,0.86)",
                         borderColor: "rgba(221,215,207,0.74)",
-                        boxShadow: "0 10px 28px rgba(18,20,23,0.05)",
                       }}
                     >
-                      <p className="font-heading font-semibold" style={{ fontSize: "1.05rem", color: "#121417" }}>
+                      <h3
+                        className="font-heading font-semibold"
+                        style={{
+                          fontSize: "1rem",
+                          color: "#121417",
+                          lineHeight: "1.12",
+                          textWrap: "balance",
+                        }}
+                      >
                         {item.title}
-                      </p>
-                      <p className="mt-3 text-sm" style={{ color: "#68707A", lineHeight: "1.72" }}>
+                      </h3>
+                      <p className="mt-2 text-sm" style={{ color: "#68707A", lineHeight: "1.62" }}>
                         {item.body}
                       </p>
                     </div>
@@ -179,90 +290,34 @@ export default async function BetaPage({
                 </div>
 
                 <div
-                  className="mt-8 rounded-[1.8rem] border p-5 sm:p-6"
+                  className="rounded-[2rem] border p-5 sm:p-7"
                   style={{
-                    background: "rgba(255,255,255,0.84)",
-                    borderColor: "rgba(46,196,182,0.28)",
-                    boxShadow: "0 12px 32px rgba(18,20,23,0.06)",
+                    background: "rgba(255,255,255,0.94)",
+                    borderColor: "rgba(221,215,207,0.78)",
+                    boxShadow: "0 24px 80px rgba(18,20,23,0.08)",
                   }}
                 >
-                  <p className="text-xs font-semibold uppercase" style={{ color: "#2F6FED", letterSpacing: "0.14em" }}>
-                    Invite context
-                  </p>
-                  <p className="mt-3 text-sm font-semibold" style={{ color: "#121417", lineHeight: "1.7" }}>
-                    {inviteHeadline}
-                  </p>
-                  <p className="mt-3 text-sm" style={{ color: "#4A5360", lineHeight: "1.75" }}>
-                    Cohort: <span className="font-semibold" style={{ color: "#121417" }}>{launchContext.launchCohort}</span>
-                    {" "}· access path:{" "}
-                    <span className="font-semibold" style={{ color: "#121417" }}>
-                      {inviteOffer === "free"
-                        ? "free alpha"
-                        : inviteOffer === "paid_test"
-                          ? "paid billing test"
-                          : inviteOffer === "discount"
-                            ? "discounted beta"
-                            : "standard invite"}
-                    </span>
-                    {launchContext.launchCampaignCode ? (
-                      <>
-                        {" "}· invite code:{" "}
-                        <span className="font-mono text-[0.82rem]" style={{ color: "#121417" }}>
-                          {launchContext.launchCampaignCode}
-                        </span>
-                      </>
-                    ) : null}
-                  </p>
-                  <p className="mt-2 text-sm" style={{ color: "#68707A", lineHeight: "1.72" }}>
-                    {inviteSupportCopy}
-                  </p>
-                  {promoCode ? (
-                    <div
-                      className="mt-4 rounded-[1.2rem] border px-4 py-3"
-                      style={{
-                        background: "rgba(47,111,237,0.05)",
-                        borderColor: "rgba(47,111,237,0.18)",
-                      }}
-                    >
-                      <p className="text-xs font-semibold uppercase" style={{ color: "#2F6FED", letterSpacing: "0.12em" }}>
-                        Stripe promo code
-                      </p>
-                      <p className="mt-2 font-mono text-sm" style={{ color: "#121417" }}>
-                        {promoCode}
-                      </p>
-                    </div>
-                  ) : null}
-                  <p className="mt-4 text-xs" style={{ color: "#8B929C", lineHeight: "1.65" }}>
-                    Suggested invite link: <span className="font-mono">{inviteLinkPath}</span>
-                  </p>
-                </div>
-              </div>
-
-              <div
-                className="rounded-[2rem] border p-6 sm:p-7"
-                style={{
-                  background: "rgba(255,255,255,0.92)",
-                  borderColor: "rgba(221,215,207,0.78)",
-                  boxShadow: "0 24px 80px rgba(18,20,23,0.08)",
-                }}
-              >
                 <p
                   className="text-xs font-semibold uppercase"
-                  style={{ color: "#4E8C78", letterSpacing: "0.14em" }}
+                  style={{ color: "#4E8C78", letterSpacing: "0.16em" }}
                 >
-                  Choose your access level
+                  Select a plan
                 </p>
                 <h2
-                  className="mt-4 font-heading font-bold text-3xl tracking-[-0.045em] text-foreground"
-                  style={{ lineHeight: "1.08", textWrap: "balance" }}
+                  className="mt-3 font-heading font-bold tracking-[-0.045em] text-foreground"
+                  style={{ fontSize: "clamp(1.8rem, 3.5vw, 2.6rem)", lineHeight: "1.06", textWrap: "balance" }}
                 >
-                  Start with the version of Positives you actually want to test.
+                  Choose the level you want to try.
                 </h2>
-                <p className="mt-4 text-sm" style={{ color: "#68707A", lineHeight: "1.8" }}>
-                  We recommend using the same checkout and account flow real members will use, so we get honest signal on activation, billing, and support.
+                <p
+                  className="mt-3 text-sm"
+                  style={{ color: "#68707A", lineHeight: "1.75" }}
+                >
+                  This uses the same checkout and account flow that public members will use.
+                  That helps us test signup, access, billing, and support before launch.
                 </p>
 
-                <div className="mt-7">
+                <div className="mt-6">
                   <PricingToggle
                     sourcePath="/beta"
                     launchCohort={launchContext.launchCohort}
@@ -276,6 +331,7 @@ export default async function BetaPage({
                     level3Annual={config.stripe.prices.level3Annual}
                   />
                 </div>
+              </div>
               </div>
             </div>
           </div>
