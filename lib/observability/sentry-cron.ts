@@ -7,7 +7,7 @@ const CRON_MONITORS = {
     config: {
       schedule: { type: "crontab", value: "*/15 * * * *" },
       checkinMargin: 5,
-      maxRuntime: 10,
+      maxRuntime: 120,
       timezone: "UTC",
       failureIssueThreshold: 1,
       recoveryThreshold: 1,
@@ -51,5 +51,9 @@ export async function withCronMonitor<T>(
   callback: () => Promise<T>
 ) {
   const monitor = getCronMonitor(key);
-  return Sentry.withMonitor(monitor.slug, callback, monitor.config);
+  try {
+    return await Sentry.withMonitor(monitor.slug, callback, monitor.config);
+  } finally {
+    await Sentry.flush(2_000);
+  }
 }

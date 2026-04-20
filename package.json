@@ -16,6 +16,7 @@
     "content:launch": "node scripts/apply-launch-content-plan.mjs",
     "audit:launch": "node scripts/audit-launch-readiness.mjs",
     "audit:firstpromoter-parents": "node scripts/audit-firstpromoter-parent-links.mjs",
+    "ops:beta-check": "node --env-file=.env.local scripts/beta-ops-check.mjs",
     "test:e2e": "npm run seed:users && playwright test"
   },
   "dependencies": {

@@ -8,6 +8,7 @@ import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import { checkAbuseGuard, getClientIp } from "@/lib/security/abuse-guard";
 import { getCurrentSentryRelease } from "@/lib/observability/sentry-env";
+import { createAsanaTaskForBetaFeedback } from "@/lib/integrations/asana";
 import {
   isBetaFeedbackCategory,
   isBetaFeedbackSeverity,
@@ -167,7 +168,9 @@ export async function submitBetaFeedback(
   const { pageUrl, pagePath } = normalizeUrl(pageUrlValue);
   const adminClient = asLooseSupabaseClient(getAdminClient());
 
-  const { error } = await adminClient.from("beta_feedback_submission").insert({
+  const { data: insertedFeedback, error } = await adminClient
+    .from("beta_feedback_submission")
+    .insert({
     member_id: member.id,
     member_email: member.email,
     member_name: member.name ?? null,
@@ -200,11 +203,63 @@ export async function submitBetaFeedback(
       member_has_password: member.password_set === true,
       marketing_opted_out: member.email_unsubscribed === true,
     },
-  });
+    })
+    .select<{ id: string }>("id")
+    .single();
 
   if (error) {
     console.error("[beta-feedback] insert failed:", error.message);
     return { error: "We couldn't send your feedback right now. Please try again in a moment." };
+  }
+
+  if (insertedFeedback?.id && ["high", "blocker"].includes(severityValue)) {
+    const asanaResult = await createAsanaTaskForBetaFeedback({
+      feedbackId: insertedFeedback.id,
+      memberEmail: member.email,
+      memberName: member.name ?? null,
+      summary,
+      details,
+      expectedBehavior,
+      category: categoryValue,
+      severity: severityValue,
+      pageUrl,
+      pagePath,
+      browserName,
+      osName,
+      deviceType,
+    });
+
+    if (asanaResult.created) {
+      const triageNote = [
+        "Auto-escalated to Asana because this was submitted as high/blocker feedback.",
+        asanaResult.taskUrl ? `Asana task: ${asanaResult.taskUrl}` : `Asana task ID: ${asanaResult.taskGid}`,
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      const { error: escalationUpdateError } = await adminClient
+        .from("beta_feedback_submission")
+        .update({
+          triage_notes: triageNote,
+          metadata: {
+            submitted_from: "member_widget",
+            member_has_password: member.password_set === true,
+            marketing_opted_out: member.email_unsubscribed === true,
+            asana_escalation: {
+              task_gid: asanaResult.taskGid,
+              task_url: asanaResult.taskUrl,
+              created_at: new Date().toISOString(),
+            },
+          },
+        })
+        .eq("id", insertedFeedback.id);
+
+      if (escalationUpdateError) {
+        console.error("[beta-feedback] Asana escalation metadata update failed:", escalationUpdateError.message);
+      }
+    } else {
+      console.warn("[beta-feedback] Asana escalation skipped or failed:", asanaResult.reason);
+    }
   }
 
   revalidatePath("/admin/beta-feedback");

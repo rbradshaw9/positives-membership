@@ -4,6 +4,15 @@
 
 Run this before inviting the first beta cohort and again before widening access.
 
+## Quick Ops Check
+
+- Open `/admin/ops` and review every health card.
+- Run `npm run ops:beta-check` locally for the same read-only review in Markdown.
+- Confirm any `CHECK` or `Needs config` items have either:
+  - an Asana task
+  - a clear owner
+  - a decision to defer
+
 ## Core Systems
 
 - `Sentry`
@@ -42,6 +51,8 @@ Run this before inviting the first beta cohort and again before widening access.
 - in-app beta feedback enabled intentionally
 - screenshot uploads working
 - admin queue visible to support/admin users
+- `/admin/ops` visible to admin users
+- high/blocker feedback auto-escalates into Asana `Beta Feedback Triage`
 - severity rubric available
 - known-issues process available
 - support owner assigned

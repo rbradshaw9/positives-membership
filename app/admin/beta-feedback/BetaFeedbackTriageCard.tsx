@@ -62,6 +62,7 @@ function formatDate(value: string | null) {
   return new Intl.DateTimeFormat("en-US", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: "America/New_York",
   }).format(new Date(value));
 }
 
@@ -72,6 +73,7 @@ function formatCompactDate(value: string | null) {
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
+    timeZone: "America/New_York",
   }).format(new Date(value));
 }
 
