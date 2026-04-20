@@ -15,6 +15,7 @@
     "courses:import-legacy": "node scripts/import-legacy-course-entitlements.mjs",
     "content:launch": "node scripts/apply-launch-content-plan.mjs",
     "audit:launch": "node scripts/audit-launch-readiness.mjs",
+    "audit:firstpromoter-parents": "node scripts/audit-firstpromoter-parent-links.mjs",
     "test:e2e": "npm run seed:users && playwright test"
   },
   "dependencies": {

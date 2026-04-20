@@ -335,7 +335,7 @@ async function handleGuestCheckout(
 
   const { data: existingMember } = await supabase
     .from("member")
-    .select("id, launch_cohort, launch_source, launch_campaign_code")
+    .select("id, launch_cohort, launch_source, launch_campaign_code, referred_by_fpr")
     .eq("id", userId)
     .maybeSingle();
 
@@ -346,6 +346,7 @@ async function handleGuestCheckout(
   const finalLaunchSource = existingMember?.launch_source ?? launchContext.launchSource;
   const finalLaunchCampaignCode =
     existingMember?.launch_campaign_code ?? launchContext.launchCampaignCode;
+  const shouldPersistFirstPromoterRef = Boolean(fprRefId && !existingMember?.referred_by_fpr);
 
   const { error: upsertError } = await supabase
     .from("member")
@@ -360,7 +361,7 @@ async function handleGuestCheckout(
         launch_source: finalLaunchSource,
         launch_campaign_code: finalLaunchCampaignCode,
         // Store FP referrer permanently — first referrer wins (never overwritten)
-        ...(fprRefId ? { referred_by_fpr: fprRefId } : {}),
+        ...(shouldPersistFirstPromoterRef ? { referred_by_fpr: fprRefId } : {}),
       },
       { onConflict: "id" }
     );
