@@ -197,7 +197,7 @@ function LoginForm() {
         )}
 
         {mode === "password" ? (
-          <form onSubmit={handlePasswordSignIn} className="flex flex-col gap-4">
+          <form method="post" onSubmit={handlePasswordSignIn} className="flex flex-col gap-4">
             <div>
               <label
                 htmlFor="login-email"
@@ -254,7 +254,7 @@ function LoginForm() {
             </button>
           </form>
         ) : (
-          <form onSubmit={handleMagicLink} className="flex flex-col gap-4">
+          <form method="post" onSubmit={handleMagicLink} className="flex flex-col gap-4">
             <div>
               <label
                 htmlFor="magic-email"
