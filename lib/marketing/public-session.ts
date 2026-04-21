@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { hasActiveMemberAccess } from "@/lib/subscription/access";
 
@@ -30,6 +31,13 @@ export const ANONYMOUS_PUBLIC_SESSION_STATE: PublicSessionState = {
 };
 
 export async function getPublicSessionState(): Promise<PublicSessionState> {
+  const cookieStore = await cookies();
+  const hasSupabaseCookie = cookieStore.getAll().some(({ name }) => name.startsWith("sb-"));
+
+  if (!hasSupabaseCookie) {
+    return ANONYMOUS_PUBLIC_SESSION_STATE;
+  }
+
   const supabase = await createClient();
   const {
     data: { user },

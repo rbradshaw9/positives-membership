@@ -8,6 +8,8 @@ Run this before inviting the first beta cohort and again before widening access.
 
 - Open `/admin/ops` and review every health card.
 - Run `npm run ops:beta-check` locally for the same read-only review in Markdown.
+- Run `npm run audit:email` locally to review ActiveCampaign, Postmark-facing,
+  sender-domain, and DNS readiness without sending email.
 - Confirm any `CHECK` or `Needs config` items have either:
   - an Asana task
   - a clear owner
@@ -33,6 +35,12 @@ Run this before inviting the first beta cohort and again before widening access.
   - migrations applied
   - storage buckets available
   - database logs accessible for incident follow-up
+- `Email`
+  - ActiveCampaign launch tags, fields, templates, and automations verified
+  - Postmark sender domain and message streams verified in the dashboard
+  - sender DNS authenticated for each sending service
+  - old personal sender addresses removed from launch messages
+  - unsubscribe and marketing-preference webhooks verified
 
 ## Product Surfaces
 

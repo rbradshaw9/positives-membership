@@ -27,6 +27,8 @@ export default async function MemberLayout({
   await trackFirstMemberLogin({
     memberId: member.id,
     email: member.email,
+    firstLoginAt: member.first_login_at,
+    lastSeenAt: member.last_seen_at,
   });
 
   const showPasswordNudge = member.password_set === false;

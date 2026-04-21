@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { unstable_cache } from "next/cache";
 import {
   comparePlanLevels,
   getSubscriptionAnalyticsFromPriceId,
@@ -15,6 +16,8 @@ export interface AccountBillingSummary {
   nextRenewalDate: string | null;
   billingPortalAvailable: boolean;
 }
+
+const BILLING_SUMMARY_CACHE_SECONDS = 60 * 5;
 
 function formatDate(timestamp: number) {
   return new Intl.DateTimeFormat("en-US", {
@@ -128,17 +131,9 @@ function getScheduledChangeFromSubscription(
   };
 }
 
-export async function getAccountBillingSummary(
-  stripeCustomerId: string | null | undefined
+async function fetchAccountBillingSummaryFromStripe(
+  stripeCustomerId: string
 ): Promise<AccountBillingSummary> {
-  if (!stripeCustomerId) {
-    return {
-      scheduledBillingChange: null,
-      nextRenewalDate: null,
-      billingPortalAvailable: false,
-    };
-  }
-
   try {
     const stripe = getStripe();
     const subscriptions = await stripe.subscriptions.list({
@@ -186,4 +181,25 @@ export async function getAccountBillingSummary(
       billingPortalAvailable: false,
     };
   }
+}
+
+export async function getAccountBillingSummary(
+  stripeCustomerId: string | null | undefined
+): Promise<AccountBillingSummary> {
+  if (!stripeCustomerId) {
+    return {
+      scheduledBillingChange: null,
+      nextRenewalDate: null,
+      billingPortalAvailable: false,
+    };
+  }
+
+  return unstable_cache(
+    () => fetchAccountBillingSummaryFromStripe(stripeCustomerId),
+    ["account-billing-summary", stripeCustomerId],
+    {
+      tags: [`account-billing-summary-${stripeCustomerId}`],
+      revalidate: BILLING_SUMMARY_CACHE_SECONDS,
+    }
+  )();
 }

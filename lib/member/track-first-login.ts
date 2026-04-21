@@ -2,6 +2,8 @@ import { syncFirstLoginComplete } from "@/lib/activecampaign/sync";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 
+const LAST_SEEN_THROTTLE_MS = 15 * 60 * 1000;
+
 /**
  * Records the first protected member-app entry and syncs the corresponding
  * lifecycle state into ActiveCampaign.
@@ -14,19 +16,31 @@ import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 export async function trackFirstMemberLogin(params: {
   memberId: string;
   email: string;
+  firstLoginAt?: string | null;
+  lastSeenAt?: string | null;
 }): Promise<void> {
   // activity_event intentionally blocks member inserts via RLS, so this
   // milestone write must use the server-side admin client.
   const supabase = asLooseSupabaseClient(getAdminClient());
-  const seenAt = new Date().toISOString();
+  const now = new Date();
+  const seenAt = now.toISOString();
+  const previousSeenAt = params.lastSeenAt ? new Date(params.lastSeenAt).getTime() : 0;
+  const shouldUpdateLastSeen =
+    !previousSeenAt || now.getTime() - previousSeenAt > LAST_SEEN_THROTTLE_MS;
 
-  const { error: seenUpdateError } = await supabase
-    .from("member")
-    .update({ last_seen_at: seenAt })
-    .eq("id", params.memberId);
+  if (shouldUpdateLastSeen) {
+    const { error: seenUpdateError } = await supabase
+      .from("member")
+      .update({ last_seen_at: seenAt })
+      .eq("id", params.memberId);
 
-  if (seenUpdateError) {
-    console.error("[first-login] last seen update failed:", seenUpdateError.message);
+    if (seenUpdateError) {
+      console.error("[first-login] last seen update failed:", seenUpdateError.message);
+    }
+  }
+
+  if (params.firstLoginAt) {
+    return;
   }
 
   const { data: existing, error: lookupError } = await supabase

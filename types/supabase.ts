@@ -840,7 +840,9 @@ export type Database = {
           fp_promoter_id: number | null
           fp_ref_id: string | null
           id: string
+          first_login_at: string | null
           last_practiced_at: string | null
+          last_seen_at: string | null
           launch_campaign_code: string | null
           launch_cohort: string
           launch_source: string | null
@@ -869,7 +871,9 @@ export type Database = {
           fp_promoter_id?: number | null
           fp_ref_id?: string | null
           id: string
+          first_login_at?: string | null
           last_practiced_at?: string | null
+          last_seen_at?: string | null
           launch_campaign_code?: string | null
           launch_cohort?: string
           launch_source?: string | null
@@ -898,7 +902,9 @@ export type Database = {
           fp_promoter_id?: number | null
           fp_ref_id?: string | null
           id?: string
+          first_login_at?: string | null
           last_practiced_at?: string | null
+          last_seen_at?: string | null
           launch_campaign_code?: string | null
           launch_cohort?: string
           launch_source?: string | null
