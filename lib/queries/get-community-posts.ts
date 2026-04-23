@@ -305,30 +305,20 @@ async function getRepliesForThreads(
   }
 
   const likeCounts = countRowsByKey(postLikeResult.data ?? [], "post_id");
-  const repliesById = new Map<string, CommunityReplyRow>();
   const repliesByThread = new Map<string, CommunityReplyRow[]>();
 
   for (const reply of replies ?? []) {
-    repliesById.set(reply.id, {
+    const normalized: CommunityReplyRow = {
       ...reply,
+      parent_id: null,
+      depth: 1,
       member: normalizeJoined(reply.member),
       like_count: likeCounts.get(reply.id) ?? 0,
       is_liked: likedMaps.likedPostIds.has(reply.id),
       is_saved: savedMaps.savedPostIds.has(reply.id),
       replies: [],
-    });
-  }
+    };
 
-  for (const reply of replies ?? []) {
-    const normalized = repliesById.get(reply.id);
-    if (!normalized) continue;
-    if (reply.parent_id) {
-      const parent = repliesById.get(reply.parent_id);
-      if (parent) {
-        parent.replies.push(normalized);
-        continue;
-      }
-    }
     repliesByThread.set(reply.thread_id, [...(repliesByThread.get(reply.thread_id) ?? []), normalized]);
   }
 
@@ -343,6 +333,7 @@ async function getThreadRows(
     limit = 24,
     ids,
     tagSlug,
+    lane,
     admin = false,
   }: {
     memberId?: string | null;
@@ -351,6 +342,7 @@ async function getThreadRows(
     limit?: number;
     ids?: string[];
     tagSlug?: string;
+    lane?: CommunityPostType;
     admin?: boolean;
   }
 ): Promise<CommunityThreadRow[]> {
@@ -415,6 +407,9 @@ async function getThreadRows(
   if (sourceType) {
     query = query.eq("source_type", sourceType);
   }
+  if (lane) {
+    query = query.eq("post_type", lane);
+  }
   if (contentId) {
     query = query.eq("content_id", contentId);
   }
@@ -451,7 +446,7 @@ async function getThreadRows(
 
   return threads.map((thread) => {
     const replies = repliesByThread.get(thread.id) ?? [];
-    const replyCount = replies.reduce((count, reply) => count + 1 + reply.replies.length, 0);
+    const replyCount = replies.length;
 
     return {
       ...thread,
@@ -522,6 +517,19 @@ export async function getStandaloneCommunityThreads(
   } = {}
 ) {
   return getThreadRows({ memberId, sourceType: "standalone", limit, tagSlug });
+}
+
+export async function getCommunityFeedThreads(
+  memberId?: string | null,
+  {
+    limit = 24,
+    lane,
+  }: {
+    limit?: number;
+    lane?: CommunityPostType;
+  } = {}
+) {
+  return getThreadRows({ memberId, limit, lane });
 }
 
 export async function getSavedCommunityItems(

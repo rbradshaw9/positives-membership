@@ -9,13 +9,13 @@ import {
   reportPost,
   reportThread,
   togglePostLike,
-  toggleSavePost,
   toggleSaveThread,
   toggleThreadLike,
 } from "@/app/(member)/community/actions";
 import {
   COMMUNITY_REPORT_REASON_OPTIONS,
-  getCommunityPostTypeLabel,
+  getCommunityDisplayName,
+  getCommunityLaneLabel,
   type CommunityReportReason,
 } from "@/lib/community/shared";
 import type { CommunityReplyRow, CommunityThreadRow } from "@/lib/queries/get-community-posts";
@@ -26,8 +26,8 @@ type CommunityThreadCardProps = {
 };
 
 function getInitials(name: string | null | undefined) {
-  if (!name) return "?";
-  return name
+  const displayName = getCommunityDisplayName(name);
+  return displayName
     .split(/\s+/)
     .slice(0, 2)
     .map((part) => part.charAt(0).toUpperCase())
@@ -173,7 +173,6 @@ function ReplyItem({
   currentMemberId: string;
 }) {
   const router = useRouter();
-  const [showReplyBox, setShowReplyBox] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -200,10 +199,12 @@ function ReplyItem({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-semibold text-foreground">{reply.member?.name ?? "Member"}</span>
+            <span className="text-sm font-semibold text-foreground">
+              {getCommunityDisplayName(reply.member?.name)}
+            </span>
             {reply.is_official_answer ? (
               <span className="rounded-full bg-accent/12 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-accent">
-                Official answer
+                Helpful
               </span>
             ) : null}
             <span className="ml-auto text-xs text-muted-foreground">{formatRelativeTime(reply.created_at)}</span>
@@ -216,14 +217,6 @@ function ReplyItem({
         <button type="button" onClick={() => run(() => togglePostLike(reply.id))}>
           {reply.is_liked ? "Liked" : "Like"} · {reply.like_count}
         </button>
-        <button type="button" onClick={() => run(() => toggleSavePost(reply.id))}>
-          {reply.is_saved ? "Saved" : "Save"}
-        </button>
-        {reply.depth === 1 ? (
-          <button type="button" onClick={() => setShowReplyBox((value) => !value)}>
-            Reply
-          </button>
-        ) : null}
         <button type="button" onClick={() => setShowReport((value) => !value)}>
           Report
         </button>
@@ -235,9 +228,6 @@ function ReplyItem({
       </div>
 
       {message ? <p className="mt-2 text-xs text-red-500">{message}</p> : null}
-      {showReplyBox ? (
-        <ReplyComposer threadId={reply.thread_id} parentId={reply.id} onDone={() => setShowReplyBox(false)} />
-      ) : null}
       {showReport ? (
         <ReportPanel
           isPending={isPending}
@@ -246,13 +236,6 @@ function ReplyItem({
         />
       ) : null}
 
-      {reply.replies.length > 0 ? (
-        <div className="mt-3 space-y-3 border-l border-border pl-4">
-          {reply.replies.map((child) => (
-            <ReplyItem key={child.id} reply={child} currentMemberId={currentMemberId} />
-          ))}
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -281,17 +264,16 @@ export function CommunityThreadCard({ thread, currentMemberId }: CommunityThread
   return (
     <article className="surface-card p-5 md:p-6">
       <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">
+          {getCommunityLaneLabel(thread.post_type)}
+        </span>
         {thread.source_type === "weekly_principle" ? (
           <span className="rounded-full bg-secondary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-secondary">
-            This week
+            Legacy post
           </span>
-        ) : (
-          <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">
-            Discussion
-          </span>
-        )}
+        ) : null}
         <span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-          {getCommunityPostTypeLabel(thread.post_type)}
+          Member post
         </span>
         {thread.is_pinned ? (
           <span className="rounded-full bg-accent/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-accent">
@@ -312,10 +294,10 @@ export function CommunityThreadCard({ thread, currentMemberId }: CommunityThread
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-semibold text-foreground">{thread.member?.name ?? "Member"}</span>
-            <span className="text-xs text-muted-foreground">
-              {thread.source_type === "weekly_principle" ? "Weekly conversation" : "Standalone thread"}
+            <span className="text-sm font-semibold text-foreground">
+              {getCommunityDisplayName(thread.member?.name)}
             </span>
+            <span className="text-xs text-muted-foreground">Community conversation</span>
           </div>
 
           {thread.title ? (
@@ -327,19 +309,6 @@ export function CommunityThreadCard({ thread, currentMemberId }: CommunityThread
           <p className="mt-3 whitespace-pre-wrap text-sm leading-[1.8] text-muted-foreground">
             {thread.body}
           </p>
-
-          {thread.tags.length > 0 ? (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {thread.tags.map((tag) => (
-                <span
-                  key={tag.id}
-                  className="rounded-full border border-border bg-white px-2.5 py-1 text-[11px] font-semibold text-muted-foreground"
-                >
-                  {tag.label}
-                </span>
-              ))}
-            </div>
-          ) : null}
         </div>
       </div>
 
@@ -381,7 +350,7 @@ export function CommunityThreadCard({ thread, currentMemberId }: CommunityThread
         </div>
       ) : (
         <div className="mt-5 rounded-[1.25rem] border border-dashed border-border bg-muted/20 px-4 py-5 text-sm leading-[1.75] text-muted-foreground">
-          No replies yet. A thoughtful follow-up is enough to get this conversation moving.
+          No replies yet. A thoughtful response is enough to help this conversation feel alive.
         </div>
       )}
     </article>

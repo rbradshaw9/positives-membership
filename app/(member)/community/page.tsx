@@ -1,13 +1,15 @@
 import { requireActiveMember } from "@/lib/auth/require-active-member";
 import { checkTierAccess } from "@/lib/auth/check-tier-access";
-import { getWeeklyContent } from "@/lib/queries/get-weekly-content";
 import {
-  getCommunityTags,
+  COMMUNITY_POST_TYPE_OPTIONS,
+  getCommunityLaneDescription,
+  getCommunityLaneLabel,
+  getCommunityPostTypeFromLaneSlug,
+} from "@/lib/community/shared";
+import {
+  getCommunityFeedThreads,
   getSavedCommunityItems,
-  getStandaloneCommunityThreads,
-  getWeeklyCommunityThreads,
 } from "@/lib/queries/get-community-posts";
-import { CommunityThreadHero } from "@/components/community/CommunityThreadHero";
 import { CommunityComposerCard } from "@/components/community/CommunityComposerCard";
 import { CommunityThreadCard } from "@/components/community/CommunityThreadCard";
 import { EmptyState } from "@/components/member/EmptyState";
@@ -18,7 +20,7 @@ import { Button } from "@/components/ui/Button";
 export const metadata = {
   title: "Community — Positives",
   description:
-    "A calm place for weekly reflection, thoughtful discussion, and curated member conversation.",
+    "A calm community space for wins, support, and thoughtful questions from fellow members.",
 };
 
 type PageProps = {
@@ -27,6 +29,10 @@ type PageProps = {
 
 function firstValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
+}
+
+function formatSavedDate(value: string) {
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(value));
 }
 
 export default async function CommunityPage({ searchParams }: PageProps) {
@@ -38,18 +44,18 @@ export default async function CommunityPage({ searchParams }: PageProps) {
       <div>
         <PageHeader
           title="Community"
-          subtitle="Weekly reflection, thoughtful discussion, and guided connection."
+          subtitle="A calm place for support, shared wins, and thoughtful member conversation."
           hero
         />
         <div className="member-container py-10">
           <SurfaceCard tone="tint" padding="lg" className="surface-card--editorial mx-auto max-w-2xl text-center">
             <p className="ui-section-eyebrow mb-3">Membership + Events Feature</p>
             <h2 className="heading-balance text-2xl font-semibold tracking-[-0.035em] text-foreground">
-              Join the member conversation.
+              Join the deeper member room.
             </h2>
             <p className="mt-3 text-sm leading-[1.8] text-muted-foreground">
-              Community is part of Membership + Events and above. That keeps the space smaller,
-              warmer, and easier for members and coaches to engage with meaningfully.
+              Community is part of Membership + Events and above. That keeps the room smaller,
+              warmer, and much easier for members and coaches to engage with care.
             </p>
             <Button href="/account" className="mt-6">
               View upgrade options
@@ -61,89 +67,187 @@ export default async function CommunityPage({ searchParams }: PageProps) {
   }
 
   const resolvedSearchParams = (await searchParams) ?? {};
-  const topicSlug = firstValue(resolvedSearchParams.topic)?.trim() ?? "";
+  const laneSlug = firstValue(resolvedSearchParams.lane)?.trim() ?? "";
+  const selectedLane = getCommunityPostTypeFromLaneSlug(laneSlug);
 
-  const [weeklyContent, tags, savedItems] = await Promise.all([
-    getWeeklyContent(),
-    getCommunityTags(),
+  const [feedThreads, savedItems] = await Promise.all([
+    getCommunityFeedThreads(member.id, { lane: selectedLane ?? undefined, limit: 24 }),
     getSavedCommunityItems(member.id, 16),
   ]);
 
-  const [weeklyThreads, recentThreads] = await Promise.all([
-    weeklyContent ? getWeeklyCommunityThreads(weeklyContent.id, member.id, 12) : Promise.resolve([]),
-    getStandaloneCommunityThreads(member.id, { tagSlug: topicSlug || undefined, limit: 18 }),
-  ]);
-
-  const selectedTopic = tags.find((tag) => tag.slug === topicSlug) ?? null;
-  const promptText =
-    weeklyContent?.excerpt
-    ?? weeklyContent?.description
-    ?? "How is this week’s principle actually landing in your life?";
+  const featuredThreads = feedThreads.filter((thread) => thread.is_pinned || thread.is_featured).slice(0, 3);
+  const recentThreads = feedThreads.filter((thread) => !(thread.is_pinned || thread.is_featured));
+  const helpfulReplies = feedThreads
+    .flatMap((thread) =>
+      thread.replies
+        .filter((reply) => reply.is_official_answer)
+        .map((reply) => ({
+          id: reply.id,
+          body: reply.body,
+          threadId: thread.id,
+          threadTitle: thread.title ?? getCommunityLaneLabel(thread.post_type),
+        }))
+    )
+    .slice(0, 2);
+  const savedThreads = savedItems.filter((item) => item.thread);
 
   return (
     <div>
       <PageHeader
         title="Community"
-        subtitle="A guided place for weekly reflection, thoughtful discussion, and support that stays human."
+        subtitle="A calm room for support, shared wins, and questions that are better held together."
         hero
       />
 
       <div className="member-container flex flex-col gap-6 py-8 md:gap-8 md:py-10">
         <nav aria-label="Community sections" className="member-segmented-control">
-          <a className="member-segmented-control__item" data-active="true" href="#community-this-week">
-            Featured / This Week
+          <a className="member-segmented-control__item" data-active="true" href="#community-featured">
+            Featured
           </a>
-          <a className="member-segmented-control__item" data-active="false" href="#community-discussions">
-            Recent Discussions
-          </a>
-          <a className="member-segmented-control__item" data-active="false" href="#community-topics">
-            Topics
+          <a className="member-segmented-control__item" data-active="false" href="#community-feed">
+            Feed
           </a>
           <a className="member-segmented-control__item" data-active="false" href="#community-saved">
             Saved
           </a>
         </nav>
 
-        <section id="community-this-week" className="space-y-5">
-          {weeklyContent ? (
-            <>
-              <CommunityThreadHero
-                title={weeklyContent.title}
-                prompt={promptText}
-                postCount={weeklyThreads.length}
-                ctaLabel="Add to this week"
-                ctaHref="#community-weekly-composer"
-              />
-              <CommunityComposerCard mode="weekly" contentId={weeklyContent.id} />
+        <section id="community-featured" className="space-y-5">
+          <SurfaceCard tone="dark" padding="lg" className="surface-card--editorial">
+            <p className="ui-section-eyebrow mb-3 text-white/65">Community</p>
+            <h2 className="heading-balance font-heading text-[clamp(1.95rem,1.5rem+1vw,2.95rem)] font-bold tracking-[-0.045em] text-white">
+              A gentle shared room for wins, support, and honest questions.
+            </h2>
+            <p className="mt-3 max-w-3xl text-sm leading-[1.8] text-white/72">
+              This is not a noisy forum. It works best when posts feel simple, real, and human.
+              Coaches help shape the tone, but the real value is members showing up for one another.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-3 text-xs text-white/60">
+              <span className="rounded-full border border-white/15 bg-white/6 px-3 py-1.5">
+                Use your first name + last initial
+              </span>
+              <span className="rounded-full border border-white/15 bg-white/6 px-3 py-1.5">
+                Keep responses warm and grounded
+              </span>
+              <span className="rounded-full border border-white/15 bg-white/6 px-3 py-1.5">
+                Share what feels true, not polished
+              </span>
+            </div>
+          </SurfaceCard>
 
-              {weeklyThreads.length > 0 ? (
-                <div className="space-y-4">
-                  {weeklyThreads.map((thread) => (
+          <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+            <SurfaceCard padding="lg" className="surface-card--editorial">
+              <p className="ui-section-eyebrow mb-2">Coach highlighted</p>
+              <h3 className="heading-balance text-[clamp(1.5rem,1.3rem+0.6vw,2rem)] font-semibold tracking-[-0.04em] text-foreground">
+                Helpful moments worth reading first.
+              </h3>
+              {featuredThreads.length > 0 ? (
+                <div className="mt-4 space-y-4">
+                  {featuredThreads.map((thread) => (
                     <CommunityThreadCard key={thread.id} thread={thread} currentMemberId={member.id} />
                   ))}
                 </div>
               ) : (
-                <EmptyState
-                  icon={
-                    <svg
-                      width="28"
-                      height="28"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                    </svg>
-                  }
-                  title="This week is still quiet."
-                  subtitle="Be the first person to put language around how the principle is showing up for you."
-                />
+                <p className="mt-4 text-sm leading-[1.8] text-muted-foreground">
+                  Featured posts will show up here when coaches or moderators want to highlight
+                  something especially grounding, useful, or worth revisiting.
+                </p>
               )}
-            </>
+            </SurfaceCard>
+
+            <SurfaceCard padding="lg" className="surface-card--editorial">
+              <p className="ui-section-eyebrow mb-2">Helpful replies</p>
+              <h3 className="heading-balance text-[clamp(1.35rem,1.2rem+0.5vw,1.8rem)] font-semibold tracking-[-0.035em] text-foreground">
+                Small responses that carry a lot.
+              </h3>
+              {helpfulReplies.length > 0 ? (
+                <div className="mt-4 space-y-3">
+                  {helpfulReplies.map((reply) => (
+                    <div key={reply.id} className="rounded-[1.25rem] border border-border/80 bg-white p-4">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
+                        Helpful
+                      </p>
+                      <p className="mt-2 line-clamp-5 whitespace-pre-wrap text-sm leading-[1.75] text-muted-foreground">
+                        {reply.body}
+                      </p>
+                      <a
+                        href={`#thread-${reply.threadId}`}
+                        className="mt-3 inline-flex text-xs font-semibold text-primary underline underline-offset-4"
+                      >
+                        Jump to {reply.threadTitle}
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-4 text-sm leading-[1.8] text-muted-foreground">
+                  As moderators mark especially useful replies, they will show up here for easy
+                  revisiting.
+                </p>
+              )}
+            </SurfaceCard>
+          </div>
+        </section>
+
+        <section id="community-feed" className="space-y-5">
+          <SurfaceCard padding="lg" className="surface-card--editorial">
+            <p className="ui-section-eyebrow mb-2">Main feed</p>
+            <h2 className="heading-balance text-[clamp(1.8rem,1.5rem+0.8vw,2.4rem)] font-semibold tracking-[-0.04em] text-foreground">
+              Share what is real, then let the right people meet you there.
+            </h2>
+            <p className="mt-3 max-w-3xl text-sm leading-[1.8] text-muted-foreground">
+              Use Wins for celebrations, Support for the parts that feel hard, and Questions when
+              you want perspective from the room.
+            </p>
+            <div className="mt-5">
+              <CommunityComposerCard />
+            </div>
+          </SurfaceCard>
+
+          <div className="flex flex-wrap gap-2">
+            <a
+              href="/community#community-feed"
+              className={`rounded-full border px-3.5 py-2 text-xs font-semibold transition-all ${
+                !selectedLane
+                  ? "border-primary/30 bg-primary/10 text-primary"
+                  : "border-border bg-white text-muted-foreground hover:border-primary/20 hover:text-foreground"
+              }`}
+            >
+              All posts
+            </a>
+            {COMMUNITY_POST_TYPE_OPTIONS.map((option) => {
+              const active = selectedLane === option.value;
+              return (
+                <a
+                  key={option.value}
+                  href={`/community?lane=${option.value === "share" ? "wins" : option.value === "reflection" ? "support" : "questions"}#community-feed`}
+                  className={`rounded-full border px-3.5 py-2 text-xs font-semibold transition-all ${
+                    active
+                      ? "border-primary/30 bg-primary/10 text-primary"
+                      : "border-border bg-white text-muted-foreground hover:border-primary/20 hover:text-foreground"
+                  }`}
+                >
+                  {option.label}
+                </a>
+              );
+            })}
+          </div>
+
+          {selectedLane ? (
+            <div className="rounded-[1.25rem] border border-primary/15 bg-primary/5 px-4 py-3 text-sm text-primary">
+              Showing <span className="font-semibold">{getCommunityLaneLabel(selectedLane)}</span> posts only.
+              <span className="ml-2 text-primary/80">{getCommunityLaneDescription(selectedLane)}</span>
+            </div>
+          ) : null}
+
+          {feedThreads.length > 0 ? (
+            <div className="space-y-4">
+              {(selectedLane ? feedThreads : [...featuredThreads, ...recentThreads]).map((thread) => (
+                <div key={thread.id} id={`thread-${thread.id}`}>
+                  <CommunityThreadCard thread={thread} currentMemberId={member.id} />
+                </div>
+              ))}
+            </div>
           ) : (
             <EmptyState
               icon={
@@ -161,142 +265,44 @@ export default async function CommunityPage({ searchParams }: PageProps) {
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                 </svg>
               }
-              title="No weekly thread is live yet."
-              subtitle="A weekly anchor appears here as soon as the next principle is published."
-              action={<Button href="/today">Go to Today</Button>}
+              title={selectedLane ? `No ${getCommunityLaneLabel(selectedLane).toLowerCase()} posts yet.` : "The room is still quiet."}
+              subtitle={selectedLane
+                ? "You can be the first person to open this lane in a real and grounded way."
+                : "A simple, honest post is enough to make the community feel alive."}
             />
           )}
-        </section>
-
-        <section id="community-discussions" className="space-y-5">
-          <SurfaceCard padding="lg" className="surface-card--editorial">
-            <p className="ui-section-eyebrow mb-2">Recent Discussions</p>
-            <h2 className="heading-balance text-[clamp(1.8rem,1.5rem+0.8vw,2.4rem)] font-semibold tracking-[-0.04em] text-foreground">
-              Broader conversations, still kept calm.
-            </h2>
-            <p className="mt-3 max-w-3xl text-sm leading-[1.8] text-muted-foreground">
-              Start a standalone discussion when it needs more context than the weekly thread gives you.
-              Keep it grounded, choose the right topics, and let the right people find it later.
-            </p>
-            <div className="mt-5">
-              <CommunityComposerCard mode="standalone" tags={tags} />
-            </div>
-          </SurfaceCard>
-
-          {selectedTopic ? (
-            <div className="rounded-[1.25rem] border border-primary/15 bg-primary/5 px-4 py-3 text-sm text-primary">
-              Filtering discussions by <span className="font-semibold">{selectedTopic.label}</span>.{" "}
-              <a href="/community#community-discussions" className="underline underline-offset-4">
-                Clear filter
-              </a>
-            </div>
-          ) : null}
-
-          {recentThreads.length > 0 ? (
-            <div className="space-y-4">
-              {recentThreads.map((thread) => (
-                <CommunityThreadCard key={thread.id} thread={thread} currentMemberId={member.id} />
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              icon={
-                <svg
-                  width="28"
-                  height="28"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M12 20h9" />
-                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                </svg>
-              }
-              title={selectedTopic ? "Nothing has been posted in that topic yet." : "No standalone discussions yet."}
-              subtitle={selectedTopic
-                ? "You can be the first person to open a calm conversation in this topic."
-                : "Standalone discussions are for the conversations that deserve more room than the weekly thread."}
-            />
-          )}
-        </section>
-
-        <section id="community-topics" className="space-y-4">
-          <div>
-            <p className="ui-section-eyebrow mb-2">Topics</p>
-            <h2 className="heading-balance text-[clamp(1.7rem,1.45rem+0.7vw,2.2rem)] font-semibold tracking-[-0.04em] text-foreground">
-              Curated lanes keep this easy to browse later.
-            </h2>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {tags.map((tag) => {
-              const active = selectedTopic?.id === tag.id;
-              return (
-                <a
-                  key={tag.id}
-                  href={`/community?topic=${tag.slug}#community-discussions`}
-                  className={`surface-card surface-card--editorial block p-5 transition-transform hover:translate-y-[-2px] ${
-                    active ? "ring-2 ring-primary/20" : ""
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <h3 className="heading-balance text-xl font-semibold tracking-[-0.03em] text-foreground">
-                      {tag.label}
-                    </h3>
-                    <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
-                      {tag.thread_count}
-                    </span>
-                  </div>
-                  {tag.description ? (
-                    <p className="mt-3 text-sm leading-[1.7] text-muted-foreground">{tag.description}</p>
-                  ) : null}
-                </a>
-              );
-            })}
-          </div>
         </section>
 
         <section id="community-saved" className="space-y-4">
           <div>
             <p className="ui-section-eyebrow mb-2">Saved</p>
             <h2 className="heading-balance text-[clamp(1.7rem,1.45rem+0.7vw,2.2rem)] font-semibold tracking-[-0.04em] text-foreground">
-              Keep the threads and replies worth coming back to.
+              Keep the posts worth returning to.
             </h2>
           </div>
 
-          {savedItems.length > 0 ? (
+          {savedThreads.length > 0 ? (
             <div className="grid gap-4 lg:grid-cols-2">
-              {savedItems.map((item) => (
+              {savedThreads.map((item) => (
                 <SurfaceCard key={item.id} padding="lg" className="surface-card--editorial">
-                  <p className="ui-section-eyebrow mb-2">
-                    {item.type === "thread" ? "Saved Discussion" : "Saved Reply"}
+                  <p className="ui-section-eyebrow mb-2">Saved post</p>
+                  <h3 className="heading-balance text-xl font-semibold tracking-[-0.03em] text-foreground">
+                    {item.thread?.title ?? getCommunityLaneLabel(item.thread?.post_type ?? "reflection")}
+                  </h3>
+                  <p className="mt-3 line-clamp-4 whitespace-pre-wrap text-sm leading-[1.75] text-muted-foreground">
+                    {item.thread?.body}
                   </p>
-                  {item.thread ? (
-                    <>
-                      <h3 className="heading-balance text-xl font-semibold tracking-[-0.03em] text-foreground">
-                        {item.thread.title ?? "Weekly reflection"}
-                      </h3>
-                      <p className="mt-3 line-clamp-4 whitespace-pre-wrap text-sm leading-[1.75] text-muted-foreground">
-                        {item.thread.body}
-                      </p>
-                    </>
-                  ) : item.post ? (
-                    <>
-                      <h3 className="heading-balance text-xl font-semibold tracking-[-0.03em] text-foreground">
-                        {item.post.thread?.title ?? "Saved reply"}
-                      </h3>
-                      <p className="mt-3 line-clamp-4 whitespace-pre-wrap text-sm leading-[1.75] text-muted-foreground">
-                        {item.post.body}
-                      </p>
-                    </>
-                  ) : null}
-                  <p className="mt-4 text-xs text-muted-foreground">
-                    Saved {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(item.created_at))}
-                  </p>
+                  <div className="mt-4 flex items-center justify-between gap-3">
+                    <p className="text-xs text-muted-foreground">Saved {formatSavedDate(item.created_at)}</p>
+                    {item.thread ? (
+                      <a
+                        href={`#thread-${item.thread.id}`}
+                        className="text-xs font-semibold text-primary underline underline-offset-4"
+                      >
+                        Jump to post
+                      </a>
+                    ) : null}
+                  </div>
                 </SurfaceCard>
               ))}
             </div>
@@ -318,7 +324,7 @@ export default async function CommunityPage({ searchParams }: PageProps) {
                 </svg>
               }
               title="Nothing saved yet."
-              subtitle="Use Save on any discussion or reply you want to return to later."
+              subtitle="Use Save on any post you want to come back to when you need it."
             />
           )}
         </section>

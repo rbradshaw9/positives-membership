@@ -61,10 +61,6 @@ async function touchThreadActivity(threadId: string) {
   }
 }
 
-function normalizeTagIds(tagIds: string[]) {
-  return [...new Set(tagIds.map((value) => value.trim()).filter(Boolean))];
-}
-
 export async function createWeeklyThread(
   contentId: string,
   body: string,
@@ -117,44 +113,26 @@ export async function createWeeklyThread(
   return { success: "Posted to this week’s conversation." };
 }
 
-export async function createStandaloneThread(input: {
-  title: string;
+export async function createCommunityPost(input: {
+  title?: string;
   body: string;
   postType: string;
-  tagIds: string[];
 }): Promise<ActionResult> {
   const { user, supabase } = await requireUser();
-  const title = input.title.trim();
+  const title = input.title?.trim() ?? "";
   const body = input.body.trim();
-  const tagIds = normalizeTagIds(input.tagIds);
 
   if (!isCommunityPostType(input.postType)) return { error: "Choose a valid post type." };
-  if (title.length < 4) return { error: "Add a short, clear title for your discussion." };
-  if (title.length > 120) return { error: "Keep the title under 120 characters." };
-  if (body.length < 8) return { error: "Share a little more context before posting." };
+  if (title.length > 120) return { error: "Keep the headline under 120 characters." };
+  if (body.length < 8) return { error: "Share a little more so the room knows how to meet you." };
   if (body.length > 4000) return { error: "Please keep your post under 4,000 characters." };
-  if (tagIds.length === 0) return { error: "Choose at least one topic." };
-
-  const { data: activeTags, error: tagError } = await supabase
-    .from("community_tag")
-    .select<{ id: string }[]>("id")
-    .in("id", tagIds)
-    .eq("is_active", true);
-
-  if (tagError) {
-    console.error("[community] standalone tag validation failed:", tagError.message);
-    return { error: "We could not verify those topics right now." };
-  }
-
-  const validTagIds = normalizeTagIds((activeTags ?? []).map((tag) => tag.id));
-  if (validTagIds.length === 0) return { error: "Choose at least one active topic." };
 
   const { data: created, error } = await supabase
     .from("community_thread")
     .insert({
       member_id: user.id,
       source_type: "standalone",
-      title,
+      title: title || null,
       body,
       post_type: input.postType,
     })
@@ -162,39 +140,28 @@ export async function createStandaloneThread(input: {
     .single();
 
   if (error || !created) {
-    console.error("[community] createStandaloneThread failed:", error?.message);
-    return { error: "Something interrupted that thread. Please try again." };
-  }
-
-  const tagLinks = validTagIds.map((tagId) => ({
-    thread_id: created.id,
-    tag_id: tagId,
-  }));
-  const { error: linkError } = await supabase.from("community_thread_tag").insert(tagLinks);
-
-  if (linkError) {
-    console.error("[community] standalone tag link failed:", linkError.message);
-    return { error: "The discussion was created, but its topics could not be saved." };
+    console.error("[community] createCommunityPost failed:", error?.message);
+    return { error: "Something interrupted that post. Please try again." };
   }
 
   void writeCommunityActivity({
     memberId: user.id,
     eventType: "community_post_created",
-    metadata: { thread_id: created.id, source_type: "standalone", post_type: input.postType, tag_ids: validTagIds },
+    metadata: { thread_id: created.id, source_type: "standalone", post_type: input.postType },
   });
 
   void awardMemberPoints({
     memberId: user.id,
     delta: POINT_VALUES.communityPost,
     reason: "community_post",
-    description: "Community thread created",
+    description: "Community post created",
     idempotencyKey: `community_thread:${created.id}`,
-    metadata: { thread_id: created.id, source_type: "standalone", post_type: input.postType, tag_ids: validTagIds },
+    metadata: { thread_id: created.id, source_type: "standalone", post_type: input.postType },
   });
 
   revalidatePath("/community");
   revalidatePath("/admin/community");
-  return { success: "Discussion started." };
+  return { success: "Your post is now live." };
 }
 
 export async function createReply(input: {
@@ -220,36 +187,13 @@ export async function createReply(input: {
     return { error: "That discussion could not be found." };
   }
 
-  let depth = 1;
-  let parentId: string | null = null;
-
-  if (input.parentId) {
-    const { data: parent, error: parentError } = await supabase
-      .from("community_post")
-      .select<{ id: string; thread_id: string; depth: number }>("id, thread_id, depth")
-      .eq("id", input.parentId)
-      .maybeSingle();
-
-    if (parentError || !parent || parent.thread_id !== input.threadId) {
-      console.error("[community] reply parent lookup failed:", parentError?.message);
-      return { error: "That reply thread could not be found." };
-    }
-
-    if (parent.depth >= 2) {
-      return { error: "Replies stop one level deeper so the conversation stays readable." };
-    }
-
-    depth = parent.depth + 1;
-    parentId = parent.id;
-  }
-
   const { data: created, error } = await supabase
     .from("community_post")
     .insert({
       member_id: user.id,
       thread_id: input.threadId,
-      parent_id: parentId,
-      depth,
+      parent_id: null,
+      depth: 1,
       body,
       content_id: thread.content_id,
       post_type: "reflection",
@@ -268,7 +212,7 @@ export async function createReply(input: {
     memberId: user.id,
     eventType: "community_reply_created",
     contentId: thread.content_id,
-    metadata: { post_id: created.id, thread_id: input.threadId, parent_id: parentId, depth },
+    metadata: { post_id: created.id, thread_id: input.threadId, parent_id: null, depth: 1 },
   });
 
   void awardMemberPoints({
@@ -278,7 +222,7 @@ export async function createReply(input: {
     description: "Community reply created",
     contentId: thread.content_id,
     idempotencyKey: `community_reply:${created.id}`,
-    metadata: { post_id: created.id, thread_id: input.threadId, parent_id: parentId, depth },
+    metadata: { post_id: created.id, thread_id: input.threadId, parent_id: null, depth: 1 },
   });
 
   revalidatePath("/community");
