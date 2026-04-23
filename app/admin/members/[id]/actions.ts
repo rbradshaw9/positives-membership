@@ -1221,14 +1221,19 @@ export async function startMemberImpersonationInline(
     },
   });
 
-  const actionLink = linkData?.properties?.action_link;
-  if (linkError || !actionLink) {
+  const tokenHash = linkData?.properties?.hashed_token;
+  if (linkError || !tokenHash) {
     console.error(
       "[admin/member-actions] impersonation link generation failed:",
-      linkError?.message ?? "missing action link"
+      linkError?.message ?? "missing token hash"
     );
     return { error: "Could not create a secure sign-in link for this member." };
   }
+
+  const actionLink = new URL("/auth/confirm", config.app.url);
+  actionLink.searchParams.set("token_hash", tokenHash);
+  actionLink.searchParams.set("type", "email");
+  actionLink.searchParams.set("next", "/today");
 
   await logAudit({
     actorId: actor.id,
@@ -1244,7 +1249,7 @@ export async function startMemberImpersonationInline(
     },
   });
 
-  redirect(actionLink);
+  redirect(actionLink.toString());
 }
 
 export async function removeAdminPermissionOverride(formData: FormData): Promise<ActionResult> {
