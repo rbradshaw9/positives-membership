@@ -658,6 +658,7 @@ export default async function CourseEditorPage({
                     <div style={{ padding: "0.5rem 1.25rem 0.5rem 2.5rem", borderTop: "1px solid rgba(255,255,255,0.04)", background: "rgba(0,0,0,0.05)" }}>
                       <form action={createSession} style={{ display: "flex", gap: "0.5rem" }}>
                         <input type="hidden" name="lesson_id" value={lesson.id} />
+                        <input type="hidden" name="module_id" value={mod.id} />
                         <input type="hidden" name="course_id" value={c.id} />
                         <input name="title" type="text" required placeholder="Add topic…"
                           className="admin-input" style={{ flex: 1, fontSize: "0.75rem" }} />

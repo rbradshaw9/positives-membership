@@ -546,9 +546,12 @@ export async function deleteLesson(formData: FormData) {
 export async function createSession(formData: FormData) {
   await requireAdmin();
   const lessonId = formData.get("lesson_id")?.toString();
+  const moduleId = formData.get("module_id")?.toString();
   const courseId = formData.get("course_id")?.toString();
   const title = formData.get("title")?.toString().trim();
-  if (!lessonId || !title) redirect(`/admin/courses/${courseId ?? ""}?error=missing_fields`);
+  if (!lessonId || !moduleId || !title) {
+    redirect(`/admin/courses/${courseId ?? ""}?error=missing_fields`);
+  }
 
   const supabase = adminClient();
   const { count } = await supabase
@@ -558,6 +561,7 @@ export async function createSession(formData: FormData) {
 
   await supabase.from("course_session").insert({
     lesson_id: lessonId,
+    module_id: moduleId,
     title,
     description: formData.get("description")?.toString().trim() || null,
     body: formData.get("body")?.toString().trim() || null,
@@ -1255,6 +1259,7 @@ export async function importFromLearnDash(formData: FormData): Promise<LearnDash
 
                 const { error: sessErr } = await supabase.from("course_session").insert({
                   lesson_id: newLesson.id,
+                  module_id: moduleId,
                   title: topicTitle,
                   description: topicDesc,
                   body: topicBody,
