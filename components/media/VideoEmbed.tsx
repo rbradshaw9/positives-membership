@@ -77,10 +77,9 @@ export function VideoEmbed({
   const registryId = useId();
   const [expanded, setExpanded] = useState(false);
 
-  // Resume position — null = still loading from DB
-  const [resumeAt, setResumeAt] = useState<number | null>(() => {
-    return contentId || courseLessonId ? null : 0;
-  });
+  const [resumeAt, setResumeAt] = useState(0);
+  const [resumeLoaded, setResumeLoaded] = useState(!contentId && !courseLessonId);
+  const [preparingPlayback, setPreparingPlayback] = useState(false);
   // Chosen start: undefined = haven't chosen yet (overlay showing)
   const [chosenStart, setChosenStart] = useState<number | undefined>(undefined);
 
@@ -109,13 +108,34 @@ export function VideoEmbed({
   // Tracking key: need at least one of contentId or courseLessonId
   const hasTracking = !!contentId || !!courseLessonId;
 
-  // ── Fetch resume position on mount ─────────────────────────────────────
-  useEffect(() => {
-    if (!hasTracking) return;
-    getVideoResumePosition({ contentId, courseLessonId }).then((seconds) => {
+  async function ensureResumePositionLoaded() {
+    if (!hasTracking) return 0;
+    if (resumeLoaded) return resumeAt;
+
+    setPreparingPlayback(true);
+    try {
+      const seconds = await getVideoResumePosition({ contentId, courseLessonId });
       setResumeAt(seconds);
-    });
-  }, [hasTracking, contentId, courseLessonId]);
+      setResumeLoaded(true);
+      return seconds;
+    } finally {
+      setPreparingPlayback(false);
+    }
+  }
+
+  async function handleVimeoStartRequest() {
+    pauseAllVideosRef.current(registryId);
+    pauseRef.current();
+
+    const nextResumeAt = await ensureResumePositionLoaded();
+    if (nextResumeAt > RESUME_THRESHOLD) {
+      setChosenStart(undefined);
+      return;
+    }
+
+    setChosenStart(nextResumeAt);
+    setExpanded(true);
+  }
 
   // ── Cleanup registry on unmount ────────────────────────────────────────
   useEffect(() => {
@@ -275,9 +295,9 @@ export function VideoEmbed({
 
   // ── Vimeo ────────────────────────────────────────────────────────────────
   if (isVimeo) {
-    const isLoading = resumeAt === null;
+    const isLoading = preparingPlayback;
     const showResumeOverlay =
-      !isLoading &&
+      resumeLoaded &&
       resumeAt > RESUME_THRESHOLD &&
       chosenStart === undefined;
 
@@ -308,14 +328,10 @@ export function VideoEmbed({
         )}
 
         {/* Thumbnail / play button — shown before user clicks play */}
-        {!isLoading && !expanded && (
+        {!expanded && (
           <button
             type="button"
-            onClick={() => {
-              pauseAllVideosRef.current(registryId);
-              pauseRef.current();
-              setExpanded(true);
-            }}
+            onClick={() => void handleVimeoStartRequest()}
             className="group absolute inset-0 w-full h-full flex flex-col items-center justify-center focus:outline-none"
             aria-label={`Play: ${title}`}
           >
@@ -351,7 +367,7 @@ export function VideoEmbed({
         )}
 
         {/* Vimeo iframe — only rendered once resume position is known + user clicked play */}
-        {!isLoading && expanded && (
+        {expanded && (
           <iframe
             ref={iframeRef}
             src={vimeoSrc}
@@ -363,7 +379,7 @@ export function VideoEmbed({
         )}
 
         {/* ── Resume / Start Over overlay ─────────────────────────────────── */}
-        {!isLoading && !expanded && showResumeOverlay && (
+        {!expanded && showResumeOverlay && (
           <div
             className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4"
             style={{
