@@ -76,14 +76,27 @@ async function getSupabase() {
 async function getSentry() {
   if (!process.env.SENTRY_AUTH_TOKEN) throw new Error("SENTRY_AUTH_TOKEN is not configured.");
   const headers = { Authorization: `Bearer ${process.env.SENTRY_AUTH_TOKEN}` };
-  const [issues, monitors] = await Promise.all([
+  const performanceParams = new URLSearchParams({
+    query: "event.type:transaction",
+    sort: "-p75_transaction_duration",
+    statsPeriod: "14d",
+    per_page: "5",
+  });
+  performanceParams.append("field", "transaction");
+  performanceParams.append("field", "count()");
+  performanceParams.append("field", "p75(transaction.duration)");
+
+  const [issues, monitors, transactions] = await Promise.all([
     jsonFetch(
       `https://sentry.io/api/0/projects/${SENTRY_ORG}/${SENTRY_PROJECT}/issues/?query=is%3Aunresolved&statsPeriod=24h&limit=5`,
       { headers }
     ),
     jsonFetch(`https://sentry.io/api/0/organizations/${SENTRY_ORG}/monitors/`, { headers }),
+    jsonFetch(`https://sentry.io/api/0/organizations/${SENTRY_ORG}/events/?${performanceParams.toString()}`, {
+      headers,
+    }),
   ]);
-  return { issues, monitors };
+  return { issues, monitors, transactions: transactions.data ?? [] };
 }
 
 async function getStripe() {
@@ -145,6 +158,12 @@ if (sentry.ok) {
   line(`- Active monitors: ${sentry.value.monitors.filter((monitor) => monitor.status === "active").length}`);
   for (const issue of sentry.value.issues.slice(0, 5)) {
     line(`- ${issue.shortId ?? "Issue"}: ${issue.title}`);
+  }
+  line("- Slowest Sentry transactions by p75 over 14d:");
+  for (const transaction of sentry.value.transactions.slice(0, 5)) {
+    const duration = Number(transaction["p75(transaction.duration)"] ?? 0);
+    const formattedDuration = duration >= 1000 ? `${(duration / 1000).toFixed(1)}s` : `${Math.round(duration)}ms`;
+    line(`  - ${transaction.transaction}: ${formattedDuration} p75 (${transaction["count()"] ?? 0} events)`);
   }
 } else {
   line(`- CHECK - ${sentry.error}`);

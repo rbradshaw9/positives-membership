@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PublicSiteFooter } from "@/components/marketing/PublicSiteFooter";
 import { PublicSiteHeader } from "@/components/marketing/PublicSiteHeader";
-import { getPublicSessionState } from "@/lib/marketing/public-session";
+import { ANONYMOUS_PUBLIC_SESSION_STATE } from "@/lib/marketing/public-session";
 import { PublicTrackedLink } from "@/components/marketing/PublicTrackedLink";
 
 export const metadata: Metadata = {
@@ -54,8 +54,8 @@ function ValuePill({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default async function WatchPage() {
-  const session = await getPublicSessionState();
+export default function WatchPage() {
+  const session = ANONYMOUS_PUBLIC_SESSION_STATE;
   const signInHref = session.signInHref;
   const paidHref = session.paidHref;
   const embed = getVideoEmbed(process.env.NEXT_PUBLIC_VSL_EMBED_URL);

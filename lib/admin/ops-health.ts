@@ -20,6 +20,12 @@ type SentryMonitor = {
   status: string;
 };
 
+type SentryTransaction = {
+  transaction: string;
+  count: number;
+  p75Ms: number;
+};
+
 type StripeWebhookEndpoint = {
   id: string;
   url: string;
@@ -40,6 +46,11 @@ async function safeJson<T>(url: string, init: RequestInit) {
 function stripeModeLabel(secretKey?: string) {
   if (!secretKey) return "not configured";
   return secretKey.startsWith("sk_live_") ? "live mode" : "test mode";
+}
+
+function toNumber(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function dashboardLinks() {
@@ -225,19 +236,34 @@ async function getSentrySnapshot() {
       unresolvedCount: null,
       issues: [] as SentryIssue[],
       monitors: [] as SentryMonitor[],
+      slowTransactions: [] as SentryTransaction[],
       error: "SENTRY_AUTH_TOKEN is not configured.",
       tone: "watch" as HealthTone,
     };
   }
 
   try {
-    const [issues, monitors] = await Promise.all([
+    const performanceParams = new URLSearchParams({
+      query: "event.type:transaction",
+      sort: "-p75_transaction_duration",
+      statsPeriod: "14d",
+      per_page: "5",
+    });
+    performanceParams.append("field", "transaction");
+    performanceParams.append("field", "count()");
+    performanceParams.append("field", "p75(transaction.duration)");
+
+    const [issues, monitors, transactions] = await Promise.all([
       safeJson<Array<Record<string, unknown>>>(
         `https://sentry.io/api/0/projects/${org}/${project}/issues/?query=is%3Aunresolved&statsPeriod=24h&limit=5`,
         { headers: { Authorization: `Bearer ${token}` } }
       ),
       safeJson<Array<Record<string, unknown>>>(
         `https://sentry.io/api/0/organizations/${org}/monitors/`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      ),
+      safeJson<{ data: Array<Record<string, unknown>> }>(
+        `https://sentry.io/api/0/organizations/${org}/events/?${performanceParams.toString()}`,
         { headers: { Authorization: `Bearer ${token}` } }
       ),
     ]);
@@ -255,12 +281,18 @@ async function getSentrySnapshot() {
       name: String(monitor.name ?? monitor.slug ?? "Monitor"),
       status: String(monitor.status ?? "unknown"),
     }));
+    const mappedTransactions = (transactions?.data ?? []).map((transaction) => ({
+      transaction: String(transaction.transaction ?? "Unknown transaction"),
+      count: toNumber(transaction["count()"]),
+      p75Ms: toNumber(transaction["p75(transaction.duration)"]),
+    }));
 
     return {
       configured: true,
       unresolvedCount: mappedIssues.length,
       issues: mappedIssues,
       monitors: mappedMonitors,
+      slowTransactions: mappedTransactions,
       error: null as string | null,
       tone: mappedIssues.length > 0 ? "watch" as HealthTone : "good" as HealthTone,
     };
@@ -270,6 +302,7 @@ async function getSentrySnapshot() {
       unresolvedCount: null,
       issues: [] as SentryIssue[],
       monitors: [] as SentryMonitor[],
+      slowTransactions: [] as SentryTransaction[],
       error: error instanceof Error ? error.message : "Sentry lookup failed.",
       tone: "watch" as HealthTone,
     };

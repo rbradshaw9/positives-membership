@@ -77,6 +77,12 @@ function Metric({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+function formatDuration(ms: number) {
+  if (!Number.isFinite(ms) || ms <= 0) return "n/a";
+  if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${Math.round(ms)}ms`;
+}
+
 function ExternalLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
     <Link
@@ -168,6 +174,24 @@ export default async function AdminOpsPage() {
               value={snapshot.sentry.monitors.filter((monitor) => monitor.status === "active").length}
             />
           </div>
+          {snapshot.sentry.slowTransactions.length > 0 ? (
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-600">
+              <p className="font-semibold text-slate-900">Slowest Sentry transactions, p75 over 14 days</p>
+              <div className="mt-3 space-y-2">
+                {snapshot.sentry.slowTransactions.slice(0, 4).map((transaction) => (
+                  <div
+                    key={transaction.transaction}
+                    className="flex items-center justify-between gap-4 rounded-xl bg-white px-3 py-2"
+                  >
+                    <span className="truncate font-medium text-slate-800">{transaction.transaction}</span>
+                    <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                      {formatDuration(transaction.p75Ms)} · {transaction.count}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
           {snapshot.sentry.error ? (
             <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
               {snapshot.sentry.error}

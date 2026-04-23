@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { PublicSiteFooter } from "@/components/marketing/PublicSiteFooter";
 import { PublicSiteHeader } from "@/components/marketing/PublicSiteHeader";
 import { PublicTrackedLink } from "@/components/marketing/PublicTrackedLink";
-import { getPublicSessionState } from "@/lib/marketing/public-session";
+import { ANONYMOUS_PUBLIC_SESSION_STATE } from "@/lib/marketing/public-session";
 
 export const metadata: Metadata = {
   title: "About Dr. Paul Jenkins — Positives",
@@ -14,8 +14,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function AboutPage() {
-  const session = await getPublicSessionState();
+export default function AboutPage() {
+  const session = ANONYMOUS_PUBLIC_SESSION_STATE;
 
   return (
     <div className="min-h-dvh" style={{ background: "#FAFAF8" }}>
