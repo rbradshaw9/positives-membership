@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 
-type ActionResult = { error?: string; success?: string };
+type ActionResult = { error?: string; success?: string; redirectTo?: string };
 
 type Props = {
   id?: string;
@@ -48,10 +48,15 @@ export function MemberCrmInlineForm({
   const [state, formAction, isPending] = useActionState(action, {});
 
   useEffect(() => {
+    if (state.redirectTo) {
+      window.location.assign(state.redirectTo);
+      return;
+    }
+
     if (state.success && resetOnSuccess) {
       formRef.current?.reset();
     }
-  }, [resetOnSuccess, state.success]);
+  }, [resetOnSuccess, state.redirectTo, state.success]);
 
   return (
     <form id={id} ref={formRef} action={formAction} className={className} style={style}>

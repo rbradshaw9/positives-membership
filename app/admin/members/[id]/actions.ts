@@ -18,7 +18,7 @@ import { repairMemberStripeCoursePurchases } from "@/server/services/stripe/memb
 import { syncMemberFollowupSummary } from "@/lib/admin/member-followup";
 import type { Enums } from "@/types/supabase";
 
-type ActionResult = { error?: string; success?: string };
+type ActionResult = { error?: string; success?: string; redirectTo?: string };
 type IdRow = { id: string };
 const MEMBER_DOCUMENT_BUCKET = "member-documents";
 const MEMBER_AVATAR_BUCKET = "member-avatars";
@@ -1246,7 +1246,10 @@ export async function startMemberImpersonationInline(
     },
   });
 
-  redirect(actionPath);
+  return {
+    success: "Opening member session...",
+    redirectTo: actionPath,
+  };
 }
 
 export async function removeAdminPermissionOverride(formData: FormData): Promise<ActionResult> {
