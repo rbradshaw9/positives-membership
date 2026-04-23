@@ -13,8 +13,6 @@ import {
   isBetaFeedbackSeverity,
   isBetaFeedbackStatus,
 } from "@/lib/beta-feedback/shared";
-import { getAdminClient } from "@/lib/supabase/admin";
-import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import { BetaFeedbackTriageCard } from "@/app/admin/beta-feedback/BetaFeedbackTriageCard";
 
 type PageProps = {
@@ -77,26 +75,6 @@ export default async function AdminBetaFeedbackPage({ searchParams }: PageProps)
   ]);
   const isSuperAdmin = await memberHasAdminRoleKey(actor.id, "super_admin");
   const commentsMap = await getBetaFeedbackCommentsMap(queue.map((item) => item.id), "all");
-
-  const adminClient = asLooseSupabaseClient(getAdminClient());
-  const queueWithScreenshotUrls = await Promise.all(
-    queue.map(async (item) => {
-      if (!item.screenshot_storage_path) {
-        return { ...item, screenshotUrl: null };
-      }
-
-      const { data, error } = await adminClient.storage
-        .from("beta-feedback-uploads")
-        .createSignedUrl(item.screenshot_storage_path, 60 * 20);
-
-      if (error) {
-        console.error("[beta-feedback] signed screenshot url failed:", error.message);
-        return { ...item, screenshotUrl: null };
-      }
-
-      return { ...item, screenshotUrl: data.signedUrl };
-    })
-  );
 
   const stats = {
     total: queue.length,
@@ -251,7 +229,7 @@ export default async function AdminBetaFeedbackPage({ searchParams }: PageProps)
       </form>
 
       <div className="space-y-5">
-        {queueWithScreenshotUrls.length === 0 ? (
+        {queue.length === 0 ? (
           <div className="rounded-[28px] border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
             <p className="text-lg font-semibold tracking-[-0.03em] text-slate-900">No feedback matches those filters.</p>
             <p className="mt-2 text-sm leading-6 text-slate-600">
@@ -259,7 +237,7 @@ export default async function AdminBetaFeedbackPage({ searchParams }: PageProps)
             </p>
           </div>
         ) : (
-          queueWithScreenshotUrls.map((feedback) => (
+          queue.map((feedback) => (
             <BetaFeedbackTriageCard
               key={feedback.id}
               feedback={{

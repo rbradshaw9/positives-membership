@@ -20,7 +20,6 @@ import type { BetaFeedbackCommentRecord } from "@/lib/beta-feedback/data";
 
 type Props = {
   feedback: AdminBetaFeedbackRecord & {
-    screenshotUrl?: string | null;
     comments: BetaFeedbackCommentRecord[];
   };
   assignableMembers: Array<{ id: string; label: string }>;
@@ -238,9 +237,9 @@ export function BetaFeedbackTriageCard({
                   Open reported page
                 </a>
               ) : null}
-              {feedback.screenshotUrl ? (
+              {feedback.screenshot_storage_path ? (
                 <a
-                  href={feedback.screenshotUrl}
+                  href={`/admin/beta-feedback/screenshot/${feedback.id}`}
                   target="_blank"
                   rel="noreferrer"
                   className="rounded-full border border-slate-200 bg-white px-4 py-2 font-medium text-slate-700"
