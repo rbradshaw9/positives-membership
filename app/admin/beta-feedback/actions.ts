@@ -54,6 +54,7 @@ export async function updateBetaFeedbackSubmission(
   const category = clean(formData.get("category"));
   const assignedMemberId = clean(formData.get("assignedMemberId"));
   const triageNotes = clean(formData.get("triageNotes"));
+  const approvedForDevelopment = formData.get("approvedForDevelopment") === "on";
 
   if (!feedbackId) {
     return { error: "Missing feedback record." };
@@ -71,6 +72,10 @@ export async function updateBetaFeedbackSubmission(
     return { error: "Choose a valid category." };
   }
 
+  if (approvedForDevelopment && !triageNotes) {
+    return { error: "Add a short internal note before approving this for development." };
+  }
+
   const supabase = asLooseSupabaseClient(getAdminClient());
   const { data: existing, error: existingError } = await supabase
     .from("beta_feedback_submission")
@@ -82,7 +87,10 @@ export async function updateBetaFeedbackSubmission(
       category: string;
       assigned_member_id: string | null;
       triage_notes: string | null;
-    }>("id, member_id, status, severity, category, assigned_member_id, triage_notes")
+      approved_for_development: boolean;
+      approved_for_development_at: string | null;
+      approved_for_development_by_member_id: string | null;
+    }>("id, member_id, status, severity, category, assigned_member_id, triage_notes, approved_for_development, approved_for_development_at, approved_for_development_by_member_id")
     .eq("id", feedbackId)
     .maybeSingle();
 
@@ -93,6 +101,13 @@ export async function updateBetaFeedbackSubmission(
 
   const resolvedAt =
     status === "resolved" || status === "closed" ? new Date().toISOString() : null;
+  const approvalChanged = approvedForDevelopment !== existing.approved_for_development;
+  const approvedForDevelopmentAt = approvedForDevelopment
+    ? existing.approved_for_development_at ?? new Date().toISOString()
+    : null;
+  const approvedForDevelopmentByMemberId = approvedForDevelopment
+    ? existing.approved_for_development_by_member_id ?? actor.id
+    : null;
 
   const { error } = await supabase
     .from("beta_feedback_submission")
@@ -102,6 +117,9 @@ export async function updateBetaFeedbackSubmission(
       category,
       assigned_member_id: assignedMemberId,
       triage_notes: triageNotes,
+      approved_for_development: approvedForDevelopment,
+      approved_for_development_at: approvedForDevelopmentAt,
+      approved_for_development_by_member_id: approvedForDevelopmentByMemberId,
       resolved_at: resolvedAt,
     })
     .eq("id", feedbackId);
@@ -124,6 +142,10 @@ export async function updateBetaFeedbackSubmission(
           category: existing.category,
           assigned_member_id: existing.assigned_member_id,
           triage_notes: existing.triage_notes,
+          approved_for_development: existing.approved_for_development,
+          approved_for_development_at: existing.approved_for_development_at,
+          approved_for_development_by_member_id:
+            existing.approved_for_development_by_member_id,
         },
         next: {
           status,
@@ -131,7 +153,11 @@ export async function updateBetaFeedbackSubmission(
           category,
           assigned_member_id: assignedMemberId,
           triage_notes: triageNotes,
+          approved_for_development: approvedForDevelopment,
+          approved_for_development_at: approvedForDevelopmentAt,
+          approved_for_development_by_member_id: approvedForDevelopmentByMemberId,
         },
+        approval_changed: approvalChanged,
       },
     });
   }

@@ -36,6 +36,9 @@ export type AdminBetaFeedbackRecord = {
   screenshot_size_bytes: number | null;
   assigned_member_id: string | null;
   triage_notes: string | null;
+  approved_for_development: boolean;
+  approved_for_development_at: string | null;
+  approved_for_development_by_member_id: string | null;
   stripe_customer_id: string | null;
   subscription_tier: string | null;
   subscription_status: string | null;
@@ -43,6 +46,7 @@ export type AdminBetaFeedbackRecord = {
   resolved_at: string | null;
   member?: { id: string; email: string; name: string | null } | null;
   assignee?: { id: string; email: string; name: string | null } | null;
+  approver?: { id: string; email: string; name: string | null } | null;
 };
 
 export type AdminBetaFeedbackFilters = {
@@ -50,6 +54,7 @@ export type AdminBetaFeedbackFilters = {
   severity?: BetaFeedbackSeverity | "";
   category?: BetaFeedbackCategory | "";
   assigned?: "mine" | "unassigned" | "";
+  approval?: "approved" | "pending" | "";
   search?: string;
   actorId?: string;
 };
@@ -63,7 +68,7 @@ export async function getAdminBetaFeedbackQueue(filters: AdminBetaFeedbackFilter
   let query = supabase
     .from("beta_feedback_submission")
     .select<AdminBetaFeedbackRecord[]>(
-      "id, created_at, updated_at, member_id, member_email, member_name, summary, details, expected_behavior, category, severity, status, page_path, page_url, app_release, browser_name, os_name, device_type, viewport_width, viewport_height, user_agent, timezone, loom_url, screenshot_storage_path, screenshot_file_name, screenshot_content_type, screenshot_size_bytes, assigned_member_id, triage_notes, stripe_customer_id, subscription_tier, subscription_status, metadata, resolved_at, member:member_id(id, email, name), assignee:assigned_member_id(id, email, name)"
+      "id, created_at, updated_at, member_id, member_email, member_name, summary, details, expected_behavior, category, severity, status, page_path, page_url, app_release, browser_name, os_name, device_type, viewport_width, viewport_height, user_agent, timezone, loom_url, screenshot_storage_path, screenshot_file_name, screenshot_content_type, screenshot_size_bytes, assigned_member_id, triage_notes, approved_for_development, approved_for_development_at, approved_for_development_by_member_id, stripe_customer_id, subscription_tier, subscription_status, metadata, resolved_at, member:member_id(id, email, name), assignee:assigned_member_id(id, email, name), approver:approved_for_development_by_member_id(id, email, name)"
     )
     .order("created_at", { ascending: false })
     .limit(100);
@@ -76,6 +81,12 @@ export async function getAdminBetaFeedbackQueue(filters: AdminBetaFeedbackFilter
   }
   if (filters.assigned === "unassigned") {
     query = query.is("assigned_member_id", null);
+  }
+  if (filters.approval === "approved") {
+    query = query.eq("approved_for_development", true);
+  }
+  if (filters.approval === "pending") {
+    query = query.eq("approved_for_development", false);
   }
   if (filters.search) {
     const search = escapeSearch(filters.search);

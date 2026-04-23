@@ -57,6 +57,12 @@ function toneForStatus(status: AdminBetaFeedbackRecord["status"]) {
   }
 }
 
+function toneForApproval(approved: boolean) {
+  return approved
+    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+    : "border-slate-200 bg-slate-50 text-slate-500";
+}
+
 function formatDate(value: string | null) {
   if (!value) return "Unknown";
   return new Intl.DateTimeFormat("en-US", {
@@ -86,6 +92,7 @@ export function BetaFeedbackTriageCard({ feedback, assignableMembers }: Props) {
   const [state, formAction, pending] = useActionState(updateBetaFeedbackSubmission, INITIAL_STATE);
   const reporterLabel = feedback.member_name || feedback.member_email;
   const assigneeLabel = feedback.assignee?.name || feedback.assignee?.email || "Unassigned";
+  const approverLabel = feedback.approver?.name || feedback.approver?.email || "An admin";
   const contextLabel =
     [feedback.browser_name, feedback.os_name, feedback.device_type].filter(Boolean).join(" • ") ||
     "No browser context";
@@ -104,6 +111,9 @@ export function BetaFeedbackTriageCard({ feedback, assignableMembers }: Props) {
               </span>
               <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-600">
                 {BETA_FEEDBACK_CATEGORY_LABEL[feedback.category]}
+              </span>
+              <span className={`rounded-full border px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.14em] ${toneForApproval(feedback.approved_for_development)}`}>
+                {feedback.approved_for_development ? "Approved for dev" : "Needs approval"}
               </span>
             </div>
             <h2
@@ -247,9 +257,47 @@ export function BetaFeedbackTriageCard({ feedback, assignableMembers }: Props) {
                 Triage controls
               </h3>
               <p className="mt-2 text-xs leading-5 text-slate-500">
-                Save triage updates status, urgency, category, owner, and internal notes. Resolved or closed items get a resolution timestamp, and member-linked updates are audit logged.
+                Save triage updates status, urgency, category, owner, internal notes, and development approval. Only approved items should be picked up for implementation. Resolved or closed items get a resolution timestamp, and member-linked updates are audit logged.
               </p>
             </div>
+
+            <section className="rounded-[22px] border border-slate-200/80 bg-slate-50/70 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Development approval
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-slate-700">
+                    Feedback stays in review until an admin explicitly approves it for development work.
+                  </p>
+                </div>
+                <span className={`rounded-full border px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.14em] ${toneForApproval(feedback.approved_for_development)}`}>
+                  {feedback.approved_for_development ? "Approved" : "Pending"}
+                </span>
+              </div>
+
+              <label className="mt-4 flex items-start gap-3 rounded-[18px] border border-slate-200 bg-white px-4 py-3">
+                <input
+                  type="checkbox"
+                  name="approvedForDevelopment"
+                  defaultChecked={feedback.approved_for_development}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                />
+                <span className="text-sm leading-6 text-slate-700">
+                  Mark this feedback as approved for development.
+                </span>
+              </label>
+
+              {feedback.approved_for_development_at ? (
+                <p className="mt-3 text-xs leading-5 text-slate-500">
+                  Approved {formatDate(feedback.approved_for_development_at)} by {approverLabel}.
+                </p>
+              ) : (
+                <p className="mt-3 text-xs leading-5 text-slate-500">
+                  Leave this unchecked until an admin decides the item is ready to be worked on.
+                </p>
+              )}
+            </section>
 
             <label className="grid gap-2">
               <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Status</span>

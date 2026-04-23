@@ -35,6 +35,7 @@ export default async function AdminBetaFeedbackPage({ searchParams }: PageProps)
   const severityValue = firstValue(resolvedSearchParams.severity);
   const categoryValue = firstValue(resolvedSearchParams.category);
   const assignedValue = firstValue(resolvedSearchParams.assigned);
+  const approvalValue = firstValue(resolvedSearchParams.approval);
   const searchValue = firstValue(resolvedSearchParams.search)?.trim() ?? "";
   const normalizedStatusValue = statusValue ?? "";
   const normalizedSeverityValue = severityValue ?? "";
@@ -56,12 +57,15 @@ export default async function AdminBetaFeedbackPage({ searchParams }: PageProps)
     : "";
   const assignedFilter: AdminBetaFeedbackFilters["assigned"] =
     assignedValue === "mine" || assignedValue === "unassigned" ? assignedValue : "";
+  const approvalFilter: AdminBetaFeedbackFilters["approval"] =
+    approvalValue === "approved" || approvalValue === "pending" ? approvalValue : "";
 
   const filters: AdminBetaFeedbackFilters = {
     status: statusFilter,
     severity: severityFilter,
     category: categoryFilter,
     assigned: assignedFilter,
+    approval: approvalFilter,
     search: searchValue,
     actorId: actor.id,
   };
@@ -96,6 +100,7 @@ export default async function AdminBetaFeedbackPage({ searchParams }: PageProps)
     blockers: queue.filter((item) => item.severity === "blocker").length,
     unresolved: queue.filter((item) => !["resolved", "closed"].includes(item.status)).length,
     unassigned: queue.filter((item) => !item.assigned_member_id).length,
+    approved: queue.filter((item) => item.approved_for_development).length,
   };
 
   return (
@@ -113,7 +118,7 @@ export default async function AdminBetaFeedbackPage({ searchParams }: PageProps)
               This is the working queue for beta bugs, UX friction, billing questions, and anything else testers send from inside the app. We&apos;re keeping the signal tight by auto-capturing page, browser, and release context on every submission.
             </p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             <div className="rounded-[24px] border border-white/70 bg-white/90 px-4 py-4 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">In queue</p>
               <p className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-slate-950">{stats.total}</p>
@@ -130,17 +135,17 @@ export default async function AdminBetaFeedbackPage({ searchParams }: PageProps)
               <p className="mt-1 text-sm text-slate-600">Needs an owner</p>
             </div>
             <div className="rounded-[24px] border border-white/70 bg-white/90 px-4 py-4 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">My queue</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Approved</p>
               <p className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-slate-950">
-                {queue.filter((item) => item.assigned_member_id === actor.id).length}
+                {stats.approved}
               </p>
-              <p className="mt-1 text-sm text-slate-600">Assigned to you</p>
+              <p className="mt-1 text-sm text-slate-600">Ready for development</p>
             </div>
           </div>
         </div>
       </div>
 
-      <form className="grid gap-4 rounded-[28px] border border-slate-200/80 bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,0.05)] lg:grid-cols-[minmax(0,1.4fr)_repeat(4,minmax(0,0.7fr))]">
+      <form className="grid gap-4 rounded-[28px] border border-slate-200/80 bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,0.05)] lg:grid-cols-[minmax(0,1.3fr)_repeat(5,minmax(0,0.66fr))]">
         <label className="grid gap-2">
           <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Search</span>
           <input
@@ -213,7 +218,20 @@ export default async function AdminBetaFeedbackPage({ searchParams }: PageProps)
           </select>
         </label>
 
-        <div className="flex items-end gap-3 lg:col-span-5">
+        <label className="grid gap-2">
+          <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Approval</span>
+          <select
+            name="approval"
+            defaultValue={filters.approval}
+            className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900"
+          >
+            <option value="">All approval states</option>
+            <option value="pending">Needs approval</option>
+            <option value="approved">Approved for development</option>
+          </select>
+        </label>
+
+        <div className="flex items-end gap-3 lg:col-span-6">
           <button
             type="submit"
             className="rounded-full bg-[linear-gradient(135deg,#2ec4b6,#3db6e7)] px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_48px_rgba(46,196,182,0.24)]"
