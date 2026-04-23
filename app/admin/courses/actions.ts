@@ -660,6 +660,38 @@ function extractElementorVideo(elementorData: unknown): string | null {
     return null;
   }
 
+  function scanSettingsForVideoCandidate(
+    value: unknown,
+    keyHint = ""
+  ): string | null {
+    if (typeof value === "string") {
+      const normalizedKey = keyHint.toLowerCase();
+      const looksVideoish =
+        !normalizedKey ||
+        /(video|embed|hosted|external|source|url|link|file|mp4|mov|webm|youtube|vimeo)/i.test(
+          normalizedKey
+        );
+      return looksVideoish ? normalizeVideoCandidate(value) : null;
+    }
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const found = scanSettingsForVideoCandidate(item, keyHint);
+        if (found) return found;
+      }
+      return null;
+    }
+
+    if (value && typeof value === "object") {
+      for (const [childKey, childValue] of Object.entries(value as Record<string, unknown>)) {
+        const found = scanSettingsForVideoCandidate(childValue, childKey);
+        if (found) return found;
+      }
+    }
+
+    return null;
+  }
+
   function walk(elements: unknown[]): string | null {
     for (const el of elements) {
       if (typeof el !== "object" || el === null) continue;
@@ -699,6 +731,9 @@ function extractElementorVideo(elementorData: unknown): string | null {
         if (found) return found;
       }
 
+      const genericSettingsHit = scanSettingsForVideoCandidate(elem.settings ?? null);
+      if (genericSettingsHit) return genericSettingsHit;
+
       if (Array.isArray(elem.elements)) {
         const found = walk(elem.elements as unknown[]);
         if (found) return found;
@@ -717,6 +752,24 @@ function extractElementorBody(elementorData: unknown): string | null {
   if (!elementorData || !Array.isArray(elementorData)) return null;
   const parts: string[] = [];
 
+  function pushHtmlFragment(html: string | null | undefined) {
+    if (!html) return;
+    const cleaned = cleanImportedHtml(html);
+    if (cleaned && stripHtml(cleaned).length > 10) {
+      parts.push(cleaned);
+    }
+  }
+
+  function pushPlainTextAsHtml(
+    value: unknown,
+    tag: "p" | "h2" | "h3" | "li" = "p"
+  ) {
+    if (typeof value !== "string") return;
+    const text = stripHtml(decodeHtmlEntities(value)).trim();
+    if (!text) return;
+    parts.push(`<${tag}>${escapeHtml(text)}</${tag}>`);
+  }
+
   function walk(elements: unknown[]) {
     for (const el of elements) {
       if (typeof el !== "object" || el === null) continue;
@@ -724,16 +777,11 @@ function extractElementorBody(elementorData: unknown): string | null {
       const s = (elem.settings ?? {}) as Record<string, unknown>;
 
       if (elem.widgetType === "text-editor") {
-        const editor = s.editor as string | undefined;
-        if (editor) {
-          const html = cleanImportedHtml(editor);
-          if (html && stripHtml(html).length > 10) parts.push(html);
-        }
+        pushHtmlFragment(typeof s.editor === "string" ? s.editor : null);
       }
 
       if (elem.widgetType === "heading") {
-        const title = typeof s.title === "string" ? stripHtml(decodeHtmlEntities(s.title)).trim() : "";
-        if (title) parts.push(`<h2>${escapeHtml(title)}</h2>`);
+        pushPlainTextAsHtml(s.title, "h2");
       }
 
       if (elem.widgetType === "button") {
@@ -743,6 +791,62 @@ function extractElementorBody(elementorData: unknown): string | null {
         if (text && url.startsWith("http")) {
           parts.push(`<p><a href="${escapeHtml(url)}">${escapeHtml(text)}</a></p>`);
         }
+      }
+
+      if (elem.widgetType === "icon-list") {
+        const items = Array.isArray(s.icon_list) ? s.icon_list : [];
+        const listItems = items
+          .map((item) => {
+            if (!item || typeof item !== "object") return null;
+            const listItem = item as Record<string, unknown>;
+            const text = typeof listItem.text === "string"
+              ? stripHtml(decodeHtmlEntities(listItem.text)).trim()
+              : "";
+            const link = listItem.link && typeof listItem.link === "object"
+              ? (listItem.link as { url?: unknown }).url
+              : null;
+            const url = typeof link === "string" ? decodeHtmlEntities(link).trim() : "";
+
+            if (!text) return null;
+            if (url.startsWith("http")) {
+              return `<li><a href="${escapeHtml(url)}">${escapeHtml(text)}</a></li>`;
+            }
+            return `<li>${escapeHtml(text)}</li>`;
+          })
+          .filter(Boolean);
+
+        if (listItems.length > 0) {
+          parts.push(`<ul>${listItems.join("")}</ul>`);
+        }
+      }
+
+      if (elem.widgetType === "accordion" || elem.widgetType === "toggle") {
+        const items = Array.isArray(s.tabs) ? s.tabs : [];
+        for (const item of items) {
+          if (!item || typeof item !== "object") continue;
+          const section = item as Record<string, unknown>;
+          pushPlainTextAsHtml(section.title, "h3");
+          pushHtmlFragment(typeof section.content === "string" ? section.content : null);
+        }
+      }
+
+      if (elem.widgetType === "tabs") {
+        const items = Array.isArray(s.tabs) ? s.tabs : [];
+        for (const item of items) {
+          if (!item || typeof item !== "object") continue;
+          const tab = item as Record<string, unknown>;
+          pushPlainTextAsHtml(tab.tab_title, "h3");
+          pushHtmlFragment(typeof tab.tab_content === "string" ? tab.tab_content : null);
+        }
+      }
+
+      if (elem.widgetType === "image-box" || elem.widgetType === "call-to-action") {
+        pushPlainTextAsHtml(s.title_text ?? s.title, "h3");
+        pushHtmlFragment(typeof s.description_text === "string" ? s.description_text : null);
+      }
+
+      if (elem.widgetType === "text-path" || elem.widgetType === "animated-headline") {
+        pushPlainTextAsHtml(s.title ?? s.text ?? s.before_text ?? s.highlighted_text, "h3");
       }
 
       if (Array.isArray(elem.elements)) walk(elem.elements as unknown[]);
