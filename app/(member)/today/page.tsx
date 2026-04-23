@@ -2,20 +2,17 @@ import { createClient } from "@/lib/supabase/server";
 import { getTodayContent } from "@/lib/queries/get-today-content";
 import { getWeeklyContent } from "@/lib/queries/get-weekly-content";
 import { getMonthlyContent } from "@/lib/queries/get-monthly-content";
-import { getMonthlyDailyAudios } from "@/lib/queries/get-monthly-daily-audios";
-import { getMonthWeeklyContent } from "@/lib/queries/get-month-weekly-content";
 import { resolveAudioUrl } from "@/lib/media/resolve-audio-url";
 import { getMemberNoteCounts } from "@/lib/queries/get-library-content";
-import { getEffectiveDate, getEffectiveMonthYear } from "@/lib/dates/effective-date";
+import { getEffectiveDate } from "@/lib/dates/effective-date";
 import { getGreeting } from "@/lib/greeting";
 import { requireActiveMember } from "@/lib/auth/require-active-member";
 import { isStreakActive } from "@/lib/streak/compute-streak";
 import { DailyPracticeCard } from "@/components/today/DailyPracticeCard";
 import { WeeklyPrincipleCard } from "@/components/today/WeeklyPrincipleCard";
 import { MonthlyThemeCard } from "@/components/today/MonthlyThemeCard";
-import { MonthlyAudioArchive } from "@/components/today/MonthlyAudioArchive";
-import { WeeklyArchive } from "@/components/today/WeeklyArchive";
 import { StreakBadge } from "@/components/today/StreakBadge";
+import { TodayArchiveSection } from "@/components/today/TodayArchiveSection";
 
 
 /**
@@ -39,15 +36,12 @@ export default async function TodayPage() {
   const supabase = await createClient();
 
   const effectiveDateStr = getEffectiveDate();
-  const effectiveMonthYear = getEffectiveMonthYear();
 
-  const [todayContent, weeklyContent, monthlyContent, monthGroups, monthWeekly] =
+  const [todayContent, weeklyContent, monthlyContent] =
     await Promise.all([
       getTodayContent(),
       getWeeklyContent(),
       getMonthlyContent(),
-      getMonthlyDailyAudios(effectiveDateStr),
-      getMonthWeeklyContent(effectiveMonthYear),
     ]);
 
   const [dailyAudioUrl, weeklyAudioUrl] = await Promise.all([
@@ -63,28 +57,24 @@ export default async function TodayPage() {
     Boolean
   ) as string[];
 
-  const archiveContentIds = monthGroups.flatMap((group) => group.audios.map((audio) => audio.id));
-  const listenedDailyIds = Array.from(
-    new Set([todayContent?.id, ...archiveContentIds].filter(Boolean) as string[])
-  );
-  const listenedDailyIdsPromise =
-    listenedDailyIds.length > 0
+  const listenedTodayPromise =
+    todayContent?.id
       ? supabase
           .from("activity_event")
           .select("content_id")
           .eq("member_id", member.id)
           .eq("event_type", "daily_listened")
-          .in("content_id", listenedDailyIds)
-          .then(({ data }) => new Set((data ?? []).map((row) => row.content_id).filter(Boolean)))
-      : Promise.resolve(new Set<string>());
+          .eq("content_id", todayContent.id)
+          .maybeSingle()
+          .then(({ data }) => Boolean(data?.content_id))
+      : Promise.resolve(false);
 
-  const [noteCounts, listenedDailyIdSet] = await Promise.all([
+  const [noteCounts, listenedToday] = await Promise.all([
     contentIds.length > 0
       ? getMemberNoteCounts(member.id, contentIds)
       : Promise.resolve<Record<string, number>>({}),
-    listenedDailyIdsPromise,
+    listenedTodayPromise,
   ]);
-  const listenedToday = todayContent ? listenedDailyIdSet.has(todayContent.id) : false;
 
   // Only show a non-zero streak if the member practiced today or yesterday.
   // If they missed a day the DB value is stale — display 0 until they listen again.
@@ -192,22 +182,11 @@ export default async function TodayPage() {
           </div>
         </section>
 
-        {/* ── Zone 3: Weekly reflections archive ────────────────────── */}
-        <WeeklyArchive
-          weeks={monthWeekly}
+        {/* ── Zone 3: Weekly archive + monthly practice playlist ───── */}
+        <TodayArchiveSection
+          currentMonthName={currentMonthName}
           currentWeekStart={weeklyContent?.week_start ?? null}
         />
-
-        {/* ── Zone 4: Daily practice playlist (inline) ──────────────── */}
-        {monthGroups.length > 0 && (
-          <MonthlyAudioArchive
-            monthGroups={monthGroups}
-            currentMonthName={currentMonthName}
-            listenedContentIds={[...listenedDailyIdSet].filter(
-              (contentId): contentId is string => Boolean(contentId)
-            )}
-          />
-        )}
       </div>
     </div>
   );
