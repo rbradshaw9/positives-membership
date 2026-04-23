@@ -25,7 +25,6 @@ type EmailToSend = {
   to: string;
   actionType: string;
   tokenHash: string;
-  code?: string | null;
 };
 
 function jsonError(message: string, status = 400) {
@@ -123,7 +122,6 @@ function buildEmailList(payload: SendEmailHookPayload): EmailToSend[] {
         to: primaryEmail,
         actionType,
         tokenHash: data.token_hash_new,
-        code: data.token ?? null,
       });
     }
 
@@ -132,7 +130,6 @@ function buildEmailList(payload: SendEmailHookPayload): EmailToSend[] {
         to: newEmail,
         actionType,
         tokenHash: data.token_hash,
-        code: data.token_new ?? null,
       });
     }
 
@@ -146,7 +143,6 @@ function buildEmailList(payload: SendEmailHookPayload): EmailToSend[] {
       to: primaryEmail,
       actionType,
       tokenHash: data.token_hash,
-      code: data.token ?? null,
     },
   ];
 }
@@ -166,10 +162,7 @@ export async function POST(request: NextRequest) {
     return jsonError("Invalid hook signature.", 401);
   }
 
-  const siteUrl =
-    payload.email_data?.site_url ??
-    process.env.NEXT_PUBLIC_APP_URL ??
-    "https://positives.life";
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://positives.life";
   const emails = buildEmailList(payload);
 
   if (emails.length === 0) {
@@ -190,7 +183,6 @@ export async function POST(request: NextRequest) {
           actionType: email.actionType,
           actionUrl,
           email: email.to,
-          code: email.code,
         });
 
         return sendPostmarkEmail({

@@ -103,7 +103,6 @@ export function emailHeader(): string {
   <tr>
     <td style="background:${B.gradient};border-radius:${B.radius} ${B.radius} 0 0;padding:32px 40px;text-align:center;">
       <p style="margin:0;font-family:${B.fontHeading};font-size:24px;font-weight:800;color:#FFFFFF;letter-spacing:0.06em;text-transform:uppercase;line-height:1;">POSITIVES</p>
-      <p style="margin:7px 0 0;font-family:${B.fontBody};font-size:11px;color:rgba(255,255,255,0.82);letter-spacing:0.14em;text-transform:uppercase;">by Dr. Paul</p>
     </td>
   </tr>
   <!-- Thin shimmer accent bar -->

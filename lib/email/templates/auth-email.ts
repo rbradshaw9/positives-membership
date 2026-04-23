@@ -3,7 +3,6 @@ import {
   ctaButton,
   emailHeader,
   emailWrapper,
-  infoCard,
   transactionalEmailFooter,
 } from "@/lib/email/brand";
 
@@ -19,7 +18,6 @@ export type AuthEmailTemplateInput = {
   actionType: AuthEmailAction;
   actionUrl: string;
   email: string;
-  code?: string | null;
 };
 
 export type AuthEmailTemplate = {
@@ -91,14 +89,6 @@ function copyForAction(actionType: AuthEmailAction) {
 
 export function renderAuthEmail(input: AuthEmailTemplateInput): AuthEmailTemplate {
   const copy = copyForAction(input.actionType);
-  const codeCard = input.code
-    ? infoCard(`
-        <p style="margin:0 0 8px;font-family:${B.fontBody};font-size:12px;color:${B.mutedFg};font-weight:700;text-transform:uppercase;letter-spacing:0.12em;">Security code</p>
-        <p style="margin:0;font-family:'SFMono-Regular',Consolas,'Liberation Mono',monospace;font-size:28px;font-weight:800;letter-spacing:0.18em;color:${B.foreground};">${input.code}</p>
-        <p style="margin:10px 0 0;font-family:${B.fontBody};font-size:12px;line-height:1.6;color:${B.mutedFg};">You can use this code if your email app has trouble opening the button.</p>
-      `)
-    : "";
-
   const html = emailWrapper(
     `
     ${emailHeader()}
@@ -114,11 +104,6 @@ export function renderAuthEmail(input: AuthEmailTemplateInput): AuthEmailTemplat
         ${ctaButton(copy.button, input.actionUrl)}
       </td>
     </tr>
-    ${
-      codeCard
-        ? `<tr><td class="email-padding" style="background:${B.card};padding:0 42px 26px;">${codeCard}</td></tr>`
-        : ""
-    }
     <tr>
       <td class="email-padding" style="background:${B.card};padding:0 42px 36px;">
         <p style="margin:0;font-family:${B.fontBody};font-size:13px;line-height:1.7;color:${B.mutedFg};">${copy.detail}</p>
@@ -137,8 +122,6 @@ export function renderAuthEmail(input: AuthEmailTemplateInput): AuthEmailTemplat
     "",
     input.actionUrl,
     "",
-    input.code ? `Security code: ${input.code}` : "",
-    input.code ? "" : "",
     copy.detail,
     "",
     `This secure email was sent to ${input.email}.`,
