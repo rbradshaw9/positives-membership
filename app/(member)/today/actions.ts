@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { computeNewStreak } from "@/lib/streak/compute-streak";
 import { POINT_VALUES, awardMemberPoints } from "@/lib/points/award";
+import { metricCount, metricDistribution } from "@/lib/observability/metrics";
 
 /**
  * app/(member)/today/actions.ts
@@ -20,121 +21,163 @@ import { POINT_VALUES, awardMemberPoints } from "@/lib/points/award";
  */
 
 export async function markListened(contentId: string): Promise<{ newStreak: number }> {
-  const supabase = await createClient();
+  const startedAt = Date.now();
+  try {
+    const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  if (!user) {
-    // Member logged out mid-session — silently exit
-    return { newStreak: 0 };
-  }
+    if (!user) {
+      // Member logged out mid-session — silently exit
+      metricCount("today.audio_action", 1, {
+        action: "mark_listened",
+        outcome: "no_user",
+      });
+      metricDistribution("today.audio_action.duration", Date.now() - startedAt, {
+        action: "mark_listened",
+        outcome: "no_user",
+      });
+      return { newStreak: 0 };
+    }
 
-  const now = new Date();
+    const now = new Date();
+    const nowIso = now.toISOString();
 
-  // ── 1. Promote newest incomplete progress row to completed if it exists ───
-  const { data: incompleteProgress } = await supabase
-    .from("progress")
-    .select("id")
-    .eq("member_id", user.id)
-    .eq("content_id", contentId)
-    .eq("completed", false)
-    .order("listened_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  let progressError: { message: string } | null = null;
-
-  if (incompleteProgress?.id) {
-    const { error } = await supabase
+    // ── 1. Promote newest incomplete progress row to completed if it exists ───
+    const { data: incompleteProgress } = await supabase
       .from("progress")
-      .update({
-        completed: true,
-        listened_at: now.toISOString(),
-      })
-      .eq("id", incompleteProgress.id);
+      .select("id")
+      .eq("member_id", user.id)
+      .eq("content_id", contentId)
+      .eq("completed", false)
+      .order("listened_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    progressError = error;
-  } else {
-    const { error } = await supabase.from("progress").insert({
-      member_id: user.id,
-      content_id: contentId,
-      completed: true,
-      listened_at: now.toISOString(),
+    let progressError: { message: string } | null = null;
+
+    if (incompleteProgress?.id) {
+      const { error } = await supabase
+        .from("progress")
+        .update({
+          completed: true,
+          listened_at: nowIso,
+        })
+        .eq("id", incompleteProgress.id);
+
+      progressError = error;
+    } else {
+      const { error } = await supabase.from("progress").insert({
+        member_id: user.id,
+        content_id: contentId,
+        completed: true,
+        listened_at: nowIso,
+      });
+
+      progressError = error;
+    }
+
+    if (progressError) {
+      console.error("[markListened] progress insert error:", progressError.message);
+      // Continue — still attempt activity_event and streak update
+    }
+
+    // ── 2. Write activity_event record ─────────────────────────────────────────
+    const { data: activityEvent, error: eventError } = await supabase
+      .from("activity_event")
+      .insert({
+        member_id: user.id,
+        event_type: "daily_listened",
+        content_id: contentId,
+        metadata: { percent_completed: 80 },
+        // occurred_at defaults to NOW() in DB
+      })
+      .select("id")
+      .single();
+
+    if (eventError) {
+      console.error("[markListened] activity_event insert error:", eventError.message);
+    }
+
+    // Points are best-effort only; they must never block the completion action.
+    void awardMemberPoints({
+      memberId: user.id,
+      delta: POINT_VALUES.dailyPractice,
+      reason: "daily_practice",
+      description: "Daily practice completed",
+      contentId,
+      activityEventId: activityEvent?.id ?? null,
+      idempotencyKey: `daily_practice:${user.id}:${nowIso.slice(0, 10)}`,
+    }).catch((error) => {
+      console.error("[markListened] points award failed:", error);
     });
 
-    progressError = error;
-  }
+    // ── 3. Fetch current member streak state ────────────────────────────────────
+    const { data: member, error: memberFetchError } = await supabase
+      .from("member")
+      .select("last_practiced_at, practice_streak")
+      .eq("id", user.id)
+      .single();
 
-  if (progressError) {
-    console.error("[markListened] progress insert error:", progressError.message);
-    // Continue — still attempt activity_event and streak update
-  }
+    if (memberFetchError || !member) {
+      console.error("[markListened] member fetch error:", memberFetchError?.message);
+      metricCount("today.audio_action", 1, {
+        action: "mark_listened",
+        outcome: "member_lookup_error",
+      });
+      metricDistribution("today.audio_action.duration", Date.now() - startedAt, {
+        action: "mark_listened",
+        outcome: "member_lookup_error",
+      });
+      return { newStreak: 0 };
+    }
 
-  // ── 2. Write activity_event record ─────────────────────────────────────────
-  const { data: activityEvent, error: eventError } = await supabase
-    .from("activity_event")
-    .insert({
-      member_id: user.id,
-      event_type: "daily_listened",
-      content_id: contentId,
-      metadata: { percent_completed: 80 },
-      // occurred_at defaults to NOW() in DB
-    })
-    .select("id")
-    .single();
+    // ── 4. Increment streak if appropriate ─────────────────────────────────────
+    const lastPracticedAt = member.last_practiced_at
+      ? new Date(member.last_practiced_at)
+      : null;
 
-  if (eventError) {
-    console.error("[markListened] activity_event insert error:", eventError.message);
-  }
+    const newStreak = computeNewStreak(
+      lastPracticedAt,
+      member.practice_streak ?? 0,
+      now
+    );
 
-  await awardMemberPoints({
-    memberId: user.id,
-    delta: POINT_VALUES.dailyPractice,
-    reason: "daily_practice",
-    description: "Daily practice completed",
-    contentId,
-    activityEventId: activityEvent?.id ?? null,
-    idempotencyKey: `daily_practice:${user.id}:${now.toISOString().slice(0, 10)}`,
-  });
+    const { error: streakError } = await supabase
+      .from("member")
+      .update({
+        last_practiced_at: nowIso,
+        practice_streak: newStreak,
+      })
+      .eq("id", user.id);
 
-  // ── 3. Fetch current member streak state ────────────────────────────────────
-  const { data: member, error: memberFetchError } = await supabase
-    .from("member")
-    .select("last_practiced_at, practice_streak")
-    .eq("id", user.id)
-    .single();
+    if (streakError) {
+      console.error("[markListened] streak update error:", streakError.message);
+    }
 
-  if (memberFetchError || !member) {
-    console.error("[markListened] member fetch error:", memberFetchError?.message);
+    metricCount("today.audio_action", 1, {
+      action: "mark_listened",
+      outcome: "ok",
+    });
+    metricDistribution("today.audio_action.duration", Date.now() - startedAt, {
+      action: "mark_listened",
+      outcome: "ok",
+    });
+    return { newStreak };
+  } catch (error) {
+    console.error("[markListened] unexpected error:", error);
+    metricCount("today.audio_action", 1, {
+      action: "mark_listened",
+      outcome: "error",
+    });
+    metricDistribution("today.audio_action.duration", Date.now() - startedAt, {
+      action: "mark_listened",
+      outcome: "error",
+    });
     return { newStreak: 0 };
   }
-
-  // ── 4. Increment streak if appropriate ─────────────────────────────────────
-  const lastPracticedAt = member.last_practiced_at
-    ? new Date(member.last_practiced_at)
-    : null;
-
-  const newStreak = computeNewStreak(
-    lastPracticedAt,
-    member.practice_streak ?? 0,
-    now
-  );
-
-  const { error: streakError } = await supabase
-    .from("member")
-    .update({
-      last_practiced_at: now.toISOString(),
-      practice_streak: newStreak,
-    })
-    .eq("id", user.id);
-
-  if (streakError) {
-    console.error("[markListened] streak update error:", streakError.message);
-  }
-
-  return { newStreak };
 }
 
 /**
@@ -142,45 +185,76 @@ export async function markListened(contentId: string): Promise<{ newStreak: numb
  * for the current member + content pair once meaningful playback has started.
  */
 export async function syncListeningProgress(contentId: string): Promise<void> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const startedAt = Date.now();
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  if (!user) return;
+    if (!user) {
+      metricCount("today.audio_action", 1, {
+        action: "sync_progress",
+        outcome: "no_user",
+      });
+      metricDistribution("today.audio_action.duration", Date.now() - startedAt, {
+        action: "sync_progress",
+        outcome: "no_user",
+      });
+      return;
+    }
 
-  const now = new Date().toISOString();
-  const { data: existing } = await supabase
-    .from("progress")
-    .select("id")
-    .eq("member_id", user.id)
-    .eq("content_id", contentId)
-    .eq("completed", false)
-    .order("listened_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (existing?.id) {
-    const { error } = await supabase
+    const now = new Date().toISOString();
+    const { data: existing } = await supabase
       .from("progress")
-      .update({ listened_at: now })
-      .eq("id", existing.id);
+      .select("id")
+      .eq("member_id", user.id)
+      .eq("content_id", contentId)
+      .eq("completed", false)
+      .order("listened_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existing?.id) {
+      const { error } = await supabase
+        .from("progress")
+        .update({ listened_at: now })
+        .eq("id", existing.id);
+
+      if (error) {
+        console.error("[syncListeningProgress] progress update error:", error.message);
+      }
+      return;
+    }
+
+    const { error } = await supabase.from("progress").insert({
+      member_id: user.id,
+      content_id: contentId,
+      completed: false,
+      listened_at: now,
+    });
 
     if (error) {
-      console.error("[syncListeningProgress] progress update error:", error.message);
+      console.error("[syncListeningProgress] progress insert error:", error.message);
     }
-    return;
-  }
-
-  const { error } = await supabase.from("progress").insert({
-    member_id: user.id,
-    content_id: contentId,
-    completed: false,
-    listened_at: now,
-  });
-
-  if (error) {
-    console.error("[syncListeningProgress] progress insert error:", error.message);
+    metricCount("today.audio_action", 1, {
+      action: "sync_progress",
+      outcome: "ok",
+    });
+    metricDistribution("today.audio_action.duration", Date.now() - startedAt, {
+      action: "sync_progress",
+      outcome: "ok",
+    });
+  } catch (error) {
+    console.error("[syncListeningProgress] unexpected error:", error);
+    metricCount("today.audio_action", 1, {
+      action: "sync_progress",
+      outcome: "error",
+    });
+    metricDistribution("today.audio_action.duration", Date.now() - startedAt, {
+      action: "sync_progress",
+      outcome: "error",
+    });
   }
 }
 
@@ -189,47 +263,78 @@ export async function syncListeningProgress(contentId: string): Promise<void> {
  * audio track to completed, without firing daily-specific streak logic.
  */
 export async function markTrackCompleted(contentId: string): Promise<void> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const startedAt = Date.now();
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  if (!user) return;
+    if (!user) {
+      metricCount("today.audio_action", 1, {
+        action: "mark_track_completed",
+        outcome: "no_user",
+      });
+      metricDistribution("today.audio_action.duration", Date.now() - startedAt, {
+        action: "mark_track_completed",
+        outcome: "no_user",
+      });
+      return;
+    }
 
-  const now = new Date().toISOString();
-  const { data: incompleteProgress } = await supabase
-    .from("progress")
-    .select("id")
-    .eq("member_id", user.id)
-    .eq("content_id", contentId)
-    .eq("completed", false)
-    .order("listened_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (incompleteProgress?.id) {
-    const { error } = await supabase
+    const now = new Date().toISOString();
+    const { data: incompleteProgress } = await supabase
       .from("progress")
-      .update({
-        completed: true,
-        listened_at: now,
-      })
-      .eq("id", incompleteProgress.id);
+      .select("id")
+      .eq("member_id", user.id)
+      .eq("content_id", contentId)
+      .eq("completed", false)
+      .order("listened_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (incompleteProgress?.id) {
+      const { error } = await supabase
+        .from("progress")
+        .update({
+          completed: true,
+          listened_at: now,
+        })
+        .eq("id", incompleteProgress.id);
+
+      if (error) {
+        console.error("[markTrackCompleted] progress update error:", error.message);
+      }
+      return;
+    }
+
+    const { error } = await supabase.from("progress").insert({
+      member_id: user.id,
+      content_id: contentId,
+      completed: true,
+      listened_at: now,
+    });
 
     if (error) {
-      console.error("[markTrackCompleted] progress update error:", error.message);
+      console.error("[markTrackCompleted] progress insert error:", error.message);
     }
-    return;
-  }
-
-  const { error } = await supabase.from("progress").insert({
-    member_id: user.id,
-    content_id: contentId,
-    completed: true,
-    listened_at: now,
-  });
-
-  if (error) {
-    console.error("[markTrackCompleted] progress insert error:", error.message);
+    metricCount("today.audio_action", 1, {
+      action: "mark_track_completed",
+      outcome: "ok",
+    });
+    metricDistribution("today.audio_action.duration", Date.now() - startedAt, {
+      action: "mark_track_completed",
+      outcome: "ok",
+    });
+  } catch (error) {
+    console.error("[markTrackCompleted] unexpected error:", error);
+    metricCount("today.audio_action", 1, {
+      action: "mark_track_completed",
+      outcome: "error",
+    });
+    metricDistribution("today.audio_action.duration", Date.now() - startedAt, {
+      action: "mark_track_completed",
+      outcome: "error",
+    });
   }
 }
