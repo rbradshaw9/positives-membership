@@ -30,6 +30,8 @@ export type CommunityThreadSourceType = "weekly_principle" | "standalone";
 export type CommunityModerationStatus = (typeof COMMUNITY_MODERATION_STATUS_OPTIONS)[number]["value"];
 export type CommunityReportReason = (typeof COMMUNITY_REPORT_REASON_OPTIONS)[number]["value"];
 export type CommunityReportStatus = (typeof COMMUNITY_REPORT_STATUS_OPTIONS)[number]["value"];
+export type CommunityNotificationEventType = "reply_to_my_post" | "reply_in_followed_thread";
+export type CommunityView = "featured" | "feed" | "following" | "saved";
 
 export type CommunityLaneSlug = "wins" | "support" | "questions";
 
@@ -100,6 +102,10 @@ export function getCommunityPostTypeFromLaneSlug(value: string): CommunityPostTy
   return (match?.[0] as CommunityPostType | undefined) ?? null;
 }
 
+export function getCommunityLaneHref(value: CommunityPostType) {
+  return value === "share" ? "wins" : value === "reflection" ? "support" : "questions";
+}
+
 export function getCommunityDisplayName(name: string | null | undefined) {
   if (!name) return "Member";
 
@@ -118,4 +124,13 @@ export function getCommunityDisplayName(name: string | null | undefined) {
 
 export function getCommunityReportReasonLabel(value: CommunityReportReason) {
   return COMMUNITY_REPORT_REASON_OPTIONS.find((option) => option.value === value)?.label ?? value;
+}
+
+export function isCommunityView(value: string): value is CommunityView {
+  return ["featured", "feed", "following", "saved"].includes(value);
+}
+
+export function getCommunityNotificationEventLabel(value: CommunityNotificationEventType) {
+  if (value === "reply_to_my_post") return "replied to your post";
+  return "replied in a discussion you follow";
 }

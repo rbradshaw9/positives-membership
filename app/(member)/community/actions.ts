@@ -2,9 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import { hasAdminPermission } from "@/lib/auth/require-admin";
 import {
+  type CommunityNotificationEventType,
   isCommunityPostType,
   isCommunityReportReason,
 } from "@/lib/community/shared";
@@ -61,6 +63,85 @@ async function touchThreadActivity(threadId: string) {
   }
 }
 
+async function ensureThreadFollow(memberId: string, threadId: string) {
+  const supabase = asLooseSupabaseClient(await createClient());
+  const { error } = await supabase
+    .from("community_follow")
+    .upsert(
+      {
+        member_id: memberId,
+        thread_id: threadId,
+      },
+      {
+        onConflict: "member_id,thread_id",
+        ignoreDuplicates: true,
+      }
+    );
+
+  if (error) {
+    console.error("[community] thread follow upsert failed:", error.message);
+  }
+}
+
+async function createReplyNotifications(params: {
+  threadId: string;
+  replyId: string;
+  actorMemberId: string;
+}) {
+  const supabase = asLooseSupabaseClient(getAdminClient());
+
+  const [{ data: thread, error: threadError }, { data: follows, error: followError }] = await Promise.all([
+    supabase
+      .from("community_thread")
+      .select<{ id: string; member_id: string }>("id, member_id")
+      .eq("id", params.threadId)
+      .maybeSingle(),
+    supabase
+      .from("community_follow")
+      .select<Array<{ member_id: string }>>("member_id")
+      .eq("thread_id", params.threadId),
+  ]);
+
+  if (threadError || !thread) {
+    console.error("[community] notification thread lookup failed:", threadError?.message);
+    return;
+  }
+
+  if (followError) {
+    console.error("[community] notification follow lookup failed:", followError.message);
+    return;
+  }
+
+  const recipients = new Map<string, CommunityNotificationEventType>();
+
+  if (thread.member_id && thread.member_id !== params.actorMemberId) {
+    recipients.set(thread.member_id, "reply_to_my_post");
+  }
+
+  for (const row of follows ?? []) {
+    if (!row.member_id || row.member_id === params.actorMemberId) continue;
+    if (!recipients.has(row.member_id)) {
+      recipients.set(row.member_id, "reply_in_followed_thread");
+    }
+  }
+
+  if (recipients.size === 0) return;
+
+  const payload = [...recipients.entries()].map(([memberId, eventType]) => ({
+    member_id: memberId,
+    thread_id: params.threadId,
+    post_id: params.replyId,
+    actor_member_id: params.actorMemberId,
+    event_type: eventType,
+  }));
+
+  const { error } = await supabase.from("community_notification").insert(payload);
+
+  if (error) {
+    console.error("[community] notification insert failed:", error.message);
+  }
+}
+
 export async function createWeeklyThread(
   contentId: string,
   body: string,
@@ -90,6 +171,8 @@ export async function createWeeklyThread(
     console.error("[community] createWeeklyThread failed:", error?.message);
     return { error: "Something interrupted that post. Please try again." };
   }
+
+  await ensureThreadFollow(user.id, created.id);
 
   void writeCommunityActivity({
     memberId: user.id,
@@ -143,6 +226,8 @@ export async function createCommunityPost(input: {
     console.error("[community] createCommunityPost failed:", error?.message);
     return { error: "Something interrupted that post. Please try again." };
   }
+
+  await ensureThreadFollow(user.id, created.id);
 
   void writeCommunityActivity({
     memberId: user.id,
@@ -206,7 +291,13 @@ export async function createReply(input: {
     return { error: "Something interrupted that reply. Please try again." };
   }
 
+  await ensureThreadFollow(user.id, input.threadId);
   await touchThreadActivity(input.threadId);
+  await createReplyNotifications({
+    threadId: input.threadId,
+    replyId: created.id,
+    actorMemberId: user.id,
+  });
 
   void writeCommunityActivity({
     memberId: user.id,
@@ -290,7 +381,7 @@ export async function deleteReply(postId: string): Promise<ActionResult> {
 }
 
 async function toggleUniqueRow(params: {
-  table: "community_thread_like" | "community_post_like" | "community_saved_item";
+  table: "community_thread_like" | "community_post_like" | "community_saved_item" | "community_follow";
   match: Record<string, string>;
 }): Promise<ToggleResult> {
   const { user, supabase } = await requireUser();
@@ -358,6 +449,71 @@ export async function toggleSavePost(postId: string) {
   });
   revalidatePath("/community");
   return result;
+}
+
+export async function toggleFollowThread(threadId: string) {
+  const result = await toggleUniqueRow({
+    table: "community_follow",
+    match: { thread_id: threadId },
+  });
+  revalidatePath("/community");
+  return result;
+}
+
+export async function markCommunityNotificationRead(notificationId: string): Promise<ActionResult> {
+  const { user, supabase } = await requireUser();
+
+  const { error } = await supabase
+    .from("community_notification")
+    .update({ read_at: new Date().toISOString() })
+    .eq("id", notificationId)
+    .eq("member_id", user.id)
+    .is("read_at", null);
+
+  if (error) {
+    console.error("[community] mark notification read failed:", error.message);
+    return { error: "That update could not be saved." };
+  }
+
+  revalidatePath("/community");
+  return { success: "Notification marked read." };
+}
+
+export async function markCommunityThreadNotificationsRead(threadId: string): Promise<ActionResult> {
+  const { user, supabase } = await requireUser();
+
+  const { error } = await supabase
+    .from("community_notification")
+    .update({ read_at: new Date().toISOString() })
+    .eq("thread_id", threadId)
+    .eq("member_id", user.id)
+    .is("read_at", null);
+
+  if (error) {
+    console.error("[community] mark thread notifications read failed:", error.message);
+    return { error: "That update could not be saved." };
+  }
+
+  revalidatePath("/community");
+  return { success: "Discussion notifications cleared." };
+}
+
+export async function markAllCommunityNotificationsRead(): Promise<ActionResult> {
+  const { user, supabase } = await requireUser();
+
+  const { error } = await supabase
+    .from("community_notification")
+    .update({ read_at: new Date().toISOString() })
+    .eq("member_id", user.id)
+    .is("read_at", null);
+
+  if (error) {
+    console.error("[community] mark all notifications read failed:", error.message);
+    return { error: "Those notifications could not be cleared." };
+  }
+
+  revalidatePath("/community");
+  return { success: "All notifications marked read." };
 }
 
 async function createReport(params: {

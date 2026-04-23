@@ -16,6 +16,7 @@ interface MemberShellClientProps {
   memberName?: string | null;
   memberEmail?: string | null;
   memberAvatarUrl?: string | null;
+  communityUnreadCount?: number;
   communityPreviewEnabled?: boolean;
   betaFeedbackEnabled?: boolean;
   betaWelcomeEnabled?: boolean;
@@ -32,6 +33,7 @@ export function MemberShellClient({
   memberName,
   memberEmail,
   memberAvatarUrl,
+  communityUnreadCount = 0,
   communityPreviewEnabled = false,
   betaFeedbackEnabled = true,
   betaWelcomeEnabled = false,
@@ -50,6 +52,7 @@ export function MemberShellClient({
           tier={tier}
           memberName={memberName}
           memberAvatarUrl={memberAvatarUrl}
+          communityUnreadCount={communityUnreadCount}
           communityPreviewEnabled={communityPreviewEnabled}
           showAdminNav={showAdminNav}
         />

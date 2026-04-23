@@ -3,6 +3,7 @@ import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import type {
   CommunityModerationStatus,
+  CommunityNotificationEventType,
   CommunityPostType,
   CommunityReportReason,
   CommunityReportStatus,
@@ -51,6 +52,22 @@ type CommunitySavedRow = {
   thread_id: string | null;
   post_id: string | null;
   created_at: string;
+};
+
+type CommunityFollowRow = {
+  thread_id: string;
+};
+
+type CommunityNotificationRowRaw = {
+  id: string;
+  member_id: string;
+  thread_id: string;
+  post_id: string | null;
+  actor_member_id: string;
+  event_type: CommunityNotificationEventType;
+  read_at: string | null;
+  created_at: string;
+  actor: { name: string | null; avatar_url: string | null } | { name: string | null; avatar_url: string | null }[] | null;
 };
 
 type CommunityReportRowRaw = {
@@ -117,7 +134,22 @@ export type CommunityThreadRow = {
   reply_count: number;
   is_liked: boolean;
   is_saved: boolean;
+  is_following: boolean;
+  unread_reply_count: number;
   replies: CommunityReplyRow[];
+};
+
+export type CommunityNotificationRow = {
+  id: string;
+  member_id: string;
+  thread_id: string;
+  post_id: string | null;
+  actor_member_id: string;
+  event_type: CommunityNotificationEventType;
+  read_at: string | null;
+  created_at: string;
+  actor: { name: string | null; avatar_url: string | null } | null;
+  thread: Pick<CommunityThreadRow, "id" | "title" | "post_type" | "source_type"> | null;
 };
 
 export type CommunitySavedItem = {
@@ -216,6 +248,50 @@ async function getMemberLikedMaps(memberId: string | null | undefined, threadIds
   return {
     likedThreadIds: new Set((threadLikesResult.data ?? []).map((row) => row.thread_id)),
     likedPostIds: new Set((postLikesResult.data ?? []).map((row) => row.post_id)),
+  };
+}
+
+async function getMemberFollowMap(memberId: string | null | undefined) {
+  if (!memberId) {
+    return new Set<string>();
+  }
+
+  const supabase = asLooseSupabaseClient(await createClient());
+  const { data, error } = await supabase
+    .from("community_follow")
+    .select<CommunityFollowRow[]>("thread_id")
+    .eq("member_id", memberId);
+
+  if (error) {
+    console.error("[community] follow map lookup failed:", error.message);
+    return new Set<string>();
+  }
+
+  return new Set((data ?? []).map((row) => row.thread_id));
+}
+
+async function getMemberUnreadNotificationMaps(memberId: string | null | undefined) {
+  if (!memberId) {
+    return { unreadCount: 0, unreadByThread: new Map<string, number>() };
+  }
+
+  const supabase = asLooseSupabaseClient(await createClient());
+  const { data, error } = await supabase
+    .from("community_notification")
+    .select<Array<{ thread_id: string }>>("thread_id")
+    .eq("member_id", memberId)
+    .is("read_at", null);
+
+  if (error) {
+    console.error("[community] unread notification lookup failed:", error.message);
+    return { unreadCount: 0, unreadByThread: new Map<string, number>() };
+  }
+
+  const unreadByThread = countRowsByKey(data ?? [], "thread_id");
+
+  return {
+    unreadCount: (data ?? []).length,
+    unreadByThread,
   };
 }
 
@@ -425,7 +501,7 @@ async function getThreadRows(
   }
 
   const threadIds = threads.map((thread) => thread.id);
-  const [threadLikeResult, tagMap, repliesByThread, savedMaps, likedMaps] = await Promise.all([
+  const [threadLikeResult, tagMap, repliesByThread, savedMaps, likedMaps, followedThreadIds, unreadMaps] = await Promise.all([
     threadIds.length
       ? supabase
           .from("community_thread_like")
@@ -436,6 +512,8 @@ async function getThreadRows(
     getRepliesForThreads(threadIds, memberId, admin),
     getMemberSavedMaps(memberId),
     getMemberLikedMaps(memberId, threadIds, []),
+    getMemberFollowMap(memberId),
+    getMemberUnreadNotificationMaps(memberId),
   ]);
 
   if (threadLikeResult.error) {
@@ -456,6 +534,8 @@ async function getThreadRows(
       reply_count: replyCount,
       is_liked: likedMaps.likedThreadIds.has(thread.id),
       is_saved: savedMaps.savedThreadIds.has(thread.id),
+      is_following: followedThreadIds.has(thread.id),
+      unread_reply_count: unreadMaps.unreadByThread.get(thread.id) ?? 0,
       replies,
     };
   });
@@ -530,6 +610,116 @@ export async function getCommunityFeedThreads(
   } = {}
 ) {
   return getThreadRows({ memberId, limit, lane });
+}
+
+export async function getFollowingCommunityThreads(
+  memberId: string,
+  {
+    limit = 24,
+  }: {
+    limit?: number;
+  } = {}
+) {
+  const supabase = asLooseSupabaseClient(await createClient());
+  const { data, error } = await supabase
+    .from("community_follow")
+    .select<CommunityFollowRow[]>("thread_id")
+    .eq("member_id", memberId)
+    .limit(limit);
+
+  if (error) {
+    console.error("[community] following thread lookup failed:", error.message);
+    return [];
+  }
+
+  const threadIds = [...new Set((data ?? []).map((row) => row.thread_id))];
+  if (threadIds.length === 0) return [];
+
+  const threads = await getThreadRows({
+    memberId,
+    ids: threadIds,
+    limit: Math.max(threadIds.length, limit),
+  });
+
+  return threads.sort((a, b) => {
+    if (b.unread_reply_count !== a.unread_reply_count) {
+      return b.unread_reply_count - a.unread_reply_count;
+    }
+    return new Date(b.last_activity_at).getTime() - new Date(a.last_activity_at).getTime();
+  });
+}
+
+export async function getCommunityUnreadCount(memberId: string) {
+  const unreadMaps = await getMemberUnreadNotificationMaps(memberId);
+  return unreadMaps.unreadCount;
+}
+
+export async function getCommunityNotifications(
+  memberId: string,
+  {
+    limit = 8,
+    unreadOnly = true,
+  }: {
+    limit?: number;
+    unreadOnly?: boolean;
+  } = {}
+): Promise<CommunityNotificationRow[]> {
+  const supabase = asLooseSupabaseClient(await createClient());
+
+  let query = supabase
+    .from("community_notification")
+    .select<CommunityNotificationRowRaw[]>(
+      `
+      id,
+      member_id,
+      thread_id,
+      post_id,
+      actor_member_id,
+      event_type,
+      read_at,
+      created_at,
+      actor:actor_member_id ( name, avatar_url )
+    `
+    )
+    .eq("member_id", memberId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (unreadOnly) {
+    query = query.is("read_at", null);
+  }
+
+  const { data, error } = await query;
+  if (error || !data) {
+    if (error) console.error("[community] notification lookup failed:", error.message);
+    return [];
+  }
+
+  const threadIds = [...new Set(data.map((row) => row.thread_id))];
+  const threads = threadIds.length
+    ? await getThreadRows({ memberId, ids: threadIds, limit: threadIds.length })
+    : [];
+  const threadMap = new Map(threads.map((thread) => [thread.id, thread]));
+
+  const notifications = data
+    .map((row): CommunityNotificationRow | null => {
+      const thread = threadMap.get(row.thread_id);
+      if (!thread) return null;
+
+      return {
+        ...row,
+        actor: normalizeJoined(row.actor),
+        thread: {
+          id: thread.id,
+          title: thread.title,
+          post_type: thread.post_type,
+          source_type: thread.source_type,
+        },
+      };
+    })
+    .filter((row): row is CommunityNotificationRow => Boolean(row));
+
+  return notifications;
 }
 
 export async function getSavedCommunityItems(

@@ -21,6 +21,7 @@ interface MemberTopNavProps {
   tier?: string | null;
   memberName?: string | null;
   memberAvatarUrl?: string | null;
+  communityUnreadCount?: number;
   communityPreviewEnabled?: boolean;
   showAdminNav?: boolean;
 }
@@ -29,6 +30,7 @@ export function MemberTopNav({
   tier,
   memberName,
   memberAvatarUrl,
+  communityUnreadCount = 0,
   communityPreviewEnabled = false,
   showAdminNav = false,
 }: MemberTopNavProps) {
@@ -57,6 +59,17 @@ export function MemberTopNav({
       ? [BASE_NAV_ITEMS[0], BASE_NAV_ITEMS[1], COMMUNITY_NAV_ITEM, BASE_NAV_ITEMS[2]]
       : [...BASE_NAV_ITEMS];
   const adminMenuItem = showAdminNav ? { href: "/admin", label: "Admin", mobileLabel: "Admin" } : null;
+
+  function renderCommunityBadge() {
+    if (communityUnreadCount < 1) return null;
+    const label = communityUnreadCount > 9 ? "9+" : String(communityUnreadCount);
+
+    return (
+      <span className="ml-2 inline-flex min-w-[1.35rem] items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-slate-950">
+        {label}
+      </span>
+    );
+  }
 
   useEffect(() => {
     function handleOutsideClick(event: MouseEvent) {
@@ -119,6 +132,7 @@ export function MemberTopNav({
           <nav aria-label="Member navigation" className="hidden items-center gap-1 md:flex">
             {[...navItems, ...(adminMenuItem ? [adminMenuItem] : [])].map(({ href, label }) => {
               const isActive = pathname === href || (href !== "/today" && pathname.startsWith(href));
+              const isCommunity = href === "/community";
               return (
                 <Link
                   key={href}
@@ -131,7 +145,10 @@ export function MemberTopNav({
                       : "text-white/58 hover:bg-white/6 hover:text-white",
                   ].join(" ")}
                 >
-                  {label}
+                  <span className="inline-flex items-center">
+                    {label}
+                    {isCommunity ? renderCommunityBadge() : null}
+                  </span>
                 </Link>
               );
             })}
@@ -239,6 +256,7 @@ export function MemberTopNav({
           {[...navItems, ...(adminMenuItem ? [adminMenuItem] : []), { href: "/account", label: "Account", mobileLabel: "Account" }].map(
             ({ href, label, mobileLabel }) => {
             const isActive = pathname === href || (href !== "/today" && pathname.startsWith(href));
+            const isCommunity = href === "/community";
             return (
               <li key={href} className="flex-1">
                 <Link
@@ -249,7 +267,14 @@ export function MemberTopNav({
                     isActive ? "text-primary" : "text-white/45 hover:text-white",
                   ].join(" ")}
                 >
-                  <NavIcon href={href} />
+                  <span className="relative">
+                    <NavIcon href={href} />
+                    {isCommunity && communityUnreadCount > 0 ? (
+                      <span className="absolute -right-2 -top-1 inline-flex min-w-[1rem] items-center justify-center rounded-full bg-primary px-1 py-[1px] text-[9px] font-semibold leading-none text-slate-950">
+                        {communityUnreadCount > 9 ? "9+" : communityUnreadCount}
+                      </span>
+                    ) : null}
+                  </span>
                   <span>{mobileLabel ?? label}</span>
                   <span
                     className="block h-1 w-1 rounded-full -mt-0.5"

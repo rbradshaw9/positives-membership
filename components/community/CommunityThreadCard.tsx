@@ -8,6 +8,7 @@ import {
   deleteThread,
   reportPost,
   reportThread,
+  toggleFollowThread,
   togglePostLike,
   toggleSaveThread,
   toggleThreadLike,
@@ -84,7 +85,7 @@ function ReportPanel({
         onChange={(event) => setDetails(event.target.value)}
         rows={3}
         maxLength={1500}
-        placeholder="A little context helps the moderators understand what feels off."
+        placeholder="A little context helps moderators understand what feels off."
         className="mt-2 w-full resize-none rounded-xl border border-border bg-white px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/55"
       />
 
@@ -111,11 +112,9 @@ function ReportPanel({
 
 function ReplyComposer({
   threadId,
-  parentId,
   onDone,
 }: {
   threadId: string;
-  parentId?: string | null;
   onDone: () => void;
 }) {
   const router = useRouter();
@@ -126,7 +125,7 @@ function ReplyComposer({
   function submit() {
     setMessage(null);
     startTransition(async () => {
-      const result = await createReply({ threadId, parentId, body });
+      const result = await createReply({ threadId, body });
       if (result.error) {
         setMessage(result.error);
         return;
@@ -139,12 +138,15 @@ function ReplyComposer({
 
   return (
     <div className="mt-3 rounded-2xl border border-border bg-muted/35 p-3">
+      <p className="mb-2 text-xs leading-6 text-muted-foreground">
+        Your reply joins the shared thread so everyone following this conversation can stay in one place.
+      </p>
       <textarea
         value={body}
         onChange={(event) => setBody(event.target.value)}
         rows={3}
         maxLength={2000}
-        placeholder={parentId ? "Add a thoughtful follow-up..." : "Write a grounded reply..."}
+        placeholder="Write a grounded reply..."
         className="w-full resize-none rounded-xl border border-border bg-white px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/55"
       />
       <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -192,7 +194,7 @@ function ReplyItem({
   }
 
   return (
-    <div className="rounded-[1.25rem] border border-border/80 bg-white p-3 shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
+    <div className="rounded-[1.25rem] border border-border/80 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
       <div className="flex items-start gap-3">
         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-[11px] font-semibold text-primary">
           {getInitials(reply.member?.name)}
@@ -204,7 +206,7 @@ function ReplyItem({
             </span>
             {reply.is_official_answer ? (
               <span className="rounded-full bg-accent/12 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-accent">
-                Helpful
+                Helpful reply
               </span>
             ) : null}
             <span className="ml-auto text-xs text-muted-foreground">{formatRelativeTime(reply.created_at)}</span>
@@ -235,7 +237,6 @@ function ReplyItem({
           onSubmit={(reason, details) => run(() => reportPost(reply.id, reason, details))}
         />
       ) : null}
-
     </div>
   );
 }
@@ -267,22 +268,19 @@ export function CommunityThreadCard({ thread, currentMemberId }: CommunityThread
         <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">
           {getCommunityLaneLabel(thread.post_type)}
         </span>
-        {thread.source_type === "weekly_principle" ? (
-          <span className="rounded-full bg-secondary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-secondary">
-            Legacy post
-          </span>
-        ) : null}
-        <span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-          Member post
-        </span>
         {thread.is_pinned ? (
           <span className="rounded-full bg-accent/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-accent">
-            Pinned
+            Pinned guidance
           </span>
         ) : null}
         {thread.is_featured ? (
           <span className="rounded-full bg-foreground px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
-            Featured
+            Featured post
+          </span>
+        ) : null}
+        {thread.unread_reply_count > 0 ? (
+          <span className="rounded-full bg-secondary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-secondary">
+            {thread.unread_reply_count} new {thread.unread_reply_count === 1 ? "reply" : "replies"}
           </span>
         ) : null}
         <span className="ml-auto text-xs text-muted-foreground">{formatRelativeTime(thread.last_activity_at)}</span>
@@ -313,14 +311,17 @@ export function CommunityThreadCard({ thread, currentMemberId }: CommunityThread
       </div>
 
       <div className="mt-5 flex flex-wrap items-center gap-4 border-t border-border/80 pt-4 text-xs font-semibold text-muted-foreground">
-        <button type="button" onClick={() => run(() => toggleThreadLike(thread.id))}>
-          {thread.is_liked ? "Liked" : "Like"} · {thread.like_count}
+        <button type="button" onClick={() => setShowReplyBox((value) => !value)}>
+          Reply · {thread.reply_count}
+        </button>
+        <button type="button" onClick={() => run(() => toggleFollowThread(thread.id))}>
+          {thread.is_following ? "Following" : "Follow"}
         </button>
         <button type="button" onClick={() => run(() => toggleSaveThread(thread.id))}>
           {thread.is_saved ? "Saved" : "Save"}
         </button>
-        <button type="button" onClick={() => setShowReplyBox((value) => !value)}>
-          Reply · {thread.reply_count}
+        <button type="button" onClick={() => run(() => toggleThreadLike(thread.id))}>
+          {thread.is_liked ? "Liked" : "Like"} · {thread.like_count}
         </button>
         <button type="button" onClick={() => setShowReport((value) => !value)}>
           Report
