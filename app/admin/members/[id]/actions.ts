@@ -1230,10 +1230,7 @@ export async function startMemberImpersonationInline(
     return { error: "Could not create a secure sign-in link for this member." };
   }
 
-  const actionLink = new URL("/auth/confirm", config.app.url);
-  actionLink.searchParams.set("token_hash", tokenHash);
-  actionLink.searchParams.set("type", "email");
-  actionLink.searchParams.set("next", "/today");
+  const actionPath = `/auth/confirm?token_hash=${encodeURIComponent(tokenHash)}&type=email&next=${encodeURIComponent("/today")}`;
 
   await logAudit({
     actorId: actor.id,
@@ -1249,7 +1246,7 @@ export async function startMemberImpersonationInline(
     },
   });
 
-  redirect(actionLink.toString());
+  redirect(actionPath);
 }
 
 export async function removeAdminPermissionOverride(formData: FormData): Promise<ActionResult> {
