@@ -650,8 +650,19 @@ export async function getFollowingCommunityThreads(
 }
 
 export async function getCommunityUnreadCount(memberId: string) {
-  const unreadMaps = await getMemberUnreadNotificationMaps(memberId);
-  return unreadMaps.unreadCount;
+  const supabase = asLooseSupabaseClient(await createClient());
+  const { count, error } = await supabase
+    .from("community_notification")
+    .select("*", { count: "exact", head: true })
+    .eq("member_id", memberId)
+    .is("read_at", null);
+
+  if (error) {
+    console.error("[community] unread notification count failed:", error.message);
+    return 0;
+  }
+
+  return count ?? 0;
 }
 
 export async function getCommunityNotifications(
