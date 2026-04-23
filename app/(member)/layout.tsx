@@ -9,6 +9,7 @@ import { trackFirstMemberLogin } from "@/lib/member/track-first-login";
 import { getAdminPermissionSet } from "@/lib/auth/require-admin";
 import { getCommunityUnreadCount } from "@/lib/queries/get-community-posts";
 import { checkTierAccess } from "@/lib/auth/check-tier-access";
+import { getMemberBetaFeedbackThreads } from "@/lib/beta-feedback/data";
 
 /**
  * app/(member)/layout.tsx
@@ -39,6 +40,11 @@ export default async function MemberLayout({
   const showAdminNav = adminPermissionSet.size > 0;
   const hasCommunityAccess = checkTierAccess(member.subscription_tier, "level_2");
   const communityUnreadCount = hasCommunityAccess ? await getCommunityUnreadCount(member.id) : 0;
+  const betaFeedbackInbox =
+    config.app.betaFeedbackEnabled &&
+    (member.launch_cohort === "alpha" || member.launch_cohort === "beta")
+      ? await getMemberBetaFeedbackThreads(member.id)
+      : { threads: [], unreadCount: 0 };
 
   // Only show a non-zero streak if the member practiced today or yesterday.
   // If they missed a day, show 0 — the DB value itself gets corrected on next listen.
@@ -55,6 +61,8 @@ export default async function MemberLayout({
       memberName={member.name}
       memberAvatarUrl={member.avatar_url}
       communityUnreadCount={communityUnreadCount}
+      betaFeedbackThreads={betaFeedbackInbox.threads}
+      betaFeedbackUnreadCount={betaFeedbackInbox.unreadCount}
       communityPreviewEnabled={config.app.communityPreviewEnabled}
       betaFeedbackEnabled={config.app.betaFeedbackEnabled}
       betaWelcomeEnabled={config.app.betaWelcomeEnabled}

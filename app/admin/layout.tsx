@@ -4,6 +4,7 @@ import { config } from "@/lib/config";
 import { BetaFeedbackWidget } from "@/components/member/BetaFeedbackWidget";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
+import { getMemberBetaFeedbackThreads } from "@/lib/beta-feedback/data";
 
 /**
  * app/admin/layout.tsx
@@ -30,6 +31,8 @@ export default async function AdminLayout({
   const showBetaFeedback =
     config.app.betaFeedbackEnabled &&
     (member?.launch_cohort === "alpha" || member?.launch_cohort === "beta");
+  const betaFeedbackInbox =
+    showBetaFeedback ? await getMemberBetaFeedbackThreads(user.id) : { threads: [], unreadCount: 0 };
 
   const navItems = [
     {
@@ -230,6 +233,8 @@ export default async function AdminLayout({
           memberEmail={member?.email ?? user.email ?? null}
           memberName={member?.name ?? null}
           surface="admin"
+          initialThreads={betaFeedbackInbox.threads}
+          initialUnreadCount={betaFeedbackInbox.unreadCount}
         />
       ) : null}
     </div>

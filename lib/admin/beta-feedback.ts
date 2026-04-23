@@ -39,6 +39,10 @@ export type AdminBetaFeedbackRecord = {
   approved_for_development: boolean;
   approved_for_development_at: string | null;
   approved_for_development_by_member_id: string | null;
+  member_last_viewed_at: string | null;
+  asana_task_gid: string | null;
+  asana_task_url: string | null;
+  asana_task_created_at: string | null;
   stripe_customer_id: string | null;
   subscription_tier: string | null;
   subscription_status: string | null;
@@ -68,7 +72,7 @@ export async function getAdminBetaFeedbackQueue(filters: AdminBetaFeedbackFilter
   let query = supabase
     .from("beta_feedback_submission")
     .select<AdminBetaFeedbackRecord[]>(
-      "id, created_at, updated_at, member_id, member_email, member_name, summary, details, expected_behavior, category, severity, status, page_path, page_url, app_release, browser_name, os_name, device_type, viewport_width, viewport_height, user_agent, timezone, loom_url, screenshot_storage_path, screenshot_file_name, screenshot_content_type, screenshot_size_bytes, assigned_member_id, triage_notes, approved_for_development, approved_for_development_at, approved_for_development_by_member_id, stripe_customer_id, subscription_tier, subscription_status, metadata, resolved_at, member:member_id(id, email, name), assignee:assigned_member_id(id, email, name), approver:approved_for_development_by_member_id(id, email, name)"
+      "id, created_at, updated_at, member_id, member_email, member_name, summary, details, expected_behavior, category, severity, status, page_path, page_url, app_release, browser_name, os_name, device_type, viewport_width, viewport_height, user_agent, timezone, loom_url, screenshot_storage_path, screenshot_file_name, screenshot_content_type, screenshot_size_bytes, assigned_member_id, triage_notes, approved_for_development, approved_for_development_at, approved_for_development_by_member_id, member_last_viewed_at, asana_task_gid, asana_task_url, asana_task_created_at, stripe_customer_id, subscription_tier, subscription_status, metadata, resolved_at, member:member_id(id, email, name), assignee:assigned_member_id(id, email, name), approver:approved_for_development_by_member_id(id, email, name)"
     )
     .order("created_at", { ascending: false })
     .limit(100);

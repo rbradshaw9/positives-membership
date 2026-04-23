@@ -59,6 +59,41 @@ async function memberHasAnyAdminRole(memberId: string): Promise<boolean> {
   return (data ?? []).length > 0;
 }
 
+export async function memberHasAdminRoleKey(
+  memberId: string,
+  roleKey: "super_admin" | "admin" | "coach" | "support" | "readonly"
+): Promise<boolean> {
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  const { data: roles, error: roleError } = await supabase
+    .from("admin_user_role")
+    .select<{ role_id: string }[]>("role_id")
+    .eq("member_id", memberId);
+
+  if (roleError || !roles?.length) {
+    if (roleError) {
+      console.error("[requireAdmin] role key lookup failed:", roleError.message);
+    }
+    return false;
+  }
+
+  const { data, error } = await supabase
+    .from("admin_role")
+    .select<{ id: string }[]>("id")
+    .eq("key", roleKey)
+    .in(
+      "id",
+      roles.map((role) => role.role_id)
+    )
+    .limit(1);
+
+  if (error) {
+    console.error("[requireAdmin] admin role key verification failed:", error.message);
+    return false;
+  }
+
+  return (data ?? []).length > 0;
+}
+
 export async function getAdminPermissionSet(
   memberId: string,
   email?: string | null

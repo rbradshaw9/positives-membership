@@ -17,6 +17,8 @@ export type BetaFeedbackCategory =
   | "idea"
   | "other";
 
+export type BetaFeedbackCommentVisibility = "internal" | "member";
+
 export const BETA_FEEDBACK_STATUS_OPTIONS: Array<{
   value: BetaFeedbackStatus;
   label: string;
@@ -65,6 +67,27 @@ export const BETA_FEEDBACK_CATEGORY_LABEL = Object.fromEntries(
   BETA_FEEDBACK_CATEGORY_OPTIONS.map((option) => [option.value, option.label])
 ) as Record<BetaFeedbackCategory, string>;
 
+export const BETA_FEEDBACK_COMMENT_VISIBILITY_OPTIONS: Array<{
+  value: BetaFeedbackCommentVisibility;
+  label: string;
+  helper: string;
+}> = [
+  {
+    value: "internal",
+    label: "Internal only",
+    helper: "Visible to admins only. Good for triage notes and implementation thinking.",
+  },
+  {
+    value: "member",
+    label: "Visible to member",
+    helper: "Use when you need clarification or want to share a follow-up with the tester.",
+  },
+];
+
+export const BETA_FEEDBACK_COMMENT_VISIBILITY_LABEL = Object.fromEntries(
+  BETA_FEEDBACK_COMMENT_VISIBILITY_OPTIONS.map((option) => [option.value, option.label])
+) as Record<BetaFeedbackCommentVisibility, string>;
+
 export function isBetaFeedbackStatus(value: string): value is BetaFeedbackStatus {
   return BETA_FEEDBACK_STATUS_OPTIONS.some((option) => option.value === value);
 }
@@ -75,4 +98,10 @@ export function isBetaFeedbackSeverity(value: string): value is BetaFeedbackSeve
 
 export function isBetaFeedbackCategory(value: string): value is BetaFeedbackCategory {
   return BETA_FEEDBACK_CATEGORY_OPTIONS.some((option) => option.value === value);
+}
+
+export function isBetaFeedbackCommentVisibility(
+  value: string
+): value is BetaFeedbackCommentVisibility {
+  return BETA_FEEDBACK_COMMENT_VISIBILITY_OPTIONS.some((option) => option.value === value);
 }

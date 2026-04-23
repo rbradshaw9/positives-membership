@@ -101,6 +101,9 @@ export async function createAsanaTaskForBetaFeedback(params: {
   browserName: string | null;
   osName: string | null;
   deviceType: string | null;
+  triageNotes?: string | null;
+  approvalNotes?: string | null;
+  adminQueueUrl?: string | null;
 }) {
   const config = getAsanaConfig();
   if (!config.configured) {
@@ -118,6 +121,7 @@ export async function createAsanaTaskForBetaFeedback(params: {
     : params.memberEmail;
   const notes = [
     `Source: beta feedback submission ${params.feedbackId}`,
+    params.adminQueueUrl ? `Admin queue: ${params.adminQueueUrl}` : null,
     `Reporter: ${reporter}`,
     `Severity: ${params.severity}`,
     `Category: ${params.category}`,
@@ -134,12 +138,23 @@ export async function createAsanaTaskForBetaFeedback(params: {
     params.expectedBehavior ? "" : null,
     params.expectedBehavior ? "Expected instead:" : null,
     params.expectedBehavior,
+    params.triageNotes ? "" : null,
+    params.triageNotes ? "Internal clarification and triage notes:" : null,
+    params.triageNotes,
+    params.approvalNotes ? "" : null,
+    params.approvalNotes ? "Super admin approval note:" : null,
+    params.approvalNotes,
     "",
-    "Codex/Ryan workflow:",
-    "- Triage in /admin/beta-feedback.",
-    "- Fix directly if actionable.",
-    "- Add a comment here with implementation notes, commit, verification, and production status.",
-    "- Mark the feedback item resolved or closed when done.",
+    "Review workflow:",
+    "- Human review: confirm the problem statement, reproduction path, and whether clarification is still needed.",
+    "- Agent review: identify likely root cause, recommended fix direction, and verification plan before changing code.",
+    "- After implementation, comment with commit, verification steps, and production status.",
+    "- Keep the beta feedback record and this Asana task linked as the source of truth.",
+    "",
+    "Definition of done:",
+    "- Root cause or design change is documented.",
+    "- Fix or decision is verified in the product.",
+    "- Beta feedback record is updated with the outcome.",
   ]
     .filter((line): line is string => line !== null && line !== undefined)
     .join("\n");
@@ -173,6 +188,31 @@ export async function createAsanaTaskForBetaFeedback(params: {
       reason: error instanceof Error ? error.message : "Asana task creation failed.",
       taskGid: null,
       taskUrl: null,
+    };
+  }
+}
+
+export async function addCommentToAsanaTask(taskGid: string, text: string) {
+  try {
+    const story = await asanaFetch<{ gid: string }>(`/tasks/${taskGid}/stories`, {
+      method: "POST",
+      body: JSON.stringify({
+        data: {
+          text,
+        },
+      }),
+    });
+
+    return {
+      added: true,
+      storyGid: story.gid,
+      reason: null as string | null,
+    };
+  } catch (error) {
+    return {
+      added: false,
+      storyGid: null,
+      reason: error instanceof Error ? error.message : "Asana comment creation failed.",
     };
   }
 }

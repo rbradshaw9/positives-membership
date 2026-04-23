@@ -8,6 +8,7 @@ import { WelcomeModal } from "@/components/member/WelcomeModal";
 import { InstallAppPrompt } from "@/components/member/InstallAppPrompt";
 import { BetaFeedbackWidget } from "@/components/member/BetaFeedbackWidget";
 import { BetaWelcomeBanner } from "@/components/member/BetaWelcomeBanner";
+import type { MemberBetaFeedbackThread } from "@/lib/beta-feedback/data";
 
 interface MemberShellClientProps {
   streak: number;
@@ -17,6 +18,8 @@ interface MemberShellClientProps {
   memberEmail?: string | null;
   memberAvatarUrl?: string | null;
   communityUnreadCount?: number;
+  betaFeedbackThreads?: MemberBetaFeedbackThread[];
+  betaFeedbackUnreadCount?: number;
   communityPreviewEnabled?: boolean;
   betaFeedbackEnabled?: boolean;
   betaWelcomeEnabled?: boolean;
@@ -34,6 +37,8 @@ export function MemberShellClient({
   memberEmail,
   memberAvatarUrl,
   communityUnreadCount = 0,
+  betaFeedbackThreads = [],
+  betaFeedbackUnreadCount = 0,
   communityPreviewEnabled = false,
   betaFeedbackEnabled = true,
   betaWelcomeEnabled = false,
@@ -63,7 +68,12 @@ export function MemberShellClient({
         <main className="member-shell__content flex-1">{children}</main>
         <PersistentAudioPlayer />
         {betaFeedbackEnabled && isEarlyReleaseMember ? (
-          <BetaFeedbackWidget memberEmail={memberEmail ?? null} memberName={memberName ?? null} />
+          <BetaFeedbackWidget
+            memberEmail={memberEmail ?? null}
+            memberName={memberName ?? null}
+            initialThreads={betaFeedbackThreads}
+            initialUnreadCount={betaFeedbackUnreadCount}
+          />
         ) : null}
         {/* WelcomeModal self-activates from ?welcome=1 — no-ops otherwise */}
         <Suspense fallback={null}>

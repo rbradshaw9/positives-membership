@@ -1,10 +1,14 @@
 "use client";
 
 import { useActionState } from "react";
-import { updateBetaFeedbackSubmission } from "@/app/admin/beta-feedback/actions";
+import {
+  addBetaFeedbackComment,
+  updateBetaFeedbackSubmission,
+} from "@/app/admin/beta-feedback/actions";
 import {
   BETA_FEEDBACK_CATEGORY_LABEL,
   BETA_FEEDBACK_CATEGORY_OPTIONS,
+  BETA_FEEDBACK_COMMENT_VISIBILITY_OPTIONS,
   BETA_FEEDBACK_SEVERITY_LABEL,
   BETA_FEEDBACK_SEVERITY_OPTIONS,
   BETA_FEEDBACK_STATUS_LABEL,
@@ -12,12 +16,15 @@ import {
 } from "@/lib/beta-feedback/shared";
 import type { AdminBetaFeedbackRecord } from "@/lib/admin/beta-feedback";
 import { MemberCrmInlineAlert } from "@/app/admin/members/[id]/MemberCrmInlineForm";
+import type { BetaFeedbackCommentRecord } from "@/lib/beta-feedback/data";
 
 type Props = {
   feedback: AdminBetaFeedbackRecord & {
     screenshotUrl?: string | null;
+    comments: BetaFeedbackCommentRecord[];
   };
   assignableMembers: Array<{ id: string; label: string }>;
+  isSuperAdmin: boolean;
 };
 
 type TriageActionState = {
@@ -88,8 +95,16 @@ function truncate(value: string | null, maxLength = 160) {
   return value.length > maxLength ? `${value.slice(0, maxLength).trim()}...` : value;
 }
 
-export function BetaFeedbackTriageCard({ feedback, assignableMembers }: Props) {
+export function BetaFeedbackTriageCard({
+  feedback,
+  assignableMembers,
+  isSuperAdmin,
+}: Props) {
   const [state, formAction, pending] = useActionState(updateBetaFeedbackSubmission, INITIAL_STATE);
+  const [commentState, commentAction, commentPending] = useActionState(
+    addBetaFeedbackComment,
+    INITIAL_STATE
+  );
   const reporterLabel = feedback.member_name || feedback.member_email;
   const assigneeLabel = feedback.assignee?.name || feedback.assignee?.email || "Unassigned";
   const approverLabel = feedback.approver?.name || feedback.approver?.email || "An admin";
@@ -243,7 +258,114 @@ export function BetaFeedbackTriageCard({ feedback, assignableMembers }: Props) {
                   Watch Loom
                 </a>
               ) : null}
+              {feedback.asana_task_url ? (
+                <a
+                  href={feedback.asana_task_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-full border border-slate-200 bg-white px-4 py-2 font-medium text-slate-700"
+                >
+                  Open Asana task
+                </a>
+              ) : null}
             </div>
+
+            <section className="rounded-[22px] border border-slate-200/80 bg-white p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Discussion
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-slate-700">
+                    Use internal notes for team context and member-visible replies when you need clarification from the tester.
+                  </p>
+                </div>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-600">
+                  {feedback.comments.length} {feedback.comments.length === 1 ? "entry" : "entries"}
+                </span>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                {feedback.comments.length === 0 ? (
+                  <div className="rounded-[18px] border border-dashed border-slate-200 bg-slate-50/60 px-4 py-4 text-sm text-slate-500">
+                    No discussion yet. Add an internal note or ask the member for clarification here.
+                  </div>
+                ) : (
+                  feedback.comments.map((comment) => (
+                    <div
+                      key={comment.id}
+                      className="rounded-[18px] border border-slate-200 bg-slate-50/60 px-4 py-3"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-semibold text-slate-900">
+                          {comment.author_name || comment.author_email || "Positives team"}
+                        </span>
+                        <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                          {comment.visibility === "internal" ? "Internal" : "Visible to member"}
+                        </span>
+                        <span className="text-xs text-slate-500">{formatCompactDate(comment.created_at)}</span>
+                      </div>
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                        {comment.body}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <form action={commentAction} className="mt-4 grid gap-3 rounded-[18px] border border-slate-200 bg-slate-50/70 p-4">
+                <input type="hidden" name="feedbackId" value={feedback.id} />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="grid gap-2">
+                    <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Visibility</span>
+                    <select
+                      name="visibility"
+                      defaultValue="internal"
+                      className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900"
+                    >
+                      {BETA_FEEDBACK_COMMENT_VISIBILITY_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  {isSuperAdmin ? (
+                    <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                      <input
+                        type="checkbox"
+                        name="alsoSendToAsana"
+                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                      />
+                      <span className="text-sm leading-6 text-slate-700">
+                        Also add this note to the linked Asana task
+                      </span>
+                    </label>
+                  ) : null}
+                </div>
+
+                <label className="grid gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">New note or reply</span>
+                  <textarea
+                    name="body"
+                    rows={4}
+                    placeholder="Add internal context, or ask the member a clear follow-up question."
+                    className="rounded-[22px] border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 placeholder:text-slate-400"
+                  />
+                </label>
+
+                <MemberCrmInlineAlert state={commentState} />
+
+                <button
+                  type="submit"
+                  disabled={commentPending}
+                  className="rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {commentPending ? "Saving note..." : "Add note"}
+                </button>
+              </form>
+            </section>
           </div>
 
           <form action={formAction} className="grid content-start gap-4 rounded-[24px] border border-slate-200/80 bg-white p-4">
@@ -281,6 +403,7 @@ export function BetaFeedbackTriageCard({ feedback, assignableMembers }: Props) {
                   type="checkbox"
                   name="approvedForDevelopment"
                   defaultChecked={feedback.approved_for_development}
+                  disabled={!isSuperAdmin}
                   className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                 />
                 <span className="text-sm leading-6 text-slate-700">
@@ -294,7 +417,9 @@ export function BetaFeedbackTriageCard({ feedback, assignableMembers }: Props) {
                 </p>
               ) : (
                 <p className="mt-3 text-xs leading-5 text-slate-500">
-                  Leave this unchecked until an admin decides the item is ready to be worked on.
+                  {isSuperAdmin
+                    ? "Leave this unchecked until the issue is clear enough to hand off into development and Asana."
+                    : "Only a super admin can approve feedback for development and create the Asana task."}
                 </p>
               )}
             </section>

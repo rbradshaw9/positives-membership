@@ -1,9 +1,10 @@
-import { requireAdminPermission } from "@/lib/auth/require-admin";
+import { memberHasAdminRoleKey, requireAdminPermission } from "@/lib/auth/require-admin";
 import {
   getAdminBetaFeedbackQueue,
   type AdminBetaFeedbackFilters,
 } from "@/lib/admin/beta-feedback";
 import { getAdminAssignableMembers } from "@/lib/admin/member-crm";
+import { getBetaFeedbackCommentsMap } from "@/lib/beta-feedback/data";
 import {
   BETA_FEEDBACK_CATEGORY_OPTIONS,
   BETA_FEEDBACK_SEVERITY_OPTIONS,
@@ -74,6 +75,8 @@ export default async function AdminBetaFeedbackPage({ searchParams }: PageProps)
     getAdminBetaFeedbackQueue(filters),
     getAdminAssignableMembers(),
   ]);
+  const isSuperAdmin = await memberHasAdminRoleKey(actor.id, "super_admin");
+  const commentsMap = await getBetaFeedbackCommentsMap(queue.map((item) => item.id), "all");
 
   const adminClient = asLooseSupabaseClient(getAdminClient());
   const queueWithScreenshotUrls = await Promise.all(
@@ -259,8 +262,12 @@ export default async function AdminBetaFeedbackPage({ searchParams }: PageProps)
           queueWithScreenshotUrls.map((feedback) => (
             <BetaFeedbackTriageCard
               key={feedback.id}
-              feedback={feedback}
+              feedback={{
+                ...feedback,
+                comments: commentsMap.get(feedback.id) ?? [],
+              }}
               assignableMembers={assignableMembers}
+              isSuperAdmin={isSuperAdmin}
             />
           ))
         )}

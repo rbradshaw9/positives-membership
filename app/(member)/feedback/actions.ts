@@ -9,10 +9,10 @@ import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import { checkAbuseGuard, getClientIp } from "@/lib/security/abuse-guard";
 import { getCurrentSentryRelease } from "@/lib/observability/sentry-env";
 import { metricCount, routeBucket } from "@/lib/observability/metrics";
-import { createAsanaTaskForBetaFeedback } from "@/lib/integrations/asana";
 import {
   isBetaFeedbackCategory,
   isBetaFeedbackSeverity,
+  type BetaFeedbackCommentVisibility,
   type BetaFeedbackCategory,
   type BetaFeedbackSeverity,
 } from "@/lib/beta-feedback/shared";
@@ -181,7 +181,7 @@ export async function submitBetaFeedback(
   const { pageUrl, pagePath } = normalizeUrl(pageUrlValue);
   const adminClient = asLooseSupabaseClient(getAdminClient());
 
-  const { data: insertedFeedback, error } = await adminClient
+  const { error } = await adminClient
     .from("beta_feedback_submission")
     .insert({
     member_id: member.id,
@@ -216,9 +216,7 @@ export async function submitBetaFeedback(
       member_has_password: member.password_set === true,
       marketing_opted_out: member.email_unsubscribed === true,
     },
-    })
-    .select<{ id: string }>("id")
-    .single();
+    });
 
   if (error) {
     console.error("[beta-feedback] insert failed:", error.message);
@@ -242,76 +240,96 @@ export async function submitBetaFeedback(
     page: routeBucket(pagePath),
   });
 
-  if (insertedFeedback?.id && ["high", "blocker"].includes(severityValue)) {
-    const asanaResult = await createAsanaTaskForBetaFeedback({
-      feedbackId: insertedFeedback.id,
-      memberEmail: member.email,
-      memberName: member.name ?? null,
-      summary,
-      details,
-      expectedBehavior,
-      category: categoryValue,
-      severity: severityValue,
-      pageUrl,
-      pagePath,
-      browserName,
-      osName,
-      deviceType,
-    });
-
-    if (asanaResult.created) {
-      metricCount("beta_feedback.asana_escalation", 1, {
-        outcome: "created",
-        severity: severityValue,
-        category: categoryValue,
-      });
-
-      const triageNote = [
-        "Auto-escalated to Asana because this was submitted as high/blocker feedback.",
-        asanaResult.taskUrl ? `Asana task: ${asanaResult.taskUrl}` : `Asana task ID: ${asanaResult.taskGid}`,
-      ]
-        .filter(Boolean)
-        .join("\n");
-
-      const { error: escalationUpdateError } = await adminClient
-        .from("beta_feedback_submission")
-        .update({
-          triage_notes: triageNote,
-          metadata: {
-            submitted_from: "member_widget",
-            member_has_password: member.password_set === true,
-            marketing_opted_out: member.email_unsubscribed === true,
-            asana_escalation: {
-              task_gid: asanaResult.taskGid,
-              task_url: asanaResult.taskUrl,
-              created_at: new Date().toISOString(),
-            },
-          },
-        })
-        .eq("id", insertedFeedback.id);
-
-      if (escalationUpdateError) {
-        console.error("[beta-feedback] Asana escalation metadata update failed:", escalationUpdateError.message);
-        metricCount("beta_feedback.asana_escalation", 1, {
-          outcome: "metadata_update_failed",
-          severity: severityValue,
-          category: categoryValue,
-        });
-      }
-    } else {
-      console.warn("[beta-feedback] Asana escalation skipped or failed:", asanaResult.reason);
-      metricCount("beta_feedback.asana_escalation", 1, {
-        outcome: "skipped_or_failed",
-        reason: asanaResult.reason?.includes("ASANA_") ? "missing_config" : "api_error",
-        severity: severityValue,
-        category: categoryValue,
-      });
-    }
-  }
-
   revalidatePath("/admin/beta-feedback");
 
   return {
     success: "Thanks. Your feedback is in the queue, and we captured the page context for the team.",
   };
+}
+
+export async function replyToBetaFeedback(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const member = await requireMember();
+  const feedbackId = clean(formData.get("feedbackId"));
+  const body = clean(formData.get("body"));
+
+  if (!feedbackId) {
+    return { error: "Missing feedback thread." };
+  }
+
+  if (!body || body.length < 4) {
+    return { error: "Add a little more detail so the team can follow along." };
+  }
+
+  const adminClient = asLooseSupabaseClient(getAdminClient());
+  const { data: feedback, error: feedbackError } = await adminClient
+    .from("beta_feedback_submission")
+    .select<{ id: string; member_id: string | null }>("id, member_id")
+    .eq("id", feedbackId)
+    .maybeSingle();
+
+  if (feedbackError || !feedback || feedback.member_id !== member.id) {
+    return { error: "We couldn't open that feedback thread." };
+  }
+
+  const visibility: BetaFeedbackCommentVisibility = "member";
+  const { error } = await adminClient.from("beta_feedback_comment").insert({
+    feedback_submission_id: feedbackId,
+    author_member_id: member.id,
+    author_name: member.name ?? null,
+    author_email: member.email,
+    author_kind: "member",
+    visibility,
+    body,
+    metadata: {
+      submitted_from: "member_widget",
+    },
+  });
+
+  if (error) {
+    console.error("[beta-feedback] member reply failed:", error.message);
+    return { error: "We couldn't send that reply right now. Please try again." };
+  }
+
+  await adminClient
+    .from("beta_feedback_submission")
+    .update({
+      updated_at: new Date().toISOString(),
+      member_last_viewed_at: new Date().toISOString(),
+    })
+    .eq("id", feedbackId);
+
+  revalidatePath("/admin/beta-feedback");
+  revalidatePath("/today");
+  revalidatePath("/community");
+
+  return { success: "Reply sent." };
+}
+
+export async function markBetaFeedbackThreadViewed(feedbackId: string) {
+  const member = await requireMember();
+  if (!feedbackId) return;
+
+  const adminClient = asLooseSupabaseClient(getAdminClient());
+  const { data: feedback, error: feedbackError } = await adminClient
+    .from("beta_feedback_submission")
+    .select<{ id: string; member_id: string | null }>("id, member_id")
+    .eq("id", feedbackId)
+    .maybeSingle();
+
+  if (feedbackError || !feedback || feedback.member_id !== member.id) {
+    return;
+  }
+
+  await adminClient
+    .from("beta_feedback_submission")
+    .update({
+      member_last_viewed_at: new Date().toISOString(),
+    })
+    .eq("id", feedbackId);
+
+  revalidatePath("/today");
+  revalidatePath("/community");
 }
