@@ -15,14 +15,16 @@ type AsanaApiResponse<T> = {
 function getAsanaConfig() {
   const token = process.env.ASANA_ACCESS_TOKEN;
   const projectGid = process.env.ASANA_PROJECT_GID;
+  const workspaceGid = process.env.ASANA_WORKSPACE_GID;
   const betaFeedbackSectionGid =
     process.env.ASANA_BETA_FEEDBACK_SECTION_GID || DEFAULT_BETA_FEEDBACK_SECTION_GID;
 
   return {
     token,
     projectGid,
+    workspaceGid,
     betaFeedbackSectionGid,
-    configured: Boolean(token && projectGid),
+    configured: Boolean(token && projectGid && workspaceGid),
   };
 }
 
@@ -63,7 +65,7 @@ export async function getOpenBetaFeedbackAsanaTasks() {
       configured: false,
       sectionGid: config.betaFeedbackSectionGid,
       tasks: [] as AsanaTaskSummary[],
-      error: "ASANA_ACCESS_TOKEN or ASANA_PROJECT_GID is missing.",
+      error: "ASANA_ACCESS_TOKEN, ASANA_PROJECT_GID, or ASANA_WORKSPACE_GID is missing.",
     };
   }
 
@@ -109,7 +111,7 @@ export async function createAsanaTaskForBetaFeedback(params: {
   if (!config.configured) {
     return {
       created: false,
-      reason: "ASANA_ACCESS_TOKEN or ASANA_PROJECT_GID is missing.",
+      reason: "ASANA_ACCESS_TOKEN, ASANA_PROJECT_GID, or ASANA_WORKSPACE_GID is missing.",
       taskGid: null,
       taskUrl: null,
     };
@@ -164,16 +166,17 @@ export async function createAsanaTaskForBetaFeedback(params: {
       method: "POST",
       body: JSON.stringify({
         data: {
+          workspace: config.workspaceGid,
           name,
           notes,
-          projects: [config.projectGid],
+          memberships: [
+            {
+              project: config.projectGid,
+              section: config.betaFeedbackSectionGid,
+            },
+          ],
         },
       }),
-    });
-
-    await asanaFetch(`/sections/${config.betaFeedbackSectionGid}/addTask`, {
-      method: "POST",
-      body: JSON.stringify({ data: { task: task.gid } }),
     });
 
     return {
