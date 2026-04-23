@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { resolvePostLoginDestination } from "@/lib/auth/post-login-destination";
@@ -20,6 +21,15 @@ export default async function LoginPage({
   searchParams: Promise<{ next?: string }>;
 }) {
   const { next = "/today" } = await searchParams;
+  const cookieStore = await cookies();
+  const hasSupabaseCookie = cookieStore
+    .getAll()
+    .some(({ name }) => name.startsWith("sb-"));
+
+  if (!hasSupabaseCookie) {
+    return <LoginClient />;
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
