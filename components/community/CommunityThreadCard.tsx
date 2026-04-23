@@ -18,6 +18,7 @@ import {
   COMMUNITY_REPORT_REASON_OPTIONS,
   getCommunityDisplayName,
   getCommunityLaneLabel,
+  getCommunityThreadDisplayTitle,
   type CommunityReportReason,
 } from "@/lib/community/shared";
 import type { CommunityReplyRow, CommunityThreadRow } from "@/lib/queries/get-community-posts";
@@ -29,6 +30,7 @@ type CommunityThreadCardProps = {
 
 function getInitials(name: string | null | undefined) {
   const displayName = getCommunityDisplayName(name);
+  if (displayName === "Someone in Positives") return "P";
   return displayName
     .split(/\s+/)
     .slice(0, 2)
@@ -218,7 +220,7 @@ function ReplyItem({
 
       <div className="mt-3 flex flex-wrap items-center gap-4 text-xs font-semibold text-muted-foreground">
         <button type="button" onClick={() => run(() => togglePostLike(reply.id))}>
-          {reply.is_liked ? "Liked" : "Like"} · {reply.like_count}
+          {reply.is_liked ? "Appreciated" : "Appreciate"} · {reply.like_count}
         </button>
         <button type="button" onClick={() => setShowReport((value) => !value)}>
           Report
@@ -249,6 +251,12 @@ export function CommunityThreadCard({ thread, currentMemberId }: CommunityThread
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const isOwn = thread.member_id === currentMemberId;
+  const displayTitle = getCommunityThreadDisplayTitle({
+    title: thread.title,
+    body: thread.body,
+    postType: thread.post_type,
+    maxLength: 88,
+  });
 
   function run(action: () => Promise<{ error?: string } | { active?: boolean; error?: string }>) {
     setMessage(null);
@@ -299,11 +307,9 @@ export function CommunityThreadCard({ thread, currentMemberId }: CommunityThread
             <span className="text-xs text-muted-foreground">{getCommunityContextLabel(thread.post_type)}</span>
           </div>
 
-          {thread.title ? (
-            <h3 className="heading-balance mt-3 text-[1.35rem] font-semibold tracking-[-0.03em] text-foreground">
-              {thread.title}
-            </h3>
-          ) : null}
+          <h3 className="heading-balance mt-3 text-[1.35rem] font-semibold tracking-[-0.03em] text-foreground">
+            {displayTitle}
+          </h3>
 
           <p className="mt-3 whitespace-pre-wrap text-sm leading-[1.8] text-muted-foreground">
             {thread.body}
@@ -313,16 +319,16 @@ export function CommunityThreadCard({ thread, currentMemberId }: CommunityThread
 
       <div className="mt-5 flex flex-wrap items-center gap-4 border-t border-border/80 pt-4 text-xs font-semibold text-muted-foreground">
         <button type="button" onClick={() => setShowReplyBox((value) => !value)}>
-          Reply · {thread.reply_count}
+          Reply to this post · {thread.reply_count}
         </button>
         <button type="button" onClick={() => run(() => toggleFollowThread(thread.id))}>
-          {thread.is_following ? "Following replies" : "Follow replies"}
+          {thread.is_following ? "Following updates" : "Follow updates"}
         </button>
         <button type="button" onClick={() => run(() => toggleSaveThread(thread.id))}>
-          {thread.is_saved ? "Saved" : "Save for later"}
+          {thread.is_saved ? "Saved for later" : "Save for later"}
         </button>
         <button type="button" onClick={() => run(() => toggleThreadLike(thread.id))}>
-          {thread.is_liked ? "Liked" : "Like"} · {thread.like_count}
+          {thread.is_liked ? "Appreciated" : "Appreciate"} · {thread.like_count}
         </button>
         <button type="button" onClick={() => setShowReport((value) => !value)}>
           Report

@@ -203,19 +203,20 @@ export default async function CommunityPage({ searchParams }: PageProps) {
 
         {selectedView === "feed" ? (
           <section className="space-y-5">
-            <SurfaceCard padding="lg" className="surface-card--editorial">
-              <p className="ui-section-eyebrow mb-2">Main feed</p>
-              <h2 className="heading-balance text-[clamp(1.8rem,1.5rem+0.8vw,2.4rem)] font-semibold tracking-[-0.04em] text-foreground">
-                Share what is real, then let the right people meet you there.
-              </h2>
-              <p className="mt-3 max-w-3xl text-sm leading-[1.8] text-muted-foreground">
-                Use Wins for celebrations, Support for the parts that feel hard, and Questions when
-                you want perspective from the room.
-              </p>
-              <div className="mt-5">
-                <CommunityComposerCard />
+            <div className="flex flex-col gap-4">
+              <div className="max-w-3xl">
+                <p className="ui-section-eyebrow mb-2">Main feed</p>
+                <h2 className="heading-balance text-[clamp(1.8rem,1.5rem+0.8vw,2.4rem)] font-semibold tracking-[-0.04em] text-foreground">
+                  Share something real, then let the room respond.
+                </h2>
+                <p className="mt-3 text-sm leading-[1.8] text-muted-foreground">
+                  Wins are for celebrations, Support is for the hard parts, and Questions are for
+                  the moments when another perspective would help.
+                </p>
               </div>
-            </SurfaceCard>
+
+              <CommunityComposerCard />
+            </div>
 
             <div className="flex flex-wrap gap-2">
               <a
@@ -247,7 +248,7 @@ export default async function CommunityPage({ searchParams }: PageProps) {
             </div>
 
             <p className="text-xs leading-6 text-muted-foreground">
-              Follow replies keeps you updated when a discussion moves. Save for later keeps a private bookmark for your own return.
+              Follow updates keeps a conversation on your radar. Save for later keeps a private bookmark for your own return.
             </p>
 
             {selectedLane ? (

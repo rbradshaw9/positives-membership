@@ -132,14 +132,14 @@ export function getCommunityLaneHref(value: CommunityPostType) {
 }
 
 export function getCommunityDisplayName(name: string | null | undefined) {
-  if (!name) return "Member";
+  if (!name) return "Someone in Positives";
 
   const parts = name
     .trim()
     .split(/\s+/)
     .filter(Boolean);
 
-  if (parts.length === 0) return "Member";
+  if (parts.length === 0) return "Someone in Positives";
   if (parts.length === 1) return parts[0];
 
   const first = parts[0];
@@ -165,7 +165,9 @@ export function getCommunityThreadDisplayTitle(params: {
     return truncate(firstLine, params.maxLength ?? 72);
   }
 
-  return `${getCommunityLaneShortLabel(params.postType)} post`;
+  if (params.postType === "share") return "A win worth sharing";
+  if (params.postType === "question") return "A question for the room";
+  return "A post asking for support";
 }
 
 export function getCommunityReportReasonLabel(value: CommunityReportReason) {
