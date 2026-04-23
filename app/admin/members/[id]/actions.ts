@@ -1183,6 +1183,70 @@ export async function setAdminPermissionOverrideInline(
   return setAdminPermissionOverride(formData);
 }
 
+export async function startMemberImpersonationInline(
+  _previousState: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  const actor = await requireAdminPermission("roles.manage");
+  const memberId = clean(formData.get("memberId"));
+
+  if (!memberId) return { error: "Choose a member to impersonate." };
+  if (memberId === actor.id) return { error: "You are already signed in as this member." };
+
+  const authorization = requireClientAuthorization(formData, "impersonationReason");
+  if (authorization.error || !authorization.reason) return { error: authorization.error };
+
+  const supabase = getAdminClient();
+  const { data: member, error: memberError } = await supabase
+    .from("member")
+    .select("id, email, name")
+    .eq("id", memberId)
+    .maybeSingle();
+
+  if (memberError) {
+    console.error("[admin/member-actions] impersonation member lookup failed:", memberError.message);
+    return { error: "Could not load this member before impersonating." };
+  }
+
+  if (!member?.email) {
+    return { error: "This member does not have an email address to sign in with." };
+  }
+
+  const redirectTo = `${config.app.url}/auth/callback?next=${encodeURIComponent("/today")}`;
+  const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+    type: "magiclink",
+    email: member.email,
+    options: {
+      redirectTo,
+    },
+  });
+
+  const actionLink = linkData?.properties?.action_link;
+  if (linkError || !actionLink) {
+    console.error(
+      "[admin/member-actions] impersonation link generation failed:",
+      linkError?.message ?? "missing action link"
+    );
+    return { error: "Could not create a secure sign-in link for this member." };
+  }
+
+  await logAudit({
+    actorId: actor.id,
+    memberId,
+    action: "member.impersonation_link_generated",
+    targetType: "member",
+    targetId: memberId,
+    reason: authorization.reason,
+    metadata: {
+      target_email: member.email,
+      client_authorization_confirmed: true,
+      session_replacement_warning_acknowledged: true,
+    },
+  });
+
+  redirect(actionLink);
+}
+
 export async function removeAdminPermissionOverride(formData: FormData): Promise<ActionResult> {
   const actor = await requireAdminPermission("roles.manage");
   const memberId = clean(formData.get("memberId"));

@@ -62,25 +62,51 @@ function parseResources(raw?: string | null): CourseResource[] {
 }
 
 function getVideoSource(videoUrl?: string | null) {
-  if (!videoUrl) return { vimeoId: null as string | null, youtubeId: null as string | null };
+  if (!videoUrl) {
+    return {
+      vimeoId: null as string | null,
+      youtubeId: null as string | null,
+      directVideoUrl: null as string | null,
+    };
+  }
 
   const vimeoMatch = videoUrl.match(/(?:vimeo\.com\/(?:video\/)?|player\.vimeo\.com\/video\/)(\d+)/i);
   if (vimeoMatch?.[1]) {
-    return { vimeoId: vimeoMatch[1], youtubeId: null as string | null };
+    return { vimeoId: vimeoMatch[1], youtubeId: null as string | null, directVideoUrl: null as string | null };
   }
 
   if (/^\d+$/.test(videoUrl)) {
-    return { vimeoId: videoUrl, youtubeId: null as string | null };
+    return { vimeoId: videoUrl, youtubeId: null as string | null, directVideoUrl: null as string | null };
   }
 
   const youtubeMatch = videoUrl.match(
     /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{11})/i
   );
   if (youtubeMatch?.[1]) {
-    return { vimeoId: null as string | null, youtubeId: youtubeMatch[1] };
+    return { vimeoId: null as string | null, youtubeId: youtubeMatch[1], directVideoUrl: null as string | null };
   }
 
-  return { vimeoId: videoUrl, youtubeId: null as string | null };
+  if (/^https?:\/\//i.test(videoUrl) && /\.(mp4|mov|m4v|webm)(?:\?|#|$)/i.test(videoUrl)) {
+    return { vimeoId: null as string | null, youtubeId: null as string | null, directVideoUrl: videoUrl };
+  }
+
+  return { vimeoId: null as string | null, youtubeId: null as string | null, directVideoUrl: null as string | null };
+}
+
+function DirectVideoPlayer({ src, title }: { src: string; title: string }) {
+  return (
+    <video
+      controls
+      preload="metadata"
+      className="block aspect-video w-full bg-black"
+      aria-label={title}
+    >
+      <source src={src} />
+      <a href={src} target="_blank" rel="noopener noreferrer">
+        Open video
+      </a>
+    </video>
+  );
 }
 
 function ResourceList({ resources }: { resources: CourseResource[] }) {
@@ -128,7 +154,7 @@ export function LessonViewer({ lesson, memberId }: LessonViewerProps) {
   }
 
   const lessonVideo = getVideoSource(lesson.video_url);
-  const hasVideo = !!lessonVideo.vimeoId || !!lessonVideo.youtubeId;
+  const hasVideo = !!lessonVideo.vimeoId || !!lessonVideo.youtubeId || !!lessonVideo.directVideoUrl;
 
   return (
     <div className="member-container py-8 md:py-10 flex flex-col gap-8">
@@ -177,12 +203,16 @@ export function LessonViewer({ lesson, memberId }: LessonViewerProps) {
       {/* ── Video ─────────────────────────────────────────────────────────── */}
       {hasVideo && (
         <div className="overflow-hidden rounded-2xl border border-border shadow-sm">
-          <VideoEmbed
-            vimeoId={lessonVideo.vimeoId}
-            youtubeId={lessonVideo.youtubeId}
-            courseLessonId={lesson.id}
-            title={lesson.title}
-          />
+          {lessonVideo.directVideoUrl ? (
+            <DirectVideoPlayer src={lessonVideo.directVideoUrl} title={lesson.title} />
+          ) : (
+            <VideoEmbed
+              vimeoId={lessonVideo.vimeoId}
+              youtubeId={lessonVideo.youtubeId}
+              courseLessonId={lesson.id}
+              title={lesson.title}
+            />
+          )}
         </div>
       )}
 
@@ -252,7 +282,7 @@ export function LessonViewer({ lesson, memberId }: LessonViewerProps) {
             {lesson.sessions.map((session) => {
               const sessionVideo = getVideoSource(session.video_url);
               const sessionResources = parseResources(session.resources);
-              const hasSessionVideo = !!sessionVideo.vimeoId || !!sessionVideo.youtubeId;
+              const hasSessionVideo = !!sessionVideo.vimeoId || !!sessionVideo.youtubeId || !!sessionVideo.directVideoUrl;
 
               return (
                 <details
@@ -282,11 +312,15 @@ export function LessonViewer({ lesson, memberId }: LessonViewerProps) {
                     <div className="flex flex-col gap-4 border-t border-border p-4">
                       {hasSessionVideo && (
                         <div className="overflow-hidden rounded-xl border border-border">
-                          <VideoEmbed
-                            vimeoId={sessionVideo.vimeoId}
-                            youtubeId={sessionVideo.youtubeId}
-                            title={session.title}
-                          />
+                          {sessionVideo.directVideoUrl ? (
+                            <DirectVideoPlayer src={sessionVideo.directVideoUrl} title={session.title} />
+                          ) : (
+                            <VideoEmbed
+                              vimeoId={sessionVideo.vimeoId}
+                              youtubeId={sessionVideo.youtubeId}
+                              title={session.title}
+                            />
+                          )}
                         </div>
                       )}
                       {session.body ? (

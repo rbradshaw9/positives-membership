@@ -52,6 +52,7 @@ import {
   resolveMemberFollowupTaskInline,
   revokeCourseEntitlementInline,
   setAdminPermissionOverrideInline,
+  startMemberImpersonationInline,
   unlockCourseWithPointsForMemberInline,
   updateMemberAvatarInline,
   updateMemberCrmProfileInline,
@@ -2773,6 +2774,30 @@ export default async function AdminMemberDetailPage({
                   <ClientAuthorizationFields
                     reasonName="roleReason"
                     reasonPlaceholder="Why is this member being given admin access?"
+                  />
+                </MemberCrmInlineForm>
+              ) : null}
+
+              {canManageRoles ? (
+                <MemberCrmInlineForm
+                  action={startMemberImpersonationInline}
+                  className="member-crm-card"
+                  submitLabel="Start member session"
+                  pendingLabel="Creating secure link..."
+                  buttonClassName="admin-btn admin-btn--outline"
+                  resetOnSuccess={false}
+                >
+                  <input type="hidden" name="memberId" value={member.id} />
+                  <p className="member-crm-card-title">Support impersonation</p>
+                  <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
+                    Creates a one-time Supabase sign-in link for this member and records the action
+                    in the audit log. This replaces your current browser session with the member&apos;s
+                    session, so use a separate browser profile if you want to stay signed in as admin.
+                  </p>
+                  <ClientAuthorizationFields
+                    reasonName="impersonationReason"
+                    reasonLabel="Impersonation reason"
+                    reasonPlaceholder="What support or QA need requires signing in as this member?"
                   />
                 </MemberCrmInlineForm>
               ) : null}

@@ -48,6 +48,15 @@ function stripHtml(html: string): string {
     .trim();
 }
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function getRenderedField(value: unknown): string {
   if (typeof value === "string") return value;
   if (value && typeof value === "object" && "rendered" in value) {
@@ -62,6 +71,8 @@ function cleanImportedHtml(html: string): string | null {
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
     .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
     .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, "")
+    .replace(/\son[a-z]+=(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+    .replace(/\s(?:href|src)=(["'])\s*javascript:[^"']*\1/gi, "")
     .replace(/\sdata-[a-z0-9_-]+="[^"]*"/gi, "")
     .replace(/\sclass="[^"]*"/gi, "")
     .replace(/\sid="[^"]*"/gi, "")
@@ -632,6 +643,23 @@ async function detectLdApiVersion(baseUrl: string, headers: Record<string, strin
 function extractElementorVideo(elementorData: unknown): string | null {
   if (!elementorData || !Array.isArray(elementorData)) return null;
 
+  const placeholderVideoRe = /XHOmBV4js_E|placeholder/i;
+
+  function normalizeVideoCandidate(value: unknown): string | null {
+    if (typeof value !== "string") return null;
+    const candidate = decodeHtmlEntities(value).trim();
+    if (!candidate || placeholderVideoRe.test(candidate)) return null;
+
+    const embedded = extractEmbeddedVideoUrl(candidate);
+    if (embedded) return embedded;
+
+    if (/^https?:\/\//i.test(candidate) && /\.(mp4|mov|m4v|webm)(?:\?|#|$)/i.test(candidate)) {
+      return candidate;
+    }
+
+    return null;
+  }
+
   function walk(elements: unknown[]): string | null {
     for (const el of elements) {
       if (typeof el !== "object" || el === null) continue;
@@ -639,14 +667,36 @@ function extractElementorVideo(elementorData: unknown): string | null {
 
       if (elem.widgetType === "video") {
         const s = (elem.settings ?? {}) as Record<string, unknown>;
-        const type = s.video_type as string | undefined;
-        if (type === "vimeo" && s.vimeo_url) return s.vimeo_url as string;
-        if (type === "youtube" && s.youtube_url) return s.youtube_url as string;
-        // Fallback: return whichever URL is non-default
-        const vimeo = s.vimeo_url as string | undefined;
-        const youtube = s.youtube_url as string | undefined;
-        if (vimeo && !vimeo.includes("XHOmBV4js_E")) return vimeo; // skip placeholder
-        if (youtube && !youtube.includes("XHOmBV4js_E")) return youtube;
+        const directKeys = [
+          "vimeo_url",
+          "youtube_url",
+          "dailymotion_url",
+          "hosted_url",
+          "external_url",
+          "insert_url",
+          "url",
+        ];
+
+        for (const key of directKeys) {
+          const found = normalizeVideoCandidate(s[key]);
+          if (found) return found;
+        }
+
+        for (const value of Object.values(s)) {
+          if (value && typeof value === "object" && "url" in value) {
+            const found = normalizeVideoCandidate((value as { url?: unknown }).url);
+            if (found) return found;
+          }
+        }
+      }
+
+      if (elem.widgetType === "html" || elem.widgetType === "shortcode") {
+        const s = (elem.settings ?? {}) as Record<string, unknown>;
+        const found = extractEmbeddedVideoUrl(
+          typeof s.html === "string" ? s.html : null,
+          typeof s.shortcode === "string" ? s.shortcode : null
+        );
+        if (found) return found;
       }
 
       if (Array.isArray(elem.elements)) {
@@ -661,7 +711,7 @@ function extractElementorVideo(elementorData: unknown): string | null {
 }
 
 /**
- * Extract the main body HTML from Elementor text-editor widgets.
+ * Extract meaningful fallback body HTML from common Elementor content widgets.
  */
 function extractElementorBody(elementorData: unknown): string | null {
   if (!elementorData || !Array.isArray(elementorData)) return null;
@@ -671,20 +721,47 @@ function extractElementorBody(elementorData: unknown): string | null {
     for (const el of elements) {
       if (typeof el !== "object" || el === null) continue;
       const elem = el as Record<string, unknown>;
+      const s = (elem.settings ?? {}) as Record<string, unknown>;
+
       if (elem.widgetType === "text-editor") {
-        const s = (elem.settings ?? {}) as Record<string, unknown>;
         const editor = s.editor as string | undefined;
         if (editor) {
           const html = cleanImportedHtml(editor);
           if (html && stripHtml(html).length > 10) parts.push(html);
         }
       }
+
+      if (elem.widgetType === "heading") {
+        const title = typeof s.title === "string" ? stripHtml(decodeHtmlEntities(s.title)).trim() : "";
+        if (title) parts.push(`<h2>${escapeHtml(title)}</h2>`);
+      }
+
+      if (elem.widgetType === "button") {
+        const text = typeof s.text === "string" ? stripHtml(decodeHtmlEntities(s.text)).trim() : "";
+        const link = s.link && typeof s.link === "object" ? (s.link as { url?: unknown }).url : null;
+        const url = typeof link === "string" ? decodeHtmlEntities(link).trim() : "";
+        if (text && url.startsWith("http")) {
+          parts.push(`<p><a href="${escapeHtml(url)}">${escapeHtml(text)}</a></p>`);
+        }
+      }
+
       if (Array.isArray(elem.elements)) walk(elem.elements as unknown[]);
     }
   }
 
   walk(elementorData as unknown[]);
   return parts.length > 0 ? parts.join("\n\n") : null;
+}
+
+function resolveImportedBodyHtml(renderedContent: string, elementorData: unknown): string | null {
+  const renderedBody = cleanImportedHtml(renderedContent);
+  const elementorBody = extractElementorBody(elementorData);
+
+  if (renderedBody && elementorBody) {
+    return stripHtml(renderedBody).length >= stripHtml(elementorBody).length ? renderedBody : elementorBody;
+  }
+
+  return renderedBody || elementorBody || (stripHtml(decodeHtmlEntities(renderedContent)) || null);
 }
 
 function extractEmbeddedVideoUrl(...values: Array<string | null | undefined>): string | null {
@@ -731,6 +808,13 @@ function extractResources(...sources: Array<string | null | undefined>): string 
   const seen = new Set<string>();
   const sourceText = sources.filter(Boolean).join("\n");
 
+  function isLikelyResourceUrl(url: string) {
+    return (
+      /\.(pdf|mp3|m4a|mp4|mov|m4v|webm|zip|docx?|pptx?|xlsx?)(?:\?|#|$)/i.test(url) ||
+      /s3|amazonaws|wp-content\/uploads|drive\.google\.com|dropbox\.com|box\.com/i.test(url)
+    );
+  }
+
   function add(url: string, label = "", type = "file") {
     const clean = decodeHtmlEntities(url).trim().replace(/[),.;]+$/, "");
     if (seen.has(clean) || !clean.startsWith("http")) return;
@@ -744,7 +828,7 @@ function extractResources(...sources: Array<string | null | undefined>): string 
     const detectedType =
       ext === "pdf" ? "pdf"
         : ext === "mp3" || ext === "m4a" ? "audio"
-          : ext === "mp4" || ext === "mov" ? "video"
+          : ext === "mp4" || ext === "mov" || ext === "m4v" || ext === "webm" ? "video"
             : ext === "zip" ? "download"
               : ext === "doc" || ext === "docx" || ext === "ppt" || ext === "pptx" ? "document"
                 : type;
@@ -756,28 +840,42 @@ function extractResources(...sources: Array<string | null | undefined>): string 
     });
   }
 
-  // 1. Parse [easy_media_download] and similar shortcode attributes.
-  const shortcodeRe = /\[[^\]]*(?:easy_media_download|download)[^\]]*url=(?:"|&quot;|\\")([^"\\\]&]+)(?:"|&quot;|\\")[^\]]*(?:text|label|title)=(?:"|&quot;|\\")([^"\\\]]+)(?:"|&quot;|\\")[^\]]*\]/gi;
+  // 1. Parse [easy_media_download] and similar shortcode attributes in any order.
+  const shortcodeRe = /\[[^\]]*(?:easy_media_download|download)[^\]]*\]/gi;
   let m;
-  while ((m = shortcodeRe.exec(sourceText)) !== null) add(m[1], m[2]);
-
-  const shortcodeUrlRe = /\[[^\]]*(?:easy_media_download|download)[^\]]*url=(?:"|&quot;|\\")([^"\\\]&]+)(?:"|&quot;|\\")[^\]]*\]/gi;
-  while ((m = shortcodeUrlRe.exec(sourceText)) !== null) add(m[1]);
+  while ((m = shortcodeRe.exec(sourceText)) !== null) {
+    const shortcode = m[0];
+    const attrs = new Map<string, string>();
+    const attrRe = /([a-z0-9_-]+)=(?:"|&quot;|\\")([^"\\\]]+)(?:"|&quot;|\\")/gi;
+    let attrMatch;
+    while ((attrMatch = attrRe.exec(shortcode)) !== null) {
+      attrs.set(attrMatch[1].toLowerCase(), attrMatch[2]);
+    }
+    const url = attrs.get("url") ?? attrs.get("file") ?? attrs.get("href");
+    const label = attrs.get("text") ?? attrs.get("label") ?? attrs.get("title") ?? "";
+    if (url) add(url, label);
+  }
 
   // 2. Scan anchor tags and keep labels from link text.
   const anchorRe = /<a\b[^>]*href=(?:"|')([^"']+)(?:"|')[^>]*>([\s\S]*?)<\/a>/gi;
   while ((m = anchorRe.exec(sourceText)) !== null) {
     const url = m[1];
     const isLikelyResource =
-      /\.(pdf|mp3|m4a|mp4|mov|zip|docx?|pptx?)(?:\?|$)/i.test(url) ||
-      /s3|amazonaws|wp-content\/uploads/i.test(url) ||
+      isLikelyResourceUrl(url) ||
       sourceText.includes("materials");
     if (isLikelyResource) add(url, m[2]);
   }
 
   // 3. Resource-looking raw URLs.
-  const rawResourceRe = /(https?:\/\/[^"\s<>]*(?:\.(?:pdf|mp3|m4a|mp4|mov|zip|docx?|pptx?)(?:\?[^"\s<>]*)?|s3[^"\s<>]*|amazonaws[^"\s<>]*|wp-content\/uploads[^"\s<>]*))/gi;
+  const rawResourceRe = /(https?:\/\/[^"\s<>]*(?:\.(?:pdf|mp3|m4a|mp4|mov|m4v|webm|zip|docx?|pptx?|xlsx?)(?:\?[^"\s<>]*)?|s3[^"\s<>]*|amazonaws[^"\s<>]*|wp-content\/uploads[^"\s<>]*|drive\.google\.com[^"\s<>]*|dropbox\.com[^"\s<>]*|box\.com[^"\s<>]*))/gi;
   while ((m = rawResourceRe.exec(sourceText)) !== null) add(m[1]);
+
+  // 4. Elementor button/file widgets often store resource links in JSON objects.
+  const elementorLinkRe = /"(?:url|href)"\s*:\s*"([^"]+)"/gi;
+  while ((m = elementorLinkRe.exec(sourceText)) !== null) {
+    const url = m[1].replace(/\\\//g, "/");
+    if (isLikelyResourceUrl(url)) add(url);
+  }
 
   return resources.length > 0 ? JSON.stringify(resources) : null;
 }
@@ -982,9 +1080,7 @@ export async function importFromLearnDash(formData: FormData): Promise<LearnDash
             renderedContent: lessonContentHtml,
             materials: lessonMaterials,
           });
-          const lessonBody = extractElementorBody(elementorData)
-            || cleanImportedHtml(lessonContentHtml)
-            || (stripHtml(decodeHtmlEntities(lessonContentHtml)) || null);
+          const lessonBody = resolveImportedBodyHtml(lessonContentHtml, elementorData);
           const lessonExcerptHtml = getRenderedField(ldLesson.excerpt);
           const lessonDesc = lessonExcerptHtml
             ? stripHtml(decodeHtmlEntities(lessonExcerptHtml))
@@ -1046,9 +1142,7 @@ export async function importFromLearnDash(formData: FormData): Promise<LearnDash
                   renderedContent: topicContentHtml,
                   materials: topicMaterials,
                 });
-                const topicBody = extractElementorBody(topicElementorData)
-                  || cleanImportedHtml(topicContentHtml)
-                  || (stripHtml(decodeHtmlEntities(topicContentHtml)) || null);
+                const topicBody = resolveImportedBodyHtml(topicContentHtml, topicElementorData);
                 const topicExcerptHtml = getRenderedField(ldTopic.excerpt);
                 const topicDesc = topicExcerptHtml
                   ? stripHtml(decodeHtmlEntities(topicExcerptHtml))
