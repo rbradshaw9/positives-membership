@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { PublicSiteFooter } from "@/components/marketing/PublicSiteFooter";
 import { PublicSiteHeader } from "@/components/marketing/PublicSiteHeader";
 import { PricingToggle } from "@/components/marketing/PricingToggle";
-import { getPublicSessionState } from "@/lib/marketing/public-session";
+import { ANONYMOUS_PUBLIC_SESSION_STATE } from "@/lib/marketing/public-session";
 import { config } from "@/lib/config";
 import {
   getInviteLaunchSource,
@@ -46,11 +45,7 @@ export default async function BetaPage({
       : inviteOffer === "discount"
         ? config.launch.betaDiscountPromoCode
         : "";
-  const publicSession = await getPublicSessionState();
-
-  if (publicSession.hasMemberAccess) {
-    redirect("/today");
-  }
+  const publicSession = ANONYMOUS_PUBLIC_SESSION_STATE;
 
   const cohortLabel = launchContext.launchCohort === "alpha" ? "Alpha" : "Beta";
   const offerLabel =

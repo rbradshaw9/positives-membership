@@ -3,7 +3,7 @@ import { config } from "@/lib/config";
 import { PublicSiteFooter } from "@/components/marketing/PublicSiteFooter";
 import { PublicSiteHeader } from "@/components/marketing/PublicSiteHeader";
 import { appendPublicTrackingParams, type PublicSearchParams } from "@/lib/marketing/public-query-params";
-import { getPublicSessionState } from "@/lib/marketing/public-session";
+import { ANONYMOUS_PUBLIC_SESSION_STATE } from "@/lib/marketing/public-session";
 import { TrialPageClient, type TrialPlanOption } from "./trial-page-client";
 
 export const metadata: Metadata = {
@@ -86,7 +86,7 @@ export default async function TryPage({
 }: {
   searchParams: Promise<PublicSearchParams>;
 }) {
-  const session = await getPublicSessionState();
+  const session = ANONYMOUS_PUBLIC_SESSION_STATE;
   const resolvedSearchParams = await searchParams;
   const signInHref = session.signInHref;
   const paidHref = appendPublicTrackingParams(session.paidHref, resolvedSearchParams);
@@ -102,7 +102,7 @@ export default async function TryPage({
         signInHref={signInHref}
         signInLabel={session.signInLabel}
         primaryCtaHref={paidHref}
-        primaryCtaLabel={session.hasMemberAccess ? "Open Today" : "View paid options"}
+        primaryCtaLabel="View paid options"
       />
 
       <main>
@@ -208,7 +208,7 @@ export default async function TryPage({
 
               <TrialPageClient
                 plans={trialPlans}
-                hasMemberAccess={session.hasMemberAccess}
+                hasMemberAccess={false}
                 memberHref="/today"
                 paidHref={paidHref}
               />

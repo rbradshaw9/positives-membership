@@ -1,12 +1,9 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
 import { config } from "@/lib/config";
 import { PublicSiteFooter } from "@/components/marketing/PublicSiteFooter";
 import { PublicSiteHeader } from "@/components/marketing/PublicSiteHeader";
 import { PricingToggle } from "@/components/marketing/PricingToggle";
-import { getPublicSessionState } from "@/lib/marketing/public-session";
-import { hasActiveMemberAccess } from "@/lib/subscription/access";
+import { ANONYMOUS_PUBLIC_SESSION_STATE } from "@/lib/marketing/public-session";
 
 export const metadata = {
   title: "Join Positives — Start Your Practice",
@@ -22,8 +19,7 @@ export const metadata = {
  * Public pricing and conversion page.
  *
  * Server component:
- *   - Reads auth state
- *   - Active members → /today
+ *   - Stays auth-agnostic for public performance
  *   - Passes price IDs from server env to PricingToggle (never exposed to client bundle)
  *   - Handles the check-email holding screen
  */
@@ -33,25 +29,7 @@ export default async function JoinPage({
   searchParams: Promise<{ step?: string; email?: string; error?: string }>;
 }) {
   const { step, email: emailParam, error: errorParam } = await searchParams;
-  const publicSession = await getPublicSessionState();
-
-  // ── Active member redirect ────────────────────────────────────────────────
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (user) {
-    const { data: member } = await supabase
-      .from("member")
-      .select("subscription_status")
-      .eq("id", user.id)
-      .single();
-
-    if (hasActiveMemberAccess(member?.subscription_status)) {
-      redirect("/today");
-    }
-  }
+  const publicSession = ANONYMOUS_PUBLIC_SESSION_STATE;
 
   // ── Price IDs resolved server-side (never bundled into client JS) ─────────
   const level1Monthly = config.stripe.prices.level1Monthly;
@@ -206,8 +184,8 @@ export default async function JoinPage({
       >
         <div className="max-w-6xl mx-auto">
           <PricingToggle
-            isAuthenticated={!!user}
-            userEmail={user?.email ?? null}
+            isAuthenticated={false}
+            userEmail={null}
             initialError={errorParam ?? null}
             sourcePath="/join"
             launchCohort="live"
