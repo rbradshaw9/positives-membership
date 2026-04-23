@@ -53,6 +53,12 @@ export interface AffiliatePortalViewModel {
   topSources: AffiliatePortalSource[];
 }
 
+export interface AffiliatePortalDashboardData {
+  performance: AffiliatePortalViewModel;
+  commissions: AffiliateCommission[];
+  payouts: AffiliatePayout[];
+}
+
 function formatTrendLabel(period: string) {
   if (!period) return "";
 

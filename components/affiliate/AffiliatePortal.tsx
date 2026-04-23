@@ -11,12 +11,13 @@ import {
 import type {
   AffiliateCommission,
   AffiliatePayout,
-  PromoterStats,
 } from "@/lib/firstpromoter/client";
 import type {
+  AffiliatePortalDashboardData,
   AffiliatePortalViewModel,
   AffiliateTrackedLink,
 } from "@/lib/affiliate/portal";
+import { buildAffiliatePortalViewModel } from "@/lib/affiliate/portal";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { track } from "@/lib/analytics/ga";
 
@@ -26,13 +27,9 @@ interface Props {
   affiliateLinkId: string | null;
   affiliateCreatedAt: string | null;
   token: string | null;
-  stats: PromoterStats | null;
-  commissions: AffiliateCommission[];
-  payouts: AffiliatePayout[];
   memberName: string;
   paypalEmail: string;
   trackedLinks: AffiliateTrackedLink[];
-  performance: AffiliatePortalViewModel;
 }
 
 type Tab = "link" | "performance" | "share" | "earnings";
@@ -43,6 +40,19 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "share", label: "Share Kit", icon: "✉️" },
   { id: "earnings", label: "Earnings", icon: "💸" },
 ];
+
+const EMPTY_AFFILIATE_DASHBOARD: AffiliatePortalDashboardData = {
+  performance: buildAffiliatePortalViewModel({
+    stats: null,
+    commissions: [],
+    payouts: [],
+    trendReport: [],
+    urlReports: [],
+    paypalEmail: "",
+  }),
+  commissions: [],
+  payouts: [],
+};
 
 function formatMoney(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
@@ -2018,13 +2028,9 @@ export function AffiliatePortal({
   affiliateLinkId,
   affiliateCreatedAt,
   token,
-  stats,
-  commissions,
-  payouts,
   memberName,
   paypalEmail: initialPaypalEmail,
   trackedLinks,
-  performance,
 }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("link");
   const [loading, setLoading] = useState(false);
@@ -2044,14 +2050,19 @@ export function AffiliatePortal({
   const [slugSaved, setSlugSaved] = useState(false);
   const [slugConfirmed, setSlugConfirmed] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [dashboardData, setDashboardData] = useState<AffiliatePortalDashboardData | null>(null);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
 
   void affiliateId;
   void affiliateLinkId;
   void affiliateCreatedAt;
   void memberName;
-  void stats;
 
   const referralLink = currentToken ? `https://positives.life?fpr=${currentToken}` : null;
+  const performance = dashboardData?.performance ?? EMPTY_AFFILIATE_DASHBOARD.performance;
+  const commissions = dashboardData?.commissions ?? EMPTY_AFFILIATE_DASHBOARD.commissions;
+  const payouts = dashboardData?.payouts ?? EMPTY_AFFILIATE_DASHBOARD.payouts;
 
   useEffect(() => {
     track("affiliate_portal_viewed", {
@@ -2059,6 +2070,53 @@ export function AffiliatePortal({
       is_affiliate: enrolled,
     });
   }, [enrolled]);
+
+  useEffect(() => {
+    if (!enrolled) return;
+    if (activeTab !== "performance" && activeTab !== "earnings") return;
+    if (dashboardData || dashboardLoading) return;
+
+    let cancelled = false;
+
+    async function loadDashboard() {
+      setDashboardLoading(true);
+      setDashboardError(null);
+
+      try {
+        const response = await fetch("/api/affiliate/dashboard", {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          throw new Error("We couldn't load your affiliate dashboard just yet.");
+        }
+
+        const nextData = (await response.json()) as AffiliatePortalDashboardData;
+        if (!cancelled) {
+          setDashboardData(nextData);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setDashboardError(
+            error instanceof Error
+              ? error.message
+              : "We couldn't load your affiliate dashboard just yet."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setDashboardLoading(false);
+        }
+      }
+    }
+
+    void loadDashboard();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, dashboardData, dashboardLoading, enrolled]);
 
   const handleEnroll = useCallback(async () => {
     setLoading(true);
@@ -2071,6 +2129,8 @@ export function AffiliatePortal({
     }
     setCurrentToken(result.token);
     setEnrolled(true);
+    setDashboardData(null);
+    setDashboardError(null);
     track("affiliate_enrollment_completed", {
       source_path: "/account/affiliate",
       affiliate_token_present: Boolean(result.token),
@@ -2264,20 +2324,72 @@ export function AffiliatePortal({
         />
       ) : null}
 
-      {activeTab === "performance" ? <PerformanceTab performance={performance} /> : null}
+      {activeTab === "performance" ? (
+        dashboardLoading && !dashboardData ? (
+          <SurfaceCard tone="tint">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">
+              Loading performance
+            </p>
+            <h3 className="mt-3 text-xl font-semibold tracking-[-0.03em] text-slate-950">
+              Pulling your affiliate stats
+            </h3>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              We load your heavier performance reporting only when you open this tab,
+              so the main portal stays fast.
+            </p>
+          </SurfaceCard>
+        ) : dashboardError ? (
+          <SurfaceCard tone="tint">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
+              Performance unavailable
+            </p>
+            <h3 className="mt-3 text-xl font-semibold tracking-[-0.03em] text-slate-950">
+              We couldn&apos;t load your affiliate dashboard just yet
+            </h3>
+            <p className="mt-3 text-sm leading-6 text-slate-600">{dashboardError}</p>
+          </SurfaceCard>
+        ) : (
+          <PerformanceTab performance={performance} />
+        )
+      ) : null}
       {activeTab === "share" ? <ShareTab referralLink={referralLink} trackedLinks={trackedLinks} /> : null}
       {activeTab === "earnings" ? (
-        <EarningsTab
-          performance={performance}
-          commissions={commissions}
-          payouts={payouts}
-          paypalEmail={paypalEmailDraft}
-          onPaypalChange={setPaypalEmailDraft}
-          onSavePayPal={() => void handleSavePayPal()}
-          paypalSaving={paypalSaving}
-          paypalSaved={paypalSaved}
-          paypalError={paypalError}
-        />
+        dashboardLoading && !dashboardData ? (
+          <SurfaceCard tone="tint">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">
+              Loading earnings
+            </p>
+            <h3 className="mt-3 text-xl font-semibold tracking-[-0.03em] text-slate-950">
+              Pulling commissions and payout history
+            </h3>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              This tab loads live affiliate reporting on demand, which keeps the portal
+              lighter when you only need your link.
+            </p>
+          </SurfaceCard>
+        ) : dashboardError ? (
+          <SurfaceCard tone="tint">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
+              Earnings unavailable
+            </p>
+            <h3 className="mt-3 text-xl font-semibold tracking-[-0.03em] text-slate-950">
+              We couldn&apos;t load your commissions or payouts yet
+            </h3>
+            <p className="mt-3 text-sm leading-6 text-slate-600">{dashboardError}</p>
+          </SurfaceCard>
+        ) : (
+          <EarningsTab
+            performance={performance}
+            commissions={commissions}
+            payouts={payouts}
+            paypalEmail={paypalEmailDraft}
+            onPaypalChange={setPaypalEmailDraft}
+            onSavePayPal={() => void handleSavePayPal()}
+            paypalSaving={paypalSaving}
+            paypalSaved={paypalSaved}
+            paypalError={paypalError}
+          />
+        )
       ) : null}
     </div>
   );
