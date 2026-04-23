@@ -2,8 +2,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { PublicSiteFooter } from "@/components/marketing/PublicSiteFooter";
 import { PublicSiteHeader } from "@/components/marketing/PublicSiteHeader";
-import { StickyCtaBar } from "@/components/marketing/StickyCtaBar";
-import { LandingAudioPlayer } from "@/components/marketing/LandingAudioPlayer";
+import { DeferredStickyCtaBar } from "@/components/marketing/DeferredStickyCtaBar";
+import { DeferredLandingAudioPlayer } from "@/components/marketing/DeferredLandingAudioPlayer";
 import { LandingFaq } from "@/components/marketing/LandingFaq";
 import {
   appendPublicTrackingParams,
@@ -196,7 +196,7 @@ function LandingPageShell({
       {/* Sentinel — marks bottom of hero for sticky mobile CTA */}
       <div id="landing-hero-sentinel" aria-hidden="true" />
 
-      <StickyCtaBar
+      <DeferredStickyCtaBar
         sentinelId="landing-hero-sentinel"
         href={trackedPaidHref}
         label={session.hasMemberAccess ? "Open today’s practice →" : "Start your daily practice →"}
@@ -346,7 +346,7 @@ function LandingPageShell({
             thinking can shift your entire day.
           </p>
 
-          <LandingAudioPlayer />
+          <DeferredLandingAudioPlayer />
 
           <p className="mt-8 text-sm" style={{ color: "#B0A89E" }}>
             Daily sessions available to members ·{" "}
