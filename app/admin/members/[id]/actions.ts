@@ -1230,7 +1230,7 @@ export async function startMemberImpersonationInline(
     return { error: "Could not create a secure sign-in link for this member." };
   }
 
-  const actionPath = `/auth/confirm?token_hash=${encodeURIComponent(tokenHash)}&type=email&next=${encodeURIComponent("/today")}`;
+  const actionPath = `/auth/impersonate?token_hash=${encodeURIComponent(tokenHash)}&next=${encodeURIComponent("/today")}`;
 
   await logAudit({
     actorId: actor.id,
