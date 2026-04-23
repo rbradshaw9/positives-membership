@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { PublicSiteFooter } from "@/components/marketing/PublicSiteFooter";
 import { PublicSiteHeader } from "@/components/marketing/PublicSiteHeader";
 import { PricingToggle } from "@/components/marketing/PricingToggle";
 import { getPublicSessionState } from "@/lib/marketing/public-session";
-import { hasActiveMemberAccess } from "@/lib/subscription/access";
 import { config } from "@/lib/config";
 import {
   getInviteLaunchSource,
@@ -49,21 +47,9 @@ export default async function BetaPage({
         ? config.launch.betaDiscountPromoCode
         : "";
   const publicSession = await getPublicSessionState();
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
-  if (user) {
-    const { data: member } = await supabase
-      .from("member")
-      .select("subscription_status")
-      .eq("id", user.id)
-      .single();
-
-    if (hasActiveMemberAccess(member?.subscription_status)) {
-      redirect("/today");
-    }
+  if (publicSession.hasMemberAccess) {
+    redirect("/today");
   }
 
   const cohortLabel = launchContext.launchCohort === "alpha" ? "Alpha" : "Beta";
