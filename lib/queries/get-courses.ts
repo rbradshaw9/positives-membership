@@ -49,8 +49,10 @@ export type CourseLesson = {
   id: string;
   title: string;
   description: string | null;
+  body?: string | null;
   video_url: string | null;
   duration_seconds: number | null;
+  resources?: string | null;
   sort_order: number;
   sessions: CourseSession[];
   /** Injected from progress query */
@@ -61,8 +63,10 @@ export type CourseSession = {
   id: string;
   title: string;
   description: string | null;
+  body?: string | null;
   video_url: string | null;
   duration_seconds: number | null;
+  resources?: string | null;
   sort_order: number;
   /** Injected from progress query */
   completed?: boolean;
@@ -331,7 +335,7 @@ export async function getCourseLesson(
   // Sessions for this lesson
   const { data: sessions } = await supabase
     .from("course_session")
-    .select("id, title, description, video_url, duration_seconds, sort_order")
+    .select("id, title, description, body, video_url, duration_seconds, resources, sort_order")
     .eq("lesson_id", lessonId)
     .order("sort_order", { ascending: true });
 
@@ -352,10 +356,10 @@ export async function getCourseLesson(
     id: lesson.id,
     title: lesson.title,
     description: lesson.description,
-    // @ts-expect-error — extra field from admin import
-    body: (lesson as { body?: string | null }).body ?? null,
+    body: lesson.body,
     video_url: lesson.video_url,
     duration_seconds: lesson.duration_seconds,
+    resources: lesson.resources,
     sort_order: lesson.sort_order,
     sessions: (sessions ?? []).map((s) => ({
       ...s,

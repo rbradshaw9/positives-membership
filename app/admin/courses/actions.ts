@@ -48,6 +48,28 @@ function stripHtml(html: string): string {
     .trim();
 }
 
+function getRenderedField(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (value && typeof value === "object" && "rendered" in value) {
+    const rendered = (value as { rendered?: unknown }).rendered;
+    return typeof rendered === "string" ? rendered : "";
+  }
+  return "";
+}
+
+function cleanImportedHtml(html: string): string | null {
+  const cleaned = decodeHtmlEntities(html)
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
+    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, "")
+    .replace(/\sdata-[a-z0-9_-]+="[^"]*"/gi, "")
+    .replace(/\sclass="[^"]*"/gi, "")
+    .replace(/\sid="[^"]*"/gi, "")
+    .trim();
+
+  return stripHtml(cleaned).length > 0 ? cleaned : null;
+}
+
 function cleanFormValue(formData: FormData, key: string) {
   const value = formData.get(key)?.toString().trim() ?? "";
   return value.length > 0 ? value : null;
@@ -185,6 +207,28 @@ async function fetchJsonWithTimeout<T>(
     };
   } finally {
     clearTimeout(timeout);
+  }
+}
+
+async function getWpMediaUrl(
+  baseUrl: string,
+  headers: Record<string, string>,
+  mediaId: unknown
+): Promise<string | null> {
+  const id = Number(mediaId);
+  if (!Number.isFinite(id) || id <= 0) return null;
+
+  try {
+    const res = await fetchJsonWithTimeout<Record<string, unknown>>(
+      `${baseUrl}/wp-json/wp/v2/media/${id}`,
+      { headers },
+      8000
+    );
+    if (!res.ok || !res.data) return null;
+    const sourceUrl = res.data.source_url;
+    return typeof sourceUrl === "string" && sourceUrl.startsWith("http") ? sourceUrl : null;
+  } catch {
+    return null;
   }
 }
 
@@ -617,7 +661,7 @@ function extractElementorVideo(elementorData: unknown): string | null {
 }
 
 /**
- * Extract the main body text from Elementor text-editor widgets.
+ * Extract the main body HTML from Elementor text-editor widgets.
  */
 function extractElementorBody(elementorData: unknown): string | null {
   if (!elementorData || !Array.isArray(elementorData)) return null;
@@ -631,8 +675,8 @@ function extractElementorBody(elementorData: unknown): string | null {
         const s = (elem.settings ?? {}) as Record<string, unknown>;
         const editor = s.editor as string | undefined;
         if (editor) {
-          const text = stripHtml(decodeHtmlEntities(editor)).trim();
-          if (text.length > 10) parts.push(text);
+          const html = cleanImportedHtml(editor);
+          if (html && stripHtml(html).length > 10) parts.push(html);
         }
       }
       if (Array.isArray(elem.elements)) walk(elem.elements as unknown[]);
@@ -643,40 +687,97 @@ function extractElementorBody(elementorData: unknown): string | null {
   return parts.length > 0 ? parts.join("\n\n") : null;
 }
 
+function extractEmbeddedVideoUrl(...values: Array<string | null | undefined>): string | null {
+  const text = values.filter(Boolean).join("\n");
+  const patterns = [
+    /https?:\/\/(?:www\.)?vimeo\.com\/\d+[^\s"'<>)]*/i,
+    /https?:\/\/player\.vimeo\.com\/video\/\d+[^\s"'<>)]*/i,
+    /https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)[\w-]+[^\s"'<>)]*/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match?.[0]) return decodeHtmlEntities(match[0]).replace(/[),.;]+$/, "");
+  }
+
+  return null;
+}
+
+function resolveImportedVideoUrl(params: {
+  learndashVideoUrl?: unknown;
+  elementorData: unknown;
+  renderedContent?: string | null;
+  materials?: string | null;
+}) {
+  const nativeVideo =
+    typeof params.learndashVideoUrl === "string" && params.learndashVideoUrl.trim().startsWith("http")
+      ? params.learndashVideoUrl.trim()
+      : null;
+
+  return (
+    nativeVideo ||
+    extractElementorVideo(params.elementorData) ||
+    extractEmbeddedVideoUrl(params.renderedContent, params.materials)
+  );
+}
+
 /**
  * Extract resource URLs (PDFs, MP3s, S3 files) from a materials shortcode or HTML content.
  * Returns a JSON string: [{label, url, type}]
  */
-function extractResources(materialsField: string, htmlContent: string): string | null {
+function extractResources(...sources: Array<string | null | undefined>): string | null {
   interface Resource { label: string; url: string; type: string }
   const resources: Resource[] = [];
   const seen = new Set<string>();
+  const sourceText = sources.filter(Boolean).join("\n");
 
   function add(url: string, label = "", type = "file") {
-    const clean = url.split("?")[0].split(" ")[0];
+    const clean = decodeHtmlEntities(url).trim().replace(/[),.;]+$/, "");
     if (seen.has(clean) || !clean.startsWith("http")) return;
     seen.add(clean);
-    const ext = clean.split(".").pop()?.toLowerCase() ?? "";
-    const detectedType = ext === "pdf" ? "pdf" : ext === "mp3" || ext === "m4a" ? "audio" : ext === "mp4" ? "video" : type;
-    resources.push({ label: label || clean.split("/").pop() || "Resource", url: clean, type: detectedType });
+    let ext = "";
+    try {
+      ext = new URL(clean).pathname.split(".").pop()?.toLowerCase() ?? "";
+    } catch {
+      ext = clean.split("?")[0]?.split(".").pop()?.toLowerCase() ?? "";
+    }
+    const detectedType =
+      ext === "pdf" ? "pdf"
+        : ext === "mp3" || ext === "m4a" ? "audio"
+          : ext === "mp4" || ext === "mov" ? "video"
+            : ext === "zip" ? "download"
+              : ext === "doc" || ext === "docx" || ext === "ppt" || ext === "pptx" ? "document"
+                : type;
+    const cleanLabel = stripHtml(decodeHtmlEntities(label)).trim();
+    resources.push({
+      label: cleanLabel || clean.split("/").pop()?.split("?")[0] || "Resource",
+      url: clean,
+      type: detectedType,
+    });
   }
 
-  // 1. Parse [easy_media_download] shortcode
-  const shortcodeRe = /\[easy_media_download[^\]]*url=\\"([^"\\]+)\\"[^\]]*text=\\"([^"\\]+)\\"/g;
+  // 1. Parse [easy_media_download] and similar shortcode attributes.
+  const shortcodeRe = /\[[^\]]*(?:easy_media_download|download)[^\]]*url=(?:"|&quot;|\\")([^"\\\]&]+)(?:"|&quot;|\\")[^\]]*(?:text|label|title)=(?:"|&quot;|\\")([^"\\\]]+)(?:"|&quot;|\\")[^\]]*\]/gi;
   let m;
-  while ((m = shortcodeRe.exec(materialsField)) !== null) add(m[1], m[2]);
+  while ((m = shortcodeRe.exec(sourceText)) !== null) add(m[1], m[2]);
 
-  // Also try unescaped version
-  const shortcodeRe2 = /url="([^"]+)"[^/]*text="([^"]+)"/g;
-  while ((m = shortcodeRe2.exec(materialsField)) !== null) add(m[1], m[2]);
+  const shortcodeUrlRe = /\[[^\]]*(?:easy_media_download|download)[^\]]*url=(?:"|&quot;|\\")([^"\\\]&]+)(?:"|&quot;|\\")[^\]]*\]/gi;
+  while ((m = shortcodeUrlRe.exec(sourceText)) !== null) add(m[1]);
 
-  // 2. Scan HTML content for PDF/MP3/S3 hrefs
-  const hrefRe = /href="(https?:\/\/[^"]+\.(pdf|mp3|m4a|mp4|zip|docx|pptx))"/gi;
-  while ((m = hrefRe.exec(htmlContent)) !== null) add(m[1]);
+  // 2. Scan anchor tags and keep labels from link text.
+  const anchorRe = /<a\b[^>]*href=(?:"|')([^"']+)(?:"|')[^>]*>([\s\S]*?)<\/a>/gi;
+  while ((m = anchorRe.exec(sourceText)) !== null) {
+    const url = m[1];
+    const isLikelyResource =
+      /\.(pdf|mp3|m4a|mp4|mov|zip|docx?|pptx?)(?:\?|$)/i.test(url) ||
+      /s3|amazonaws|wp-content\/uploads/i.test(url) ||
+      sourceText.includes("materials");
+    if (isLikelyResource) add(url, m[2]);
+  }
 
-  // 3. S3 links in content
-  const s3Re = /(https?:\/\/[^"\s<>]*s3[^"\s<>]*\.(?:pdf|mp3|mp4|zip|m4a))/gi;
-  while ((m = s3Re.exec(materialsField + " " + htmlContent)) !== null) add(m[1]);
+  // 3. Resource-looking raw URLs.
+  const rawResourceRe = /(https?:\/\/[^"\s<>]*(?:\.(?:pdf|mp3|m4a|mp4|mov|zip|docx?|pptx?)(?:\?[^"\s<>]*)?|s3[^"\s<>]*|amazonaws[^"\s<>]*|wp-content\/uploads[^"\s<>]*))/gi;
+  while ((m = rawResourceRe.exec(sourceText)) !== null) add(m[1]);
 
   return resources.length > 0 ? JSON.stringify(resources) : null;
 }
@@ -737,19 +838,18 @@ export async function importFromLearnDash(formData: FormData): Promise<LearnDash
       try {
         // ── Fetch course details ──────────────────────────────────────────────
         const ldCourse = await ldGet<Record<string, unknown>>(`/sfwd-courses/${ldCourseId}`);
-        const courseTitleField = ldCourse.title as { rendered?: string } | string | undefined;
-        const courseExcerptField = ldCourse.excerpt as { rendered?: string } | undefined;
-        const courseContentField = ldCourse.content as { rendered?: string } | undefined;
+        const courseTitleField = getRenderedField(ldCourse.title);
+        const courseExcerptHtml = getRenderedField(ldCourse.excerpt);
+        const courseContentHtml = getRenderedField(ldCourse.content);
         const courseTitle = decodeHtmlEntities(
-          (typeof courseTitleField === "string"
-            ? courseTitleField
-            : courseTitleField?.rendered) || "Untitled Course"
+          courseTitleField || "Untitled Course"
         );
-        const courseDesc = courseExcerptField?.rendered
-          ? stripHtml(decodeHtmlEntities(courseExcerptField.rendered))
-          : courseContentField?.rendered
-            ? stripHtml(decodeHtmlEntities(courseContentField.rendered)).slice(0, 500)
+        const courseDesc = courseExcerptHtml
+          ? stripHtml(decodeHtmlEntities(courseExcerptHtml))
+          : courseContentHtml
+            ? stripHtml(decodeHtmlEntities(courseContentHtml)).slice(0, 500)
             : null;
+        const courseCoverImageUrl = await getWpMediaUrl(baseUrl, hdrs, ldCourse.featured_media);
 
         // ── Create course ─────────────────────────────────────────────────────
         const { data: newCourse, error: courseErr } = await supabase
@@ -758,6 +858,7 @@ export async function importFromLearnDash(formData: FormData): Promise<LearnDash
             title: courseTitle,
             slug: slugify(courseTitle),
             description: courseDesc,
+            cover_image_url: courseCoverImageUrl,
             status: "draft",
             admin_notes: `Imported from LearnDash ID: ${ldCourseId} | URL: ${ldCourse.link || ""}`,
           })
@@ -860,7 +961,7 @@ export async function importFromLearnDash(formData: FormData): Promise<LearnDash
           }
 
           const lessonTitle = decodeHtmlEntities(
-            (ldLesson.title as { rendered?: string })?.rendered || String(ldLesson.title || "Untitled Lesson")
+            getRenderedField(ldLesson.title) || "Untitled Lesson"
           );
 
           // Extract content from Elementor data
@@ -873,17 +974,22 @@ export async function importFromLearnDash(formData: FormData): Promise<LearnDash
             elementorData = elementorRaw;
           }
 
-          const lessonVideoUrl = extractElementorVideo(elementorData);
+          const lessonContentHtml = getRenderedField(ldLesson.content);
+          const lessonMaterials = String(ldLesson.materials ?? "");
+          const lessonVideoUrl = resolveImportedVideoUrl({
+            learndashVideoUrl: ldLesson.video_url,
+            elementorData,
+            renderedContent: lessonContentHtml,
+            materials: lessonMaterials,
+          });
           const lessonBody = extractElementorBody(elementorData)
-            || stripHtml(decodeHtmlEntities(
-              ((ldLesson.content as { rendered?: string })?.rendered) || ""
-            )) || null;
-          const lessonDesc = (ldLesson.excerpt as { rendered?: string })?.rendered
-            ? stripHtml(decodeHtmlEntities((ldLesson.excerpt as { rendered?: string }).rendered!))
+            || cleanImportedHtml(lessonContentHtml)
+            || (stripHtml(decodeHtmlEntities(lessonContentHtml)) || null);
+          const lessonExcerptHtml = getRenderedField(ldLesson.excerpt);
+          const lessonDesc = lessonExcerptHtml
+            ? stripHtml(decodeHtmlEntities(lessonExcerptHtml))
             : null;
-          const materialsField = String(ldLesson.lesson_materials ?? "");
-          const contentHtml = String((ldLesson.content as { rendered?: string })?.rendered ?? "");
-          const lessonResources = extractResources(materialsField, contentHtml);
+          const lessonResources = extractResources(lessonMaterials, lessonContentHtml, JSON.stringify(elementorData ?? ""));
 
           // Sort order within this module
           const lSortCount = lessonSortCounters.get(moduleId) ?? 0;
@@ -919,7 +1025,7 @@ export async function importFromLearnDash(formData: FormData): Promise<LearnDash
                 const ldTopic = await ldGet<Record<string, unknown>>(`/sfwd-topic/${topicId}`);
 
                 const topicTitle = decodeHtmlEntities(
-                  (ldTopic.title as { rendered?: string })?.rendered || String(ldTopic.title || "Untitled Topic")
+                  getRenderedField(ldTopic.title) || "Untitled Topic"
                 );
 
                 // Elementor extraction for topic
@@ -932,17 +1038,22 @@ export async function importFromLearnDash(formData: FormData): Promise<LearnDash
                   topicElementorData = topicElementorRaw;
                 }
 
-                const topicVideoUrl = extractElementorVideo(topicElementorData);
+                const topicContentHtml = getRenderedField(ldTopic.content);
+                const topicMaterials = String(ldTopic.materials ?? "");
+                const topicVideoUrl = resolveImportedVideoUrl({
+                  learndashVideoUrl: ldTopic.video_url,
+                  elementorData: topicElementorData,
+                  renderedContent: topicContentHtml,
+                  materials: topicMaterials,
+                });
                 const topicBody = extractElementorBody(topicElementorData)
-                  || stripHtml(decodeHtmlEntities(
-                    ((ldTopic.content as { rendered?: string })?.rendered) || ""
-                  )) || null;
-                const topicDesc = (ldTopic.excerpt as { rendered?: string })?.rendered
-                  ? stripHtml(decodeHtmlEntities((ldTopic.excerpt as { rendered?: string }).rendered!))
+                  || cleanImportedHtml(topicContentHtml)
+                  || (stripHtml(decodeHtmlEntities(topicContentHtml)) || null);
+                const topicExcerptHtml = getRenderedField(ldTopic.excerpt);
+                const topicDesc = topicExcerptHtml
+                  ? stripHtml(decodeHtmlEntities(topicExcerptHtml))
                   : null;
-                const topicMaterialsField = String(ldTopic.topic_materials ?? "");
-                const topicContentHtml = String((ldTopic.content as { rendered?: string })?.rendered ?? "");
-                const topicResources = extractResources(topicMaterialsField, topicContentHtml);
+                const topicResources = extractResources(topicMaterials, topicContentHtml, JSON.stringify(topicElementorData ?? ""));
 
                 const { error: sessErr } = await supabase.from("course_session").insert({
                   lesson_id: newLesson.id,

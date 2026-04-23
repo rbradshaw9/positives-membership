@@ -13,5 +13,9 @@ export function formatSupabaseAuthError(message: string): string {
     return "We just sent you a link. Please wait a minute before requesting another.";
   }
 
+  if (normalized.includes("unexpected status code returned from hook")) {
+    return "Email link sign-in is temporarily unavailable. Please use password sign-in for now, or contact support if you have not set a password yet.";
+  }
+
   return message;
 }

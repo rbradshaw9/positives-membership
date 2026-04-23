@@ -106,6 +106,9 @@ export async function submitBetaFeedback(
   const viewportHeight = clean(formData.get("viewportHeight"));
   const timezone = clean(formData.get("timezone"));
   const userAgent = clean(formData.get("userAgent"));
+  const submittedFrom = clean(formData.get("submittedFrom")) === "admin_widget"
+    ? "admin_widget"
+    : "member_widget";
   const screenshot = getUploadedFile(formData, "screenshot");
 
   if (!summary || summary.length < 8) {
@@ -209,7 +212,7 @@ export async function submitBetaFeedback(
     subscription_tier: member.subscription_tier ?? null,
     subscription_status: member.subscription_status ?? null,
     metadata: {
-      submitted_from: "member_widget",
+      submitted_from: submittedFrom,
       member_has_password: member.password_set === true,
       marketing_opted_out: member.email_unsubscribed === true,
     },

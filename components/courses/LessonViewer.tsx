@@ -29,10 +29,91 @@ function formatDuration(seconds: number | null): string {
   return `${m} min`;
 }
 
+type CourseResource = {
+  label: string;
+  url: string;
+  type?: string;
+};
+
+function parseResources(raw?: string | null): CourseResource[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    const resources = parsed
+      .map((item): CourseResource | null => {
+        if (!item || typeof item !== "object") return null;
+        const resource = item as Record<string, unknown>;
+        if (typeof resource.url !== "string") return null;
+        return {
+          label: typeof resource.label === "string" && resource.label.trim()
+            ? resource.label
+            : "Resource",
+          url: resource.url,
+          type: typeof resource.type === "string" ? resource.type : undefined,
+        };
+      })
+      .filter((item): item is CourseResource => Boolean(item));
+
+    return resources;
+  } catch {
+    return [];
+  }
+}
+
+function getVideoSource(videoUrl?: string | null) {
+  if (!videoUrl) return { vimeoId: null as string | null, youtubeId: null as string | null };
+
+  const vimeoMatch = videoUrl.match(/(?:vimeo\.com\/(?:video\/)?|player\.vimeo\.com\/video\/)(\d+)/i);
+  if (vimeoMatch?.[1]) {
+    return { vimeoId: vimeoMatch[1], youtubeId: null as string | null };
+  }
+
+  if (/^\d+$/.test(videoUrl)) {
+    return { vimeoId: videoUrl, youtubeId: null as string | null };
+  }
+
+  const youtubeMatch = videoUrl.match(
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{11})/i
+  );
+  if (youtubeMatch?.[1]) {
+    return { vimeoId: null as string | null, youtubeId: youtubeMatch[1] };
+  }
+
+  return { vimeoId: videoUrl, youtubeId: null as string | null };
+}
+
+function ResourceList({ resources }: { resources: CourseResource[] }) {
+  if (resources.length === 0) return null;
+
+  return (
+    <div className="rounded-2xl border border-border bg-surface-tint/40 p-4">
+      <h2 className="mb-3 font-heading text-sm font-semibold text-foreground">
+        Resources
+      </h2>
+      <div className="flex flex-wrap gap-2">
+        {resources.map((resource) => (
+          <a
+            key={`${resource.url}-${resource.label}`}
+            href={resource.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <span aria-hidden="true">{resource.type === "pdf" ? "PDF" : "↗"}</span>
+            {resource.label}
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function LessonViewer({ lesson, memberId }: LessonViewerProps) {
   void memberId;
   const [completed, setCompleted] = useState(lesson.completed ?? false);
   const [isPending, startTransition] = useTransition();
+  const lessonResources = parseResources(lesson.resources);
 
   function handleToggleComplete() {
     startTransition(async () => {
@@ -46,9 +127,8 @@ export function LessonViewer({ lesson, memberId }: LessonViewerProps) {
     });
   }
 
-  // Extract Vimeo ID from video_url
-  const vimeoId = lesson.video_url?.match(/vimeo\.com\/(\d+)/)?.[1] ?? lesson.video_url ?? null;
-  const hasVideo = !!vimeoId;
+  const lessonVideo = getVideoSource(lesson.video_url);
+  const hasVideo = !!lessonVideo.vimeoId || !!lessonVideo.youtubeId;
 
   return (
     <div className="member-container py-8 md:py-10 flex flex-col gap-8">
@@ -98,7 +178,8 @@ export function LessonViewer({ lesson, memberId }: LessonViewerProps) {
       {hasVideo && (
         <div className="overflow-hidden rounded-2xl border border-border shadow-sm">
           <VideoEmbed
-            vimeoId={vimeoId}
+            vimeoId={lessonVideo.vimeoId}
+            youtubeId={lessonVideo.youtubeId}
             courseLessonId={lesson.id}
             title={lesson.title}
           />
@@ -159,6 +240,8 @@ export function LessonViewer({ lesson, memberId }: LessonViewerProps) {
         <p className="text-foreground/70 leading-relaxed">{lesson.description}</p>
       )}
 
+      <ResourceList resources={lessonResources} />
+
       {/* ── Sessions (4th tier, if present) ──────────────────────────────── */}
       {lesson.sessions.length > 0 && (
         <div className="flex flex-col gap-3">
@@ -166,30 +249,60 @@ export function LessonViewer({ lesson, memberId }: LessonViewerProps) {
             Sessions
           </h2>
           <div className="flex flex-col gap-2">
-            {lesson.sessions.map((session) => (
-              <div
-                key={session.id}
-                className="flex items-center gap-3 p-4 rounded-xl border"
-                style={{ borderColor: "var(--color-border)" }}
-              >
-                {session.completed ? (
-                  <span
-                    className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center"
-                    style={{ background: "var(--color-primary)", color: "#fff" }}
-                  >
-                    <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
-                      <path d="M10 3L5 8.5 2 5.5l-1 1 4 4 6-7-1-1z" />
-                    </svg>
-                  </span>
-                ) : (
-                  <span className="w-5 h-5 rounded-full flex-shrink-0 border-2" style={{ borderColor: "var(--color-border)" }} />
-                )}
-                <span className="flex-1 text-sm font-medium text-foreground">{session.title}</span>
-                {session.duration_seconds && (
-                  <span className="text-xs text-muted-foreground">{formatDuration(session.duration_seconds)}</span>
-                )}
-              </div>
-            ))}
+            {lesson.sessions.map((session) => {
+              const sessionVideo = getVideoSource(session.video_url);
+              const sessionResources = parseResources(session.resources);
+              const hasSessionVideo = !!sessionVideo.vimeoId || !!sessionVideo.youtubeId;
+
+              return (
+                <details
+                  key={session.id}
+                  className="rounded-xl border bg-background"
+                  style={{ borderColor: "var(--color-border)" }}
+                >
+                  <summary className="flex cursor-pointer list-none items-center gap-3 p-4">
+                    {session.completed ? (
+                      <span
+                        className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center"
+                        style={{ background: "var(--color-primary)", color: "#fff" }}
+                      >
+                        <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
+                          <path d="M10 3L5 8.5 2 5.5l-1 1 4 4 6-7-1-1z" />
+                        </svg>
+                      </span>
+                    ) : (
+                      <span className="w-5 h-5 rounded-full flex-shrink-0 border-2" style={{ borderColor: "var(--color-border)" }} />
+                    )}
+                    <span className="flex-1 text-sm font-medium text-foreground">{session.title}</span>
+                    {session.duration_seconds && (
+                      <span className="text-xs text-muted-foreground">{formatDuration(session.duration_seconds)}</span>
+                    )}
+                  </summary>
+                  {(hasSessionVideo || session.body || session.description || sessionResources.length > 0) && (
+                    <div className="flex flex-col gap-4 border-t border-border p-4">
+                      {hasSessionVideo && (
+                        <div className="overflow-hidden rounded-xl border border-border">
+                          <VideoEmbed
+                            vimeoId={sessionVideo.vimeoId}
+                            youtubeId={sessionVideo.youtubeId}
+                            title={session.title}
+                          />
+                        </div>
+                      )}
+                      {session.body ? (
+                        <div
+                          className="prose prose-sm max-w-none text-foreground/80 leading-relaxed"
+                          dangerouslySetInnerHTML={{ __html: session.body }}
+                        />
+                      ) : session.description ? (
+                        <p className="text-sm leading-relaxed text-foreground/70">{session.description}</p>
+                      ) : null}
+                      <ResourceList resources={sessionResources} />
+                    </div>
+                  )}
+                </details>
+              );
+            })}
           </div>
         </div>
       )}

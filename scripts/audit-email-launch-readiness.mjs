@@ -373,6 +373,10 @@ function hasPostmarkEnv() {
   return POSTMARK_ENV_KEYS.some((key) => Boolean(process.env[key]));
 }
 
+function hasSendEmailHookRoute() {
+  return existsSync(resolve(repoRoot, "app/api/auth/send-email-hook/route.ts"));
+}
+
 function printActiveCampaignSection(check) {
   print("## ActiveCampaign");
   if (!check.ok) {
@@ -436,11 +440,18 @@ function printDnsSection(check) {
 }
 
 function printAppConfigSection() {
+  const sendEmailHookSecretPresent = Boolean(process.env.SEND_EMAIL_HOOK_SECRET);
+  const sendEmailHookRoutePresent = hasSendEmailHookRoute();
+
   print("## App Configuration");
   print(`- ${result(Boolean(AC_BASE_URL && AC_API_KEY), "ActiveCampaign API env present")}`);
   print(`- ${result(Boolean(process.env.ACTIVECAMPAIGN_WEBHOOK_SECRET), "ActiveCampaign webhook secret present")}`);
   print(`- ${result(Boolean(process.env.EMAIL_UNSUBSCRIBE_SECRET), "unsubscribe signing secret present")}`);
-  print(`- ${result(Boolean(process.env.SEND_EMAIL_HOOK_SECRET), "send-email hook secret present")}`);
+  print(`- ${result(!sendEmailHookSecretPresent || sendEmailHookRoutePresent, "send-email hook route is present if hook secret is configured")}`);
+  if (sendEmailHookSecretPresent && !sendEmailHookRoutePresent) {
+    print("  - SEND_EMAIL_HOOK_SECRET is configured locally, but app/api/auth/send-email-hook/route.ts does not exist.");
+    print("  - If the Supabase Send Email Hook is enabled in production, magic links and password resets will fail unless the hook is disabled or this route sends real email.");
+  }
   print(`- ${result(hasPostmarkEnv(), "Postmark env visible locally")}`);
   if (!hasPostmarkEnv()) {
     print("  - No POSTMARK_* env vars were visible locally; AC may still own Postmark sending, but app-side Postmark readiness cannot be proven here.");

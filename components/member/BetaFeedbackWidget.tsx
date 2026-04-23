@@ -10,6 +10,7 @@ import {
 type Props = {
   memberEmail: string | null;
   memberName: string | null;
+  surface?: "member" | "admin";
 };
 
 type FeedbackActionState = {
@@ -63,7 +64,7 @@ function getBrowserContext() {
   };
 }
 
-export function BetaFeedbackWidget({ memberEmail, memberName }: Props) {
+export function BetaFeedbackWidget({ memberEmail, memberName, surface = "member" }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [state, formAction, pending] = useActionState(submitBetaFeedback, INITIAL_STATE);
   const formRef = useRef<HTMLFormElement | null>(null);
@@ -278,6 +279,7 @@ export function BetaFeedbackWidget({ memberEmail, memberName }: Props) {
               <input type="hidden" name="viewportHeight" value={browserContext.viewportHeight} />
               <input type="hidden" name="timezone" value={browserContext.timezone} />
               <input type="hidden" name="userAgent" value={browserContext.userAgent} />
+              <input type="hidden" name="submittedFrom" value={surface === "admin" ? "admin_widget" : "member_widget"} />
 
               {state.error ? (
                 <p className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">

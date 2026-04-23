@@ -37,6 +37,38 @@ deployments and internal testing.
 > localhost, every magic link email will redirect there, regardless of what the app
 > sends as `emailRedirectTo`.
 
+### Auth Email Sending
+
+Production auth/security email can be handled in two supported ways:
+
+1. **Custom SMTP through Postmark** for a simple, dashboard-managed setup.
+2. **Send Email Hook through the app + Postmark** for branded Positives HTML.
+
+Do not enable the Supabase **Send Email Hook** unless the configured endpoint exists,
+verifies the Supabase hook signature, and sends real email through Postmark. A missing
+or non-sending hook will block magic links and password resets before any email is
+delivered.
+
+Expected branded launch setting after the route is deployed:
+
+```
+Authentication -> Hooks -> Send Email: enabled
+Hook URL: https://positives.life/api/auth/send-email-hook
+```
+
+Required production environment variables:
+
+```
+SEND_EMAIL_HOOK_SECRET
+POSTMARK_SERVER_TOKEN
+POSTMARK_FROM_EMAIL
+POSTMARK_REPLY_TO_EMAIL
+POSTMARK_MESSAGE_STREAM
+```
+
+If the hook is disabled, Supabase falls back to the custom SMTP settings. This is a
+safe fallback, but the app-owned branded template will not be used.
+
 ---
 
 ## How the redirect path flows

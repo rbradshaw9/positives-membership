@@ -1,5 +1,9 @@
 import Link from "next/link";
 import { getAdminPermissionSet, requireAdmin } from "@/lib/auth/require-admin";
+import { config } from "@/lib/config";
+import { BetaFeedbackWidget } from "@/components/member/BetaFeedbackWidget";
+import { getAdminClient } from "@/lib/supabase/admin";
+import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 
 /**
  * app/admin/layout.tsx
@@ -15,6 +19,16 @@ export default async function AdminLayout({
   const permissionSet = await getAdminPermissionSet(user.id, user.email);
   const canReadMembers = permissionSet.has("members.read");
   const canManageRoles = permissionSet.has("roles.manage");
+  const { data: member } = await asLooseSupabaseClient(getAdminClient())
+    .from("member")
+    .select<{ name: string | null; email: string | null; launch_cohort: string | null }>(
+      "name, email, launch_cohort"
+    )
+    .eq("id", user.id)
+    .maybeSingle();
+  const showBetaFeedback =
+    config.app.betaFeedbackEnabled &&
+    (member?.launch_cohort === "alpha" || member?.launch_cohort === "beta");
 
   const navItems = [
     {
@@ -201,6 +215,13 @@ export default async function AdminLayout({
           {children}
         </main>
       </div>
+      {showBetaFeedback ? (
+        <BetaFeedbackWidget
+          memberEmail={member?.email ?? user.email ?? null}
+          memberName={member?.name ?? null}
+          surface="admin"
+        />
+      ) : null}
     </div>
   );
 }
