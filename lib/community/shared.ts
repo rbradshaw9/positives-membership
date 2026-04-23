@@ -39,27 +39,44 @@ const COMMUNITY_LANE_META: Record<CommunityPostType, {
   slug: CommunityLaneSlug;
   label: string;
   shortLabel: string;
+  composerLabel: string;
+  contextLabel: string;
   description: string;
 }> = {
   share: {
     slug: "wins",
     label: "Wins",
     shortLabel: "Win",
+    composerLabel: "Share a win",
+    contextLabel: "Win from the room",
     description: "Celebrations, small shifts, and moments you want to share with the room.",
   },
   reflection: {
     slug: "support",
     label: "Support",
     shortLabel: "Support",
+    composerLabel: "Need support",
+    contextLabel: "Support post",
     description: "Grounded posts about what feels hard, tender, or worth talking through.",
   },
   question: {
     slug: "questions",
     label: "Questions",
     shortLabel: "Question",
+    composerLabel: "Ask a question",
+    contextLabel: "Question for the room",
     description: "Questions where member perspective or coach guidance could help.",
   },
 };
+
+function collapseWhitespace(value: string) {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function truncate(value: string, maxLength: number) {
+  if (value.length <= maxLength) return value;
+  return `${value.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
+}
 
 export function isCommunityPostType(value: string): value is CommunityPostType {
   return COMMUNITY_POST_TYPE_OPTIONS.some((option) => option.value === value);
@@ -93,6 +110,14 @@ export function getCommunityLaneShortLabel(value: CommunityPostType) {
   return COMMUNITY_LANE_META[value]?.shortLabel ?? getCommunityPostTypeLabel(value);
 }
 
+export function getCommunityComposerLabel(value: CommunityPostType) {
+  return COMMUNITY_LANE_META[value]?.composerLabel ?? getCommunityPostTypeLabel(value);
+}
+
+export function getCommunityContextLabel(value: CommunityPostType) {
+  return COMMUNITY_LANE_META[value]?.contextLabel ?? "Community post";
+}
+
 export function getCommunityLaneDescription(value: CommunityPostType) {
   return COMMUNITY_LANE_META[value]?.description ?? "";
 }
@@ -120,6 +145,27 @@ export function getCommunityDisplayName(name: string | null | undefined) {
   const first = parts[0];
   const lastInitial = parts[parts.length - 1]?.charAt(0).toUpperCase();
   return lastInitial ? `${first} ${lastInitial}.` : first;
+}
+
+export function getCommunityThreadDisplayTitle(params: {
+  title?: string | null;
+  body?: string | null;
+  postType: CommunityPostType;
+  maxLength?: number;
+}) {
+  const explicitTitle = collapseWhitespace(params.title ?? "");
+  if (explicitTitle) return explicitTitle;
+
+  const firstLine = (params.body ?? "")
+    .split("\n")
+    .map((line) => collapseWhitespace(line))
+    .find(Boolean);
+
+  if (firstLine) {
+    return truncate(firstLine, params.maxLength ?? 72);
+  }
+
+  return `${getCommunityLaneShortLabel(params.postType)} post`;
 }
 
 export function getCommunityReportReasonLabel(value: CommunityReportReason) {

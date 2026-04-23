@@ -6,6 +6,7 @@ import {
   getCommunityLaneHref,
   getCommunityLaneLabel,
   getCommunityPostTypeFromLaneSlug,
+  getCommunityThreadDisplayTitle,
   isCommunityView,
 } from "@/lib/community/shared";
 import {
@@ -245,6 +246,10 @@ export default async function CommunityPage({ searchParams }: PageProps) {
               })}
             </div>
 
+            <p className="text-xs leading-6 text-muted-foreground">
+              Follow replies keeps you updated when a discussion moves. Save for later keeps a private bookmark for your own return.
+            </p>
+
             {selectedLane ? (
               <div className="rounded-[1.25rem] border border-primary/15 bg-primary/5 px-4 py-3 text-sm text-primary">
                 Showing <span className="font-semibold">{getCommunityLaneLabel(selectedLane)}</span> posts only.
@@ -347,7 +352,11 @@ export default async function CommunityPage({ searchParams }: PageProps) {
                   <SurfaceCard key={item.id} padding="lg" className="surface-card--editorial">
                     <p className="ui-section-eyebrow mb-2">Saved post</p>
                     <h3 className="heading-balance text-xl font-semibold tracking-[-0.03em] text-foreground">
-                      {item.thread?.title ?? getCommunityLaneLabel(item.thread?.post_type ?? "reflection")}
+                      {getCommunityThreadDisplayTitle({
+                        title: item.thread?.title,
+                        body: item.thread?.body,
+                        postType: item.thread?.post_type ?? "reflection",
+                      })}
                     </h3>
                     <p className="mt-3 line-clamp-4 whitespace-pre-wrap text-sm leading-[1.75] text-muted-foreground">
                       {item.thread?.body}

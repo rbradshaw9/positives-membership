@@ -149,7 +149,7 @@ export type CommunityNotificationRow = {
   read_at: string | null;
   created_at: string;
   actor: { name: string | null; avatar_url: string | null } | null;
-  thread: Pick<CommunityThreadRow, "id" | "title" | "post_type" | "source_type"> | null;
+  thread: Pick<CommunityThreadRow, "id" | "title" | "body" | "post_type" | "source_type"> | null;
 };
 
 export type CommunitySavedItem = {
@@ -712,6 +712,7 @@ export async function getCommunityNotifications(
         thread: {
           id: thread.id,
           title: thread.title,
+          body: thread.body,
           post_type: thread.post_type,
           source_type: thread.source_type,
         },

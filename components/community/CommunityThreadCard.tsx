@@ -14,6 +14,7 @@ import {
   toggleThreadLike,
 } from "@/app/(member)/community/actions";
 import {
+  getCommunityContextLabel,
   COMMUNITY_REPORT_REASON_OPTIONS,
   getCommunityDisplayName,
   getCommunityLaneLabel,
@@ -295,7 +296,7 @@ export function CommunityThreadCard({ thread, currentMemberId }: CommunityThread
             <span className="text-sm font-semibold text-foreground">
               {getCommunityDisplayName(thread.member?.name)}
             </span>
-            <span className="text-xs text-muted-foreground">Community conversation</span>
+            <span className="text-xs text-muted-foreground">{getCommunityContextLabel(thread.post_type)}</span>
           </div>
 
           {thread.title ? (
@@ -315,10 +316,10 @@ export function CommunityThreadCard({ thread, currentMemberId }: CommunityThread
           Reply · {thread.reply_count}
         </button>
         <button type="button" onClick={() => run(() => toggleFollowThread(thread.id))}>
-          {thread.is_following ? "Following" : "Follow"}
+          {thread.is_following ? "Following replies" : "Follow replies"}
         </button>
         <button type="button" onClick={() => run(() => toggleSaveThread(thread.id))}>
-          {thread.is_saved ? "Saved" : "Save"}
+          {thread.is_saved ? "Saved" : "Save for later"}
         </button>
         <button type="button" onClick={() => run(() => toggleThreadLike(thread.id))}>
           {thread.is_liked ? "Liked" : "Like"} · {thread.like_count}

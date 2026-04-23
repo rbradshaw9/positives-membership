@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { createCommunityPost } from "@/app/(member)/community/actions";
 import {
   COMMUNITY_POST_TYPE_OPTIONS,
+  getCommunityComposerLabel,
   getCommunityLaneDescription,
   getCommunityLaneLabel,
   getCommunityLaneShortLabel,
@@ -86,6 +87,9 @@ export function CommunityComposerCard() {
 
       {isOpen ? (
         <div className="mt-5 border-t border-border/80 pt-5">
+          <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            Choose what kind of post this is
+          </p>
           <div className="flex flex-wrap gap-2">
             {COMMUNITY_POST_TYPE_OPTIONS.map((option) => {
               const active = postType === option.value;
@@ -101,7 +105,7 @@ export function CommunityComposerCard() {
                       : "border-border bg-white text-muted-foreground hover:border-primary/20 hover:text-foreground"
                   }`}
                 >
-                  {option.label}
+                  {getCommunityComposerLabel(option.value)}
                 </button>
               );
             })}

@@ -10,6 +10,7 @@ import {
 import {
   getCommunityDisplayName,
   getCommunityNotificationEventLabel,
+  getCommunityThreadDisplayTitle,
 } from "@/lib/community/shared";
 import type { CommunityNotificationRow } from "@/lib/queries/get-community-posts";
 
@@ -88,46 +89,58 @@ export function CommunityNotificationStrip({ notifications }: Props) {
 
       <div className="mt-5 space-y-3">
         {notifications.map((notification) => (
-          <div
-            key={notification.id}
-            className="rounded-[1.25rem] border border-border/80 bg-white p-4 shadow-[0_10px_30px_rgba(15,23,42,0.05)]"
-          >
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">
-                New reply
-              </span>
-              <span className="ml-auto text-xs text-muted-foreground">
-                {formatRelativeTime(notification.created_at)}
-              </span>
-            </div>
+          (() => {
+            const actorLabel = notification.actor?.name
+              ? getCommunityDisplayName(notification.actor.name)
+              : "Someone";
+            const threadTitle = getCommunityThreadDisplayTitle({
+              title: notification.thread?.title,
+              body: notification.thread?.body,
+              postType: notification.thread?.post_type ?? "reflection",
+              maxLength: 80,
+            });
 
-            <p className="mt-3 text-sm leading-[1.75] text-foreground">
-              <span className="font-semibold">{getCommunityDisplayName(notification.actor?.name)}</span>{" "}
-              {getCommunityNotificationEventLabel(notification.event_type)}.
-            </p>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {notification.thread?.title ?? "Community discussion"}
-            </p>
+            return (
+              <div
+                key={notification.id}
+                className="rounded-[1.25rem] border border-border/80 bg-white p-4 shadow-[0_10px_30px_rgba(15,23,42,0.05)]"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">
+                    New reply
+                  </span>
+                  <span className="ml-auto text-xs text-muted-foreground">
+                    {formatRelativeTime(notification.created_at)}
+                  </span>
+                </div>
 
-            <div className="mt-4 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => openThread(notification.thread_id)}
-                disabled={isPending}
-                className="rounded-full bg-[linear-gradient(135deg,#2ec4b6,#3db6e7)] px-4 py-2 text-xs font-semibold text-white shadow-[0_18px_42px_rgba(46,196,182,0.18)]"
-              >
-                Open thread
-              </button>
-              <button
-                type="button"
-                onClick={() => markRead(notification.id)}
-                disabled={isPending}
-                className="rounded-full border border-border bg-white px-4 py-2 text-xs font-semibold text-muted-foreground"
-              >
-                Mark read
-              </button>
-            </div>
-          </div>
+                <p className="mt-3 text-sm leading-[1.75] text-foreground">
+                  <span className="font-semibold">{actorLabel}</span>{" "}
+                  {getCommunityNotificationEventLabel(notification.event_type)}.
+                </p>
+                <p className="mt-2 text-sm font-semibold text-foreground">{threadTitle}</p>
+
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => openThread(notification.thread_id)}
+                    disabled={isPending}
+                    className="rounded-full bg-[linear-gradient(135deg,#2ec4b6,#3db6e7)] px-4 py-2 text-xs font-semibold text-white shadow-[0_18px_42px_rgba(46,196,182,0.18)]"
+                  >
+                    Open thread
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => markRead(notification.id)}
+                    disabled={isPending}
+                    className="rounded-full border border-border bg-white px-4 py-2 text-xs font-semibold text-muted-foreground"
+                  >
+                    Mark read
+                  </button>
+                </div>
+              </div>
+            );
+          })()
         ))}
       </div>
     </section>
