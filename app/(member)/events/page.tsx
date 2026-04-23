@@ -100,7 +100,7 @@ export default async function EventsPage() {
                 <div className="flex flex-wrap items-center justify-center gap-3">
                   <Button href="#event-replays">Browse replays</Button>
                   <Button href="/community" variant="secondary">
-                    Open Q&A
+                    Open Community
                   </Button>
                 </div>
               }
@@ -121,12 +121,12 @@ export default async function EventsPage() {
                   </h2>
                   <p className="mt-3 text-sm leading-[1.75] text-muted-foreground">
                     When the next workshop is published, you will see the date, join link, and
-                    replay here. Until then, Today and Q&A are good places to stay connected.
+                    replay here. Until then, Today and Community are good places to stay connected.
                   </p>
                   <div className="mt-6 flex flex-wrap gap-3">
                     <Button href="/today">Go to Today</Button>
                     <Button href="/community" variant="secondary">
-                      Open Q&A
+                      Open Community
                     </Button>
                   </div>
                 </div>

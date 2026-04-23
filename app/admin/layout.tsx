@@ -19,6 +19,7 @@ export default async function AdminLayout({
   const permissionSet = await getAdminPermissionSet(user.id, user.email);
   const canReadMembers = permissionSet.has("members.read");
   const canManageRoles = permissionSet.has("roles.manage");
+  const canModerateCommunity = permissionSet.has("community.moderate");
   const { data: member } = await asLooseSupabaseClient(getAdminClient())
     .from("member")
     .select<{ name: string | null; email: string | null; launch_cohort: string | null }>(
@@ -93,6 +94,15 @@ export default async function AdminLayout({
     ...(canReadMembers ? [{
       href: "/admin/beta-feedback",
       label: "Feedback",
+      icon: (
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M2 2.75C2 1.7835 2.7835 1 3.75 1H11.25C12.2165 1 13 1.7835 13 2.75V8.25C13 9.2165 12.2165 10 11.25 10H7.53L4.43302 12.7342C4.10875 13.0205 3.6 12.7904 3.6 12.3578V10H3.75C2.7835 10 2 9.2165 2 8.25V2.75Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"/>
+        </svg>
+      ),
+    }] : []),
+    ...(canModerateCommunity ? [{
+      href: "/admin/community",
+      label: "Community",
       icon: (
         <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M2 2.75C2 1.7835 2.7835 1 3.75 1H11.25C12.2165 1 13 1.7835 13 2.75V8.25C13 9.2165 12.2165 10 11.25 10H7.53L4.43302 12.7342C4.10875 13.0205 3.6 12.7904 3.6 12.3578V10H3.75C2.7835 10 2 9.2165 2 8.25V2.75Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"/>
