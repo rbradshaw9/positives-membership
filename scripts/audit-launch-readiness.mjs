@@ -144,7 +144,7 @@ function getMonthYearFromDate(date) {
 
 function isAuditFixtureRow(row) {
   const title = row?.title ?? "";
-  return title.startsWith("E2E ");
+  return title.startsWith("E2E ") || title.startsWith("Admin Smoke ");
 }
 
 async function main() {
