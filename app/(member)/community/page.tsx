@@ -102,6 +102,9 @@ export default async function CommunityPage({ searchParams }: PageProps) {
     .filter((item) => item.thread)
     .map((item) => item.thread)
     .filter((thread): thread is NonNullable<typeof thread> => Boolean(thread));
+  const notificationCount = notifications.length;
+  const followingCount = followingThreads.length;
+  const savedCount = savedThreads.length;
   const viewHref = (view: string) => `/community?view=${view}`;
 
   return (
@@ -117,10 +120,10 @@ export default async function CommunityPage({ searchParams }: PageProps) {
 
         <nav aria-label="Community sections" className="member-segmented-control">
           {[
-            { key: "featured", label: "Featured" },
-            { key: "feed", label: "Feed" },
-            { key: "following", label: "Following" },
-            { key: "saved", label: "Saved" },
+            { key: "featured", label: "Featured", count: featuredThreads.length },
+            { key: "feed", label: "Feed", count: feedThreads.length },
+            { key: "following", label: "Following", count: followingCount },
+            { key: "saved", label: "Saved", count: savedCount },
           ].map((item) => (
             <a
               key={item.key}
@@ -128,7 +131,12 @@ export default async function CommunityPage({ searchParams }: PageProps) {
               data-active={selectedView === item.key}
               href={viewHref(item.key)}
             >
-              {item.label}
+              <span>{item.label}</span>
+              {item.count > 0 ? (
+                <span className="rounded-full bg-black/6 px-2 py-0.5 text-[10px] font-semibold text-current/75">
+                  {item.count}
+                </span>
+              ) : null}
             </a>
           ))}
         </nav>
@@ -203,22 +211,46 @@ export default async function CommunityPage({ searchParams }: PageProps) {
 
         {selectedView === "feed" ? (
           <section className="space-y-5">
-            <div className="flex flex-col gap-4">
-              <div className="max-w-3xl">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(320px,0.85fr)] lg:items-start">
+              <div className="max-w-3xl lg:pt-2">
                 <p className="ui-section-eyebrow mb-2">Main feed</p>
-                <h2 className="heading-balance text-[clamp(1.8rem,1.5rem+0.8vw,2.4rem)] font-semibold tracking-[-0.04em] text-foreground">
-                  Share something real, then let the room respond.
+                <h2 className="heading-balance text-[clamp(1.65rem,1.45rem+0.75vw,2.15rem)] font-semibold tracking-[-0.04em] text-foreground">
+                  Start with what feels real, then follow what matters back to you.
                 </h2>
                 <p className="mt-3 text-sm leading-[1.8] text-muted-foreground">
-                  Wins are for celebrations, Support is for the hard parts, and Questions are for
-                  the moments when another perspective would help.
+                  Use Wins for momentum, Support for the harder parts, and Questions when another
+                  perspective would help.
                 </p>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <a
+                    href="/community?view=following"
+                    className="rounded-full border border-border bg-white px-3.5 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/25 hover:text-primary"
+                  >
+                    {notificationCount > 0 ? `${notificationCount} new repl${notificationCount === 1 ? "y" : "ies"}` : "No new replies"}
+                  </a>
+                  <a
+                    href="/community?view=following"
+                    className="rounded-full border border-border bg-white px-3.5 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/25 hover:text-primary"
+                  >
+                    {followingCount} following
+                  </a>
+                  <a
+                    href="/community?view=saved"
+                    className="rounded-full border border-border bg-white px-3.5 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/25 hover:text-primary"
+                  >
+                    {savedCount} saved
+                  </a>
+                </div>
               </div>
 
               <CommunityComposerCard />
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                Browse by lane
+              </span>
               <a
                 href={viewHref("feed")}
                 className={`rounded-full border px-3.5 py-2 text-xs font-semibold transition-all ${
@@ -302,6 +334,9 @@ export default async function CommunityPage({ searchParams }: PageProps) {
               <p className="mt-3 max-w-3xl text-sm leading-[1.8] text-muted-foreground">
                 Following means you want reply updates when a conversation moves. New replies show up directly on the cards below.
               </p>
+              <div className="mt-4 inline-flex rounded-full border border-primary/15 bg-primary/5 px-3.5 py-2 text-xs font-semibold text-primary">
+                {followingCount} discussion{followingCount === 1 ? "" : "s"} followed
+              </div>
             </SurfaceCard>
 
             {followingThreads.length > 0 ? (
@@ -345,6 +380,9 @@ export default async function CommunityPage({ searchParams }: PageProps) {
               <h2 className="heading-balance text-[clamp(1.7rem,1.45rem+0.7vw,2.2rem)] font-semibold tracking-[-0.04em] text-foreground">
                 Keep the posts worth returning to.
               </h2>
+              <p className="mt-3 text-sm leading-[1.8] text-muted-foreground">
+                Saved posts are private bookmarks for the conversations you want to revisit later.
+              </p>
             </div>
 
             {savedThreads.length > 0 ? (

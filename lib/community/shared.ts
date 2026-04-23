@@ -132,14 +132,14 @@ export function getCommunityLaneHref(value: CommunityPostType) {
 }
 
 export function getCommunityDisplayName(name: string | null | undefined) {
-  if (!name) return "Someone in Positives";
+  if (!name) return "Positives member";
 
   const parts = name
     .trim()
     .split(/\s+/)
     .filter(Boolean);
 
-  if (parts.length === 0) return "Someone in Positives";
+  if (parts.length === 0) return "Positives member";
   if (parts.length === 1) return parts[0];
 
   const first = parts[0];

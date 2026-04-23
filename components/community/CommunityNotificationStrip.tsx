@@ -9,6 +9,7 @@ import {
 } from "@/app/(member)/community/actions";
 import {
   getCommunityDisplayName,
+  getCommunityLaneLabel,
   getCommunityNotificationEventLabel,
   getCommunityThreadDisplayTitle,
 } from "@/lib/community/shared";
@@ -99,6 +100,7 @@ export function CommunityNotificationStrip({ notifications }: Props) {
               postType: notification.thread?.post_type ?? "reflection",
               maxLength: 80,
             });
+            const laneLabel = getCommunityLaneLabel(notification.thread?.post_type ?? "reflection");
 
             return (
               <div
@@ -108,6 +110,9 @@ export function CommunityNotificationStrip({ notifications }: Props) {
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">
                     New reply
+                  </span>
+                  <span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                    {laneLabel}
                   </span>
                   <span className="ml-auto text-xs text-muted-foreground">
                     {formatRelativeTime(notification.created_at)}

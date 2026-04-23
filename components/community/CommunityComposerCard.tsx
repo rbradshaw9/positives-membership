@@ -62,11 +62,11 @@ export function CommunityComposerCard() {
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="ui-section-eyebrow mb-2">Start Here</p>
-          <h2 className="heading-balance text-2xl font-semibold tracking-[-0.035em] text-foreground">
-            Start a post when you have something real to share.
+          <h2 className="heading-balance text-[1.55rem] font-semibold tracking-[-0.035em] text-foreground">
+            Start a post when something feels worth sharing.
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-[1.75] text-muted-foreground">
-            Share something true, let people reply, and follow the discussions you care about.
+            Wins, support, and thoughtful questions all belong here.
           </p>
         </div>
 
@@ -143,14 +143,14 @@ export function CommunityComposerCard() {
           </div>
 
           <div className="mt-5 flex flex-col gap-3 border-t border-border/80 pt-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
               <span>{body.length} / 4,000</span>
               {feedback ? (
                 <span className={feedback.type === "error" ? "text-red-500" : "text-primary"}>
                   {feedback.message}
                 </span>
               ) : (
-                <span>Warm, specific, and honest tends to work best here.</span>
+                <span>The clearest posts usually sound like something you would say to a real person.</span>
               )}
             </div>
 

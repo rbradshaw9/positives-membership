@@ -30,7 +30,7 @@ type CommunityThreadCardProps = {
 
 function getInitials(name: string | null | undefined) {
   const displayName = getCommunityDisplayName(name);
-  if (displayName === "Someone in Positives") return "P";
+  if (displayName === "Positives member") return "P";
   return displayName
     .split(/\s+/)
     .slice(0, 2)
@@ -219,14 +219,30 @@ function ReplyItem({
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-4 text-xs font-semibold text-muted-foreground">
-        <button type="button" onClick={() => run(() => togglePostLike(reply.id))}>
+        <button
+          type="button"
+          onClick={() => run(() => togglePostLike(reply.id))}
+          className={`rounded-full px-3 py-1.5 transition-colors ${
+            reply.is_liked
+              ? "bg-accent/10 text-accent"
+              : "bg-muted/45 text-muted-foreground hover:bg-accent/10 hover:text-accent"
+          }`}
+        >
           {reply.is_liked ? "Appreciated" : "Appreciate"} · {reply.like_count}
         </button>
-        <button type="button" onClick={() => setShowReport((value) => !value)}>
+        <button
+          type="button"
+          onClick={() => setShowReport((value) => !value)}
+          className="rounded-full bg-muted/45 px-3 py-1.5 text-muted-foreground transition-colors hover:bg-foreground/8 hover:text-foreground"
+        >
           Report
         </button>
         {isOwn ? (
-          <button type="button" onClick={() => run(() => deleteReply(reply.id))} className="ml-auto text-red-500">
+          <button
+            type="button"
+            onClick={() => run(() => deleteReply(reply.id))}
+            className="ml-auto rounded-full bg-red-50 px-3 py-1.5 text-red-500"
+          >
             Delete
           </button>
         ) : null}
@@ -251,6 +267,7 @@ export function CommunityThreadCard({ thread, currentMemberId }: CommunityThread
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const isOwn = thread.member_id === currentMemberId;
+  const hasExplicitTitle = Boolean(thread.title?.trim());
   const displayTitle = getCommunityThreadDisplayTitle({
     title: thread.title,
     body: thread.body,
@@ -307,34 +324,72 @@ export function CommunityThreadCard({ thread, currentMemberId }: CommunityThread
             <span className="text-xs text-muted-foreground">{getCommunityContextLabel(thread.post_type)}</span>
           </div>
 
-          <h3 className="heading-balance mt-3 text-[1.35rem] font-semibold tracking-[-0.03em] text-foreground">
-            {displayTitle}
-          </h3>
+          {hasExplicitTitle ? (
+            <h3 className="heading-balance mt-3 text-[1.35rem] font-semibold tracking-[-0.03em] text-foreground">
+              {displayTitle}
+            </h3>
+          ) : null}
 
-          <p className="mt-3 whitespace-pre-wrap text-sm leading-[1.8] text-muted-foreground">
+          <p className={`${hasExplicitTitle ? "mt-3" : "mt-2"} whitespace-pre-wrap text-sm leading-[1.8] text-muted-foreground`}>
             {thread.body}
           </p>
         </div>
       </div>
 
-      <div className="mt-5 flex flex-wrap items-center gap-4 border-t border-border/80 pt-4 text-xs font-semibold text-muted-foreground">
-        <button type="button" onClick={() => setShowReplyBox((value) => !value)}>
-          Reply to this post · {thread.reply_count}
+      <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-border/80 pt-4">
+        <button
+          type="button"
+          onClick={() => setShowReplyBox((value) => !value)}
+          className="rounded-full bg-muted/55 px-3.5 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+        >
+          {showReplyBox ? "Close reply" : `Reply${thread.reply_count > 0 ? ` · ${thread.reply_count}` : ""}`}
         </button>
-        <button type="button" onClick={() => run(() => toggleFollowThread(thread.id))}>
-          {thread.is_following ? "Following updates" : "Follow updates"}
+        <button
+          type="button"
+          onClick={() => run(() => toggleFollowThread(thread.id))}
+          className={`rounded-full border px-3.5 py-2 text-xs font-semibold transition-colors ${
+            thread.is_following
+              ? "border-primary/25 bg-primary/10 text-primary"
+              : "border-transparent bg-muted/55 text-muted-foreground hover:bg-primary/10 hover:text-primary"
+          }`}
+        >
+          {thread.is_following ? "Following" : "Follow updates"}
         </button>
-        <button type="button" onClick={() => run(() => toggleSaveThread(thread.id))}>
-          {thread.is_saved ? "Saved for later" : "Save for later"}
+        <button
+          type="button"
+          onClick={() => run(() => toggleSaveThread(thread.id))}
+          className={`rounded-full border px-3.5 py-2 text-xs font-semibold transition-colors ${
+            thread.is_saved
+              ? "border-secondary/20 bg-secondary/10 text-secondary"
+              : "border-transparent bg-muted/55 text-muted-foreground hover:bg-secondary/10 hover:text-secondary"
+          }`}
+        >
+          {thread.is_saved ? "Saved" : "Save for later"}
         </button>
-        <button type="button" onClick={() => run(() => toggleThreadLike(thread.id))}>
-          {thread.is_liked ? "Appreciated" : "Appreciate"} · {thread.like_count}
+        <button
+          type="button"
+          onClick={() => run(() => toggleThreadLike(thread.id))}
+          className={`rounded-full border px-3.5 py-2 text-xs font-semibold transition-colors ${
+            thread.is_liked
+              ? "border-accent/25 bg-accent/10 text-accent"
+              : "border-transparent bg-muted/55 text-muted-foreground hover:bg-accent/10 hover:text-accent"
+          }`}
+        >
+          {thread.is_liked ? `Appreciated · ${thread.like_count}` : `Appreciate · ${thread.like_count}`}
         </button>
-        <button type="button" onClick={() => setShowReport((value) => !value)}>
+        <button
+          type="button"
+          onClick={() => setShowReport((value) => !value)}
+          className="rounded-full bg-muted/55 px-3.5 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-foreground/8 hover:text-foreground"
+        >
           Report
         </button>
         {isOwn ? (
-          <button type="button" onClick={() => run(() => deleteThread(thread.id))} className="ml-auto text-red-500">
+          <button
+            type="button"
+            onClick={() => run(() => deleteThread(thread.id))}
+            className="ml-auto rounded-full border border-red-200 bg-red-50 px-3.5 py-2 text-xs font-semibold text-red-500"
+          >
             Delete
           </button>
         ) : null}
@@ -352,6 +407,14 @@ export function CommunityThreadCard({ thread, currentMemberId }: CommunityThread
 
       {thread.replies.length > 0 ? (
         <div className="mt-5 space-y-3">
+          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-muted-foreground">
+            <span>{thread.reply_count} {thread.reply_count === 1 ? "reply" : "replies"}</span>
+            {thread.unread_reply_count > 0 ? (
+              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] text-primary">
+                {thread.unread_reply_count} new to you
+              </span>
+            ) : null}
+          </div>
           {thread.replies.map((reply) => (
             <ReplyItem key={reply.id} reply={reply} currentMemberId={currentMemberId} />
           ))}
