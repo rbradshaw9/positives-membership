@@ -1,4 +1,5 @@
 import type Stripe from "stripe";
+import { after } from "next/server";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import { getStripe } from "@/lib/stripe/config";
@@ -18,6 +19,20 @@ import { resolveLaunchContext } from "@/lib/launch/context";
 
 type SubscriptionTier = Enums<"subscription_tier">;
 type SubscriptionStatus = Enums<"subscription_status">;
+
+function runAfterCheckout(taskName: string, task: () => Promise<void>) {
+  after(async () => {
+    try {
+      await task();
+    } catch (error) {
+      console.error(
+        `[Stripe][after] ${taskName} failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    }
+  });
+}
 
 function mapStripeSubscriptionStatus(status: string | null | undefined): SubscriptionStatus {
   switch (status) {
@@ -399,21 +414,6 @@ async function handleGuestCheckout(
     `[Stripe] Member activated — userId: ${userId}, customerId: ${customerId}, email: ${email}, cohort: ${finalLaunchCohort}, source: ${finalLaunchSource}`
   );
 
-  try {
-    await stripe.customers.update(customerId, {
-      metadata: {
-        launch_cohort: finalLaunchCohort,
-        launch_source: finalLaunchSource,
-        ...(finalLaunchCampaignCode ? { launch_campaign_code: finalLaunchCampaignCode } : {}),
-      },
-    });
-  } catch (stripeMetadataError) {
-    console.error(
-      `[Stripe] Failed to persist launch metadata on customer ${customerId}: ` +
-        `${stripeMetadataError instanceof Error ? stripeMetadataError.message : String(stripeMetadataError)}`
-    );
-  }
-
   // ── Step 4: Generate one-time login token ────────────────────────────────
   // admin.generateLink produces a hashed_token that can be exchanged for a
   // Supabase session via verifyOtp({ token_hash, type: "email" }) on the client.
@@ -486,122 +486,138 @@ async function handleGuestCheckout(
     getSubscriptionAnalyticsFromPriceId(priceId).plan_level as SubscriptionTier | undefined;
   const planName = planLevel ? PLAN_NAME_BY_TIER[planLevel] : undefined;
 
-  if (checkoutMode === "trial_7_day") {
+  runAfterCheckout(`guest checkout downstream syncs for ${session.id}`, async () => {
     try {
-      await trackServerEvent({
-        name: "trial_started",
-        clientSeed: customerId,
-        userId,
-        params: {
-          transaction_id: session.id,
-          value: 0,
-          currency,
-          subscription_status: subscriptionStatus,
-          trial_end: subscription?.trial_end ?? undefined,
-          affiliate_attributed: Boolean(fprRefId),
-          affiliate_code: fprRefId ?? undefined,
-          ...getSubscriptionAnalyticsFromPriceId(priceId),
+      await stripe.customers.update(customerId, {
+        metadata: {
+          launch_cohort: finalLaunchCohort,
+          launch_source: finalLaunchSource,
+          ...(finalLaunchCampaignCode ? { launch_campaign_code: finalLaunchCampaignCode } : {}),
         },
       });
-    } catch (analyticsError) {
+    } catch (stripeMetadataError) {
       console.error(
-        `[GA4] Failed to track trial start for ${email}: ` +
-          `${analyticsError instanceof Error ? analyticsError.message : String(analyticsError)}`
+        `[Stripe] Failed to persist launch metadata on customer ${customerId}: ` +
+          `${stripeMetadataError instanceof Error ? stripeMetadataError.message : String(stripeMetadataError)}`
       );
     }
-  } else {
-    try {
-      await trackServerEvent({
-        name: "purchase",
-        clientSeed: customerId,
-        userId,
-        params: {
-          transaction_id: session.id,
-          value: purchaseValue,
-          currency,
-          subscription_status: "active",
-          affiliate_attributed: Boolean(fprRefId),
-          affiliate_code: fprRefId ?? undefined,
-          ...getSubscriptionAnalyticsFromPriceId(priceId),
-        },
-      });
-    } catch (analyticsError) {
-      console.error(
-        `[GA4] Failed to track purchase for ${email}: ` +
-          `${analyticsError instanceof Error ? analyticsError.message : String(analyticsError)}`
-      );
-    }
-  }
 
-  // ── Step 6: Trigger welcome/trial email via ActiveCampaign ─────────────
-  // Non-fatal — AC issues should never block the webhook response.
-  try {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://positives.life";
-    const loginUrl =
-      `${appUrl}/auth/confirm?token_hash=${encodeURIComponent(tokenHash)}` +
-      `&type=email&next=${encodeURIComponent("/today")}`;
-
-    if (shouldUseReactivationFlow) {
-      await syncMembershipReactivated({
-        email,
-        loginLink: loginUrl,
-        planName,
-        trialEndDate,
-        reactivatedAt: new Date().toISOString(),
-      });
+    if (checkoutMode === "trial_7_day") {
+      try {
+        await trackServerEvent({
+          name: "trial_started",
+          clientSeed: customerId,
+          userId,
+          params: {
+            transaction_id: session.id,
+            value: 0,
+            currency,
+            subscription_status: subscriptionStatus,
+            trial_end: subscription?.trial_end ?? undefined,
+            affiliate_attributed: Boolean(fprRefId),
+            affiliate_code: fprRefId ?? undefined,
+            ...getSubscriptionAnalyticsFromPriceId(priceId),
+          },
+        });
+      } catch (analyticsError) {
+        console.error(
+          `[GA4] Failed to track trial start for ${email}: ` +
+            `${analyticsError instanceof Error ? analyticsError.message : String(analyticsError)}`
+        );
+      }
     } else {
-      await syncWelcomeEmail({
-        email,
-        loginLink: loginUrl,
-        planName,
-        trialEndDate,
-        isTrial: checkoutMode === "trial_7_day",
-      });
+      try {
+        await trackServerEvent({
+          name: "purchase",
+          clientSeed: customerId,
+          userId,
+          params: {
+            transaction_id: session.id,
+            value: purchaseValue,
+            currency,
+            subscription_status: "active",
+            affiliate_attributed: Boolean(fprRefId),
+            affiliate_code: fprRefId ?? undefined,
+            ...getSubscriptionAnalyticsFromPriceId(priceId),
+          },
+        });
+      } catch (analyticsError) {
+        console.error(
+          `[GA4] Failed to track purchase for ${email}: ` +
+            `${analyticsError instanceof Error ? analyticsError.message : String(analyticsError)}`
+        );
+      }
     }
-  } catch (syncErr) {
-    console.error(
-      `[AC] Failed to sync welcome email fields for ${email}: ` +
-        `${syncErr instanceof Error ? syncErr.message : String(syncErr)}`
-    );
-  }
 
-  // ── Step 7: Sync to ActiveCampaign ──────────────────────────────────────
-  // Non-fatal — respects prior marketing opt-outs for returning purchasers.
-  const activeCampaignTier = planLevel ?? "level_1";
-
-  await syncNewMember({
-    email,
-    firstName: customerName ? firstName : undefined,
-    lastName,
-    phone:
-      session.customer_details?.phone ??
-      stripeCustomer?.phone ??
-      undefined,
-    tier: activeCampaignTier,
-    stripeCustomerId: customerId,
-    subscribeToMarketing: !marketingSuppressed,
-  });
-
-  // ── Step 8: Track FP sale (credit the referrer) ──────────────────────────
-  // Non-fatal — only fires when the member arrived via an affiliate link.
-  if (fprRefId && checkoutMode !== "trial_7_day") {
-    const amountDollars = (session.amount_total ?? 0) / 100;
     try {
-      await trackFpSale({
-        email,
-        amount: amountDollars,
-        planId: session.metadata?.priceId ?? undefined,
-        refId: fprRefId,
-      });
-    } catch (fpErr) {
-      // Non-fatal: member is active and referred_by_fpr is stored.
-      // FP sale can be manually reconciled if needed.
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://positives.life";
+      const loginUrl =
+        `${appUrl}/auth/confirm?token_hash=${encodeURIComponent(tokenHash)}` +
+        `&type=email&next=${encodeURIComponent("/today")}`;
+
+      if (shouldUseReactivationFlow) {
+        await syncMembershipReactivated({
+          email,
+          loginLink: loginUrl,
+          planName,
+          trialEndDate,
+          reactivatedAt: new Date().toISOString(),
+        });
+      } else {
+        await syncWelcomeEmail({
+          email,
+          loginLink: loginUrl,
+          planName,
+          trialEndDate,
+          isTrial: checkoutMode === "trial_7_day",
+        });
+      }
+    } catch (syncErr) {
       console.error(
-        `[FP] trackFpSale failed for ${email} (fpr: ${fprRefId}): ` +
-          `${fpErr instanceof Error ? fpErr.message : String(fpErr)}`
+        `[AC] Failed to sync welcome email fields for ${email}: ` +
+          `${syncErr instanceof Error ? syncErr.message : String(syncErr)}`
       );
     }
-  }
+
+    const activeCampaignTier = planLevel ?? "level_1";
+
+    try {
+      await syncNewMember({
+        email,
+        firstName: customerName ? firstName : undefined,
+        lastName,
+        phone:
+          session.customer_details?.phone ??
+          stripeCustomer?.phone ??
+          undefined,
+        tier: activeCampaignTier,
+        stripeCustomerId: customerId,
+        subscribeToMarketing: !marketingSuppressed,
+      });
+    } catch (syncErr) {
+      console.error(
+        `[AC] Failed to sync new member state for ${email}: ` +
+          `${syncErr instanceof Error ? syncErr.message : String(syncErr)}`
+      );
+    }
+
+    if (fprRefId && checkoutMode !== "trial_7_day") {
+      const amountDollars = (session.amount_total ?? 0) / 100;
+      try {
+        await trackFpSale({
+          email,
+          amount: amountDollars,
+          planId: session.metadata?.priceId ?? undefined,
+          refId: fprRefId,
+        });
+      } catch (fpErr) {
+        console.error(
+          `[FP] trackFpSale failed for ${email} (fpr: ${fprRefId}): ` +
+            `${fpErr instanceof Error ? fpErr.message : String(fpErr)}`
+        );
+      }
+    }
+  });
 
   metricCount("checkout.completed", 1, {
     outcome: "activated",
