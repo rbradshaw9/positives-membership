@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { loginWithPassword, MEMBER_EMAIL, MEMBER_PASSWORD } from "./helpers";
+import {
+  LEVEL_3_MEMBER_EMAIL,
+  LEVEL_3_MEMBER_PASSWORD,
+  loginWithPassword,
+  MEMBER_EMAIL,
+  MEMBER_PASSWORD,
+} from "./helpers";
 
 test("protected member routes redirect to login", async ({ page }) => {
   for (const pathname of ["/today", "/practice", "/community", "/coaching", "/account"]) {
@@ -17,6 +23,18 @@ test("signed-in non-admin is redirected away from admin", async ({ page }) => {
 
   await page.goto("/admin");
   await expect(page).toHaveURL(/\/today$/);
+});
+
+test("password sign-in redirects directly to the next destination", async ({ page }) => {
+  await loginWithPassword(page, {
+    email: LEVEL_3_MEMBER_EMAIL,
+    password: LEVEL_3_MEMBER_PASSWORD,
+    next: "/today",
+    allowBootstrapFallback: false,
+  });
+
+  await expect(page).toHaveURL(/\/today$/);
+  await expect(page.getByRole("region", { name: /daily practice/i })).toBeVisible();
 });
 
 test("member can navigate launch routes and use practice tabs", async ({ page }) => {

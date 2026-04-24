@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { formatSupabaseAuthError } from "@/lib/auth/client-error";
 import { resolvePostLoginDestination } from "@/lib/auth/post-login-destination";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/marketing/Logo";
@@ -17,7 +17,6 @@ import { Logo } from "@/components/marketing/Logo";
 type Mode = "password" | "magic";
 
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/today";
   const reason = searchParams.get("reason");
@@ -50,8 +49,7 @@ function LoginForm() {
     }
 
     const destination = await resolvePostLoginDestination(supabase, next);
-    router.push(destination);
-    router.refresh();
+    window.location.assign(destination);
   }
 
   async function handleMagicLink(e: React.FormEvent<HTMLFormElement>) {

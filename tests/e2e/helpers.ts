@@ -1162,11 +1162,13 @@ export async function loginWithPassword(
     password,
     next = "/today",
     expectedPath = next,
+    allowBootstrapFallback = true,
   }: {
     email: string;
     password: string;
     next?: string;
     expectedPath?: string;
+    allowBootstrapFallback?: boolean;
   }
 ) {
   await normalizeLoginFixtureAccess(email);
@@ -1180,6 +1182,10 @@ export async function loginWithPassword(
     await expect(page).toHaveURL(new RegExp(`${escapedExpected}$`), { timeout: 8_000 });
     return;
   } catch (passwordLoginError) {
+    if (!allowBootstrapFallback) {
+      throw passwordLoginError;
+    }
+
     const origin = new URL(page.url()).origin;
     const actionLink = await createAuthBootstrapLink(email, next, origin);
     await page.goto(actionLink);
