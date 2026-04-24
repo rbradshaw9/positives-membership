@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useEffect, useRef, useTransition } from "react";
 import {
   createJournalEntry,
@@ -55,6 +56,10 @@ export function NoteSheet({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const eventFiredRef = useRef(false);
   const isEditing = Boolean(noteId);
+  const [savedResult, setSavedResult] = useState<{
+    noteId: string;
+    isNew: boolean;
+  } | null>(null);
 
   // Sync initialText when sheet opens with different content
   useEffect(() => {
@@ -62,6 +67,7 @@ export function NoteSheet({
       const t = window.setTimeout(() => {
         setText(initialText);
         setSaveState("idle");
+        setSavedResult(null);
         textareaRef.current?.focus();
       }, 0);
 
@@ -110,15 +116,22 @@ export function NoteSheet({
 
     if (result.ok) {
       setSaveState("saved");
+      setSavedResult({
+        noteId: result.noteId,
+        isNew: result.isNew,
+      });
       onSaved?.({
         noteId: result.noteId,
         isNew: result.isNew,
         savedText: text.trim(),
       });
-      setTimeout(() => {
-        onClose();
-        setSaveState("idle");
-      }, 600);
+      if (!contentId && !isEditing) {
+        setTimeout(() => {
+          onClose();
+          setSaveState("idle");
+          setSavedResult(null);
+        }, 600);
+      }
     } else {
       setSaveState("error");
       setTimeout(() => setSaveState("idle"), 3000);
@@ -147,6 +160,7 @@ export function NoteSheet({
   function handleCancel() {
     setText(initialText);
     setSaveState("idle");
+    setSavedResult(null);
     onClose();
   }
 
@@ -206,6 +220,8 @@ export function NoteSheet({
           setText={setText}
           saveLabel={saveLabel}
           saveState={saveState}
+          savedResult={savedResult}
+          isReflection={Boolean(contentId)}
           onSave={handleSave}
           onCancel={handleCancel}
           onDelete={isEditing ? handleDelete : undefined}
@@ -244,6 +260,8 @@ export function NoteSheet({
           setText={setText}
           saveLabel={saveLabel}
           saveState={saveState}
+          savedResult={savedResult}
+          isReflection={Boolean(contentId)}
           onSave={handleSave}
           onCancel={handleCancel}
           onDelete={isEditing ? handleDelete : undefined}
@@ -264,6 +282,8 @@ interface ContentProps {
   setText: (v: string) => void;
   saveLabel: string;
   saveState: "idle" | "saving" | "saved" | "deleting" | "error";
+  savedResult: { noteId: string; isNew: boolean } | null;
+  isReflection: boolean;
   onSave: () => void;
   onCancel: () => void;
   onDelete?: () => void;
@@ -278,11 +298,68 @@ function NoteSheetContent({
   setText,
   saveLabel,
   saveState,
+  savedResult,
+  isReflection,
   onSave,
   onCancel,
   onDelete,
   textareaRef,
 }: ContentProps) {
+  if (saveState === "saved" && savedResult) {
+    return (
+      <div className="flex flex-1 flex-col justify-between gap-5 p-5">
+        <div className="flex items-center justify-between border-b border-border pb-4">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-foreground">
+              {isReflection ? "Reflection saved" : "Note saved"}
+            </p>
+            {contentTitle ? (
+              <p className="mt-0.5 truncate text-xs text-muted-foreground">{contentTitle}</p>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label="Close note"
+            className="w-8 h-8 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex-shrink-0"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-5 py-5">
+          <p className="text-sm font-semibold text-emerald-900">
+            {isReflection ? "Your reflection is saved." : "Your note is saved."}
+          </p>
+          <p className="mt-2 text-sm leading-body text-emerald-800/80">
+            {isReflection
+              ? "You can revisit private reflections any time from Journal in My Practice."
+              : "You can revisit this note any time from Journal in My Practice."}
+          </p>
+        </div>
+
+        <div
+          className="flex gap-3"
+          style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+        >
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 py-2.5 rounded-full text-sm font-medium border border-border bg-transparent text-muted-foreground hover:bg-muted transition-colors"
+          >
+            Done
+          </button>
+          <Link href="/journal" className="btn-primary flex-1 text-center">
+            Open Journal
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col flex-1 min-h-0 p-5 gap-4">
       {/* Header — icon + title (replaces all-caps xs text) */}

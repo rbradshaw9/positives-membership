@@ -4,6 +4,7 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth/require-admin";
+import { sanitizeCourseHtml } from "@/lib/content/sanitize-course-html";
 import { getStripe } from "@/lib/stripe/config";
 
 /**
@@ -67,18 +68,7 @@ function getRenderedField(value: unknown): string {
 }
 
 function cleanImportedHtml(html: string): string | null {
-  const cleaned = decodeHtmlEntities(html)
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
-    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, "")
-    .replace(/\son[a-z]+=(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
-    .replace(/\s(?:href|src)=(["'])\s*javascript:[^"']*\1/gi, "")
-    .replace(/\sdata-[a-z0-9_-]+="[^"]*"/gi, "")
-    .replace(/\sclass="[^"]*"/gi, "")
-    .replace(/\sid="[^"]*"/gi, "")
-    .trim();
-
-  return stripHtml(cleaned).length > 0 ? cleaned : null;
+  return sanitizeCourseHtml(decodeHtmlEntities(html));
 }
 
 function cleanFormValue(formData: FormData, key: string) {
@@ -494,7 +484,7 @@ export async function createLesson(formData: FormData) {
     module_id: moduleId,
     title,
     description: formData.get("description")?.toString().trim() || null,
-    body: formData.get("body")?.toString().trim() || null,
+    body: sanitizeCourseHtml(formData.get("body")?.toString().trim() || null),
     video_url: formData.get("video_url")?.toString().trim() || null,
     duration_seconds: formData.get("duration_seconds")?.toString()
       ? parseInt(formData.get("duration_seconds")!.toString(), 10) : null,
@@ -518,7 +508,7 @@ export async function updateLesson(formData: FormData) {
     .update({
       title,
       description: formData.get("description")?.toString().trim() || null,
-      body: formData.get("body")?.toString().trim() || null,
+      body: sanitizeCourseHtml(formData.get("body")?.toString().trim() || null),
       video_url: formData.get("video_url")?.toString().trim() || null,
       duration_seconds: formData.get("duration_seconds")?.toString()
         ? parseInt(formData.get("duration_seconds")!.toString(), 10) : null,
@@ -564,7 +554,7 @@ export async function createSession(formData: FormData) {
     module_id: moduleId,
     title,
     description: formData.get("description")?.toString().trim() || null,
-    body: formData.get("body")?.toString().trim() || null,
+    body: sanitizeCourseHtml(formData.get("body")?.toString().trim() || null),
     video_url: formData.get("video_url")?.toString().trim() || null,
     duration_seconds: formData.get("duration_seconds")?.toString()
       ? parseInt(formData.get("duration_seconds")!.toString(), 10) : null,
@@ -588,7 +578,7 @@ export async function updateSession(formData: FormData) {
     .update({
       title,
       description: formData.get("description")?.toString().trim() || null,
-      body: formData.get("body")?.toString().trim() || null,
+      body: sanitizeCourseHtml(formData.get("body")?.toString().trim() || null),
       video_url: formData.get("video_url")?.toString().trim() || null,
       duration_seconds: formData.get("duration_seconds")?.toString()
         ? parseInt(formData.get("duration_seconds")!.toString(), 10) : null,

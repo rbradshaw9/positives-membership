@@ -42,6 +42,14 @@ const SENTRY_ORG = process.env.SENTRY_ORG || "positives";
 const SENTRY_PROJECT = process.env.SENTRY_PROJECT || "positives";
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://positives.life").replace(/\/$/, "");
 const EXPECTED_STRIPE_WEBHOOK_URL = `${APP_URL}/api/webhooks/stripe`;
+const PERFORMANCE_WATCHLIST = [
+  { route: "/", label: "Homepage", href: `${APP_URL}/` },
+  { route: "/join", label: "Join", href: `${APP_URL}/join` },
+  { route: "/beta", label: "Beta signup", href: `${APP_URL}/beta` },
+  { route: "/partners", label: "Partners", href: `${APP_URL}/partners` },
+  { route: "/today", label: "Today", href: `${APP_URL}/today` },
+  { route: "/community", label: "Community", href: `${APP_URL}/community` },
+];
 
 function line(value = "") {
   console.log(value);
@@ -115,7 +123,7 @@ async function getSentry() {
     query: "event.type:transaction",
     sort: "-p75_transaction_duration",
     statsPeriod: "14d",
-    per_page: "5",
+    per_page: "50",
   });
   performanceParams.append("field", "transaction");
   performanceParams.append("field", "count()");
@@ -132,6 +140,10 @@ async function getSentry() {
     }),
   ]);
   return { issues, monitors, transactions: transactions.data ?? [] };
+}
+
+function findTransactionMetrics(transactions, route) {
+  return transactions.find((transaction) => transaction.transaction === route) ?? null;
 }
 
 async function getStripe() {
@@ -199,6 +211,19 @@ if (sentry.ok) {
     const duration = Number(transaction["p75(transaction.duration)"] ?? 0);
     const formattedDuration = duration >= 1000 ? `${(duration / 1000).toFixed(1)}s` : `${Math.round(duration)}ms`;
     line(`  - ${transaction.transaction}: ${formattedDuration} p75 (${transaction["count()"] ?? 0} events)`);
+  }
+  line("- Route watchlist:");
+  for (const item of PERFORMANCE_WATCHLIST) {
+    const transaction = findTransactionMetrics(sentry.value.transactions, item.route);
+    const duration = Number(transaction?.["p75(transaction.duration)"] ?? 0);
+    const formattedDuration = duration > 0
+      ? duration >= 1000
+        ? `${(duration / 1000).toFixed(1)}s`
+        : `${Math.round(duration)}ms`
+      : "n/a";
+    line(
+      `  - ${item.label} (${item.route}): ${formattedDuration}${transaction ? ` (${transaction["count()"] ?? 0} events)` : ""} -> ${item.href}`
+    );
   }
 } else {
   line(`- CHECK - ${sentry.error}`);

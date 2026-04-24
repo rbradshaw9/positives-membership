@@ -203,8 +203,8 @@ export function MonthlyThemeCard({
               </button>
               <p className="text-xs text-foreground/45">
                 {noteCount > 0
-                  ? `${noteCount} reflection${noteCount === 1 ? "" : "s"} saved for this theme`
-                  : "Use this space for a private note about what this month's theme is surfacing."}
+                  ? `${noteCount} reflection${noteCount === 1 ? "" : "s"} saved for this theme. Revisit them in Journal.`
+                  : "Use this space for a private note about what this month's theme is surfacing. You'll find it later in Journal."}
               </p>
             </div>
           </div>

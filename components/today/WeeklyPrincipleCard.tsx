@@ -205,8 +205,8 @@ export function WeeklyPrincipleCard({
               </button>
               <p className="text-xs text-foreground/45">
                 {noteCount > 0
-                  ? `${noteCount} reflection${noteCount === 1 ? "" : "s"} saved for this week`
-                  : "Capture a private thought while this week's principle is fresh."}
+                  ? `${noteCount} reflection${noteCount === 1 ? "" : "s"} saved. Revisit them in Journal.`
+                  : "Capture a private thought while this week's principle is fresh. You'll find it later in Journal."}
               </p>
             </div>
           </div>

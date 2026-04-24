@@ -231,8 +231,8 @@ export function DailyPracticeCard({
                 </button>
                 <p className="mt-2 text-xs" style={{ color: "rgba(255,255,255,0.48)" }}>
                   {noteCount > 0
-                    ? `${noteCount} reflection${noteCount === 1 ? "" : "s"} saved for this practice`
-                    : "Save a private reflection if something stands out."}
+                    ? `${noteCount} reflection${noteCount === 1 ? "" : "s"} saved. Revisit them any time in Journal.`
+                    : "Save a private reflection if something stands out. You can find it later in Journal."}
                 </p>
               </div>
             </>

@@ -192,6 +192,30 @@ export default async function AdminOpsPage() {
               </div>
             </div>
           ) : null}
+          {snapshot.sentry.watchlist.length > 0 ? (
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-600">
+              <p className="font-semibold text-slate-900">Beta route watchlist</p>
+              <div className="mt-3 space-y-2">
+                {snapshot.sentry.watchlist.map((item) => (
+                  <div
+                    key={item.route}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white px-3 py-2"
+                  >
+                    <div>
+                      <p className="font-medium text-slate-900">{item.label}</p>
+                      <p className="text-xs text-slate-500">{item.route}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                        {item.metrics ? `${formatDuration(item.metrics.p75Ms)} · ${item.metrics.count}` : "n/a"}
+                      </span>
+                      <ExternalLink href={item.href}>Open route</ExternalLink>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
           {snapshot.sentry.error ? (
             <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
               {snapshot.sentry.error}

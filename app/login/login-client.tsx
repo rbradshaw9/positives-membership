@@ -131,8 +131,14 @@ function LoginForm() {
         <div className="flex justify-center mb-4">
           <Logo height={30} />
         </div>
+        <h1
+          className="font-heading font-bold text-2xl text-foreground"
+          style={{ letterSpacing: "-0.03em", lineHeight: "1.08" }}
+        >
+          Sign in to Positives
+        </h1>
         <p
-          className="text-sm"
+          className="mt-3 text-sm"
           style={{ color: "#68707A", lineHeight: "1.6" }}
         >
           {reason === "subscription_inactive"

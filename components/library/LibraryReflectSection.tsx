@@ -95,8 +95,8 @@ export function LibraryReflectSection({
       </button>
       <p className="mt-3 text-sm text-muted-foreground">
         {noteCount > 0
-          ? `${noteCount} reflection${noteCount === 1 ? "" : "s"} already saved for this practice. Add another when something new stands out.`
-          : "A few sentences is enough. This stays private to you."}
+          ? `${noteCount} reflection${noteCount === 1 ? "" : "s"} already saved for this practice. Revisit them in Journal or add another when something new stands out.`
+          : "A few sentences is enough. This stays private to you, and you can revisit it later in Journal."}
       </p>
 
       <NoteSheet

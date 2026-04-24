@@ -26,6 +26,21 @@ type SentryTransaction = {
   p75Ms: number;
 };
 
+type PerformanceWatchItem = {
+  route: string;
+  label: string;
+  href: string;
+};
+
+const PERFORMANCE_WATCHLIST: PerformanceWatchItem[] = [
+  { route: "/", label: "Homepage", href: "https://positives.life/" },
+  { route: "/join", label: "Join", href: "https://positives.life/join" },
+  { route: "/beta", label: "Beta signup", href: "https://positives.life/beta" },
+  { route: "/partners", label: "Partners", href: "https://positives.life/partners" },
+  { route: "/today", label: "Today", href: "https://positives.life/today" },
+  { route: "/community", label: "Community", href: "https://positives.life/community" },
+];
+
 type StripeWebhookEndpoint = {
   id: string;
   url: string;
@@ -68,6 +83,13 @@ function dashboardLinks() {
     asanaBetaFeedback:
       "https://app.asana.com/1/1121814557377551/project/1214005103885510/list?section=1214140242515252",
   };
+}
+
+function attachWatchlist(transactions: SentryTransaction[]) {
+  return PERFORMANCE_WATCHLIST.map((item) => ({
+    ...item,
+    metrics: transactions.find((transaction) => transaction.transaction === item.route) ?? null,
+  }));
 }
 
 export async function getOpsHealthSnapshot() {
@@ -237,6 +259,7 @@ async function getSentrySnapshot() {
       issues: [] as SentryIssue[],
       monitors: [] as SentryMonitor[],
       slowTransactions: [] as SentryTransaction[],
+      watchlist: attachWatchlist([]),
       error: "SENTRY_AUTH_TOKEN is not configured.",
       tone: "watch" as HealthTone,
     };
@@ -247,7 +270,7 @@ async function getSentrySnapshot() {
       query: "event.type:transaction",
       sort: "-p75_transaction_duration",
       statsPeriod: "14d",
-      per_page: "5",
+      per_page: "50",
     });
     performanceParams.append("field", "transaction");
     performanceParams.append("field", "count()");
@@ -293,6 +316,7 @@ async function getSentrySnapshot() {
       issues: mappedIssues,
       monitors: mappedMonitors,
       slowTransactions: mappedTransactions,
+      watchlist: attachWatchlist(mappedTransactions),
       error: null as string | null,
       tone: mappedIssues.length > 0 ? "watch" as HealthTone : "good" as HealthTone,
     };
@@ -303,6 +327,7 @@ async function getSentrySnapshot() {
       issues: [] as SentryIssue[],
       monitors: [] as SentryMonitor[],
       slowTransactions: [] as SentryTransaction[],
+      watchlist: attachWatchlist([]),
       error: error instanceof Error ? error.message : "Sentry lookup failed.",
       tone: "watch" as HealthTone,
     };
