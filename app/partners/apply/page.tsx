@@ -2,10 +2,6 @@ import type { Metadata } from "next";
 import { PublicSiteFooter } from "@/components/marketing/PublicSiteFooter";
 import { PublicSiteHeader } from "@/components/marketing/PublicSiteHeader";
 import { ANONYMOUS_PUBLIC_SESSION_STATE } from "@/lib/marketing/public-session";
-import {
-  appendPublicTrackingParams,
-  type PublicSearchParams,
-} from "@/lib/marketing/public-query-params";
 import { PartnerApplyForm } from "./PartnerApplyForm";
 
 export const metadata: Metadata = {
@@ -17,28 +13,14 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function PartnerApplyPage({
-  searchParams,
-}: {
-  searchParams: Promise<PublicSearchParams>;
-}) {
-  const trackingParams = await searchParams;
+export default function PartnerApplyPage() {
   const session = ANONYMOUS_PUBLIC_SESSION_STATE;
-  const trackedPartnerPageHref = appendPublicTrackingParams(
-    "/partners",
-    trackingParams
-  );
-  const trackedAffiliateTermsHref = appendPublicTrackingParams(
-    "/affiliate-program",
-    trackingParams
-  );
 
   return (
     <div className="min-h-dvh flex flex-col" style={{ background: "#F7F5F0" }}>
       <PublicSiteHeader
         signInHref={session.signInHref}
         signInLabel={session.signInLabel}
-        trackingParams={trackingParams}
         navLinks={[
           { href: "/", label: "Home" },
           { href: "/partners", label: "Partner program" },
@@ -111,8 +93,8 @@ export default async function PartnerApplyPage({
 
             <div>
               <PartnerApplyForm
-                partnerPageHref={trackedPartnerPageHref}
-                affiliateTermsHref={trackedAffiliateTermsHref}
+                partnerPageHref="/partners"
+                affiliateTermsHref="/affiliate-program"
               />
             </div>
           </div>
@@ -122,7 +104,6 @@ export default async function PartnerApplyPage({
       <PublicSiteFooter
         paidHref={session.paidHref}
         session={session}
-        trackingParams={trackingParams}
       />
     </div>
   );

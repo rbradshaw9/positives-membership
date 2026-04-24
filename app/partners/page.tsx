@@ -1,12 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { PublicSiteFooter } from "@/components/marketing/PublicSiteFooter";
 import { PublicSiteHeader } from "@/components/marketing/PublicSiteHeader";
+import { PublicTrackedLink } from "@/components/marketing/PublicTrackedLink";
 import { ANONYMOUS_PUBLIC_SESSION_STATE } from "@/lib/marketing/public-session";
-import {
-  appendPublicTrackingParams,
-  type PublicSearchParams,
-} from "@/lib/marketing/public-query-params";
 
 export const metadata: Metadata = {
   title: "Partner Program — Positives",
@@ -48,28 +44,14 @@ const PARTNER_BENEFITS = [
   "A calm, trust-based program instead of hype-heavy affiliate tactics",
 ];
 
-export default async function PartnersPage({
-  searchParams,
-}: {
-  searchParams: Promise<PublicSearchParams>;
-}) {
-  const trackingParams = await searchParams;
+export default function PartnersPage() {
   const session = ANONYMOUS_PUBLIC_SESSION_STATE;
-  const trackedPartnerApplyHref = appendPublicTrackingParams(
-    "/partners/apply",
-    trackingParams
-  );
-  const trackedAffiliateTermsHref = appendPublicTrackingParams(
-    "/affiliate-program",
-    trackingParams
-  );
 
   return (
     <div className="min-h-dvh flex flex-col" style={{ background: "#F7F5F0" }}>
       <PublicSiteHeader
         signInHref={session.signInHref}
         signInLabel={session.signInLabel}
-        trackingParams={trackingParams}
         navLinks={[
           { href: "/", label: "Home" },
           { href: "/faq", label: "FAQ" },
@@ -126,8 +108,8 @@ export default async function PartnersPage({
                 steady daily practice with Dr. Paul Jenkins.
               </p>
               <div className="flex flex-wrap gap-3 mt-8">
-                <Link
-                  href={trackedPartnerApplyHref}
+                <PublicTrackedLink
+                  href="/partners/apply"
                   className="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold"
                   style={{
                     background: "#4E8C78",
@@ -136,9 +118,9 @@ export default async function PartnersPage({
                   }}
                 >
                   Apply to partner
-                </Link>
-                <Link
-                  href={trackedAffiliateTermsHref}
+                </PublicTrackedLink>
+                <PublicTrackedLink
+                  href="/affiliate-program"
                   className="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold"
                   style={{
                     background: "rgba(255,255,255,0.88)",
@@ -147,7 +129,7 @@ export default async function PartnersPage({
                   }}
                 >
                   Review terms
-                </Link>
+                </PublicTrackedLink>
               </div>
             </div>
 
@@ -281,13 +263,13 @@ export default async function PartnersPage({
                 ))}
               </div>
               <div className="mt-6 flex flex-wrap gap-3">
-                <Link
-                  href={trackedPartnerApplyHref}
+                <PublicTrackedLink
+                  href="/partners/apply"
                   className="inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-semibold"
                   style={{ background: "#121417", color: "#FFFFFF" }}
                 >
                   Start application
-                </Link>
+                </PublicTrackedLink>
                 <a
                   href="mailto:support@positives.life?subject=Positives%20partner%20question"
                   className="inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-semibold"
@@ -304,7 +286,6 @@ export default async function PartnersPage({
       <PublicSiteFooter
         paidHref={session.paidHref}
         session={session}
-        trackingParams={trackingParams}
       />
     </div>
   );

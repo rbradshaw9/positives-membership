@@ -59,7 +59,6 @@ function LandingPageShell({
         signInLabel={session.signInLabel}
         primaryCtaHref={paidHref}
         primaryCtaLabel={session.paidShortLabel}
-        trackingParams={trackingParams}
         navLinks={[
           { href: "#how-it-works", label: "How it Works", hiddenOnMobile: true },
           { href: "#dr-paul", label: "Dr. Paul", hiddenOnMobile: true },
@@ -898,7 +897,7 @@ function LandingPageShell({
       </section>
 
       {/* ━━ 11. FOOTER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <PublicSiteFooter paidHref={paidHref} trackingParams={trackingParams} session={session} />
+      <PublicSiteFooter paidHref={paidHref} session={session} />
     </div>
   );
 }

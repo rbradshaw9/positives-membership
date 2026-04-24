@@ -1,8 +1,8 @@
 "use client";
 
 import { useActionState, useEffect } from "react";
-import Link from "next/link";
 import { track } from "@/lib/analytics/ga";
+import { PublicTrackedLink } from "@/components/marketing/PublicTrackedLink";
 import {
   submitPartnerApplication,
   type PartnerApplicationFormState,
@@ -80,20 +80,20 @@ export function PartnerApplyForm({
           payout setup moving cleanly.
         </p>
         <div className="mt-7 flex flex-wrap justify-center gap-3">
-          <Link
+          <PublicTrackedLink
             href={partnerPageHref}
             className="inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-semibold"
             style={{ background: "#121417", color: "#FFFFFF" }}
           >
             Back to partner page
-          </Link>
-          <Link
+          </PublicTrackedLink>
+          <PublicTrackedLink
             href={affiliateTermsHref}
             className="inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-semibold"
             style={{ background: "rgba(47,111,237,0.08)", color: "#2F6FED" }}
           >
             Review terms
-          </Link>
+          </PublicTrackedLink>
         </div>
       </div>
     );
@@ -232,13 +232,13 @@ export function PartnerApplyForm({
         />
         <span>
           I agree to the{" "}
-          <Link
+          <PublicTrackedLink
             href={affiliateTermsHref}
             className="underline underline-offset-2"
             style={{ color: "#2F6FED" }}
           >
             affiliate program terms
-          </Link>{" "}
+          </PublicTrackedLink>{" "}
           and understand that partner approval is reviewed manually.
         </span>
       </label>

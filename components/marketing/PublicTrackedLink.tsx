@@ -1,31 +1,33 @@
 "use client";
 
-import Link from "next/link";
-import { Suspense, type ComponentProps } from "react";
-import { useSearchParams } from "next/navigation";
+import Link, { type LinkProps } from "next/link";
 import { appendPublicTrackingParamsFromEntries } from "@/lib/marketing/public-query-params";
 
-type PublicTrackedLinkProps = Omit<ComponentProps<typeof Link>, "href"> & {
-  href: string;
+type PublicTrackedLinkProps = LinkProps & {
+  className?: string;
+  style?: React.CSSProperties;
+  children: React.ReactNode;
+  "aria-label"?: string;
+  target?: string;
+  rel?: string;
 };
 
-function ResolvedPublicTrackedLink({
+export function PublicTrackedLink({
   href,
+  children,
   ...props
 }: PublicTrackedLinkProps) {
-  const searchParams = useSearchParams();
-  const trackedHref = appendPublicTrackingParamsFromEntries(
-    href,
-    searchParams.entries()
-  );
+  const resolvedHref =
+    typeof href === "string" && typeof window !== "undefined"
+      ? appendPublicTrackingParamsFromEntries(
+          href,
+          new URLSearchParams(window.location.search).entries(),
+        )
+      : href;
 
-  return <Link href={trackedHref} {...props} />;
-}
-
-export function PublicTrackedLink(props: PublicTrackedLinkProps) {
   return (
-    <Suspense fallback={<Link {...props} />}>
-      <ResolvedPublicTrackedLink {...props} />
-    </Suspense>
+    <Link href={resolvedHref} {...props}>
+      {children}
+    </Link>
   );
 }
