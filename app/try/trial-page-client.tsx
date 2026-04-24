@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition, type FormEvent } from "react";
 import { getGuestCheckoutUrl } from "@/app/join/actions";
+import { PublicTrackedLink } from "@/components/marketing/PublicTrackedLink";
 import { track } from "@/lib/analytics/ga";
 import { getStoredFirstPromoterRefId } from "@/lib/firstpromoter/referral";
 
@@ -123,7 +123,7 @@ export function TrialPageClient({
             into today&apos;s practice whenever you&apos;re ready.
           </p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <Link
+            <PublicTrackedLink
               href={memberHref}
               className="inline-flex items-center justify-center rounded-full px-6 py-3.5 text-sm font-semibold"
               style={{
@@ -133,8 +133,8 @@ export function TrialPageClient({
               }}
             >
               Open today&apos;s practice →
-            </Link>
-            <Link
+            </PublicTrackedLink>
+            <PublicTrackedLink
               href={paidHref}
               className="inline-flex items-center justify-center rounded-full border px-6 py-3.5 text-sm font-semibold"
               style={{
@@ -144,7 +144,7 @@ export function TrialPageClient({
               }}
             >
               View your membership options
-            </Link>
+            </PublicTrackedLink>
           </div>
         </div>
       </>
@@ -270,7 +270,7 @@ export function TrialPageClient({
           </button>
         )}
 
-        <Link
+        <PublicTrackedLink
           href={paidHref}
           className="inline-flex items-center justify-center rounded-full border px-7 py-4 text-sm font-semibold"
           style={{
@@ -280,7 +280,7 @@ export function TrialPageClient({
           }}
         >
           Prefer the paid offer instead?
-        </Link>
+        </PublicTrackedLink>
       </div>
 
       <p className="mt-4 text-sm" style={{ color: "#9AA0A8", lineHeight: "1.7" }}>
