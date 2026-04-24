@@ -38,7 +38,7 @@ const LOGO_CONFIG = {
 
 export function Logo({
   variant = "dark",
-  kind = "full",
+  kind = "wordmark",
   height = 28,
   href = "/",
   className = "",
