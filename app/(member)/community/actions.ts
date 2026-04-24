@@ -14,6 +14,7 @@ import { POINT_VALUES, awardMemberPoints } from "@/lib/points/award";
 
 type ActionResult = { error?: string; success?: string };
 type ToggleResult = { error?: string; active?: boolean };
+const COMMUNITY_AUTH_ERROR = "Please sign in again and try that one more time.";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -22,7 +23,7 @@ async function requireUser() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    throw new Error("Not authenticated");
+    return null;
   }
 
   return { user, supabase: asLooseSupabaseClient(supabase) };
@@ -147,7 +148,9 @@ export async function createWeeklyThread(
   body: string,
   postType: string
 ): Promise<ActionResult> {
-  const { user, supabase } = await requireUser();
+  const context = await requireUser();
+  if (!context) return { error: COMMUNITY_AUTH_ERROR };
+  const { user, supabase } = context;
   const trimmedBody = body.trim();
 
   if (!contentId) return { error: "Missing weekly thread context." };
@@ -201,7 +204,9 @@ export async function createCommunityPost(input: {
   body: string;
   postType: string;
 }): Promise<ActionResult> {
-  const { user, supabase } = await requireUser();
+  const context = await requireUser();
+  if (!context) return { error: COMMUNITY_AUTH_ERROR };
+  const { user, supabase } = context;
   const title = input.title?.trim() ?? "";
   const body = input.body.trim();
 
@@ -254,7 +259,9 @@ export async function createReply(input: {
   body: string;
   parentId?: string | null;
 }): Promise<ActionResult> {
-  const { user, supabase } = await requireUser();
+  const context = await requireUser();
+  if (!context) return { error: COMMUNITY_AUTH_ERROR };
+  const { user, supabase } = context;
   const body = input.body.trim();
 
   if (!input.threadId) return { error: "Missing discussion context." };
@@ -322,7 +329,9 @@ export async function createReply(input: {
 }
 
 export async function deleteThread(threadId: string): Promise<ActionResult> {
-  const { user, supabase } = await requireUser();
+  const context = await requireUser();
+  if (!context) return { error: COMMUNITY_AUTH_ERROR };
+  const { user, supabase } = context;
   const moderator = await canModerateCommunity(user.id, user.email);
 
   const { data: thread, error: lookupError } = await supabase
@@ -351,7 +360,9 @@ export async function deleteThread(threadId: string): Promise<ActionResult> {
 }
 
 export async function deleteReply(postId: string): Promise<ActionResult> {
-  const { user, supabase } = await requireUser();
+  const context = await requireUser();
+  if (!context) return { error: COMMUNITY_AUTH_ERROR };
+  const { user, supabase } = context;
   const moderator = await canModerateCommunity(user.id, user.email);
 
   const { data: reply, error: lookupError } = await supabase
@@ -384,7 +395,9 @@ async function toggleUniqueRow(params: {
   table: "community_thread_like" | "community_post_like" | "community_saved_item" | "community_follow";
   match: Record<string, string>;
 }): Promise<ToggleResult> {
-  const { user, supabase } = await requireUser();
+  const context = await requireUser();
+  if (!context) return { error: COMMUNITY_AUTH_ERROR };
+  const { user, supabase } = context;
   const conditions = Object.entries({ ...params.match, member_id: user.id });
 
   let lookup = supabase.from(params.table).select<{ id: string }[]>("id");
@@ -461,7 +474,9 @@ export async function toggleFollowThread(threadId: string) {
 }
 
 export async function markCommunityNotificationRead(notificationId: string): Promise<ActionResult> {
-  const { user, supabase } = await requireUser();
+  const context = await requireUser();
+  if (!context) return { error: COMMUNITY_AUTH_ERROR };
+  const { user, supabase } = context;
 
   const { error } = await supabase
     .from("community_notification")
@@ -480,7 +495,9 @@ export async function markCommunityNotificationRead(notificationId: string): Pro
 }
 
 export async function markCommunityThreadNotificationsRead(threadId: string): Promise<ActionResult> {
-  const { user, supabase } = await requireUser();
+  const context = await requireUser();
+  if (!context) return { error: COMMUNITY_AUTH_ERROR };
+  const { user, supabase } = context;
 
   const { error } = await supabase
     .from("community_notification")
@@ -499,7 +516,9 @@ export async function markCommunityThreadNotificationsRead(threadId: string): Pr
 }
 
 export async function markAllCommunityNotificationsRead(): Promise<ActionResult> {
-  const { user, supabase } = await requireUser();
+  const context = await requireUser();
+  if (!context) return { error: COMMUNITY_AUTH_ERROR };
+  const { user, supabase } = context;
 
   const { error } = await supabase
     .from("community_notification")
@@ -522,7 +541,9 @@ async function createReport(params: {
   reason: string;
   details?: string;
 }): Promise<ActionResult> {
-  const { user, supabase } = await requireUser();
+  const context = await requireUser();
+  if (!context) return { error: COMMUNITY_AUTH_ERROR };
+  const { user, supabase } = context;
   const details = params.details?.trim() ?? "";
 
   if (!params.threadId && !params.postId) return { error: "Missing report context." };

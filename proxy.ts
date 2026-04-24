@@ -29,13 +29,15 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/account");
 
   const isAdminRoute = pathname.startsWith("/admin");
+  const isAuthRoute = pathname.startsWith("/auth");
   const requiresAuth = isMemberRoute || isAdminRoute;
+  const needsSessionRefresh = requiresAuth || isAuthRoute;
 
   const hasSupabaseCookie = request.cookies
     .getAll()
     .some(({ name }) => name.startsWith("sb-"));
 
-  if (!requiresAuth && !hasSupabaseCookie) {
+  if (!needsSessionRefresh) {
     const publicResponse = NextResponse.next({ request });
     publicResponse.headers.set("x-pathname", pathname);
     return publicResponse;
