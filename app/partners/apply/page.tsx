@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ANONYMOUS_PUBLIC_SESSION_STATE } from "@/lib/marketing/public-session";
+import type { PublicSearchParams } from "@/lib/marketing/public-query-params";
 import PartnerApplyClient from "./partner-apply-client";
 
 export const metadata: Metadata = {
@@ -11,6 +12,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default function PartnerApplyPage() {
-  return <PartnerApplyClient session={ANONYMOUS_PUBLIC_SESSION_STATE} />;
+export default async function PartnerApplyPage({
+  searchParams,
+}: {
+  searchParams: Promise<PublicSearchParams>;
+}) {
+  return (
+    <PartnerApplyClient
+      session={ANONYMOUS_PUBLIC_SESSION_STATE}
+      trackingParams={await searchParams}
+    />
+  );
 }

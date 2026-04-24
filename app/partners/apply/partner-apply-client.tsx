@@ -1,11 +1,15 @@
 "use client";
 
 import { useActionState, useEffect } from "react";
+import Link from "next/link";
 import { PublicSiteFooter } from "@/components/marketing/PublicSiteFooter";
 import { PublicSiteHeader } from "@/components/marketing/PublicSiteHeader";
-import { PublicTrackedLink } from "@/components/marketing/PublicTrackedLink";
 import type { PublicSessionState } from "@/lib/marketing/public-session";
 import { track } from "@/lib/analytics/ga";
+import {
+  appendPublicTrackingParams,
+  type PublicSearchParams,
+} from "@/lib/marketing/public-query-params";
 import {
   submitPartnerApplication,
   type PartnerApplicationFormState,
@@ -22,15 +26,25 @@ const PARTNER_OPTIONS = [
 
 export default function PartnerApplyClient({
   session,
+  trackingParams,
 }: {
   session: Pick<
     PublicSessionState,
     "paidHref" | "paidShortLabel" | "signInHref" | "signInLabel"
   >;
+  trackingParams?: PublicSearchParams;
 }) {
   const [state, formAction, isPending] = useActionState(
     submitPartnerApplication,
     initialState
+  );
+  const trackedPartnerPageHref = appendPublicTrackingParams(
+    "/partners",
+    trackingParams
+  );
+  const trackedAffiliateTermsHref = appendPublicTrackingParams(
+    "/affiliate-program",
+    trackingParams
   );
 
   useEffect(() => {
@@ -53,6 +67,7 @@ export default function PartnerApplyClient({
       <PublicSiteHeader
         signInHref={session.signInHref}
         signInLabel={session.signInLabel}
+        trackingParams={trackingParams}
         navLinks={[
           { href: "/", label: "Home" },
           { href: "/partners", label: "Partner program" },
@@ -159,20 +174,20 @@ export default function PartnerApplyClient({
                     payout setup moving cleanly.
                   </p>
                   <div className="flex flex-wrap justify-center gap-3 mt-7">
-                    <PublicTrackedLink
-                      href="/partners"
+                    <Link
+                      href={trackedPartnerPageHref}
                       className="inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-semibold"
                       style={{ background: "#121417", color: "#FFFFFF" }}
                     >
                       Back to partner page
-                    </PublicTrackedLink>
-                    <PublicTrackedLink
-                      href="/affiliate-program"
+                    </Link>
+                    <Link
+                      href={trackedAffiliateTermsHref}
                       className="inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-semibold"
                       style={{ background: "rgba(47,111,237,0.08)", color: "#2F6FED" }}
                     >
                       Review terms
-                    </PublicTrackedLink>
+                    </Link>
                   </div>
                 </div>
               ) : (
@@ -308,13 +323,13 @@ export default function PartnerApplyClient({
                     />
                     <span>
                       I agree to the{" "}
-                      <PublicTrackedLink
-                        href="/affiliate-program"
+                      <Link
+                        href={trackedAffiliateTermsHref}
                         className="underline underline-offset-2"
                         style={{ color: "#2F6FED" }}
                       >
                         affiliate program terms
-                      </PublicTrackedLink>{" "}
+                      </Link>{" "}
                       and understand that partner approval is reviewed manually.
                     </span>
                   </label>
@@ -348,7 +363,11 @@ export default function PartnerApplyClient({
         </section>
       </main>
 
-      <PublicSiteFooter paidHref={session.paidHref} session={session} />
+      <PublicSiteFooter
+        paidHref={session.paidHref}
+        session={session}
+        trackingParams={trackingParams}
+      />
     </div>
   );
 }
