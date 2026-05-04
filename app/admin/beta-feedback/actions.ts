@@ -238,7 +238,7 @@ export async function updateBetaFeedbackSubmission(
   revalidatePath("/admin/beta-feedback");
   return {
     success: approvalCreatedTask
-      ? "Feedback approved and sent to Asana."
+      ? "Feedback approved and linked to Asana."
       : "Feedback triage updated.",
   };
 }
@@ -277,7 +277,7 @@ export async function addBetaFeedbackComment(
   }
 
   if (alsoSendToAsana && !existing.asana_task_gid) {
-    return { error: "Approve this feedback first so there is an Asana task to update." };
+    return { error: "This feedback does not have a linked Asana task yet." };
   }
 
   const supabase = asLooseSupabaseClient(getAdminClient());

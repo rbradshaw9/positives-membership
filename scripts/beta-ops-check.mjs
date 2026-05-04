@@ -37,7 +37,7 @@ function loadEnv(path) {
 
 loadEnv(envPath);
 
-const DEFAULT_BETA_FEEDBACK_SECTION_GID = "1214140242515252";
+const DEFAULT_BETA_FEEDBACK_SECTION_GID = "1214513621094069";
 const SENTRY_ORG = process.env.SENTRY_ORG || "positives";
 const SENTRY_PROJECT = process.env.SENTRY_PROJECT || "positives";
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://positives.life").replace(/\/$/, "");

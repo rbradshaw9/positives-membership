@@ -6,6 +6,8 @@ import { revalidatePath } from "next/cache";
 import { requireMember } from "@/lib/auth/require-member";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
+import { config } from "@/lib/config";
+import { createAsanaTaskForBetaFeedback } from "@/lib/integrations/asana";
 import { checkAbuseGuard, getClientIp } from "@/lib/security/abuse-guard";
 import { getCurrentSentryRelease } from "@/lib/observability/sentry-env";
 import { metricCount, routeBucket } from "@/lib/observability/metrics";
@@ -180,43 +182,46 @@ export async function submitBetaFeedback(
 
   const { pageUrl, pagePath } = normalizeUrl(pageUrlValue);
   const adminClient = asLooseSupabaseClient(getAdminClient());
+  const metadata = {
+    submitted_from: submittedFrom,
+    member_has_password: member.password_set === true,
+    marketing_opted_out: member.email_unsubscribed === true,
+  };
 
-  const { error } = await adminClient
+  const { data: insertedFeedback, error } = await adminClient
     .from("beta_feedback_submission")
     .insert({
-    member_id: member.id,
-    member_email: member.email,
-    member_name: member.name ?? null,
-    summary,
-    details,
-    expected_behavior: expectedBehavior,
-    category: categoryValue satisfies BetaFeedbackCategory,
-    severity: severityValue satisfies BetaFeedbackSeverity,
-    status: "new",
-    page_path: pagePath,
-    page_url: pageUrl,
-    app_release: getCurrentSentryRelease(),
-    browser_name: browserName,
-    os_name: osName,
-    device_type: deviceType,
-    viewport_width: viewportWidth ? Number.parseInt(viewportWidth, 10) : null,
-    viewport_height: viewportHeight ? Number.parseInt(viewportHeight, 10) : null,
-    user_agent: userAgent,
-    timezone,
-    loom_url: loomUrl,
-    screenshot_storage_path: screenshotStoragePath,
-    screenshot_file_name: screenshotFileName,
-    screenshot_content_type: screenshotContentType,
-    screenshot_size_bytes: screenshotSizeBytes,
-    stripe_customer_id: member.stripe_customer_id ?? null,
-    subscription_tier: member.subscription_tier ?? null,
-    subscription_status: member.subscription_status ?? null,
-    metadata: {
-      submitted_from: submittedFrom,
-      member_has_password: member.password_set === true,
-      marketing_opted_out: member.email_unsubscribed === true,
-    },
-    });
+      member_id: member.id,
+      member_email: member.email,
+      member_name: member.name ?? null,
+      summary,
+      details,
+      expected_behavior: expectedBehavior,
+      category: categoryValue satisfies BetaFeedbackCategory,
+      severity: severityValue satisfies BetaFeedbackSeverity,
+      status: "new",
+      page_path: pagePath,
+      page_url: pageUrl,
+      app_release: getCurrentSentryRelease(),
+      browser_name: browserName,
+      os_name: osName,
+      device_type: deviceType,
+      viewport_width: viewportWidth ? Number.parseInt(viewportWidth, 10) : null,
+      viewport_height: viewportHeight ? Number.parseInt(viewportHeight, 10) : null,
+      user_agent: userAgent,
+      timezone,
+      loom_url: loomUrl,
+      screenshot_storage_path: screenshotStoragePath,
+      screenshot_file_name: screenshotFileName,
+      screenshot_content_type: screenshotContentType,
+      screenshot_size_bytes: screenshotSizeBytes,
+      stripe_customer_id: member.stripe_customer_id ?? null,
+      subscription_tier: member.subscription_tier ?? null,
+      subscription_status: member.subscription_status ?? null,
+      metadata,
+    })
+    .select<{ id: string }>("id")
+    .single();
 
   if (error) {
     console.error("[beta-feedback] insert failed:", error.message);
@@ -229,6 +234,78 @@ export async function submitBetaFeedback(
       page: routeBucket(pagePath),
     });
     return { error: "We couldn't send your feedback right now. Please try again in a moment." };
+  }
+
+  if (!insertedFeedback) {
+    console.error("[beta-feedback] insert returned no feedback id.");
+    metricCount("beta_feedback.submit", 1, {
+      outcome: "insert_id_missing",
+      severity: severityValue,
+      category: categoryValue,
+      has_screenshot: Boolean(screenshotStoragePath),
+      has_loom: Boolean(loomUrl),
+      page: routeBucket(pagePath),
+    });
+    return { error: "We couldn't finish sending your feedback right now. Please try again in a moment." };
+  }
+
+  const queueUrl = `${config.app.url.replace(/\/$/, "")}/admin/beta-feedback`;
+  const asanaResult = await createAsanaTaskForBetaFeedback({
+    feedbackId: insertedFeedback.id,
+    memberEmail: member.email,
+    memberName: member.name ?? null,
+    summary,
+    details,
+    expectedBehavior,
+    category: categoryValue,
+    severity: severityValue,
+    pageUrl,
+    pagePath,
+    browserName,
+    osName,
+    deviceType,
+    adminQueueUrl: queueUrl,
+  });
+
+  if (asanaResult.created) {
+    const { error: asanaLinkError } = await adminClient
+      .from("beta_feedback_submission")
+      .update({
+        asana_task_gid: asanaResult.taskGid,
+        asana_task_url: asanaResult.taskUrl,
+        asana_task_created_at: new Date().toISOString(),
+        metadata: {
+          ...metadata,
+          asana_task_created_on_submit: true,
+        },
+      })
+      .eq("id", insertedFeedback.id);
+
+    if (asanaLinkError) {
+      console.error("[beta-feedback] Asana task link update failed:", asanaLinkError.message);
+      metricCount("beta_feedback.asana_task", 1, {
+        outcome: "link_update_failed",
+        severity: severityValue,
+        category: categoryValue,
+      });
+    }
+  } else {
+    console.error("[beta-feedback] Asana task creation failed:", asanaResult.reason);
+    metricCount("beta_feedback.asana_task", 1, {
+      outcome: "create_failed",
+      severity: severityValue,
+      category: categoryValue,
+    });
+    await adminClient
+      .from("beta_feedback_submission")
+      .update({
+        metadata: {
+          ...metadata,
+          asana_task_created_on_submit: false,
+          asana_task_creation_error: asanaResult.reason ?? "Asana task creation failed.",
+        },
+      })
+      .eq("id", insertedFeedback.id);
   }
 
   metricCount("beta_feedback.submit", 1, {

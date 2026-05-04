@@ -1,4 +1,5 @@
-const DEFAULT_BETA_FEEDBACK_SECTION_GID = "1214140242515252";
+const DEFAULT_BETA_FEEDBACK_PROJECT_GID = "1214514517978998";
+const DEFAULT_BETA_FEEDBACK_SECTION_GID = "1214513621094069";
 const ASANA_API_BASE = "https://app.asana.com/api/1.0";
 
 type AsanaTaskSummary = {
@@ -14,7 +15,10 @@ type AsanaApiResponse<T> = {
 
 function getAsanaConfig() {
   const token = process.env.ASANA_ACCESS_TOKEN;
-  const projectGid = process.env.ASANA_PROJECT_GID;
+  const projectGid =
+    process.env.ASANA_BETA_FEEDBACK_PROJECT_GID ||
+    DEFAULT_BETA_FEEDBACK_PROJECT_GID ||
+    process.env.ASANA_PROJECT_GID;
   const workspaceGid = process.env.ASANA_WORKSPACE_GID;
   const betaFeedbackSectionGid =
     process.env.ASANA_BETA_FEEDBACK_SECTION_GID || DEFAULT_BETA_FEEDBACK_SECTION_GID;
@@ -58,6 +62,13 @@ export function getBetaFeedbackAsanaSectionGid() {
   return getAsanaConfig().betaFeedbackSectionGid;
 }
 
+export function getBetaFeedbackAsanaProjectUrl() {
+  const config = getAsanaConfig();
+  return config.projectGid
+    ? `https://app.asana.com/1/${config.workspaceGid ?? "0"}/project/${config.projectGid}`
+    : "https://app.asana.com";
+}
+
 export async function getOpenBetaFeedbackAsanaTasks() {
   const config = getAsanaConfig();
   if (!config.configured) {
@@ -65,7 +76,8 @@ export async function getOpenBetaFeedbackAsanaTasks() {
       configured: false,
       sectionGid: config.betaFeedbackSectionGid,
       tasks: [] as AsanaTaskSummary[],
-      error: "ASANA_ACCESS_TOKEN, ASANA_PROJECT_GID, or ASANA_WORKSPACE_GID is missing.",
+      error:
+        "ASANA_ACCESS_TOKEN, ASANA_BETA_FEEDBACK_PROJECT_GID or ASANA_PROJECT_GID, or ASANA_WORKSPACE_GID is missing.",
     };
   }
 
@@ -111,7 +123,8 @@ export async function createAsanaTaskForBetaFeedback(params: {
   if (!config.configured) {
     return {
       created: false,
-      reason: "ASANA_ACCESS_TOKEN, ASANA_PROJECT_GID, or ASANA_WORKSPACE_GID is missing.",
+      reason:
+        "ASANA_ACCESS_TOKEN, ASANA_BETA_FEEDBACK_PROJECT_GID or ASANA_PROJECT_GID, or ASANA_WORKSPACE_GID is missing.",
       taskGid: null,
       taskUrl: null,
     };

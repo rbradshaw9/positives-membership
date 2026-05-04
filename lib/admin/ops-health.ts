@@ -1,7 +1,10 @@
 import { config } from "@/lib/config";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
-import { getOpenBetaFeedbackAsanaTasks } from "@/lib/integrations/asana";
+import {
+  getBetaFeedbackAsanaProjectUrl,
+  getOpenBetaFeedbackAsanaTasks,
+} from "@/lib/integrations/asana";
 
 type HealthTone = "good" | "watch" | "risk" | "neutral";
 
@@ -80,8 +83,7 @@ function dashboardLinks() {
     stripeWebhooks: "https://dashboard.stripe.com/webhooks",
     supabaseLogs: "https://supabase.com/dashboard/project/qdnojizzldilqpyocora/logs/explorer",
     supabaseStorage: "https://supabase.com/dashboard/project/qdnojizzldilqpyocora/storage/buckets",
-    asanaBetaFeedback:
-      "https://app.asana.com/1/1121814557377551/project/1214005103885510/list?section=1214140242515252",
+    asanaBetaFeedback: getBetaFeedbackAsanaProjectUrl(),
   };
 }
 

@@ -94,6 +94,12 @@ function truncate(value: string | null, maxLength = 160) {
   return value.length > maxLength ? `${value.slice(0, maxLength).trim()}...` : value;
 }
 
+function getAsanaTaskHref(feedback: AdminBetaFeedbackRecord) {
+  if (feedback.asana_task_url) return feedback.asana_task_url;
+  if (feedback.asana_task_gid) return `https://app.asana.com/0/0/${feedback.asana_task_gid}`;
+  return null;
+}
+
 export function BetaFeedbackTriageCard({
   feedback,
   assignableMembers,
@@ -110,6 +116,7 @@ export function BetaFeedbackTriageCard({
   const contextLabel =
     [feedback.browser_name, feedback.os_name, feedback.device_type].filter(Boolean).join(" • ") ||
     "No browser context";
+  const asanaTaskHref = getAsanaTaskHref(feedback);
 
   return (
     <article className="overflow-hidden rounded-[24px] border border-slate-200/80 bg-white shadow-[0_16px_44px_rgba(15,23,42,0.045)]">
@@ -151,6 +158,17 @@ export function BetaFeedbackTriageCard({
             <p className="truncate font-medium text-slate-900">{assigneeLabel}</p>
             <p className="truncate text-xs text-slate-500">{feedback.page_path || "No page captured"}</p>
             <p className="mt-1 truncate text-xs text-slate-500">{contextLabel}</p>
+            {asanaTaskHref ? (
+              <a
+                href={asanaTaskHref}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(event) => event.stopPropagation()}
+                className="mt-1 inline-flex max-w-full rounded-full border border-teal-100 bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-700 transition hover:border-teal-200 hover:bg-teal-100"
+              >
+                <span className="truncate">Linked Asana task</span>
+              </a>
+            ) : null}
           </div>
 
           <div className="flex items-center justify-between gap-3 text-sm font-semibold text-teal-700 md:justify-end">
@@ -257,9 +275,9 @@ export function BetaFeedbackTriageCard({
                   Watch Loom
                 </a>
               ) : null}
-              {feedback.asana_task_url ? (
+              {asanaTaskHref ? (
                 <a
-                  href={feedback.asana_task_url}
+                  href={asanaTaskHref}
                   target="_blank"
                   rel="noreferrer"
                   className="rounded-full border border-slate-200 bg-white px-4 py-2 font-medium text-slate-700"
@@ -417,8 +435,8 @@ export function BetaFeedbackTriageCard({
               ) : (
                 <p className="mt-3 text-xs leading-5 text-slate-500">
                   {isSuperAdmin
-                    ? "Leave this unchecked until the issue is clear enough to hand off into development and Asana."
-                    : "Only a super admin can approve feedback for development and create the Asana task."}
+                    ? "Leave this unchecked until the issue is clear enough to hand off into development."
+                    : "Only a super admin can approve feedback for development."}
                 </p>
               )}
             </section>
