@@ -82,6 +82,19 @@ export default async function AdminLayout({
         </svg>
       ),
     },
+    {
+      href: "/admin/events",
+      label: "Events",
+      subLinks: [
+        { href: "/admin/events", label: "Calendar" },
+        { href: "/admin/events/new", label: "Add New" },
+      ],
+      icon: (
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 1.5C4 1.22386 4.22386 1 4.5 1C4.77614 1 5 1.22386 5 1.5V2H10V1.5C10 1.22386 10.2239 1 10.5 1C10.7761 1 11 1.22386 11 1.5V2H12C12.8284 2 13.5 2.67157 13.5 3.5V12.5C13.5 13.3284 12.8284 14 12 14H3C2.17157 14 1.5 13.3284 1.5 12.5V3.5C1.5 2.67157 2.17157 2 3 2H4V1.5ZM2.5 5.5V12.5C2.5 12.7761 2.72386 13 3 13H12C12.2761 13 12.5 12.7761 12.5 12.5V5.5H2.5ZM4.25 7.5H6.25V9.5H4.25V7.5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"/>
+        </svg>
+      ),
+    },
   ];
 
   const managementItems = [
@@ -118,6 +131,15 @@ export default async function AdminLayout({
       icon: (
         <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M7.81825 1.18188C7.64251 1.00615 7.35759 1.00615 7.18185 1.18188L4.18185 4.18188C4.00611 4.35762 4.00611 4.64254 4.18185 4.81828C4.35759 4.99401 4.64251 4.99401 4.81825 4.81828L7.05005 2.58648V9.49996C7.05005 9.74849 7.25152 9.94996 7.50005 9.94996C7.74858 9.94996 7.95005 9.74849 7.95005 9.49996V2.58648L10.1819 4.81828C10.3576 4.99401 10.6425 4.99401 10.8182 4.81828C10.994 4.64254 10.994 4.35762 10.8182 4.18188L7.81825 1.18188ZM2.5 9.99997C2.77614 9.99997 3 10.2238 3 10.5V12C3 12.5538 3.44565 13 4 13H11C11.5538 13 12 12.5538 12 12V10.5C12 10.2238 12.2239 9.99997 12.5 9.99997C12.7761 9.99997 13 10.2238 13 10.5V12C13 13.1046 12.1046 14 11 14H4C2.89543 14 2 13.1046 2 12V10.5C2 10.2238 2.22386 9.99997 2.5 9.99997Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"/>
+        </svg>
+      ),
+    },
+    {
+      href: "/admin/integrations",
+      label: "Integrations",
+      icon: (
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M7.5 1.5A2.5 2.5 0 0 0 5 4H3.5A2.5 2.5 0 0 0 1 6.5V8a.5.5 0 0 0 1 0V6.5A1.5 1.5 0 0 1 3.5 5H5a2.5 2.5 0 0 0 5 0h1.5A1.5 1.5 0 0 1 13 6.5V8a.5.5 0 0 0 1 0V6.5A2.5 2.5 0 0 0 11.5 4H10a2.5 2.5 0 0 0-2.5-2.5ZM6 4a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0Zm-2.5 6A2.5 2.5 0 0 1 6 7.5h3A2.5 2.5 0 0 1 11.5 10v1A2.5 2.5 0 0 1 9 13.5H6A2.5 2.5 0 0 1 3.5 11v-1Zm1 0v1A1.5 1.5 0 0 0 6 12.5h3a1.5 1.5 0 0 0 1.5-1.5v-1A1.5 1.5 0 0 0 9 8.5H6A1.5 1.5 0 0 0 4.5 10Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"/>
         </svg>
       ),
     },

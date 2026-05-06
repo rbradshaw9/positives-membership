@@ -18,6 +18,9 @@ type LooseQueryBuilder<T = unknown> = PromiseLike<LooseQueryResult<T>> & {
   eq(column: string, value: unknown): LooseQueryBuilder<T>;
   gt(column: string, value: unknown): LooseQueryBuilder<T>;
   gte(column: string, value: unknown): LooseQueryBuilder<T>;
+  lt(column: string, value: unknown): LooseQueryBuilder<T>;
+  lte(column: string, value: unknown): LooseQueryBuilder<T>;
+  neq(column: string, value: unknown): LooseQueryBuilder<T>;
   or(filters: string, options?: unknown): LooseQueryBuilder<T>;
   in(column: string, values: unknown[]): LooseQueryBuilder<T>;
   is(column: string, value: unknown): LooseQueryBuilder<T>;
