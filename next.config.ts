@@ -1,6 +1,22 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
+  "style-src 'self' 'unsafe-inline' https:",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data: https:",
+  "connect-src 'self' https: wss:",
+  "media-src 'self' data: blob: https:",
+  "frame-src 'self' https:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self' https:",
+  "frame-ancestors 'none'",
+  "upgrade-insecure-requests",
+].join("; ");
+
 const nextConfig: NextConfig = {
 
   // ─── Performance ──────────────────────────────────────────────────────────
@@ -51,6 +67,8 @@ const nextConfig: NextConfig = {
         headers: [
           // Prevent MIME-type sniffing
           { key: "X-Content-Type-Options", value: "nosniff" },
+          // Required by Zoom Marketplace validation and useful as a baseline OWASP security header.
+          { key: "Content-Security-Policy", value: contentSecurityPolicy },
           // Disallow embedding in iframes (clickjacking protection)
           { key: "X-Frame-Options", value: "DENY" },
           // Only send origin as referrer for cross-origin requests
