@@ -115,6 +115,11 @@ function toIso(value: string, timezone: string) {
   return fromZonedTime(value, timezone).toISOString();
 }
 
+function toZoomLocalDateTime(value: string) {
+  if (!value) return null;
+  return value.length === 16 ? `${value}:00` : value.replace(/\.\d{3}Z$/, "").replace(/Z$/, "");
+}
+
 function endOfDateIso(value: string, timezone: string) {
   if (!value) return null;
   return fromZonedTime(`${value}T23:59:59`, timezone).toISOString();
@@ -246,13 +251,15 @@ async function createZoomMeeting(params: {
   const path =
     params.input.zoomObjectType === "webinar" ? "/users/me/webinars" : "/users/me/meetings";
   const recurrence = params.recurring ? zoomRecurrence(params.input, params.startsAt) : null;
+  const startTime = toZoomLocalDateTime(params.input.startsAt);
+  if (!startTime) throw new Error("Zoom start time is required.");
 
   return zoomApi<ZoomMeetingPayload>(params.input.zoomConnectionId, path, {
     method: "POST",
     body: JSON.stringify({
       topic: params.input.title,
       type: recurrence ? (params.input.zoomObjectType === "webinar" ? 9 : 8) : (params.input.zoomObjectType === "webinar" ? 5 : 2),
-      start_time: params.startsAt,
+      start_time: startTime,
       duration: durationMinutes,
       timezone: params.input.timezone,
       ...(recurrence ? { recurrence } : {}),
@@ -320,6 +327,8 @@ export async function saveEvent(formData: FormData) {
     const venueId = await maybeCreateVenue(input);
     let currentStatus = input.currentStatus;
 
+    let hasExistingZoom = false;
+
     if (input.id) {
       const { data: current } = await supabase
         .from("member_event")
@@ -327,9 +336,38 @@ export async function saveEvent(formData: FormData) {
         .eq("id", input.id)
         .maybeSingle();
       currentStatus = current?.status ?? currentStatus;
+
+      const { data: currentZoom } = await supabase
+        .from("event_zoom_meeting")
+        .select<{ id: string }>("id")
+        .eq("event_id", input.id)
+        .maybeSingle();
+      hasExistingZoom = Boolean(currentZoom?.id);
     }
 
     const desiredStatus = targetStatus(input, currentStatus);
+    if (desiredStatus === "published" && input.virtualMode === "manual" && !input.manualJoinUrl) {
+      redirectForError(input, "manual_join_url_required");
+    }
+    if (input.virtualMode === "zoom" && input.zoomMode === "create" && !input.zoomConnectionId) {
+      redirectForError(input, "zoom_connection_required");
+    }
+    if (
+      input.virtualMode === "zoom" &&
+      input.zoomMode === "existing" &&
+      (!input.zoomConnectionId || !input.zoomObjectId)
+    ) {
+      redirectForError(input, "zoom_session_required");
+    }
+    if (
+      desiredStatus === "published" &&
+      input.virtualMode === "zoom" &&
+      input.zoomMode === "none" &&
+      !hasExistingZoom
+    ) {
+      redirectForError(input, "zoom_setup_required");
+    }
+
     const row = baseEventRow(input, user.id, hostId, venueId, desiredStatus);
 
     if (input.id) {

@@ -76,6 +76,35 @@ test("admin event form keeps advanced fields contextual and supports inline crea
   await expect(page.locator("select#venue_id option:checked")).toHaveText(venueName);
 });
 
+test("calendar quick create pre-fills local event time", async ({ page }) => {
+  await loginWithPassword(page, {
+    email: ADMIN_EMAIL,
+    password: ADMIN_PASSWORD,
+    next: "/admin/events/new?starts_at=2099-06-15T18:00",
+  });
+
+  await expect(page.getByLabel("Start date & time")).toHaveValue("2099-06-15T18:00");
+  await expect(page.getByLabel("End date & time")).toHaveValue("2099-06-15T19:00");
+});
+
+test("publishing a Zoom event requires a Zoom setup choice", async ({ page }) => {
+  await loginWithPassword(page, {
+    email: ADMIN_EMAIL,
+    password: ADMIN_PASSWORD,
+    next: "/admin/events/new",
+  });
+
+  await page.getByLabel("Short summary").fill("A fixture event for Zoom validation coverage.");
+  await page.getByLabel("Start date & time").fill("2099-06-15T18:00");
+  await page.getByLabel("End date & time").fill("2099-06-15T19:00");
+  await page.getByLabel("Virtual mode").selectOption("zoom");
+  await page.getByLabel("Title").fill(`${EVENT_TITLE_PREFIX} Zoom Validation`);
+  await page.getByRole("button", { name: "Publish event" }).click();
+
+  await expect(page).toHaveURL(/\/admin\/events\/new\?error=zoom_setup_required$/);
+  await expect(page.getByText("Choose how Zoom should be set up before publishing.")).toBeVisible();
+});
+
 test("draft publish and unpublish flow controls member event visibility", async ({
   page,
   browser,

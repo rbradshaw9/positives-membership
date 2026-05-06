@@ -32,12 +32,30 @@ const TIMEZONES = [
   "UTC",
 ];
 
-type SearchParams = { error?: string; success?: string; zoomConnectionId?: string };
+type SearchParams = { error?: string; success?: string; zoomConnectionId?: string; starts_at?: string };
 type ModalKind = "type" | "host" | "venue" | null;
+
+function normalizeLocalDateTime(value?: string | null) {
+  if (!value) return "";
+  return value.slice(0, 16);
+}
 
 function datetimeLocal(value?: string | null, timezone = "America/New_York") {
   if (!value) return "";
   return formatInTimeZone(new Date(value), timezone, "yyyy-MM-dd'T'HH:mm");
+}
+
+function addOneHourLocal(value: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  date.setHours(date.getHours() + 1);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hour}:${minute}`;
 }
 
 function hasAccess(event: EventRow | null | undefined, tier: string) {
@@ -60,6 +78,10 @@ function successMessage(success?: string) {
 function errorMessage(error?: string) {
   if (error === "access_required") return "Choose at least one membership level.";
   if (error === "title_required") return "Add a title before saving.";
+  if (error === "manual_join_url_required") return "Add a manual join URL before publishing.";
+  if (error === "zoom_connection_required") return "Choose a Zoom account before creating the Zoom session.";
+  if (error === "zoom_session_required") return "Choose an existing Zoom session before saving.";
+  if (error === "zoom_setup_required") return "Choose how Zoom should be set up before publishing.";
   if (error === "zoom_create_failed") return "Zoom could not create the session. The event was kept as a draft.";
   return error ? "The event could not be saved. Check required fields and integration settings." : null;
 }
@@ -217,8 +239,13 @@ export function EventForm({
   const [hostId, setHostId] = useState(event?.host_id ?? "");
   const [venueId, setVenueId] = useState(event?.venue_id ?? "");
   const [timezone, setTimezone] = useState(initialTimezone);
-  const [startsAt, setStartsAt] = useState(datetimeLocal(event?.starts_at, initialTimezone));
-  const [endsAt, setEndsAt] = useState(datetimeLocal(event?.ends_at, initialTimezone));
+  const initialStartsAt = event
+    ? datetimeLocal(event.starts_at, initialTimezone)
+    : normalizeLocalDateTime(searchParams?.starts_at);
+  const [startsAt, setStartsAt] = useState(initialStartsAt);
+  const [endsAt, setEndsAt] = useState(
+    event ? datetimeLocal(event.ends_at, initialTimezone) : addOneHourLocal(initialStartsAt)
+  );
   const [virtualMode, setVirtualMode] = useState(event?.virtual_mode ?? "none");
   const [zoomMode, setZoomMode] = useState("none");
   const [recurrence, setRecurrence] = useState("none");
