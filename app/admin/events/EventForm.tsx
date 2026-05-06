@@ -160,6 +160,11 @@ export function EventForm({
 
       <div className="admin-form-section">
         <p className="admin-form-section__label">Host & venue</p>
+        <div className="mb-3">
+          <Link href="/admin/events/settings#hosts" className="text-xs font-semibold text-primary">
+            Manage reusable hosts and venues
+          </Link>
+        </div>
         <div className="admin-form-grid-2">
           <div className="admin-form-field">
             <label htmlFor="host_id" className="admin-label">Reusable host</label>

@@ -88,6 +88,7 @@ export default async function AdminLayout({
       subLinks: [
         { href: "/admin/events", label: "Calendar" },
         { href: "/admin/events/new", label: "Add New" },
+        { href: "/admin/events/settings", label: "Settings" },
       ],
       icon: (
         <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">

@@ -58,6 +58,24 @@ export type EventCalendarDay = {
   events: EventRow[];
 };
 
+export type EventTypeSettingsRow = EventTypeOption & {
+  sort_order: number;
+  is_active: boolean;
+};
+
+export type EventHostSettingsRow = EventHostOption & {
+  website_url: string | null;
+  is_active: boolean;
+};
+
+export type EventVenueSettingsRow = EventVenueOption & {
+  phone: string | null;
+  website_url: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  is_active: boolean;
+};
+
 const EVENT_SELECT = `
   id, series_id, type_id, host_id, venue_id, title, excerpt, description, body, status,
   starts_at, ends_at, timezone, all_day, visibility, virtual_mode, manual_join_url, replay_url,
@@ -99,6 +117,32 @@ export async function getEventAdminOptions() {
     hosts: (hostsResult.data ?? []) as unknown as EventHostOption[],
     venues: (venuesResult.data ?? []) as unknown as EventVenueOption[],
     zoomConnections: (zoomResult.data ?? []) as unknown as ZoomConnectionOption[],
+  };
+}
+
+export async function getEventSettingsOptions() {
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  const [typesResult, hostsResult, venuesResult] = await Promise.all([
+    supabase
+      .from("event_type")
+      .select<EventTypeSettingsRow>("id, slug, name, description, color, sort_order, is_active")
+      .order("sort_order", { ascending: true }),
+    supabase
+      .from("event_host")
+      .select<EventHostSettingsRow>("id, name, bio, image_url, email, website_url, is_active")
+      .order("name", { ascending: true }),
+    supabase
+      .from("event_venue")
+      .select<EventVenueSettingsRow>(
+        "id, name, description, address_line1, address_line2, city, region, postal_code, country, phone, website_url, map_url, latitude, longitude, is_virtual, is_active"
+      )
+      .order("name", { ascending: true }),
+  ]);
+
+  return {
+    types: (typesResult.data ?? []) as unknown as EventTypeSettingsRow[],
+    hosts: (hostsResult.data ?? []) as unknown as EventHostSettingsRow[],
+    venues: (venuesResult.data ?? []) as unknown as EventVenueSettingsRow[],
   };
 }
 

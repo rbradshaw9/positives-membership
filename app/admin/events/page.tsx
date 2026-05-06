@@ -62,6 +62,9 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
           </p>
         </div>
         <div className="admin-page-header__actions">
+          <Link href="/admin/events/settings" className="admin-btn admin-btn--outline">
+            Event settings
+          </Link>
           <Link href="/admin/integrations/zoom" className="admin-btn admin-btn--outline">
             Zoom integrations
           </Link>
