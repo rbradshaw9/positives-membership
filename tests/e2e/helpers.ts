@@ -975,6 +975,58 @@ export async function getLatestSupportSubmission(email: string) {
   return data;
 }
 
+export async function cleanupEventUxFixturesByPrefix(prefix: string) {
+  const supabase = getServiceRoleClient();
+
+  const { data: events, error: eventLookupError } = await supabase
+    .from("member_event")
+    .select("id, series_id")
+    .like("title", `${prefix}%`);
+
+  if (eventLookupError) {
+    throw new Error(`Failed to look up event UX fixtures: ${eventLookupError.message}`);
+  }
+
+  const eventIds = (events ?? []).map((event) => event.id);
+  const seriesIds = [
+    ...new Set(
+      (events ?? [])
+        .map((event) => event.series_id)
+        .filter((seriesId): seriesId is string => Boolean(seriesId))
+    ),
+  ];
+
+  if (eventIds.length > 0) {
+    const { error: deleteEventsError } = await supabase
+      .from("member_event")
+      .delete()
+      .in("id", eventIds);
+
+    if (deleteEventsError) {
+      throw new Error(`Failed to delete event UX fixtures: ${deleteEventsError.message}`);
+    }
+  }
+
+  if (seriesIds.length > 0) {
+    const { error: deleteSeriesError } = await supabase
+      .from("event_series")
+      .delete()
+      .in("id", seriesIds);
+
+    if (deleteSeriesError) {
+      throw new Error(`Failed to delete event UX fixture series: ${deleteSeriesError.message}`);
+    }
+  }
+
+  const referenceTables = ["event_host", "event_venue", "event_type"] as const;
+  for (const table of referenceTables) {
+    const { error } = await supabase.from(table).delete().like("name", `${prefix}%`);
+    if (error) {
+      throw new Error(`Failed to delete ${table} fixtures: ${error.message}`);
+    }
+  }
+}
+
 export async function resetAffiliateTestState(email: string) {
   const supabase = getServiceRoleClient();
   const { error } = await supabase

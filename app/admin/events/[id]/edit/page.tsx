@@ -27,7 +27,7 @@ export default async function EditEventPage({
   if (!event) notFound();
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-5xl">
       <div className="admin-breadcrumb">
         <Link href="/admin/events" className="admin-breadcrumb__back">← Events</Link>
       </div>

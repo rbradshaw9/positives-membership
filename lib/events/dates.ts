@@ -1,8 +1,9 @@
 import { addDays, formatDateOnly, parseDateOnly, startOfWeekMonday } from "@/lib/dates/admin-calendar";
+import { formatInTimeZone } from "date-fns-tz";
 
-export function eventDateKey(value: string | Date) {
+export function eventDateKey(value: string | Date, timezone = "UTC") {
   const date = typeof value === "string" ? new Date(value) : value;
-  return date.toISOString().slice(0, 10);
+  return formatInTimeZone(date, timezone, "yyyy-MM-dd");
 }
 
 export function monthRange(month: string) {

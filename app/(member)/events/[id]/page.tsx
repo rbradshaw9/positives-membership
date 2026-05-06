@@ -3,7 +3,7 @@ import Link from "next/link";
 import { requireActiveMember } from "@/lib/auth/require-active-member";
 import { getMemberEvent } from "@/lib/queries/get-events";
 import { currentTimestampMs, formatEventDateRange } from "@/lib/events/dates";
-import { MarkdownBody } from "@/components/content/MarkdownBody";
+import { EventDetailsBody } from "@/components/content/EventDetailsBody";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { Button } from "@/components/ui/Button";
 
@@ -78,7 +78,7 @@ export default async function EventDetailPage({ params }: { params: Params }) {
 
         {body ? (
           <SurfaceCard padding="lg" elevated>
-            <MarkdownBody content={body} />
+            <EventDetailsBody content={body} />
           </SurfaceCard>
         ) : null}
 

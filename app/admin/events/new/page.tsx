@@ -13,7 +13,7 @@ export default async function NewEventPage({ searchParams }: { searchParams: Sea
   const options = await getEventAdminOptions();
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-5xl">
       <div className="admin-breadcrumb">
         <Link href="/admin/events" className="admin-breadcrumb__back">← Events</Link>
       </div>

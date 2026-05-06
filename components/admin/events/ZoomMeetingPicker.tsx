@@ -15,20 +15,23 @@ export function ZoomMeetingPicker({
   defaultConnectionId,
   defaultObjectType,
   connectReturn,
+  mode,
 }: {
   connections: ZoomConnectionOption[];
   defaultConnectionId?: string;
   defaultObjectType?: "meeting" | "webinar";
   connectReturn: string;
+  mode: "create" | "existing";
 }) {
   const [connectionId, setConnectionId] = useState(defaultConnectionId ?? "");
   const [objectType, setObjectType] = useState(defaultObjectType ?? "meeting");
   const [items, setItems] = useState<ZoomItem[]>([]);
   const [selected, setSelected] = useState("");
-  const selectedItem = items.find((item) => item.id === selected);
+  const selectedItem =
+    mode === "existing" && connectionId ? items.find((item) => item.id === selected) : undefined;
 
   useEffect(() => {
-    if (!connectionId) {
+    if (mode !== "existing" || !connectionId) {
       return;
     }
     const controller = new AbortController();
@@ -43,7 +46,7 @@ export function ZoomMeetingPicker({
         if (!controller.signal.aborted) setItems([]);
       });
     return () => controller.abort();
-  }, [connectionId, objectType]);
+  }, [connectionId, objectType, mode]);
 
   return (
     <div className="rounded-2xl border border-border p-4">
@@ -59,7 +62,10 @@ export function ZoomMeetingPicker({
             id="zoom_connection_id"
             name="zoom_connection_id"
             value={connectionId}
-            onChange={(event) => setConnectionId(event.target.value)}
+            onChange={(event) => {
+              setSelected("");
+              setConnectionId(event.target.value);
+            }}
             className="admin-select"
           >
             <option value="">Choose Zoom account</option>
@@ -85,7 +91,10 @@ export function ZoomMeetingPicker({
             id="zoom_object_type"
             name="zoom_object_type"
             value={objectType}
-            onChange={(event) => setObjectType(event.target.value === "webinar" ? "webinar" : "meeting")}
+            onChange={(event) => {
+              setSelected("");
+              setObjectType(event.target.value === "webinar" ? "webinar" : "meeting");
+            }}
             className="admin-select"
           >
             <option value="meeting">Meetings</option>
@@ -94,25 +103,27 @@ export function ZoomMeetingPicker({
         </div>
       </div>
 
-      <div className="admin-form-field">
-        <label htmlFor="zoom_existing_picker" className="admin-label">
-          Existing Zoom session
-        </label>
-        <select
-          id="zoom_existing_picker"
-          value={selected}
-          onChange={(event) => setSelected(event.target.value)}
-          className="admin-select"
-          disabled={!connectionId}
-        >
-          <option value="">Choose an existing session</option>
-          {items.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.topic} {item.start_time ? `- ${new Date(item.start_time).toLocaleString()}` : ""}
-            </option>
-          ))}
-        </select>
-      </div>
+      {mode === "existing" ? (
+        <div className="admin-form-field">
+          <label htmlFor="zoom_existing_picker" className="admin-label">
+            Existing Zoom session
+          </label>
+          <select
+            id="zoom_existing_picker"
+            value={selected}
+            onChange={(event) => setSelected(event.target.value)}
+            className="admin-select"
+            disabled={!connectionId}
+          >
+            <option value="">Choose an existing session</option>
+            {items.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.topic} {item.start_time ? `- ${new Date(item.start_time).toLocaleString()}` : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
+import { addDays, formatDateOnly, parseDateOnly } from "@/lib/dates/admin-calendar";
 import { calendarGridDays, eventDateKey, monthRange } from "@/lib/events/dates";
 import type {
   EventAccessLevel,
@@ -155,11 +156,13 @@ export async function getAdminEvents(params: {
   const supabase = asLooseSupabaseClient(getAdminClient());
   const month = params.month ?? new Date().toISOString().slice(0, 7);
   const { start, end } = monthRange(month);
+  const rangeStart = formatDateOnly(addDays(parseDateOnly(start), -2));
+  const rangeEnd = formatDateOnly(addDays(parseDateOnly(end), 2));
   let query = supabase
     .from("member_event")
     .select<EventRow>(EVENT_SELECT)
-    .gte("starts_at", `${start}T00:00:00.000Z`)
-    .lte("starts_at", `${end}T23:59:59.999Z`)
+    .gte("starts_at", `${rangeStart}T00:00:00.000Z`)
+    .lte("starts_at", `${rangeEnd}T23:59:59.999Z`)
     .order("starts_at", { ascending: true });
 
   if (params.status && params.status !== "all") query = query.eq("status", params.status);
@@ -180,7 +183,7 @@ export async function getAdminEvents(params: {
 
   const eventsByDate = new Map<string, EventRow[]>();
   for (const event of events) {
-    const key = eventDateKey(event.starts_at);
+    const key = eventDateKey(event.starts_at, event.timezone);
     eventsByDate.set(key, [...(eventsByDate.get(key) ?? []), event]);
   }
 
