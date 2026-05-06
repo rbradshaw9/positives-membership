@@ -204,10 +204,10 @@ export default async function AdminLayout({
           ))}
         </nav>
 
-        <div className="px-3 pb-3">
+        <div className="admin-sidebar__return">
           <Link
             href="/today"
-            className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm font-semibold text-white/82 transition-colors hover:bg-white/8 hover:text-white"
+            className="admin-member-return-link"
           >
             <svg
               width="15"
@@ -244,12 +244,12 @@ export default async function AdminLayout({
           <span className="font-heading font-bold text-sm text-foreground">
             Positives
           </span>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="admin-mobile-header__actions">
             <Link
               href="/today"
-              className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground shadow-soft"
+              className="admin-mobile-return-link"
             >
-              Member Platform
+              View Platform
             </Link>
             <span className="admin-sidebar__badge">Admin</span>
           </div>
