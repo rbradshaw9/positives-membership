@@ -204,6 +204,30 @@ export default async function AdminLayout({
           ))}
         </nav>
 
+        <div className="px-3 pb-3">
+          <Link
+            href="/today"
+            className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm font-semibold text-white/82 transition-colors hover:bg-white/8 hover:text-white"
+          >
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M3 12h14" />
+              <path d="m10 5 7 7-7 7" />
+              <path d="M21 5v14" />
+            </svg>
+            <span>View Member Platform</span>
+          </Link>
+        </div>
+
         {/* User footer */}
         <div className="admin-sidebar__footer">
           <div className="admin-sidebar__avatar">
@@ -220,7 +244,15 @@ export default async function AdminLayout({
           <span className="font-heading font-bold text-sm text-foreground">
             Positives
           </span>
-          <span className="admin-sidebar__badge">Admin</span>
+          <div className="ml-auto flex items-center gap-2">
+            <Link
+              href="/today"
+              className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground shadow-soft"
+            >
+              Member Platform
+            </Link>
+            <span className="admin-sidebar__badge">Admin</span>
+          </div>
         </header>
 
         {/* Page content */}

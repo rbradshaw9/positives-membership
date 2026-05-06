@@ -336,8 +336,8 @@ function NoteSheetContent({
           </p>
           <p className="mt-2 text-sm leading-body text-emerald-800/80">
             {isReflection
-              ? "You can revisit private reflections any time from Journal in My Practice."
-              : "You can revisit this note any time from Journal in My Practice."}
+              ? "You can find this private reflection any time in Journal. It stays connected to the practice you saved it from."
+              : "You can find this private note any time in Journal."}
           </p>
         </div>
 
@@ -353,7 +353,7 @@ function NoteSheetContent({
             Done
           </button>
           <Link href="/journal" className="btn-primary flex-1 text-center">
-            Open Journal
+            View in Journal
           </Link>
         </div>
       </div>

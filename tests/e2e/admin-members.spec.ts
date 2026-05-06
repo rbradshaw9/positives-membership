@@ -49,6 +49,12 @@ test.describe("admin member operations", () => {
     await expect(
       page.getByRole("menu", { name: "Profile menu" }).getByRole("menuitem", { name: "Admin" })
     ).toBeVisible();
+
+    await page.goto("/admin");
+    await expect(page.getByRole("link", { name: "View Member Platform" })).toBeVisible();
+    await page.getByRole("link", { name: "View Member Platform" }).click();
+    await expect(page).toHaveURL(/\/today$/);
+    await expect(page.getByRole("region", { name: /daily practice/i })).toBeVisible();
   });
 
   test("admin can open role permission management", async ({ page }) => {

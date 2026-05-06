@@ -13,7 +13,7 @@ import { WeeklyPrincipleCard } from "@/components/today/WeeklyPrincipleCard";
 import { MonthlyThemeCard } from "@/components/today/MonthlyThemeCard";
 import { StreakBadge } from "@/components/today/StreakBadge";
 import { TodayArchiveSection } from "@/components/today/TodayArchiveSection";
-
+import Link from "next/link";
 
 /**
  * app/(member)/today/page.tsx
@@ -146,6 +146,30 @@ export default async function TodayPage() {
           hasListened={listenedToday}
           initialNoteCount={todayContent ? (noteCounts[todayContent.id] ?? 0) : 0}
         />
+
+        <section
+          aria-label="Continue your practice"
+          className="rounded-[1.35rem] border border-border bg-surface-tint px-5 py-4 shadow-soft"
+        >
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="ui-section-eyebrow mb-2">Continue Your Practice</p>
+              <h2 className="heading-balance font-heading text-xl font-semibold tracking-[-0.02em] text-foreground">
+                Home is today&apos;s guidance. My Practice is your personal journey.
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-body text-muted-foreground">
+                Start here when you want the clearest next step. When you want to revisit
+                reflections, listening history, or your recent rhythm, My Practice is waiting.
+              </p>
+            </div>
+            <Link
+              href="/practice"
+              className="btn-secondary shrink-0 text-center text-sm"
+            >
+              Open My Practice
+            </Link>
+          </div>
+        </section>
 
         {/* ── Zone 2: Monthly theme + Weekly reflection ─────────────── */}
         <section aria-label="This month and this week" className="flex flex-col gap-3">

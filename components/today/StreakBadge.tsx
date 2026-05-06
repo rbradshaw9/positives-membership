@@ -3,7 +3,7 @@
 /**
  * components/today/StreakBadge.tsx
  *
- * Client component that renders the 🔥 streak badge on /today.
+ * Client component that renders the streak badge on /today.
  *
  * Initialized with the server-rendered streak count (SSR-safe).
  * Subscribes to the "positives:streak-updated" custom window event dispatched
@@ -58,9 +58,9 @@ export function StreakBadge({ initialStreak }: StreakBadgeProps) {
         transition: "box-shadow 0.4s ease, color 0.3s ease, background 0.3s ease",
       }}
       aria-live="polite"
-      aria-label={isActive ? `${streak}-day streak` : "Start your streak"}
+      aria-label={isActive ? `${streak}-day streak` : "Ready for today's practice"}
     >
-      🔥 {isActive ? `${streak}-day streak` : "Start your streak"}
+      {isActive ? `${streak}-day streak` : "Ready for today"}
     </span>
   );
 }

@@ -103,8 +103,8 @@ export function WelcomeModal({
   const heroTitleAccent = isPasswordReminder ? "password." : "Positives.";
   const heroBody = isPasswordReminder
     ? "You are already in. Adding a password now makes future sign-ins faster and keeps support friction low."
-    : "Dr. Paul Jenkins is glad you're here. Your practice starts today.";
-  const sectionLabel = isPasswordReminder ? "Why do this now" : "What's waiting for you";
+    : "Dr. Paul Jenkins is glad you're here. Start with today's short audio, then save a reflection if something stands out.";
+  const sectionLabel = isPasswordReminder ? "Why do this now" : "Start here";
   const reminderFeatures = isPasswordReminder
     ? [
         {
@@ -153,8 +153,8 @@ export function WelcomeModal({
               <polygon points="10 8 16 12 10 16 10 8" />
             </svg>
           ),
-          label: "Today's daily practice",
-          sub: "A fresh mindset session is ready for you now",
+          label: "Today's short audio",
+          sub: "A simple daily rhythm to help you reset and return",
           href: "/today",
         },
         {
@@ -165,9 +165,9 @@ export function WelcomeModal({
               <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
             </svg>
           ),
-          label: "The member library",
-          sub: "Daily, weekly, and monthly sessions in one place",
-          href: "/library",
+          label: "Your personal journey",
+          sub: "My Practice keeps your rhythm, history, and reflections together",
+          href: "/practice",
         },
         {
           icon: (
@@ -177,9 +177,9 @@ export function WelcomeModal({
               <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
             </svg>
           ),
-          label: "Your personal journal",
-          sub: "Capture reflections alongside each practice",
-          href: "/today",
+          label: "Private reflections",
+          sub: "Save a note after listening and revisit it later in Journal",
+          href: "/journal",
         },
       ];
 

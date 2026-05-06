@@ -35,6 +35,12 @@ test("password sign-in redirects directly to the next destination", async ({ pag
 
   await expect(page).toHaveURL(/\/today$/);
   await expect(page.getByRole("region", { name: /daily practice/i })).toBeVisible();
+
+  await page.goto("/today?welcome=1");
+  const welcomeDialog = page.getByRole("dialog", { name: "Welcome to Positives" });
+  await expect(welcomeDialog).toBeVisible();
+  await expect(welcomeDialog.getByText("Start with today's short audio")).toBeVisible();
+  await expect(welcomeDialog.getByRole("link", { name: "Your personal journey" })).toBeVisible();
 });
 
 test("member can navigate launch routes and use practice tabs", async ({ page }) => {
@@ -47,6 +53,14 @@ test("member can navigate launch routes and use practice tabs", async ({ page })
   });
 
   await expect(page.getByRole("region", { name: /daily practice/i })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Continue your practice" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: "Home is today's guidance. My Practice is your personal journey.",
+    })
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open My Practice" })).toBeVisible();
+  await expect(page.getByText("Start your streak")).toHaveCount(0);
   await expect(memberNav.getByRole("link", { name: "Community", exact: true })).toHaveCount(0);
   await expect(memberNav.getByRole("link", { name: "Admin", exact: true })).toHaveCount(0);
 
