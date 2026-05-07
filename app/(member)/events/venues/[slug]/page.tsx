@@ -2,10 +2,11 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { requireActiveMember } from "@/lib/auth/require-active-member";
 import { getMemberEventVenuePage } from "@/lib/queries/get-events";
-import { formatEventDateRange } from "@/lib/events/dates";
+import { currentTimestampMs } from "@/lib/events/dates";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { Button } from "@/components/ui/Button";
 import { SafeImage } from "@/components/media/SafeImage";
+import { MemberEventCard } from "@/components/events/MemberEventCard";
 
 type Params = Promise<{ slug: string }>;
 
@@ -22,6 +23,7 @@ export default async function EventVenuePage({ params }: { params: Params }) {
   if (!data) notFound();
   const { venue, events } = data;
   const address = venueAddress(venue);
+  const nowMs = currentTimestampMs();
 
   return (
     <div className="member-container py-8 md:py-12">
@@ -32,67 +34,154 @@ export default async function EventVenuePage({ params }: { params: Params }) {
         Events
       </Link>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <div className="space-y-6">
+      <section className="mb-8 overflow-hidden rounded-[1.75rem] border border-border bg-card">
+        <div className="relative aspect-video bg-surface-tint">
+          {venue.featured_image_url ? (
+            <SafeImage
+              src={venue.featured_image_url}
+              alt=""
+              fill
+              sizes="100vw"
+              preload
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="flex h-full w-full flex-col justify-end bg-[radial-gradient(ellipse_at_15%_15%,rgba(46,196,182,0.24),transparent_45%),linear-gradient(135deg,rgba(255,255,255,0.96),rgba(232,246,243,0.88))] p-6">
+              <span className="ui-section-eyebrow">Venue</span>
+              <span className="mt-2 max-w-lg font-heading text-3xl font-semibold tracking-normal text-foreground">
+                {venue.name}
+              </span>
+            </div>
+          )}
+        </div>
+        <div className="grid gap-5 p-5 md:p-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <div>
-            <p className="ui-section-eyebrow mb-2">Event Venue</p>
-            <h1 className="heading-balance font-heading text-3xl font-bold leading-heading tracking-tight text-foreground md:text-4xl">
+            <p className="ui-section-eyebrow mb-3">{venue.is_virtual ? "Virtual Venue" : "Event Venue"}</p>
+            <h1 className="heading-balance font-heading text-4xl font-bold leading-heading tracking-normal text-foreground md:text-5xl">
               {venue.name}
             </h1>
-            {venue.description ? <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">{venue.description}</p> : null}
+            {address ? <p className="mt-3 text-base leading-relaxed text-muted-foreground">{address}</p> : null}
           </div>
+          <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
+            {venue.show_map_link && venue.map_url ? (
+              <Button href={venue.map_url} target="_blank" rel="noopener noreferrer" className="justify-center">
+                Get Directions
+              </Button>
+            ) : null}
+            {venue.website_url ? (
+              <Button href={venue.website_url} target="_blank" rel="noopener noreferrer" variant="outline" className="justify-center">
+                Venue Website
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      </section>
 
-          <section className="space-y-3">
-            <h2 className="heading-balance font-heading text-xl font-semibold text-foreground">Upcoming Events</h2>
+      <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <section className="space-y-6">
+          {venue.description ? (
+            <SurfaceCard padding="lg" elevated>
+              <p className="ui-section-eyebrow mb-3">About This Venue</p>
+              <p className="text-sm leading-relaxed text-muted-foreground">{venue.description}</p>
+            </SurfaceCard>
+          ) : null}
+
+          <div className="space-y-4">
+            <div>
+              <p className="ui-section-eyebrow mb-2">Upcoming</p>
+              <h2 className="heading-balance font-heading text-2xl font-semibold tracking-normal text-foreground">
+                Upcoming Events at {venue.name}
+              </h2>
+            </div>
             {events.length > 0 ? (
-              <div className="grid gap-3">
+              <div className="grid gap-4">
                 {events.map((event) => (
-                  <SurfaceCard key={event.id} elevated>
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <Link href={`/events/${event.id}`} className="font-semibold text-foreground hover:text-primary">
-                          {event.title}
-                        </Link>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {formatEventDateRange(event.starts_at, event.ends_at, event.timezone, event.all_day)}
-                        </p>
-                      </div>
-                      <Button href={`/events/${event.id}`} variant="secondary" size="sm">Details</Button>
-                    </div>
-                  </SurfaceCard>
+                  <MemberEventCard key={event.id} event={event} nowMs={nowMs} compact />
                 ))}
               </div>
             ) : (
-              <SurfaceCard>
-                <p className="text-sm text-muted-foreground">No upcoming events at this venue are available for your membership right now.</p>
+              <SurfaceCard padding="lg">
+                <h3 className="heading-balance font-heading text-xl font-semibold tracking-normal text-foreground">
+                  No upcoming events at this venue
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  When a member event is scheduled here, it will appear on this page.
+                </p>
+                <Button href="/events" className="mt-4 w-full justify-center sm:w-auto">
+                  Browse All Events
+                </Button>
               </SurfaceCard>
             )}
-          </section>
-        </div>
-
-        <SurfaceCard padding="lg" elevated>
-          {venue.featured_image_url ? (
-            <div className="relative mb-4 aspect-[4/3] w-full overflow-hidden rounded-xl">
-              <SafeImage
-                src={venue.featured_image_url}
-                alt=""
-                fill
-                sizes="(max-width: 1024px) 100vw, 420px"
-                className="h-full w-full object-cover"
-              />
-            </div>
-          ) : null}
-          <p className="ui-section-eyebrow mb-2">{venue.is_virtual ? "Virtual Location" : "Location"}</p>
-          {address ? <p className="text-sm leading-relaxed text-muted-foreground">{address}</p> : null}
-          {venue.parking_notes ? <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{venue.parking_notes}</p> : null}
-          {venue.accessibility_notes ? <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{venue.accessibility_notes}</p> : null}
-          <div className="mt-4 flex flex-wrap gap-3 text-sm font-semibold text-primary">
-            {venue.show_map_link && venue.map_url ? <a href={venue.map_url} target="_blank" rel="noopener noreferrer">Open map</a> : null}
-            {venue.website_url ? <a href={venue.website_url} target="_blank" rel="noopener noreferrer">Website</a> : null}
-            {venue.email ? <a href={`mailto:${venue.email}`}>Email</a> : null}
-            {venue.phone ? <span className="text-muted-foreground">{venue.phone}</span> : null}
           </div>
-        </SurfaceCard>
+        </section>
+
+        <aside className="space-y-4">
+          <SurfaceCard padding="lg" elevated>
+            <p className="ui-section-eyebrow mb-3">Venue Details</p>
+            <dl className="space-y-3 text-sm">
+              {address ? (
+                <div>
+                  <dt className="font-semibold text-foreground">Address</dt>
+                  <dd className="mt-1 leading-relaxed text-muted-foreground">{address}</dd>
+                </div>
+              ) : null}
+              {venue.phone ? (
+                <div>
+                  <dt className="font-semibold text-foreground">Phone</dt>
+                  <dd className="mt-1 text-muted-foreground">{venue.phone}</dd>
+                </div>
+              ) : null}
+              {venue.email ? (
+                <div>
+                  <dt className="font-semibold text-foreground">Email</dt>
+                  <dd className="mt-1 text-muted-foreground">
+                    <a href={`mailto:${venue.email}`} className="hover:text-primary">{venue.email}</a>
+                  </dd>
+                </div>
+              ) : null}
+              {venue.website_url ? (
+                <div>
+                  <dt className="font-semibold text-foreground">Website</dt>
+                  <dd className="mt-1 text-muted-foreground">
+                    <a href={venue.website_url} target="_blank" rel="noopener noreferrer" className="hover:text-primary">Visit website</a>
+                  </dd>
+                </div>
+              ) : null}
+            </dl>
+          </SurfaceCard>
+
+          {(venue.show_map_link && venue.map_url) || venue.show_map ? (
+            <SurfaceCard padding="lg">
+              <p className="ui-section-eyebrow mb-3">Map</p>
+              <div className="rounded-2xl border border-border bg-surface-tint p-5 text-sm text-muted-foreground">
+                Map display will appear here when map embedding is configured.
+              </div>
+              {venue.show_map_link && venue.map_url ? (
+                <Button href={venue.map_url} target="_blank" rel="noopener noreferrer" variant="outline" size="sm" className="mt-4 w-full justify-center">
+                  Open in Map
+                </Button>
+              ) : null}
+            </SurfaceCard>
+          ) : null}
+
+          {(venue.accessibility_notes || venue.parking_notes) ? (
+            <SurfaceCard padding="lg">
+              <p className="ui-section-eyebrow mb-3">Good to Know</p>
+              {venue.accessibility_notes ? (
+                <div>
+                  <h3 className="font-semibold text-foreground">Accessibility</h3>
+                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{venue.accessibility_notes}</p>
+                </div>
+              ) : null}
+              {venue.parking_notes ? (
+                <div className={venue.accessibility_notes ? "mt-4" : ""}>
+                  <h3 className="font-semibold text-foreground">Parking</h3>
+                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{venue.parking_notes}</p>
+                </div>
+              ) : null}
+            </SurfaceCard>
+          ) : null}
+        </aside>
       </div>
     </div>
   );

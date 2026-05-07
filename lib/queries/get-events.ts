@@ -131,6 +131,11 @@ export type EventCalendarDay = {
   events: EventRow[];
 };
 
+export type MemberEventFilterOptions = {
+  types: EventTypeOption[];
+  venues: EventVenueOption[];
+};
+
 export type EventTypeSettingsRow = EventTypeOption & {
   sort_order: number;
   is_active: boolean;
@@ -528,36 +533,49 @@ async function getEventRsvpState(event: EventRow, memberId?: string | null) {
 
 export async function getMemberEvents(params: {
   month?: string;
+  query?: string;
+  typeSlug?: string;
+  venueSlug?: string;
   memberId: string;
   memberTier: string | null;
 }) {
   const nowMs = Date.now();
-  if (!params.memberTier) return { month: params.month ?? new Date().toISOString().slice(0, 7), events: [], calendarDays: [], nowMs };
+  if (!params.memberTier) return emptyMemberEvents(params.month);
 
-  const { month, events, calendarDays } = await getAdminEvents({
+  const filterOptions = params.typeSlug || params.venueSlug
+    ? await getMemberEventFilterOptions(params.memberTier)
+    : null;
+  const typeId = params.typeSlug
+    ? filterOptions?.types.find((type) => type.slug === params.typeSlug)?.id
+    : undefined;
+
+  if (params.typeSlug && !typeId) {
+    return emptyMemberEvents(params.month);
+  }
+
+  const { month, events } = await getAdminEvents({
     month: params.month,
     status: "published",
     accessLevel: params.memberTier,
+    query: params.query,
+    typeId,
   });
 
-  const published = events.filter((event) => event.status === "published" && event.visibility !== "hidden");
+  const published = events.filter((event) => {
+    if (event.status !== "published" || event.visibility === "hidden") return false;
+    if (params.venueSlug && event.event_venue?.slug !== params.venueSlug) return false;
+    return true;
+  });
   const ticketAccess = await getMemberTicketAccess(params.memberId, published.map((event) => event.id));
   const withTicketAccess = published.map((event) => ({
     ...event,
     member_ticket_access: event.ticketing_mode !== "ticket_required" || ticketAccess.has(event.id),
   }));
-  const visibleById = new Map(withTicketAccess.map((event) => [event.id, event]));
   return {
     month,
     events: withTicketAccess,
     nowMs,
-    calendarDays: calendarDays.map((day) => ({
-      ...day,
-      events: day.events.flatMap((event) => {
-        const visible = visibleById.get(event.id);
-        return visible ? [visible] : [];
-      }),
-    })),
+    calendarDays: buildMemberCalendarDays(month, withTicketAccess),
   };
 }
 
@@ -584,6 +602,61 @@ export async function getMemberEvent(id: string, memberTier: string | null, memb
   };
 }
 
+export async function getMemberRelatedEvents(params: {
+  event: EventRow;
+  memberTier: string | null;
+  memberId: string;
+  limit?: number;
+}) {
+  if (!params.memberTier) return [];
+
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  const { data, error } = await supabase
+    .from("member_event")
+    .select<EventRow>(EVENT_SELECT)
+    .neq("id", params.event.id)
+    .eq("status", "published")
+    .neq("visibility", "hidden")
+    .gte("ends_at", new Date().toISOString())
+    .order("starts_at", { ascending: true })
+    .limit(24);
+
+  if (error) {
+    console.error("[getMemberRelatedEvents]", error.message);
+    return [];
+  }
+
+  const currentHostIds = new Set(
+    (params.event.event_host_assignment ?? []).map((assignment) => assignment.host_id)
+  );
+  if (params.event.host_id) currentHostIds.add(params.event.host_id);
+
+  const visible = ((data ?? []) as unknown as EventRow[])
+    .map(sortEventTickets)
+    .filter((event) => memberCanSeeEvent(event, params.memberTier as string))
+    .sort((a, b) => {
+      const aHostMatch = (a.event_host_assignment ?? []).some((assignment) =>
+        currentHostIds.has(assignment.host_id)
+      ) || (a.host_id ? currentHostIds.has(a.host_id) : false);
+      const bHostMatch = (b.event_host_assignment ?? []).some((assignment) =>
+        currentHostIds.has(assignment.host_id)
+      ) || (b.host_id ? currentHostIds.has(b.host_id) : false);
+      const scoreA =
+        (a.type_id && a.type_id === params.event.type_id ? 4 : 0) +
+        (a.venue_id && a.venue_id === params.event.venue_id ? 3 : 0) +
+        (aHostMatch ? 2 : 0);
+      const scoreB =
+        (b.type_id && b.type_id === params.event.type_id ? 4 : 0) +
+        (b.venue_id && b.venue_id === params.event.venue_id ? 3 : 0) +
+        (bHostMatch ? 2 : 0);
+      if (scoreA !== scoreB) return scoreB - scoreA;
+      return new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
+    })
+    .slice(0, params.limit ?? 3);
+
+  return withMemberTicketAccess(visible, params.memberId);
+}
+
 function memberCanSeeEvent(event: EventRow, memberTier: string) {
   return (
     event.status === "published" &&
@@ -593,11 +666,50 @@ function memberCanSeeEvent(event: EventRow, memberTier: string) {
 }
 
 async function withMemberTicketAccess(events: EventRow[], memberId: string) {
+  if (events.length === 0) return [];
   const ticketAccess = await getMemberTicketAccess(memberId, events.map((event) => event.id));
   return events.map((event) => ({
     ...event,
     member_ticket_access: event.ticketing_mode !== "ticket_required" || ticketAccess.has(event.id),
   }));
+}
+
+function buildMemberCalendarDays(month: string, events: EventRow[]): EventCalendarDay[] {
+  const eventsByDate = new Map<string, EventRow[]>();
+  for (const event of events) {
+    const key = eventDateKey(event.starts_at, event.timezone);
+    eventsByDate.set(key, [...(eventsByDate.get(key) ?? []), event]);
+  }
+
+  return calendarGridDays(month).map((date) => ({
+    date,
+    inMonth: date.startsWith(month),
+    events: eventsByDate.get(date) ?? [],
+  }));
+}
+
+function emptyMemberEvents(month?: string) {
+  const resolvedMonth = month ?? new Date().toISOString().slice(0, 7);
+  return {
+    month: resolvedMonth,
+    events: [] as EventRow[],
+    calendarDays: buildMemberCalendarDays(resolvedMonth, []),
+    nowMs: Date.now(),
+  };
+}
+
+export async function getMemberEventFilterOptions(
+  memberTier: string | null
+): Promise<MemberEventFilterOptions> {
+  if (!memberTier) {
+    return { types: [], venues: [] };
+  }
+
+  const options = await getEventAdminOptions();
+  return {
+    types: options.types,
+    venues: options.venues,
+  };
 }
 
 export async function getMemberEventHostPage(slug: string, memberTier: string | null, memberId: string) {

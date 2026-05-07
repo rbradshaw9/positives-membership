@@ -29,6 +29,14 @@ test.afterEach(async () => {
   await cleanupEventUxFixturesByPrefix(EVENT_TITLE_PREFIX);
 });
 
+test("member events routes redirect guests to login", async ({ page }) => {
+  await page.goto("/events");
+  await expect(page).toHaveURL(/\/login\?next=%2Fevents$/);
+
+  await page.goto("/events/00000000-0000-0000-0000-000000000000");
+  await expect(page).toHaveURL(/\/login\?next=%2Fevents%2F00000000-0000-0000-0000-000000000000$/);
+});
+
 test("admin event form keeps advanced fields contextual and supports inline create", async ({
   page,
 }) => {
@@ -321,7 +329,7 @@ test("ticketed event hides join access until a paid or comp ticket exists", asyn
   await expect(page.getByRole("heading", { name: fixture.title })).toBeVisible();
   await expect(page.getByText("Ticket required")).toBeVisible();
   await expect(page.getByText("Reserve your seat")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Join event" })).toHaveCount(0);
+  await expect(page.locator("aside").getByRole("link", { name: "Join Event" })).toHaveCount(0);
 
   await createCompEventTicketFixture({
     memberEmail: LEVEL_2_MEMBER_EMAIL,
@@ -331,7 +339,56 @@ test("ticketed event hides join access until a paid or comp ticket exists", asyn
 
   await page.reload();
   await expect(page.getByText("Ticket confirmed")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Join event" })).toBeVisible();
+  await expect(page.locator("aside").getByRole("link", { name: "Join Event" })).toBeVisible();
+});
+
+test("member events browse uses designed month, list, and mobile layouts", async ({
+  page,
+}) => {
+  const fixture = await createEventHostVenueFixture(EVENT_TITLE_PREFIX);
+
+  await loginWithPassword(page, {
+    email: LEVEL_2_MEMBER_EMAIL,
+    password: LEVEL_2_MEMBER_PASSWORD,
+    next: "/events?month=2099-06&view=month",
+  });
+
+  await expect(page.getByRole("heading", { name: "Events", exact: true })).toBeVisible();
+  await expect(page.locator("[data-events-month-desktop]")).toBeVisible();
+  await expect(page.getByRole("link", { name: new RegExp(fixture.title) })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Month" })).toHaveAttribute("aria-current", "page");
+
+  await page.getByRole("link", { name: "List", exact: true }).click();
+  await expect(page).toHaveURL(/view=list/);
+  await expect(page.locator("[data-events-list]")).toBeVisible();
+  await expect(page.getByRole("heading", { name: /June 18/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: fixture.title, exact: true })).toBeVisible();
+
+  for (const viewport of [
+    { width: 375, height: 844, desktopCalendar: false },
+    { width: 768, height: 900, desktopCalendar: false },
+    { width: 1024, height: 900, desktopCalendar: true },
+    { width: 1440, height: 1000, desktopCalendar: true },
+  ]) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await page.goto("/events?month=2099-06&view=month&date=2099-06-18");
+    await expect(page.getByRole("heading", { name: "Events", exact: true })).toBeVisible();
+    await expect(page.locator("[data-events-month-desktop]")).toBeVisible({
+      visible: viewport.desktopCalendar,
+    });
+    await expect(page.locator("[data-events-month-mobile]")).toBeVisible({
+      visible: !viewport.desktopCalendar,
+    });
+    const activeCalendar = viewport.desktopCalendar
+      ? page.locator("[data-events-month-desktop]")
+      : page.locator("[data-events-month-mobile]");
+    await expect(activeCalendar.getByText(fixture.title).first()).toBeVisible();
+
+    await page.goto("/events?month=2099-06&view=list");
+    await expect(page.locator("[data-events-list]")).toBeVisible();
+    await expect(page.getByRole("link", { name: fixture.title, exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "View Event" }).first()).toBeVisible();
+  }
 });
 
 test("member event detail links to host and venue pages with eligible upcoming events", async ({
@@ -353,18 +410,18 @@ test("member event detail links to host and venue pages with eligible upcoming e
   await expect(page.getByText("Use the north lot.")).toBeVisible();
 
   await page.goto(`/events/hosts/${fixture.hostSlug}`);
-  await expect(page.getByRole("heading", { name: fixture.primaryHostName })).toBeVisible();
-  await expect(page.getByRole("link", { name: fixture.title })).toBeVisible();
+  await expect(page.getByRole("heading", { name: fixture.primaryHostName, exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: fixture.title, exact: true })).toBeVisible();
   await expect(page.getByText(`primary-host-`)).toBeVisible();
 
   await page.goto(`/events/hosts/${fixture.secondHostSlug}`);
-  await expect(page.getByRole("heading", { name: fixture.secondHostName })).toBeVisible();
+  await expect(page.getByRole("heading", { name: fixture.secondHostName, exact: true })).toBeVisible();
   await expect(page.getByText("Contact details are private for this host.")).toBeVisible();
 
   await page.goto(`/events/venues/${fixture.venueSlug}`);
-  await expect(page.getByRole("heading", { name: fixture.venueName })).toBeVisible();
-  await expect(page.getByRole("link", { name: fixture.title })).toBeVisible();
-  await expect(page.getByText("111 Test Avenue")).toBeVisible();
+  await expect(page.getByRole("heading", { name: fixture.venueName, exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: fixture.title, exact: true })).toBeVisible();
+  await expect(page.getByText("111 Test Avenue").first()).toBeVisible();
   await expect(page.getByText("Step-free entry is available.")).toBeVisible();
 });
 
@@ -388,7 +445,7 @@ test("member RSVP creates an attendee that admins can check in", async ({
     await expect(memberPage.getByRole("heading", { name: "Member RSVP" })).toBeVisible();
     await memberPage.getByLabel("Name").fill(attendeeName);
     await memberPage.getByLabel("Email").fill(attendeeEmail);
-    await memberPage.getByRole("button", { name: "RSVP" }).click();
+    await memberPage.getByRole("button", { name: "Confirm RSVP" }).click();
     await expect(memberPage).toHaveURL(new RegExp(`/events/${fixture.eventId}\\?rsvp=success$`));
     await expect(memberPage.getByText("RSVP confirmed. We saved your spot.")).toBeVisible();
     await expect(memberPage.getByText(attendeeName)).toBeVisible();
