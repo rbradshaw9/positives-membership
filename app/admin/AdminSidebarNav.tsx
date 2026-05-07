@@ -187,6 +187,7 @@ function buildNavGroups({
             { href: "/admin/events/hosts", label: "Hosts" },
             { href: "/admin/events/venues", label: "Venues" },
             { href: "/admin/events/ticketing", label: "Ticketing" },
+            { href: "/admin/events/attendees", label: "Attendees" },
             { href: "/admin/events/settings", label: "Settings" },
           ],
         },

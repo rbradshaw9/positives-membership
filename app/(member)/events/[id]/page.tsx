@@ -7,9 +7,10 @@ import { EventDetailsBody } from "@/components/content/EventDetailsBody";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { Button } from "@/components/ui/Button";
 import { EventTicketPurchasePanel } from "./EventTicketPurchasePanel";
+import { registerEventRsvp } from "./actions";
 
 type Params = Promise<{ id: string }>;
-type SearchParams = Promise<{ ticket?: string; ticket_error?: string }>;
+type SearchParams = Promise<{ ticket?: string; ticket_error?: string; rsvp?: string; rsvp_error?: string }>;
 
 function joinUrl(event: NonNullable<Awaited<ReturnType<typeof getMemberEvent>>>) {
   if (!event.member_ticket_access) return null;
@@ -46,6 +47,30 @@ function hostRoleLabel(role: string) {
   return "Host";
 }
 
+function rsvpState(event: NonNullable<Awaited<ReturnType<typeof getMemberEvent>>>) {
+  const rsvp = (event.event_rsvp_type ?? []).find((row) => row.status === "active") ?? null;
+  if (!rsvp) return null;
+  const now = currentTimestampMs();
+  const opens = rsvp.start_at ? new Date(rsvp.start_at).getTime() : null;
+  const closes = rsvp.end_at ? new Date(rsvp.end_at).getTime() : null;
+  const count = rsvp.confirmed_count ?? 0;
+  const remaining = rsvp.capacity === null || rsvp.capacity === undefined ? null : Math.max(0, rsvp.capacity - count);
+  return {
+    rsvp,
+    count,
+    remaining,
+    notOpen: opens !== null && now < opens,
+    closed: closes !== null && now > closes,
+    full: remaining !== null && remaining <= 0,
+  };
+}
+
+function rsvpErrorMessage(error?: string) {
+  if (error === "registration_failed") return "RSVP could not be saved. It may be closed or full.";
+  if (error === "membership_required") return "An active membership is required to RSVP.";
+  return error ? "RSVP could not be saved." : null;
+}
+
 export default async function EventDetailPage({
   params,
   searchParams,
@@ -65,6 +90,8 @@ export default async function EventDetailPage({
   const body = event.body || event.description || "";
   const ticketRequired = event.ticketing_mode === "ticket_required";
   const hasTicketAccess = Boolean(event.member_ticket_access);
+  const rsvp = rsvpState(event);
+  const rsvpError = rsvpErrorMessage(query.rsvp_error);
 
   return (
     <div className="member-container py-8 md:py-12">
@@ -134,6 +161,69 @@ export default async function EventDetailPage({
 
         {ticketRequired && !hasTicketAccess ? (
           <EventTicketPurchasePanel event={event} ticketError={query.ticket_error} />
+        ) : null}
+
+        {rsvp ? (
+          <SurfaceCard padding="lg" elevated>
+            <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-start">
+              <div>
+                <p className="ui-section-eyebrow mb-2">RSVP</p>
+                <h2 className="heading-balance font-heading text-xl font-semibold text-foreground">
+                  {event.member_rsvp_attendee ? "You are registered" : rsvp.rsvp.name}
+                </h2>
+                {rsvp.rsvp.description ? (
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{rsvp.rsvp.description}</p>
+                ) : null}
+                {query.rsvp === "success" ? (
+                  <p className="mt-3 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-primary">
+                    RSVP confirmed. We saved your spot.
+                  </p>
+                ) : null}
+                {rsvpError ? (
+                  <p className="mt-3 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                    {rsvpError}
+                  </p>
+                ) : null}
+                <p className="mt-3 text-xs text-muted-foreground">
+                  {rsvp.remaining === null ? "Unlimited spots" : `${rsvp.remaining} spot${rsvp.remaining === 1 ? "" : "s"} remaining`}
+                </p>
+              </div>
+
+              {event.member_rsvp_attendee ? (
+                <div className="rounded-2xl border border-border bg-muted/30 p-4 text-sm">
+                  <p className="font-semibold text-foreground">{event.member_rsvp_attendee.name ?? "Registered attendee"}</p>
+                  <p className="mt-1 text-muted-foreground">{event.member_rsvp_attendee.attendee_number}</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Status: {event.member_rsvp_attendee.status.replace("_", " ")}
+                  </p>
+                </div>
+              ) : rsvp.notOpen ? (
+                <p className="rounded-2xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground">RSVP has not opened yet.</p>
+              ) : rsvp.closed ? (
+                <p className="rounded-2xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground">RSVP has closed for this event.</p>
+              ) : rsvp.full ? (
+                <p className="rounded-2xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground">This RSVP is full.</p>
+              ) : (
+                <form action={registerEventRsvp} className="grid min-w-72 gap-3">
+                  <input type="hidden" name="event_id" value={event.id} />
+                  <input type="hidden" name="rsvp_type_id" value={rsvp.rsvp.id} />
+                  {rsvp.rsvp.collect_attendee_info ? (
+                    <>
+                      <label className="grid gap-1 text-sm font-medium text-foreground">
+                        Name
+                        <input name="attendee_name" required className="admin-input" />
+                      </label>
+                      <label className="grid gap-1 text-sm font-medium text-foreground">
+                        Email
+                        <input name="attendee_email" type="email" required className="admin-input" />
+                      </label>
+                    </>
+                  ) : null}
+                  <Button type="submit">RSVP</Button>
+                </form>
+              )}
+            </div>
+          </SurfaceCard>
         ) : null}
 
         {body ? (

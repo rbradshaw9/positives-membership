@@ -7,6 +7,7 @@ import {
   createCompEventTicketFixture,
   cleanupEventUxFixturesByPrefix,
   createEventHostVenueFixture,
+  createRsvpEventFixture,
   createEventUxZoomFixture,
   createTicketedEventFixture,
   loginWithPassword,
@@ -365,4 +366,62 @@ test("member event detail links to host and venue pages with eligible upcoming e
   await expect(page.getByRole("link", { name: fixture.title })).toBeVisible();
   await expect(page.getByText("111 Test Avenue")).toBeVisible();
   await expect(page.getByText("Step-free entry is available.")).toBeVisible();
+});
+
+test("member RSVP creates an attendee that admins can check in", async ({
+  browser,
+}) => {
+  const fixture = await createRsvpEventFixture(EVENT_TITLE_PREFIX);
+  const attendeeName = `${EVENT_TITLE_PREFIX} Attendee`;
+  const attendeeEmail = `event-rsvp-${Date.now()}@example.com`;
+
+  const memberContext = await browser.newContext();
+  const memberPage = await memberContext.newPage();
+  try {
+    await loginWithPassword(memberPage, {
+      email: LEVEL_2_MEMBER_EMAIL,
+      password: LEVEL_2_MEMBER_PASSWORD,
+      next: `/events/${fixture.eventId}`,
+    });
+
+    await expect(memberPage.getByRole("heading", { name: fixture.title })).toBeVisible();
+    await expect(memberPage.getByRole("heading", { name: "Member RSVP" })).toBeVisible();
+    await memberPage.getByLabel("Name").fill(attendeeName);
+    await memberPage.getByLabel("Email").fill(attendeeEmail);
+    await memberPage.getByRole("button", { name: "RSVP" }).click();
+    await expect(memberPage).toHaveURL(new RegExp(`/events/${fixture.eventId}\\?rsvp=success$`));
+    await expect(memberPage.getByText("RSVP confirmed. We saved your spot.")).toBeVisible();
+    await expect(memberPage.getByText(attendeeName)).toBeVisible();
+  } finally {
+    await memberContext.close();
+  }
+
+  const adminContext = await browser.newContext();
+  const adminPage = await adminContext.newPage();
+  try {
+    await loginWithPassword(adminPage, {
+      email: ADMIN_EMAIL,
+      password: ADMIN_PASSWORD,
+      next: `/admin/events/${fixture.eventId}/attendees`,
+      allowBootstrapFallback: false,
+    });
+
+    await expect(adminPage.getByRole("heading", { name: "Event Attendees" })).toBeVisible();
+    await expect(adminPage.getByText(attendeeName)).toBeVisible();
+    await expect(adminPage.getByText(attendeeEmail)).toBeVisible();
+    const attendeeRow = adminPage.getByRole("row").filter({ hasText: attendeeName });
+    await expect(attendeeRow.getByText("Not checked in")).toBeVisible();
+
+    await adminPage.getByRole("button", { name: "Check in" }).click();
+    await expect(adminPage).toHaveURL(new RegExp(`/admin/events/${fixture.eventId}/attendees\\?success=checked_in$`));
+    await expect(adminPage.getByText("Attendee checked in.")).toBeVisible();
+    await expect(attendeeRow.getByText("Checked in").first()).toBeVisible();
+
+    await adminPage.getByRole("button", { name: "Reverse" }).click();
+    await expect(adminPage).toHaveURL(new RegExp(`/admin/events/${fixture.eventId}/attendees\\?success=check_in_reversed$`));
+    await expect(adminPage.getByText("Check-in reversed.")).toBeVisible();
+    await expect(attendeeRow.getByText("Not checked in")).toBeVisible();
+  } finally {
+    await adminContext.close();
+  }
 });

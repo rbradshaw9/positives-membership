@@ -35,6 +35,11 @@ export default async function EditEventPage({
           <h1 className="admin-page-header__title">Edit event</h1>
           <p className="admin-page-header__subtitle">{event.title}</p>
         </div>
+        <div className="admin-page-header__actions">
+          <Link href={`/admin/events/${event.id}/attendees`} className="admin-btn admin-btn--outline">
+            Attendees
+          </Link>
+        </div>
       </div>
       <EventForm event={event} {...options} searchParams={resolvedSearchParams} />
     </div>

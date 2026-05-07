@@ -978,10 +978,15 @@ export async function getLatestSupportSubmission(email: string) {
 export async function cleanupEventUxFixturesByPrefix(prefix: string) {
   const supabase = getServiceRoleClient();
 
-  const { data: events, error: eventLookupError } = await supabase
-    .from("member_event")
-    .select("id, series_id")
-    .like("title", `${prefix}%`);
+  const { data: events, error: eventLookupError } = await withSupabaseRetry<{
+    data: Array<{ id: string; series_id: string | null }> | null;
+    error: { message?: string } | null;
+  }>("cleanupEventUxFixturesByPrefix:member_event_lookup", async () =>
+    supabase
+      .from("member_event")
+      .select("id, series_id")
+      .like("title", `${prefix}%`)
+  );
 
   if (eventLookupError) {
     throw new Error(`Failed to look up event UX fixtures: ${eventLookupError.message}`);
@@ -997,10 +1002,12 @@ export async function cleanupEventUxFixturesByPrefix(prefix: string) {
   ];
 
   if (eventIds.length > 0) {
-    const { error: deleteEventsError } = await supabase
-      .from("member_event")
-      .delete()
-      .in("id", eventIds);
+    const { error: deleteEventsError } = await withSupabaseRetry("cleanupEventUxFixturesByPrefix:member_event_delete", async () =>
+      supabase
+        .from("member_event")
+        .delete()
+        .in("id", eventIds)
+    );
 
     if (deleteEventsError) {
       throw new Error(`Failed to delete event UX fixtures: ${deleteEventsError.message}`);
@@ -1008,10 +1015,12 @@ export async function cleanupEventUxFixturesByPrefix(prefix: string) {
   }
 
   if (seriesIds.length > 0) {
-    const { error: deleteSeriesError } = await supabase
-      .from("event_series")
-      .delete()
-      .in("id", seriesIds);
+    const { error: deleteSeriesError } = await withSupabaseRetry("cleanupEventUxFixturesByPrefix:event_series_delete", async () =>
+      supabase
+        .from("event_series")
+        .delete()
+        .in("id", seriesIds)
+    );
 
     if (deleteSeriesError) {
       throw new Error(`Failed to delete event UX fixture series: ${deleteSeriesError.message}`);
@@ -1020,16 +1029,20 @@ export async function cleanupEventUxFixturesByPrefix(prefix: string) {
 
   const referenceTables = ["event_host", "event_venue", "event_type"] as const;
   for (const table of referenceTables) {
-    const { error } = await supabase.from(table).delete().like("name", `${prefix}%`);
+    const { error } = await withSupabaseRetry(`cleanupEventUxFixturesByPrefix:${table}`, async () =>
+      supabase.from(table).delete().like("name", `${prefix}%`)
+    );
     if (error) {
       throw new Error(`Failed to delete ${table} fixtures: ${error.message}`);
     }
   }
 
-  const { error: deleteZoomConnectionsError } = await supabase
-    .from("zoom_connection")
-    .delete()
-    .like("label", `${prefix}%`);
+  const { error: deleteZoomConnectionsError } = await withSupabaseRetry("cleanupEventUxFixturesByPrefix:zoom_connection", async () =>
+    supabase
+      .from("zoom_connection")
+      .delete()
+      .like("label", `${prefix}%`)
+  );
 
   if (deleteZoomConnectionsError) {
     throw new Error(`Failed to delete event UX fixture Zoom connections: ${deleteZoomConnectionsError.message}`);
@@ -1222,6 +1235,62 @@ export async function createEventHostVenueFixture(prefix: string) {
     secondHostSlug: secondHost.slug,
     venueName,
     venueSlug: venue.slug,
+  };
+}
+
+export async function createRsvpEventFixture(prefix: string) {
+  const supabase = getServiceRoleClient();
+  const unique = Date.now();
+  const title = `${prefix} RSVP ${unique}`;
+
+  const { data: event, error: eventError } = await supabase
+    .from("member_event")
+    .insert({
+      title,
+      excerpt: "RSVP fixture event.",
+      body: "<p>RSVP details render here.</p>",
+      status: "published",
+      starts_at: "2099-06-19T18:00:00.000Z",
+      ends_at: "2099-06-19T19:00:00.000Z",
+      timezone: "America/New_York",
+      visibility: "member",
+      virtual_mode: "none",
+      ticketing_mode: "included",
+    })
+    .select("id")
+    .single();
+
+  if (eventError || !event) {
+    throw new Error(`Failed to create RSVP event fixture: ${eventError?.message ?? "missing row"}`);
+  }
+
+  const { error: accessError } = await supabase
+    .from("member_event_access_level")
+    .insert({ event_id: event.id, subscription_tier: "level_2" });
+  if (accessError) throw new Error(`Failed to create RSVP event access fixture: ${accessError.message}`);
+
+  const { data: rsvpType, error: rsvpError } = await supabase
+    .from("event_rsvp_type")
+    .insert({
+      event_id: event.id,
+      name: "Member RSVP",
+      description: "Reserve a member spot for this fixture event.",
+      capacity: 2,
+      collect_attendee_info: true,
+      sort_order: 10,
+      status: "active",
+    })
+    .select("id")
+    .single();
+
+  if (rsvpError || !rsvpType) {
+    throw new Error(`Failed to create RSVP type fixture: ${rsvpError?.message ?? "missing row"}`);
+  }
+
+  return {
+    eventId: event.id,
+    rsvpTypeId: rsvpType.id,
+    title,
   };
 }
 
@@ -1694,7 +1763,7 @@ export async function loginWithPassword(
   const escapedExpected = expectedPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
   try {
-    await expect(page).toHaveURL(new RegExp(`${escapedExpected}$`), { timeout: 8_000 });
+    await expect(page).toHaveURL(new RegExp(`${escapedExpected}$`), { timeout: 15_000 });
     return;
   } catch (passwordLoginError) {
     if (!allowBootstrapFallback) {

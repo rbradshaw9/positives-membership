@@ -81,3 +81,32 @@ export async function purchaseEventTickets(formData: FormData) {
     eventRedirect(eventId, { ticket_error: "checkout_failed" });
   }
 }
+
+export async function registerEventRsvp(formData: FormData) {
+  const member = await requireActiveMember();
+  const eventId = String(formData.get("event_id") ?? "").trim();
+  const rsvpTypeId = String(formData.get("rsvp_type_id") ?? "").trim();
+  if (!eventId) redirect("/events?rsvp_error=event_missing");
+  if (!rsvpTypeId) eventRedirect(eventId, { rsvp_error: "rsvp_missing" });
+  if (!member.subscription_tier) eventRedirect(eventId, { rsvp_error: "membership_required" });
+
+  const attendeeName = String(formData.get("attendee_name") ?? "").trim();
+  const attendeeEmail = String(formData.get("attendee_email") ?? "").trim();
+
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  const { error } = await supabase.rpc("register_event_rsvp", {
+    p_member_id: member.id,
+    p_event_id: eventId,
+    p_member_tier: member.subscription_tier,
+    p_rsvp_type_id: rsvpTypeId,
+    p_attendee_name: attendeeName || null,
+    p_attendee_email: attendeeEmail || null,
+  });
+
+  if (error) {
+    console.warn("[event rsvp] registration failed:", error.message);
+    eventRedirect(eventId, { rsvp_error: "registration_failed" });
+  }
+
+  eventRedirect(eventId, { rsvp: "success" });
+}

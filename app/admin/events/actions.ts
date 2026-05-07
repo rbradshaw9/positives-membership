@@ -42,6 +42,8 @@ type EventInput = {
   virtualMode: string;
   ticketingMode: "included" | "ticket_required";
   ticketTypes: EventTicketInput[];
+  rsvpEnabled: boolean;
+  rsvpTypes: EventRsvpInput[];
   manualJoinUrl: string;
   replayUrl: string;
   zoomMode: string;
@@ -71,6 +73,17 @@ type EventTicketInput = {
   maxPerOrder: number;
   status: "active" | "disabled" | "archived";
   accessLevels: string[];
+};
+
+type EventRsvpInput = {
+  id?: string;
+  name: string;
+  description: string;
+  capacity: number | null;
+  startAt: string;
+  endAt: string;
+  collectAttendeeInfo: boolean;
+  status: "active" | "disabled" | "archived";
 };
 
 type ZoomMeetingPayload = {
@@ -118,6 +131,7 @@ function intent(formData: FormData): EventInput["intent"] {
 
 function parseInput(formData: FormData): EventInput {
   const ticketConfig = parseTicketConfig(value(formData, "ticket_config"), formData.getAll("access_levels"));
+  const rsvpConfig = parseRsvpConfig(value(formData, "rsvp_config"));
   const hostAssignments = parseHostAssignments(value(formData, "host_assignments"));
   const legacyHostId = value(formData, "host_id");
   return {
@@ -148,6 +162,8 @@ function parseInput(formData: FormData): EventInput {
     virtualMode: value(formData, "virtual_mode") || "none",
     ticketingMode: ticketConfig.mode,
     ticketTypes: ticketConfig.ticketTypes,
+    rsvpEnabled: rsvpConfig.enabled,
+    rsvpTypes: rsvpConfig.rsvpTypes,
     manualJoinUrl: value(formData, "manual_join_url"),
     replayUrl: value(formData, "replay_url"),
     zoomMode: value(formData, "zoom_mode") || "none",
@@ -162,6 +178,38 @@ function parseInput(formData: FormData): EventInput {
     recurrenceUntil: value(formData, "recurrence_until"),
     accessLevels: parseAccessLevels(formData.getAll("access_levels")),
   };
+}
+
+function parseRsvpConfig(raw: string): {
+  enabled: boolean;
+  rsvpTypes: EventRsvpInput[];
+} {
+  try {
+    const parsed = JSON.parse(raw || "{}") as {
+      enabled?: boolean;
+      rsvpTypes?: Array<Record<string, unknown>>;
+    };
+    const enabled = parsed.enabled === true;
+    const rsvpTypes = (Array.isArray(parsed.rsvpTypes) ? parsed.rsvpTypes : [])
+      .map((rsvp): EventRsvpInput => {
+        const status = rsvp.status === "disabled" || rsvp.status === "archived" ? rsvp.status : "active";
+        return {
+          id: typeof rsvp.id === "string" && rsvp.id ? rsvp.id : undefined,
+          name: String(rsvp.name ?? "RSVP").trim() || "RSVP",
+          description: String(rsvp.description ?? "").trim(),
+          capacity: intOrNull(rsvp.capacity),
+          startAt: String(rsvp.startAt ?? rsvp.start_at ?? "").trim(),
+          endAt: String(rsvp.endAt ?? rsvp.end_at ?? "").trim(),
+          collectAttendeeInfo: rsvp.collectAttendeeInfo === true || rsvp.collect_attendee_info === true,
+          status,
+        };
+      })
+      .filter((rsvp) => rsvp.name);
+
+    return { enabled, rsvpTypes };
+  } catch {
+    return { enabled: false, rsvpTypes: [] };
+  }
 }
 
 function parseHostAssignments(raw: string): EventHostAssignmentInput[] {
@@ -401,6 +449,71 @@ async function saveTicketTypes(eventId: string, input: EventInput) {
   if (staleIds.length > 0) {
     const { error } = await supabase
       .from("event_ticket_type")
+      .update({ status: "archived", updated_at: new Date().toISOString() })
+      .in("id", staleIds);
+    if (error) throw new Error(error.message);
+  }
+}
+
+async function saveRsvpTypes(eventId: string, input: EventInput) {
+  const supabase = asLooseSupabaseClient(getAdminClient());
+
+  if (!input.rsvpEnabled) {
+    const { error } = await supabase
+      .from("event_rsvp_type")
+      .update({ status: "archived", updated_at: new Date().toISOString() })
+      .eq("event_id", eventId)
+      .neq("status", "archived");
+    if (error) throw new Error(error.message);
+    return;
+  }
+
+  const seenIds = new Set<string>();
+  const rsvpTypes = input.rsvpTypes.length > 0
+    ? input.rsvpTypes
+    : [{
+        name: "RSVP",
+        description: "",
+        capacity: null,
+        startAt: "",
+        endAt: input.startsAt,
+        collectAttendeeInfo: false,
+        status: "active" as const,
+      }];
+
+  for (const [index, rsvp] of rsvpTypes.entries()) {
+    const row = {
+      event_id: eventId,
+      name: rsvp.name || "RSVP",
+      description: rsvp.description || null,
+      capacity: rsvp.capacity,
+      start_at: toIso(rsvp.startAt, input.timezone),
+      end_at: toIso(rsvp.endAt, input.timezone),
+      collect_attendee_info: rsvp.collectAttendeeInfo,
+      status: rsvp.status,
+      sort_order: (index + 1) * 10,
+      updated_at: new Date().toISOString(),
+    };
+
+    const result = rsvp.id
+      ? await supabase.from("event_rsvp_type").update(row).eq("id", rsvp.id).eq("event_id", eventId).select<{ id: string }>("id").single()
+      : await supabase.from("event_rsvp_type").insert(row).select<{ id: string }>("id").single();
+
+    if (result.error || !result.data) throw new Error(result.error?.message ?? "RSVP could not be saved.");
+    seenIds.add(result.data.id);
+  }
+
+  const { data: existing, error: existingError } = await supabase
+    .from("event_rsvp_type")
+    .select<Array<{ id: string }>>("id")
+    .eq("event_id", eventId)
+    .neq("status", "archived");
+  if (existingError) throw new Error(existingError.message);
+
+  const staleIds = (existing ?? []).map((row) => row.id).filter((id) => !seenIds.has(id));
+  if (staleIds.length > 0) {
+    const { error } = await supabase
+      .from("event_rsvp_type")
       .update({ status: "archived", updated_at: new Date().toISOString() })
       .in("id", staleIds);
     if (error) throw new Error(error.message);
@@ -663,6 +776,7 @@ export async function saveEvent(formData: FormData) {
       await saveAccessLevels(input.id, input.accessLevels);
       await saveHostAssignments([input.id], hostAssignments);
       await saveTicketTypes(input.id, input);
+      await saveRsvpTypes(input.id, input);
       await syncEventBodyMediaAssets(input.id, row.body);
       await saveSelectedZoomMeeting([input.id], input);
       if (zoomResponse) await saveZoomMeetingForEvents([input.id], input, zoomResponse);
@@ -712,6 +826,7 @@ export async function saveEvent(formData: FormData) {
         await saveAccessLevels(event.id, input.accessLevels);
         await saveHostAssignments([event.id], hostAssignments);
         await saveTicketTypes(event.id, input);
+        await saveRsvpTypes(event.id, input);
         await syncEventBodyMediaAssets(event.id, row.body);
       }
       const first = createdEvents[0];
@@ -748,6 +863,7 @@ export async function saveEvent(formData: FormData) {
     await saveAccessLevels(data.id, input.accessLevels);
     await saveHostAssignments([data.id], hostAssignments);
     await saveTicketTypes(data.id, input);
+    await saveRsvpTypes(data.id, input);
     await syncEventBodyMediaAssets(data.id, row.body);
     await saveSelectedZoomMeeting([data.id], input);
     if (zoomResponse) await saveZoomMeetingForEvents([data.id], input, zoomResponse);

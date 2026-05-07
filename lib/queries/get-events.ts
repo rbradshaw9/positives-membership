@@ -59,6 +59,34 @@ export type EventTicketTypeRow = {
   held_count?: number;
 };
 
+export type EventRsvpTypeRow = {
+  id: string;
+  event_id: string;
+  name: string;
+  description: string | null;
+  capacity: number | null;
+  start_at: string | null;
+  end_at: string | null;
+  collect_attendee_info: boolean;
+  sort_order: number;
+  status: "active" | "disabled" | "archived";
+  confirmed_count?: number;
+};
+
+export type EventAttendeeRow = {
+  id: string;
+  event_id: string;
+  rsvp_type_id: string | null;
+  member_id: string | null;
+  attendee_number: string;
+  security_code: string;
+  name: string | null;
+  email: string | null;
+  status: "registered" | "checked_in" | "canceled" | "refunded" | "chargeback" | "no_show";
+  source: "rsvp" | "manual" | "paid" | "comp";
+  created_at: string;
+};
+
 export type EventRow = {
   id: string;
   series_id: string | null;
@@ -91,6 +119,8 @@ export type EventRow = {
   member_event_access_level?: EventAccessRow[];
   event_zoom_meeting?: EventZoomRow | null;
   event_ticket_type?: EventTicketTypeRow[];
+  event_rsvp_type?: EventRsvpTypeRow[];
+  member_rsvp_attendee?: EventAttendeeRow | null;
   member_ticket_access?: boolean;
 };
 
@@ -173,6 +203,7 @@ const EVENT_SELECT = `
     id, event_id, name, description, price_cents, currency, capacity, max_per_order, status, sale_starts_at, sale_ends_at, sort_order,
     event_ticket_type_access_level(subscription_tier)
   ),
+  event_rsvp_type(id, event_id, name, description, capacity, start_at, end_at, collect_attendee_info, sort_order, status),
   event_zoom_meeting(
     id, zoom_connection_id, zoom_object_type, zoom_object_id, join_url, host_email, provider_status,
     zoom_connection:zoom_connection_id(id, label, owner_kind, zoom_user_email, status)
@@ -189,6 +220,7 @@ function sortEventTickets(event: EventRow) {
     ...event,
     ticketing_mode: event.ticketing_mode ?? "included",
     event_ticket_type: [...(event.event_ticket_type ?? [])].sort((a, b) => a.sort_order - b.sort_order),
+    event_rsvp_type: [...(event.event_rsvp_type ?? [])].sort((a, b) => a.sort_order - b.sort_order),
     event_host_assignment: assignments,
     event_host: event.event_host ?? assignments[0]?.event_host ?? null,
   };
@@ -436,6 +468,57 @@ async function getMemberTicketAccess(memberId: string, eventIds: string[]) {
   return new Set((data ?? []).map((row) => row.event_id));
 }
 
+async function getEventRsvpState(event: EventRow, memberId?: string | null) {
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  const rsvpTypes = event.event_rsvp_type ?? [];
+  if (rsvpTypes.length === 0) {
+    return { event_rsvp_type: rsvpTypes, member_rsvp_attendee: null };
+  }
+
+  const rsvpIds = rsvpTypes.map((rsvp) => rsvp.id);
+  const [attendeesResult, memberResult] = await Promise.all([
+    supabase
+      .from("event_attendee")
+      .select<Array<{ rsvp_type_id: string | null; status: string }>>("rsvp_type_id, status")
+      .in("rsvp_type_id", rsvpIds)
+      .in("status", ["registered", "checked_in"]),
+    memberId
+      ? supabase
+          .from("event_attendee")
+          .select<EventAttendeeRow>("id, event_id, rsvp_type_id, member_id, attendee_number, security_code, name, email, status, source, created_at")
+          .eq("event_id", event.id)
+          .eq("member_id", memberId)
+          .eq("source", "rsvp")
+          .in("status", ["registered", "checked_in"])
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+  ]);
+
+  const counts = new Map<string, number>();
+  if (!attendeesResult.error) {
+    for (const attendee of attendeesResult.data ?? []) {
+      if (!attendee.rsvp_type_id) continue;
+      counts.set(attendee.rsvp_type_id, (counts.get(attendee.rsvp_type_id) ?? 0) + 1);
+    }
+  } else {
+    console.error("[getEventRsvpState] counts", attendeesResult.error.message);
+  }
+
+  if (memberResult.error) {
+    console.error("[getEventRsvpState] member", memberResult.error.message);
+  }
+
+  return {
+    event_rsvp_type: rsvpTypes.map((rsvp) => ({
+      ...rsvp,
+      confirmed_count: counts.get(rsvp.id) ?? 0,
+    })),
+    member_rsvp_attendee: (memberResult.data ?? null) as EventAttendeeRow | null,
+  };
+}
+
 export async function getMemberEvents(params: {
   month?: string;
   memberId: string;
@@ -478,14 +561,18 @@ export async function getMemberEvent(id: string, memberTier: string | null, memb
   const hasAccess = (event.member_event_access_level ?? []).some((row) => row.subscription_tier === memberTier);
   if (!hasAccess) return null;
   if (!memberId) {
+    const rsvpState = await getEventRsvpState(event, null);
     return {
       ...event,
+      ...rsvpState,
       member_ticket_access: event.ticketing_mode !== "ticket_required",
     };
   }
   const ticketAccess = await getMemberTicketAccess(memberId, [event.id]);
+  const rsvpState = await getEventRsvpState(event, memberId);
   return {
     ...event,
+    ...rsvpState,
     member_ticket_access: event.ticketing_mode !== "ticket_required" || ticketAccess.has(event.id),
   };
 }

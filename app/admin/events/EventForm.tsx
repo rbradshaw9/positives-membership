@@ -65,6 +65,16 @@ type TicketDraft = {
   status: "active" | "disabled";
   accessLevels: string[];
 };
+type RsvpDraft = {
+  id?: string;
+  name: string;
+  description: string;
+  capacity: string;
+  startAt: string;
+  endAt: string;
+  collectAttendeeInfo: boolean;
+  status: "active" | "disabled";
+};
 
 function normalizeLocalDateTime(value?: string | null) {
   if (!value) return "";
@@ -184,6 +194,33 @@ function newTicketDraft(accessLevels: string[]): TicketDraft {
     maxPerOrder: "4",
     status: "active",
     accessLevels,
+  };
+}
+
+function rsvpDraftFromEvent(event?: EventRow | null, timezone = "America/New_York"): RsvpDraft[] {
+  return (event?.event_rsvp_type ?? [])
+    .filter((rsvp) => rsvp.status !== "archived")
+    .map((rsvp) => ({
+      id: rsvp.id,
+      name: rsvp.name,
+      description: rsvp.description ?? "",
+      capacity: rsvp.capacity === null || rsvp.capacity === undefined ? "" : String(rsvp.capacity),
+      startAt: rsvp.start_at ? datetimeLocal(rsvp.start_at, timezone) : "",
+      endAt: rsvp.end_at ? datetimeLocal(rsvp.end_at, timezone) : "",
+      collectAttendeeInfo: Boolean(rsvp.collect_attendee_info),
+      status: rsvp.status === "disabled" ? "disabled" : "active",
+    }));
+}
+
+function newRsvpDraft(endAt: string): RsvpDraft {
+  return {
+    name: "RSVP",
+    description: "",
+    capacity: "",
+    startAt: "",
+    endAt,
+    collectAttendeeInfo: false,
+    status: "active",
   };
 }
 
@@ -372,6 +409,9 @@ export function EventForm({
       .map((level) => level.value)
   );
   const [ticketTypes, setTicketTypes] = useState<TicketDraft[]>(() => ticketDraftFromEvent(event));
+  const initialRsvpDrafts = rsvpDraftFromEvent(event, initialTimezone);
+  const [rsvpEnabled, setRsvpEnabled] = useState(initialRsvpDrafts.some((rsvp) => rsvp.status === "active"));
+  const [rsvpTypes, setRsvpTypes] = useState<RsvpDraft[]>(() => initialRsvpDrafts);
 
   const selectedZoomConnection =
     searchParams?.zoomConnectionId ?? event?.event_zoom_meeting?.zoom_connection_id ?? "";
@@ -392,6 +432,10 @@ export function EventForm({
   const ticketConfig = useMemo(
     () => JSON.stringify({ mode: ticketingMode, ticketTypes }),
     [ticketingMode, ticketTypes]
+  );
+  const rsvpConfig = useMemo(
+    () => JSON.stringify({ enabled: rsvpEnabled, rsvpTypes }),
+    [rsvpEnabled, rsvpTypes]
   );
   const hostAssignmentConfig = useMemo(() => JSON.stringify(hostAssignments), [hostAssignments]);
   const filteredHosts = useMemo(() => {
@@ -517,6 +561,12 @@ export function EventForm({
     );
   }
 
+  function updateRsvp(index: number, patch: Partial<RsvpDraft>) {
+    setRsvpTypes((current) =>
+      current.map((rsvp, rsvpIndex) => rsvpIndex === index ? { ...rsvp, ...patch } : rsvp)
+    );
+  }
+
   function toggleTicketAccess(index: number, value: string) {
     setTicketTypes((current) =>
       current.map((ticket, ticketIndex) => {
@@ -535,6 +585,7 @@ export function EventForm({
         {event?.id ? <input type="hidden" name="id" value={event.id} /> : null}
         <input type="hidden" name="current_status" value={currentStatus} />
         <input type="hidden" name="ticket_config" value={ticketConfig} />
+        <input type="hidden" name="rsvp_config" value={rsvpConfig} />
         <input type="hidden" name="host_assignments" value={hostAssignmentConfig} />
 
         {error ? <div className="admin-banner admin-banner--error">{error}</div> : null}
@@ -1121,6 +1172,127 @@ export function EventForm({
               >
                 Add ticket type
               </button>
+            </div>
+          ) : null}
+        </FieldSection>
+
+        <FieldSection title="RSVP">
+          <div className="rounded-2xl border border-border bg-muted/30 p-4">
+            <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Free registration</p>
+                <h3 className="mt-1 font-heading text-lg font-semibold text-foreground" style={{ textWrap: "balance" }}>
+                  {rsvpEnabled ? "RSVP enabled" : "No RSVP required"}
+                </h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  RSVP creates attendee records for check-in and event operations. It does not charge members.
+                </p>
+              </div>
+              <label className="flex items-center gap-3 rounded-xl border border-border px-3 py-2 text-sm font-semibold">
+                <input
+                  type="checkbox"
+                  checked={rsvpEnabled}
+                  onChange={(event) => {
+                    setRsvpEnabled(event.target.checked);
+                    if (event.target.checked && rsvpTypes.length === 0) {
+                      setRsvpTypes([newRsvpDraft(startsAt)]);
+                    }
+                  }}
+                  className="h-4 w-4"
+                />
+                Enable RSVP
+              </label>
+            </div>
+          </div>
+
+          {rsvpEnabled ? (
+            <div className="grid gap-4">
+              {(rsvpTypes.length > 0 ? rsvpTypes : [newRsvpDraft(startsAt)]).map((rsvp, index) => (
+                <div key={rsvp.id ?? index} className="rounded-2xl border border-border bg-card p-4">
+                  <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">RSVP type</p>
+                      <h3 className="mt-1 font-heading text-lg font-semibold text-foreground" style={{ textWrap: "balance" }}>
+                        {rsvp.name || "RSVP"}
+                      </h3>
+                    </div>
+                    <button
+                      type="button"
+                      className="admin-btn admin-btn--outline"
+                      onClick={() => updateRsvp(index, { status: rsvp.status === "active" ? "disabled" : "active" })}
+                    >
+                      {rsvp.status === "active" ? "Disable" : "Enable"}
+                    </button>
+                  </div>
+
+                  <div className="admin-form-grid-2">
+                    <div className="admin-form-field">
+                      <label htmlFor={`rsvp_name_${index}`} className="admin-label">Name</label>
+                      <input
+                        id={`rsvp_name_${index}`}
+                        value={rsvp.name}
+                        onChange={(event) => updateRsvp(index, { name: event.target.value })}
+                        className="admin-input"
+                        placeholder="RSVP"
+                      />
+                    </div>
+                    <div className="admin-form-field">
+                      <label htmlFor={`rsvp_capacity_${index}`} className="admin-label">Capacity</label>
+                      <input
+                        id={`rsvp_capacity_${index}`}
+                        value={rsvp.capacity}
+                        onChange={(event) => updateRsvp(index, { capacity: event.target.value })}
+                        className="admin-input"
+                        inputMode="numeric"
+                        placeholder="Leave blank for unlimited"
+                      />
+                    </div>
+                    <div className="admin-form-field">
+                      <label htmlFor={`rsvp_start_${index}`} className="admin-label">Opens</label>
+                      <input
+                        id={`rsvp_start_${index}`}
+                        value={rsvp.startAt}
+                        onChange={(event) => updateRsvp(index, { startAt: event.target.value })}
+                        className="admin-input"
+                        type="datetime-local"
+                      />
+                    </div>
+                    <div className="admin-form-field">
+                      <label htmlFor={`rsvp_end_${index}`} className="admin-label">Closes</label>
+                      <input
+                        id={`rsvp_end_${index}`}
+                        value={rsvp.endAt}
+                        onChange={(event) => updateRsvp(index, { endAt: event.target.value })}
+                        className="admin-input"
+                        type="datetime-local"
+                      />
+                      <p className="admin-hint">Default is the event start time.</p>
+                    </div>
+                  </div>
+
+                  <div className="admin-form-field mt-4">
+                    <label htmlFor={`rsvp_description_${index}`} className="admin-label">Description</label>
+                    <textarea
+                      id={`rsvp_description_${index}`}
+                      value={rsvp.description}
+                      onChange={(event) => updateRsvp(index, { description: event.target.value })}
+                      className="admin-textarea"
+                      rows={2}
+                      placeholder="Optional helper text for members."
+                    />
+                  </div>
+
+                  <label className="mt-4 flex items-center gap-3 rounded-xl border border-border px-3 py-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={rsvp.collectAttendeeInfo}
+                      onChange={(event) => updateRsvp(index, { collectAttendeeInfo: event.target.checked })}
+                      className="h-4 w-4"
+                    />
+                    Require attendee name and email
+                  </label>
+                </div>
+              ))}
             </div>
           ) : null}
         </FieldSection>
