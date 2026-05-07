@@ -31,8 +31,10 @@ const ALLOWED_TAGS = [
 
 const ALLOWED_ATTRIBUTES: sanitizeHtml.IOptions["allowedAttributes"] = {
   a: ["href", "name", "target", "rel"],
-  img: ["src", "alt", "title", "width", "height", "loading"],
+  img: ["src", "alt", "title", "width", "height", "loading", "data-align"],
 };
+
+const IMAGE_ALIGNMENTS = new Set(["left", "center", "right"]);
 
 function safeImageDimension(value: string | undefined) {
   const match = String(value ?? "").trim().match(/^(\d{1,4})(?:px)?$/i);
@@ -40,6 +42,11 @@ function safeImageDimension(value: string | undefined) {
   const numeric = Number(match[1]);
   if (!Number.isFinite(numeric)) return null;
   return String(Math.min(Math.max(Math.round(numeric), 1), 1600));
+}
+
+function safeImageAlignment(value: string | undefined) {
+  const align = String(value ?? "").trim();
+  return IMAGE_ALIGNMENTS.has(align) ? align : null;
 }
 
 function normalizeWhitespace(value: string) {
@@ -91,6 +98,7 @@ export function sanitizeEventHtml(rawHtml: string | null | undefined) {
         const src = typeof attribs.src === "string" ? attribs.src.trim() : "";
         const width = safeImageDimension(attribs.width);
         const height = safeImageDimension(attribs.height);
+        const align = safeImageAlignment(attribs["data-align"]);
         return {
           tagName,
           attribs: {
@@ -99,6 +107,7 @@ export function sanitizeEventHtml(rawHtml: string | null | undefined) {
             ...(attribs.title ? { title: String(attribs.title).slice(0, 200) } : {}),
             ...(width ? { width } : {}),
             ...(height ? { height } : {}),
+            ...(align ? { "data-align": align } : {}),
             loading: "lazy",
           },
         };

@@ -721,6 +721,38 @@ select.member-input { cursor: pointer; }
   border: 1px solid var(--color-border);
 }
 
+.prose-positives::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+.prose-positives img[data-align="left"] {
+  float: left;
+  max-width: min(50%, 100%);
+  margin: 0.25rem 1rem 0.75rem 0;
+}
+
+.prose-positives img[data-align="center"] {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.prose-positives img[data-align="right"] {
+  float: right;
+  max-width: min(50%, 100%);
+  margin: 0.25rem 0 0.75rem 1rem;
+}
+
+@media (max-width: 639px) {
+  .prose-positives img[data-align="left"],
+  .prose-positives img[data-align="right"] {
+    float: none;
+    max-width: 100%;
+    margin: 1rem 0;
+  }
+}
+
 /* Tiptap admin editor chrome ─────────────────────────────────────────────── */
 /* Sprint 11b: lightweight editor wrapper for admin body authoring.            */
 
@@ -864,6 +896,23 @@ select.member-input { cursor: pointer; }
   line-height: 0;
 }
 
+.tiptap-content .ProseMirror .event-editor-image[data-align="left"] {
+  float: left;
+  max-width: min(50%, 100%);
+  margin: 0.25rem 1rem 0.75rem 0;
+}
+
+.tiptap-content .ProseMirror .event-editor-image[data-align="center"] {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.tiptap-content .ProseMirror .event-editor-image[data-align="right"] {
+  float: right;
+  max-width: min(50%, 100%);
+  margin: 0.25rem 0 0.75rem 1rem;
+}
+
 .tiptap-content .ProseMirror .event-editor-image img {
   max-width: 100%;
   height: auto;
@@ -929,6 +978,18 @@ select.member-input { cursor: pointer; }
 .event-editor-image__controls button:hover {
   border-color: var(--color-primary);
   color: var(--color-primary);
+}
+
+.event-editor-image__controls button.is-active {
+  border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
+}
+
+.event-editor-image__control-divider {
+  width: 1px;
+  height: 1.35rem;
+  background: var(--color-border);
 }
 
 .event-editor-image__width {

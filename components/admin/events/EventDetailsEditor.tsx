@@ -8,7 +8,7 @@ import { NodeSelection } from "@tiptap/pm/state";
 import { Link as TiptapLink } from "@tiptap/extension-link";
 import { EditorContent, NodeViewWrapper, ReactNodeViewRenderer, useEditor, type ReactNodeViewProps } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { useEffect, useRef, useState, type MouseEvent, type PointerEvent } from "react";
+import { useRef, useState, type MouseEvent, type PointerEvent } from "react";
 
 type EventImageAsset = {
   id: string;
@@ -23,6 +23,9 @@ type EventImageAsset = {
 
 const MIN_IMAGE_WIDTH = 120;
 const MAX_IMAGE_WIDTH = 1200;
+const IMAGE_ALIGNMENTS = ["left", "center", "right"] as const;
+
+type ImageAlignment = (typeof IMAGE_ALIGNMENTS)[number];
 
 function normalizeImageWidth(value: unknown) {
   const raw = String(value ?? "").trim();
@@ -32,6 +35,10 @@ function normalizeImageWidth(value: unknown) {
   const numeric = Number(match[1]);
   if (!Number.isFinite(numeric)) return null;
   return String(Math.min(Math.max(Math.round(numeric), MIN_IMAGE_WIDTH), MAX_IMAGE_WIDTH));
+}
+
+function normalizeImageAlignment(value: unknown): ImageAlignment | null {
+  return IMAGE_ALIGNMENTS.includes(value as ImageAlignment) ? (value as ImageAlignment) : null;
 }
 
 function ResizableEventImage({
@@ -45,6 +52,7 @@ function ResizableEventImage({
   const widthInputRef = useRef<HTMLInputElement>(null);
   const resizeRef = useRef<{ pointerId: number; startX: number; startWidth: number; maxWidth: number } | null>(null);
   const width = normalizeImageWidth(node.attrs.width);
+  const align = normalizeImageAlignment(node.attrs.align);
 
   function selectImage() {
     if (typeof getPos !== "function") return;
@@ -58,6 +66,10 @@ function ResizableEventImage({
     const nextWidth = normalizeImageWidth(value);
     if (widthInputRef.current) widthInputRef.current.value = nextWidth ?? "";
     updateAttributes({ width: nextWidth });
+  }
+
+  function setAlignment(value: ImageAlignment | null) {
+    updateAttributes({ align: value });
   }
 
   function handleResizeStart(event: PointerEvent<HTMLButtonElement>) {
@@ -98,6 +110,7 @@ function ResizableEventImage({
     <NodeViewWrapper
       as="figure"
       className={`event-editor-image${selected ? " is-selected" : ""}`}
+      data-align={align ?? undefined}
       onClick={(event: MouseEvent<HTMLElement>) => {
         if ((event.target as HTMLElement | null)?.closest("[data-event-image-control='true']")) return;
         selectImage();
@@ -158,6 +171,19 @@ function ResizableEventImage({
           <button type="button" onClick={() => setWidth(null)}>
             Auto
           </button>
+          <span className="event-editor-image__control-divider" aria-hidden="true" />
+          <button type="button" className={!align ? "is-active" : ""} onClick={() => setAlignment(null)}>
+            No wrap
+          </button>
+          <button type="button" className={align === "left" ? "is-active" : ""} onClick={() => setAlignment("left")}>
+            Wrap left
+          </button>
+          <button type="button" className={align === "center" ? "is-active" : ""} onClick={() => setAlignment("center")}>
+            Center
+          </button>
+          <button type="button" className={align === "right" ? "is-active" : ""} onClick={() => setAlignment("right")}>
+            Wrap right
+          </button>
         </figcaption>
       ) : null}
     </NodeViewWrapper>
@@ -181,6 +207,14 @@ const EventImage = Node.create({
         renderHTML: (attributes) => {
           const width = normalizeImageWidth(attributes.width);
           return width ? { width } : {};
+        },
+      },
+      align: {
+        default: null,
+        parseHTML: (element) => normalizeImageAlignment(element.getAttribute("data-align")),
+        renderHTML: (attributes) => {
+          const align = normalizeImageAlignment(attributes.align);
+          return align ? { "data-align": align } : {};
         },
       },
     };
@@ -271,27 +305,24 @@ export function EventDetailsEditor({
     },
     onUpdate({ editor }) {
       const nextHtml = editorHtml(editor);
-      setHtml(nextHtml);
-      if (hiddenRef.current) hiddenRef.current.value = nextHtml;
+      syncHtml(nextHtml);
     },
   });
 
-  useEffect(() => {
-    if (!hiddenRef.current) return;
-    hiddenRef.current.value = defaultValue ?? "";
-  }, [defaultValue]);
+  function syncHtml(value: string) {
+    setHtml(value);
+    if (hiddenRef.current) hiddenRef.current.value = value;
+  }
 
   function applyHtmlMode(nextMode: "visual" | "html") {
     if (!editor) return;
     if (nextMode === "visual") {
       editor.commands.setContent(html || "", { emitUpdate: false });
       const nextHtml = editorHtml(editor);
-      setHtml(nextHtml);
-      if (hiddenRef.current) hiddenRef.current.value = nextHtml;
+      syncHtml(nextHtml);
     } else {
       const nextHtml = editorHtml(editor);
-      setHtml(nextHtml);
-      if (hiddenRef.current) hiddenRef.current.value = nextHtml;
+      syncHtml(nextHtml);
     }
     setMode(nextMode);
   }
@@ -398,8 +429,7 @@ export function EventDetailsEditor({
   }
 
   function updateHtml(value: string) {
-    setHtml(value);
-    if (hiddenRef.current) hiddenRef.current.value = value;
+    syncHtml(value);
   }
 
   if (!editor) {
@@ -465,7 +495,7 @@ export function EventDetailsEditor({
         />
       )}
 
-      <input ref={hiddenRef} type="hidden" name={name} defaultValue={defaultValue ?? ""} />
+      <input ref={hiddenRef} type="hidden" name={name} value={html} readOnly />
 
       {imageModalOpen ? (
         <div className="event-image-modal" role="dialog" aria-modal="true" aria-labelledby="event-image-modal-title">

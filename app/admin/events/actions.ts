@@ -538,6 +538,24 @@ export async function archiveEvent(formData: FormData) {
   redirect("/admin/events?success=archived");
 }
 
+export async function detachEventZoomSession(formData: FormData) {
+  await requireAdmin();
+  const id = formData.get("id")?.toString();
+  if (!id) return;
+
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  const { error } = await supabase.from("event_zoom_meeting").delete().eq("event_id", id);
+  if (error) {
+    console.error("[detachEventZoomSession]", error.message);
+    redirect(`/admin/events/${id}/edit?error=zoom_detach_failed`);
+  }
+
+  revalidatePath("/events");
+  revalidatePath("/admin/events");
+  revalidatePath(`/admin/events/${id}/edit`);
+  redirect(`/admin/events/${id}/edit?success=zoom_detached`);
+}
+
 function slugify(value: string) {
   return value
     .toLowerCase()

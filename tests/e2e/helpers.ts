@@ -1025,6 +1025,79 @@ export async function cleanupEventUxFixturesByPrefix(prefix: string) {
       throw new Error(`Failed to delete ${table} fixtures: ${error.message}`);
     }
   }
+
+  const { error: deleteZoomConnectionsError } = await supabase
+    .from("zoom_connection")
+    .delete()
+    .like("label", `${prefix}%`);
+
+  if (deleteZoomConnectionsError) {
+    throw new Error(`Failed to delete event UX fixture Zoom connections: ${deleteZoomConnectionsError.message}`);
+  }
+}
+
+export async function createEventUxZoomFixture(prefix: string) {
+  const supabase = getServiceRoleClient();
+  const unique = Date.now();
+
+  const { data: connection, error: connectionError } = await supabase
+    .from("zoom_connection")
+    .insert({
+      label: `${prefix} Zoom Connection ${unique}`,
+      owner_kind: "platform",
+      zoom_user_email: `zoom-fixture-${unique}@example.com`,
+      status: "active",
+    })
+    .select("id")
+    .single();
+
+  if (connectionError || !connection) {
+    throw new Error(`Failed to create event UX Zoom connection fixture: ${connectionError?.message ?? "missing row"}`);
+  }
+
+  const { data: event, error: eventError } = await supabase
+    .from("member_event")
+    .insert({
+      title: `${prefix} Attached Zoom ${unique}`,
+      excerpt: "Fixture event with an attached Zoom session.",
+      status: "draft",
+      starts_at: "2099-06-16T18:00:00.000Z",
+      ends_at: "2099-06-16T19:00:00.000Z",
+      timezone: "America/New_York",
+      visibility: "member",
+      virtual_mode: "zoom",
+    })
+    .select("id")
+    .single();
+
+  if (eventError || !event) {
+    throw new Error(`Failed to create event UX Zoom event fixture: ${eventError?.message ?? "missing row"}`);
+  }
+
+  const { error: accessError } = await supabase
+    .from("member_event_access_level")
+    .insert({ event_id: event.id, subscription_tier: "level_2" });
+
+  if (accessError) {
+    throw new Error(`Failed to create event UX access fixture: ${accessError.message}`);
+  }
+
+  const { error: zoomError } = await supabase.from("event_zoom_meeting").insert({
+    event_id: event.id,
+    zoom_connection_id: connection.id,
+    zoom_object_type: "meeting",
+    zoom_object_id: `e2e-${unique}`,
+    topic: `${prefix} Attached Zoom ${unique}`,
+    join_url: "https://zoom.us/j/e2e-fixture",
+    host_email: `zoom-fixture-${unique}@example.com`,
+    provider_status: "waiting",
+  });
+
+  if (zoomError) {
+    throw new Error(`Failed to create event UX Zoom meeting fixture: ${zoomError.message}`);
+  }
+
+  return { eventId: event.id };
 }
 
 export async function resetAffiliateTestState(email: string) {

@@ -22,6 +22,7 @@ export type EventZoomRow = {
   join_url: string | null;
   host_email: string | null;
   provider_status: string | null;
+  zoom_connection?: ZoomConnectionOption | null;
 };
 
 export type EventRow = {
@@ -85,7 +86,10 @@ const EVENT_SELECT = `
   event_host:event_host(id, name, bio, image_url, email),
   event_venue:event_venue(id, name, description, address_line1, address_line2, city, region, postal_code, country, map_url, is_virtual),
   member_event_access_level(subscription_tier),
-  event_zoom_meeting(id, zoom_connection_id, zoom_object_type, zoom_object_id, join_url, host_email, provider_status)
+  event_zoom_meeting(
+    id, zoom_connection_id, zoom_object_type, zoom_object_id, join_url, host_email, provider_status,
+    zoom_connection:zoom_connection_id(id, label, owner_kind, zoom_user_email, status)
+  )
 `;
 
 export async function getEventAdminOptions() {

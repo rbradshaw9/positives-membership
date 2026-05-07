@@ -8,6 +8,8 @@ import {
   createInlineEventHost,
   createInlineEventType,
   createInlineEventVenue,
+  archiveEvent,
+  detachEventZoomSession,
   saveEvent,
 } from "./actions";
 import { EVENT_ACCESS_LEVELS, accessLevelLabel } from "@/lib/events/types";
@@ -83,7 +85,22 @@ function errorMessage(error?: string) {
   if (error === "zoom_session_required") return "Choose an existing Zoom session before saving.";
   if (error === "zoom_setup_required") return "Choose how Zoom should be set up before publishing.";
   if (error === "zoom_create_failed") return "Zoom could not create the session. The event was kept as a draft.";
+  if (error === "zoom_detach_failed") return "Zoom could not be removed from this event. Try again.";
   return error ? "The event could not be saved. Check required fields and integration settings." : null;
+}
+
+function virtualStateLabel(virtualMode: string, event?: EventRow | null) {
+  if (virtualMode === "manual") return event?.manual_join_url ? "Manual link set" : "Manual link needed";
+  if (virtualMode === "zoom") {
+    return event?.event_zoom_meeting?.id ? "Zoom session attached" : "Zoom setup needed";
+  }
+  return "No virtual link";
+}
+
+function zoomAccountLabel(event?: EventRow | null) {
+  const zoom = event?.event_zoom_meeting;
+  if (!zoom) return "No Zoom session";
+  return zoom.zoom_connection?.label || zoom.zoom_connection?.zoom_user_email || zoom.host_email || "Zoom account";
 }
 
 function FieldSection({
@@ -247,7 +264,8 @@ export function EventForm({
     event ? datetimeLocal(event.ends_at, initialTimezone) : addOneHourLocal(initialStartsAt)
   );
   const [virtualMode, setVirtualMode] = useState(event?.virtual_mode ?? "none");
-  const [zoomMode, setZoomMode] = useState("none");
+  const hasAttachedZoom = Boolean(event?.event_zoom_meeting?.id);
+  const [zoomMode, setZoomMode] = useState(hasAttachedZoom ? "none" : "");
   const [recurrence, setRecurrence] = useState("none");
   const [accessLevels, setAccessLevels] = useState<string[]>(
     EVENT_ACCESS_LEVELS
@@ -261,6 +279,10 @@ export function EventForm({
   const currentStatus = event?.status ?? "draft";
   const published = currentStatus === "published";
   const message = successMessage(searchParams?.success);
+  const displayMessage =
+    searchParams?.success === "zoom_detached"
+      ? "Zoom session removed from this event. The meeting or webinar was not deleted in Zoom."
+      : message;
   const error = errorMessage(searchParams?.error);
   const selectedAccessText = useMemo(
     () => accessLevels.map(accessLevelLabel).join(", ") || "No levels selected",
@@ -342,7 +364,7 @@ export function EventForm({
         <input type="hidden" name="current_status" value={currentStatus} />
 
         {error ? <div className="admin-banner admin-banner--error">{error}</div> : null}
-        {message ? <div className="admin-banner admin-banner--success">{message}</div> : null}
+        {displayMessage ? <div className="admin-banner admin-banner--success">{displayMessage}</div> : null}
 
         <div className="rounded-2xl border border-border bg-muted/30 p-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -355,7 +377,7 @@ export function EventForm({
             <div className="grid gap-1 text-sm text-muted-foreground md:text-right">
               <span>{selectedAccessText}</span>
               <span>{startsAt || "No start time selected"}</span>
-              <span>{virtualMode === "none" ? "No join link" : virtualMode === "manual" ? "Manual join link" : "Zoom event"}</span>
+              <span>{virtualStateLabel(virtualMode, event)}</span>
             </div>
           </div>
         </div>
@@ -495,6 +517,22 @@ export function EventForm({
         </FieldSection>
 
         <FieldSection title="Virtual / Zoom">
+          <div className="rounded-2xl border border-border bg-muted/30 p-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Virtual access</p>
+                <p className="mt-1 font-semibold text-foreground">{virtualStateLabel(virtualMode, event)}</p>
+              </div>
+              {virtualMode === "zoom" && hasAttachedZoom ? (
+                <span className="admin-badge admin-badge--published">Attached</span>
+              ) : virtualMode === "zoom" ? (
+                <span className="admin-badge admin-badge--review">Setup needed</span>
+              ) : (
+                <span className="admin-badge admin-badge--draft">No Zoom</span>
+              )}
+            </div>
+          </div>
+
           <div className="admin-form-grid-2">
             <div className="admin-form-field">
               <label htmlFor="virtual_mode" className="admin-label">Virtual mode</label>
@@ -512,20 +550,83 @@ export function EventForm({
             ) : null}
           </div>
 
-          {virtualMode === "zoom" ? (
+          {hasAttachedZoom && virtualMode !== "zoom" ? (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-900">
+              This event still has a Zoom session attached. Members will not see that Zoom link after you save unless Virtual mode is set back to Zoom.
+            </div>
+          ) : null}
+
+          {virtualMode === "zoom" && hasAttachedZoom ? (
+            <div className="rounded-2xl border border-border bg-card p-4">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Current Zoom session</p>
+                  <h3 className="mt-1 font-heading text-lg font-semibold text-foreground" style={{ textWrap: "balance" }}>
+                    {event?.event_zoom_meeting?.zoom_object_type === "webinar" ? "Zoom webinar" : "Zoom meeting"}
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {zoomAccountLabel(event)}
+                    {event?.event_zoom_meeting?.zoom_connection?.zoom_user_email ? ` (${event.event_zoom_meeting.zoom_connection.zoom_user_email})` : ""}
+                  </p>
+                </div>
+                <button
+                  type="submit"
+                  formAction={detachEventZoomSession}
+                  formNoValidate
+                  className="admin-btn admin-btn--outline"
+                >
+                  Remove Zoom session from this event
+                </button>
+              </div>
+              <dl className="grid gap-3 text-sm sm:grid-cols-3">
+                <div>
+                  <dt className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Zoom ID</dt>
+                  <dd className="mt-1 text-foreground">{event?.event_zoom_meeting?.zoom_object_id ?? "Not stored"}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Status</dt>
+                  <dd className="mt-1 text-foreground">{event?.event_zoom_meeting?.provider_status ?? "Unknown"}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Join URL</dt>
+                  <dd className="mt-1 text-foreground">{event?.event_zoom_meeting?.join_url ? "Available to eligible members" : "Missing"}</dd>
+                </div>
+              </dl>
+              <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
+                Saving event details will keep this Zoom session attached. Remove it first if you want to choose or create a different Zoom session.
+              </p>
+            </div>
+          ) : null}
+
+          {virtualMode === "zoom" && !hasAttachedZoom ? (
             <div className="grid gap-4">
               <div className="admin-form-field">
-                <label htmlFor="zoom_mode" className="admin-label">Zoom setup</label>
+                <label htmlFor="zoom_mode" className="admin-label">Zoom session</label>
                 <select id="zoom_mode" name="zoom_mode" value={zoomMode} onChange={(event) => setZoomMode(event.target.value)} className="admin-select">
-                  <option value="none">Do not change Zoom link</option>
-                  <option value="create">Create a new Zoom session on save</option>
-                  <option value="existing">Use an existing Zoom session</option>
+                  <option value="">Choose Zoom session setup</option>
+                  <option value="create">Create new Zoom session</option>
+                  <option value="existing">Choose existing Zoom session</option>
                 </select>
                 {zoomMode === "create" ? (
                   <p className="admin-hint">Zoom will be created when this event is saved or published. Recurring events use one shared Zoom series.</p>
                 ) : null}
               </div>
-              {zoomMode !== "none" ? (
+              {zoomMode === "" ? (
+                <p className="admin-hint">Choose whether to create a new Zoom session or attach one that already exists.</p>
+              ) : zoomConnections.length === 0 ? (
+                <div className="rounded-2xl border border-border bg-muted/30 p-4">
+                  <p className="font-semibold text-foreground">No Zoom accounts connected</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Connect a Zoom account before creating or choosing a Zoom session.
+                  </p>
+                  <a
+                    href={`/api/admin/integrations/zoom/connect?returnTo=${encodeURIComponent(connectReturn)}`}
+                    className="admin-btn admin-btn--primary mt-3"
+                  >
+                    Connect Zoom account
+                  </a>
+                </div>
+              ) : (
                 <ZoomMeetingPicker
                   key={zoomMode}
                   connections={zoomConnections}
@@ -534,7 +635,7 @@ export function EventForm({
                   defaultObjectType={event?.event_zoom_meeting?.zoom_object_type ?? "meeting"}
                   mode={zoomMode === "existing" ? "existing" : "create"}
                 />
-              ) : null}
+              )}
             </div>
           ) : null}
         </FieldSection>
@@ -547,19 +648,31 @@ export function EventForm({
         </FieldSection>
 
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 px-4 py-3 shadow-[0_-10px_30px_rgba(15,23,42,0.08)] backdrop-blur">
-          <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-end gap-2">
-            <Link href="/admin/events" className="admin-btn admin-btn--outline">Cancel</Link>
-            {published ? (
-              <>
-                <button type="submit" name="intent" value="unpublish" className="admin-btn admin-btn--outline">Unpublish</button>
-                <button type="submit" name="intent" value="save" className="admin-btn admin-btn--primary">Save changes</button>
-              </>
-            ) : (
-              <>
-                <button type="submit" name="intent" value="draft" className="admin-btn admin-btn--outline">Save draft</button>
-                <button type="submit" name="intent" value="publish" className="admin-btn admin-btn--primary">Publish event</button>
-              </>
-            )}
+          <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              {published
+                ? "Published events are visible to the selected membership levels."
+                : "Drafts stay visible in admin only until you publish them."}
+            </p>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {event?.id ? (
+                <button type="submit" formAction={archiveEvent} formNoValidate className="admin-btn admin-btn--outline">
+                  Archive
+                </button>
+              ) : null}
+              <Link href="/admin/events" className="admin-btn admin-btn--outline">Cancel</Link>
+              {published ? (
+                <>
+                  <button type="submit" name="intent" value="unpublish" className="admin-btn admin-btn--outline">Unpublish</button>
+                  <button type="submit" name="intent" value="save" className="admin-btn admin-btn--primary">Save changes</button>
+                </>
+              ) : (
+                <>
+                  <button type="submit" name="intent" value="draft" className="admin-btn admin-btn--outline">Save draft</button>
+                  <button type="submit" name="intent" value="publish" className="admin-btn admin-btn--primary">Publish event</button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </form>

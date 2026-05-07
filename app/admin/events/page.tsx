@@ -37,6 +37,18 @@ function accessLabels(event: Awaited<ReturnType<typeof getAdminEvent>>) {
   return (event?.member_event_access_level ?? []).map((row) => accessLevelLabel(row.subscription_tier)).join(", ");
 }
 
+function virtualLabel(event: Awaited<ReturnType<typeof getAdminEvent>>) {
+  if (event?.virtual_mode === "zoom") return "Zoom";
+  if (event?.virtual_mode === "manual") return "Manual link";
+  return "No virtual link";
+}
+
+function missingJoinLink(event: Awaited<ReturnType<typeof getAdminEvent>>) {
+  if (event?.virtual_mode === "zoom") return !event.event_zoom_meeting?.join_url;
+  if (event?.virtual_mode === "manual") return !event.manual_join_url;
+  return false;
+}
+
 export default async function AdminEventsPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const view = params.view === "list" ? "list" : "month";
@@ -142,7 +154,11 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
                 <div className="flex flex-col gap-2">
                   {day.events.map((event) => (
                     <Link key={event.id} href={`/admin/events/${event.id}/edit`} className="rounded-xl border border-border bg-card/80 p-2 text-xs transition-colors hover:border-primary/30">
-                      <span className={STATUS_BADGE[event.status] ?? "admin-badge"} style={{ fontSize: "0.58rem", padding: "0.1rem 0.4rem" }}>{event.status}</span>
+                      <span className="flex flex-wrap gap-1">
+                        <span className={STATUS_BADGE[event.status] ?? "admin-badge"} style={{ fontSize: "0.58rem", padding: "0.1rem 0.4rem" }}>{event.status}</span>
+                        <span className="admin-badge admin-badge--draft" style={{ fontSize: "0.58rem", padding: "0.1rem 0.4rem" }}>{virtualLabel(event)}</span>
+                        {missingJoinLink(event) ? <span className="admin-badge admin-badge--review" style={{ fontSize: "0.58rem", padding: "0.1rem 0.4rem" }}>Needs link</span> : null}
+                      </span>
                       <span className="mt-1 line-clamp-2 block font-semibold text-foreground">{event.title}</span>
                     </Link>
                   ))}
@@ -169,7 +185,11 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
                 <tr key={event.id}>
                   <td>
                     <div className="font-semibold text-foreground">{event.title}</div>
-                    <div className="text-xs text-muted-foreground">{event.event_host?.name ?? "No host"}</div>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      <span className="admin-badge admin-badge--draft">{virtualLabel(event)}</span>
+                      {missingJoinLink(event) ? <span className="admin-badge admin-badge--review">Needs link</span> : null}
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">{event.event_host?.name ?? "No host"}</div>
                   </td>
                   <td>{formatEventDateRange(event.starts_at, event.ends_at, event.timezone, event.all_day)}</td>
                   <td>{event.event_type?.name ?? "Event"}</td>
