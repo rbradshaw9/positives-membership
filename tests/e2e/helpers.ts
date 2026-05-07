@@ -1100,6 +1100,131 @@ export async function createEventUxZoomFixture(prefix: string) {
   return { eventId: event.id };
 }
 
+export async function createEventHostVenueFixture(prefix: string) {
+  const supabase = getServiceRoleClient();
+  const unique = Date.now();
+  const primaryHostName = `${prefix} Primary Host ${unique}`;
+  const secondHostName = `${prefix} Speaker Host ${unique}`;
+  const venueName = `${prefix} Venue ${unique}`;
+  const title = `${prefix} Host Venue ${unique}`;
+
+  const { data: primaryHost, error: primaryHostError } = await supabase
+    .from("event_host")
+    .insert({
+      name: primaryHostName,
+      slug: `e2e-primary-host-${unique}`,
+      type: "person",
+      bio: "Primary host bio for member route testing.",
+      email: `primary-host-${unique}@example.com`,
+      website_url: "https://example.com/primary-host",
+      contact_visibility: "logged_in",
+      status: "published",
+      is_active: true,
+    })
+    .select("id, slug")
+    .single();
+
+  if (primaryHostError || !primaryHost) {
+    throw new Error(`Failed to create event host fixture: ${primaryHostError?.message ?? "missing row"}`);
+  }
+
+  const { data: secondHost, error: secondHostError } = await supabase
+    .from("event_host")
+    .insert({
+      name: secondHostName,
+      slug: `e2e-speaker-host-${unique}`,
+      type: "person",
+      bio: "Speaker host bio for member route testing.",
+      contact_visibility: "private",
+      status: "published",
+      is_active: true,
+    })
+    .select("id, slug")
+    .single();
+
+  if (secondHostError || !secondHost) {
+    throw new Error(`Failed to create second event host fixture: ${secondHostError?.message ?? "missing row"}`);
+  }
+
+  const { data: venue, error: venueError } = await supabase
+    .from("event_venue")
+    .insert({
+      name: venueName,
+      slug: `e2e-venue-${unique}`,
+      description: "Venue description for member route testing.",
+      address_line1: "111 Test Avenue",
+      city: "San Jose",
+      region: "CA",
+      postal_code: "95113",
+      country: "US",
+      map_url: "https://maps.example.com/e2e",
+      show_map: true,
+      show_map_link: true,
+      parking_notes: "Use the north lot.",
+      accessibility_notes: "Step-free entry is available.",
+      status: "published",
+      is_active: true,
+    })
+    .select("id, slug")
+    .single();
+
+  if (venueError || !venue) {
+    throw new Error(`Failed to create event venue fixture: ${venueError?.message ?? "missing row"}`);
+  }
+
+  const { data: event, error: eventError } = await supabase
+    .from("member_event")
+    .insert({
+      title,
+      excerpt: "Host and venue fixture event.",
+      body: "<p>Host and venue details render here.</p>",
+      status: "published",
+      starts_at: "2099-06-18T18:00:00.000Z",
+      ends_at: "2099-06-18T19:00:00.000Z",
+      timezone: "America/New_York",
+      visibility: "member",
+      virtual_mode: "none",
+      host_id: primaryHost.id,
+      venue_id: venue.id,
+      venue_room_name: "Studio B",
+      venue_notes: "Arrive ten minutes early.",
+    })
+    .select("id")
+    .single();
+
+  if (eventError || !event) {
+    throw new Error(`Failed to create host/venue event fixture: ${eventError?.message ?? "missing row"}`);
+  }
+
+  const { error: accessError } = await supabase
+    .from("member_event_access_level")
+    .insert({ event_id: event.id, subscription_tier: "level_2" });
+
+  if (accessError) {
+    throw new Error(`Failed to create host/venue event access fixture: ${accessError.message}`);
+  }
+
+  const { error: assignmentError } = await supabase.from("event_host_assignment").insert([
+    { event_id: event.id, host_id: primaryHost.id, role: "host", sort_order: 10, is_primary: true },
+    { event_id: event.id, host_id: secondHost.id, role: "speaker", sort_order: 20, is_primary: false },
+  ]);
+
+  if (assignmentError) {
+    throw new Error(`Failed to create event host assignments fixture: ${assignmentError.message}`);
+  }
+
+  return {
+    eventId: event.id,
+    title,
+    primaryHostName,
+    secondHostName,
+    hostSlug: primaryHost.slug,
+    secondHostSlug: secondHost.slug,
+    venueName,
+    venueSlug: venue.slug,
+  };
+}
+
 export async function createTicketedEventFixture(prefix: string) {
   const supabase = getServiceRoleClient();
   const unique = Date.now();

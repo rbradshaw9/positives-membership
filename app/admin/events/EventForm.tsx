@@ -49,6 +49,11 @@ function serverHydrationSnapshot() {
 
 type SearchParams = { error?: string; success?: string; zoomConnectionId?: string; starts_at?: string };
 type ModalKind = "type" | "host" | "venue" | null;
+type HostAssignmentDraft = {
+  hostId: string;
+  role: "host" | "organizer" | "speaker" | "instructor" | "partner";
+  isPrimary: boolean;
+};
 type TicketDraft = {
   id?: string;
   name: string;
@@ -147,6 +152,26 @@ function ticketDraftFromEvent(event?: EventRow | null): TicketDraft[] {
       status: ticket.status === "disabled" ? "disabled" : "active",
       accessLevels: (ticket.event_ticket_type_access_level ?? []).map((row) => row.subscription_tier),
     }));
+}
+
+function hostAssignmentsFromEvent(event?: EventRow | null): HostAssignmentDraft[] {
+  const assignments = event?.event_host_assignment ?? [];
+  if (assignments.length > 0) {
+    return assignments.map((assignment) => ({
+      hostId: assignment.host_id,
+      role: assignment.role,
+      isPrimary: assignment.is_primary,
+    }));
+  }
+  return event?.host_id ? [{ hostId: event.host_id, role: "host", isPrimary: true }] : [];
+}
+
+function hostRoleLabel(role: HostAssignmentDraft["role"]) {
+  if (role === "organizer") return "Organizer";
+  if (role === "speaker") return "Speaker";
+  if (role === "instructor") return "Instructor";
+  if (role === "partner") return "Partner";
+  return "Host";
 }
 
 function newTicketDraft(accessLevels: string[]): TicketDraft {
@@ -323,8 +348,11 @@ export function EventForm({
   const initialTimezone = event?.timezone ?? defaults?.timezone ?? "America/New_York";
   const [title, setTitle] = useState(event?.title ?? "");
   const [typeId, setTypeId] = useState(event?.type_id ?? initialTypes[0]?.id ?? "");
-  const [hostId, setHostId] = useState(event?.host_id ?? "");
+  const [hostAssignments, setHostAssignments] = useState<HostAssignmentDraft[]>(() => hostAssignmentsFromEvent(event));
+  const [hostSearch, setHostSearch] = useState("");
+  const [newHostId, setNewHostId] = useState("");
   const [venueId, setVenueId] = useState(event?.venue_id ?? "");
+  const [venueSearch, setVenueSearch] = useState("");
   const [timezone, setTimezone] = useState(initialTimezone);
   const initialStartsAt = event
     ? datetimeLocal(event.starts_at, initialTimezone)
@@ -365,6 +393,22 @@ export function EventForm({
     () => JSON.stringify({ mode: ticketingMode, ticketTypes }),
     [ticketingMode, ticketTypes]
   );
+  const hostAssignmentConfig = useMemo(() => JSON.stringify(hostAssignments), [hostAssignments]);
+  const filteredHosts = useMemo(() => {
+    const query = hostSearch.trim().toLowerCase();
+    if (!query) return hosts;
+    return hosts.filter((host) =>
+      [host.name, host.email, host.type].filter(Boolean).join(" ").toLowerCase().includes(query)
+    );
+  }, [hostSearch, hosts]);
+  const filteredVenues = useMemo(() => {
+    const query = venueSearch.trim().toLowerCase();
+    if (!query) return venues;
+    return venues.filter((venue) =>
+      [venue.name, venue.city, venue.region, venue.country].filter(Boolean).join(" ").toLowerCase().includes(query)
+    );
+  }, [venueSearch, venues]);
+  const selectedVenue = useMemo(() => venues.find((venue) => venue.id === venueId) ?? null, [venues, venueId]);
 
   function toggleAccess(value: string) {
     setAccessLevels((current) =>
@@ -407,8 +451,41 @@ export function EventForm({
         return;
       }
       setHosts((current) => [...current, result.item]);
-      setHostId(result.item.id);
+      setHostAssignments((current) => [
+        ...current,
+        { hostId: result.item.id, role: "host", isPrimary: current.length === 0 },
+      ]);
       setModal(null);
+    });
+  }
+
+  function addHostAssignment(hostId: string) {
+    if (!hostId || hostId === "__create") return;
+    setHostAssignments((current) => {
+      if (current.some((assignment) => assignment.hostId === hostId)) return current;
+      return [...current, { hostId, role: "host", isPrimary: current.length === 0 }];
+    });
+    setNewHostId("");
+  }
+
+  function updateHostAssignment(index: number, patch: Partial<HostAssignmentDraft>) {
+    setHostAssignments((current) =>
+      current.map((assignment, assignmentIndex) => {
+        if (assignmentIndex !== index) {
+          return patch.isPrimary ? { ...assignment, isPrimary: false } : assignment;
+        }
+        return { ...assignment, ...patch };
+      })
+    );
+  }
+
+  function removeHostAssignment(index: number) {
+    setHostAssignments((current) => {
+      const next = current.filter((_, assignmentIndex) => assignmentIndex !== index);
+      if (next.length > 0 && !next.some((assignment) => assignment.isPrimary)) {
+        next[0] = { ...next[0], isPrimary: true };
+      }
+      return next;
     });
   }
 
@@ -458,6 +535,7 @@ export function EventForm({
         {event?.id ? <input type="hidden" name="id" value={event.id} /> : null}
         <input type="hidden" name="current_status" value={currentStatus} />
         <input type="hidden" name="ticket_config" value={ticketConfig} />
+        <input type="hidden" name="host_assignments" value={hostAssignmentConfig} />
 
         {error ? <div className="admin-banner admin-banner--error">{error}</div> : null}
         {displayMessage ? <div className="admin-banner admin-banner--success">{displayMessage}</div> : null}
@@ -588,27 +666,189 @@ export function EventForm({
         </FieldSection>
 
         <FieldSection title="Location">
-          <div className="admin-form-grid-2">
-            <div className="admin-form-field">
-              <label htmlFor="host_id" className="admin-label">Host</label>
-              <select id="host_id" name="host_id" value={hostId} onChange={(event) => event.target.value === "__create" ? openModal("host") : setHostId(event.target.value)} className="admin-select">
-                <option value="">No host</option>
-                {hosts.map((host) => <option key={host.id} value={host.id}>{host.name}</option>)}
-                <option value="__create">Create new host...</option>
-              </select>
+          <div className="grid gap-5">
+            <div className="rounded-2xl border border-border bg-card p-4">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h3 className="font-heading text-lg font-semibold text-foreground" style={{ textWrap: "balance" }}>
+                    Hosts
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Add one or more organizers, speakers, instructors, or partners.
+                  </p>
+                </div>
+                <button type="button" className="admin-btn admin-btn--outline" onClick={() => openModal("host")}>
+                  Create new host
+                </button>
+              </div>
+
+              <div className="admin-form-grid-2">
+                <div className="admin-form-field">
+                  <label htmlFor="host_search" className="admin-label">Search hosts</label>
+                  <input
+                    id="host_search"
+                    value={hostSearch}
+                    onChange={(event) => setHostSearch(event.target.value)}
+                    className="admin-input"
+                    placeholder="Name, email, or type"
+                  />
+                </div>
+                <div className="admin-form-field">
+                  <label htmlFor="host_select" className="admin-label">Add host</label>
+                  <div className="flex gap-2">
+                    <select
+                      id="host_select"
+                      value={newHostId}
+                      onChange={(event) => setNewHostId(event.target.value)}
+                      className="admin-select"
+                    >
+                      <option value="">Choose host</option>
+                      {filteredHosts.map((host) => (
+                        <option key={host.id} value={host.id}>
+                          {host.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button type="button" className="admin-btn admin-btn--primary" onClick={() => addHostAssignment(newHostId)}>
+                      Add
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {hostAssignments.length > 0 ? (
+                <div className="mt-4 grid gap-3">
+                  {hostAssignments.map((assignment, index) => {
+                    const host = hosts.find((host) => host.id === assignment.hostId);
+                    return (
+                      <div key={assignment.hostId} className="grid gap-3 rounded-xl border border-border bg-muted/20 p-3 md:grid-cols-[1fr_12rem_8rem_auto] md:items-center">
+                        <div>
+                          <p className="font-semibold text-foreground">{host?.name ?? "Unknown host"}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {assignment.isPrimary ? "Primary host" : "Additional host"} · {hostRoleLabel(assignment.role)}
+                          </p>
+                        </div>
+                        <label className="admin-form-field">
+                          <span className="admin-label">Role</span>
+                          <select
+                            value={assignment.role}
+                            onChange={(event) => updateHostAssignment(index, { role: event.target.value as HostAssignmentDraft["role"] })}
+                            className="admin-select"
+                          >
+                            <option value="host">Host</option>
+                            <option value="organizer">Organizer</option>
+                            <option value="speaker">Speaker</option>
+                            <option value="instructor">Instructor</option>
+                            <option value="partner">Partner</option>
+                          </select>
+                        </label>
+                        <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+                          <input
+                            type="radio"
+                            name="primary_host_choice"
+                            checked={assignment.isPrimary}
+                            onChange={() => updateHostAssignment(index, { isPrimary: true })}
+                            className="h-4 w-4"
+                          />
+                          Primary
+                        </label>
+                        <button type="button" className="admin-btn admin-btn--outline" onClick={() => removeHostAssignment(index)}>
+                          Remove
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="mt-4 rounded-xl border border-dashed border-border p-3 text-sm text-muted-foreground">
+                  No hosts selected. Add a host when the event should show an organizer profile.
+                </p>
+              )}
             </div>
 
-            <div className="admin-form-field">
-              <label htmlFor="venue_id" className="admin-label">Venue</label>
-              <select id="venue_id" name="venue_id" value={venueId} onChange={(event) => event.target.value === "__create" ? openModal("venue") : setVenueId(event.target.value)} className="admin-select">
-                <option value="">No venue</option>
-                {venues.map((venue) => <option key={venue.id} value={venue.id}>{venue.name}</option>)}
-                <option value="__create">Create new venue...</option>
-              </select>
+            <div className="rounded-2xl border border-border bg-card p-4">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h3 className="font-heading text-lg font-semibold text-foreground" style={{ textWrap: "balance" }}>
+                    Venue
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Choose one primary location and add event-specific room notes when needed.
+                  </p>
+                </div>
+                <button type="button" className="admin-btn admin-btn--outline" onClick={() => openModal("venue")}>
+                  Create new venue
+                </button>
+              </div>
+
+              <div className="admin-form-grid-2">
+                <div className="admin-form-field">
+                  <label htmlFor="venue_search" className="admin-label">Search venues</label>
+                  <input
+                    id="venue_search"
+                    value={venueSearch}
+                    onChange={(event) => setVenueSearch(event.target.value)}
+                    className="admin-input"
+                    placeholder="Venue, city, or state"
+                  />
+                </div>
+                <div className="admin-form-field">
+                  <label htmlFor="venue_id" className="admin-label">Venue</label>
+                  <select
+                    id="venue_id"
+                    name="venue_id"
+                    value={venueId}
+                    onChange={(event) => setVenueId(event.target.value)}
+                    className="admin-select"
+                  >
+                    <option value="">No venue</option>
+                    {filteredVenues.map((venue) => <option key={venue.id} value={venue.id}>{venue.name}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {selectedVenue ? (
+                <div className="mt-4 rounded-xl border border-border bg-muted/20 p-3 text-sm">
+                  <p className="font-semibold text-foreground">{selectedVenue.name}</p>
+                  <p className="mt-1 text-muted-foreground">
+                    {[selectedVenue.address_line1, selectedVenue.city, selectedVenue.region, selectedVenue.country].filter(Boolean).join(", ") || (selectedVenue.is_virtual ? "Virtual venue" : "No address saved")}
+                  </p>
+                  {selectedVenue.website_url || selectedVenue.map_url ? (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {selectedVenue.website_url ? "Website saved" : null}
+                      {selectedVenue.website_url && selectedVenue.map_url ? " · " : null}
+                      {selectedVenue.map_url ? "Map link saved" : null}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <div className="admin-form-grid-2 mt-4">
+                <div className="admin-form-field">
+                  <label htmlFor="venue_room_name" className="admin-label">Room or location note</label>
+                  <input
+                    id="venue_room_name"
+                    name="venue_room_name"
+                    defaultValue={event?.venue_room_name ?? ""}
+                    className="admin-input"
+                    placeholder="Studio B, upstairs classroom, Zoom room"
+                  />
+                </div>
+                <div className="admin-form-field">
+                  <label htmlFor="venue_notes" className="admin-label">Event-specific venue notes</label>
+                  <input
+                    id="venue_notes"
+                    name="venue_notes"
+                    defaultValue={event?.venue_notes ?? ""}
+                    className="admin-input"
+                    placeholder="Use side entrance, arrive 10 minutes early"
+                  />
+                </div>
+              </div>
             </div>
           </div>
           <Link href="/admin/events/hosts" className="text-xs font-semibold text-primary">
-            Manage hosts and venues
+            Manage host and venue libraries
           </Link>
         </FieldSection>
 

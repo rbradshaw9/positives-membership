@@ -21,7 +21,29 @@ function joinUrl(event: NonNullable<Awaited<ReturnType<typeof getMemberEvent>>>)
 function venueText(event: NonNullable<Awaited<ReturnType<typeof getMemberEvent>>>) {
   const venue = event.event_venue;
   if (!venue) return null;
-  return [venue.name, venue.address_line1, venue.city, venue.region].filter(Boolean).join(", ");
+  return [venue.address_line1, venue.city, venue.region].filter(Boolean).join(", ");
+}
+
+function eventHosts(event: NonNullable<Awaited<ReturnType<typeof getMemberEvent>>>) {
+  const assignments = event.event_host_assignment ?? [];
+  if (assignments.length > 0) {
+    return assignments.flatMap((assignment) =>
+      assignment.event_host ? [{ ...assignment.event_host, role: assignment.role, isPrimary: assignment.is_primary }] : []
+    );
+  }
+  return event.event_host ? [{ ...event.event_host, role: "host" as const, isPrimary: true }] : [];
+}
+
+function canShowHostContact(host: ReturnType<typeof eventHosts>[number]) {
+  return host.contact_visibility === "public" || host.contact_visibility === "logged_in";
+}
+
+function hostRoleLabel(role: string) {
+  if (role === "organizer") return "Organizer";
+  if (role === "speaker") return "Speaker";
+  if (role === "instructor") return "Instructor";
+  if (role === "partner") return "Partner";
+  return "Host";
 }
 
 export default async function EventDetailPage({
@@ -39,6 +61,7 @@ export default async function EventDetailPage({
   const eventJoinUrl = joinUrl(event);
   const isPast = new Date(event.ends_at).getTime() < currentTimestampMs();
   const location = venueText(event);
+  const hosts = eventHosts(event);
   const body = event.body || event.description || "";
   const ticketRequired = event.ticketing_mode === "ticket_required";
   const hasTicketAccess = Boolean(event.member_ticket_access);
@@ -80,8 +103,16 @@ export default async function EventDetailPage({
               <p className="font-semibold text-foreground">
                 {formatEventDateRange(event.starts_at, event.ends_at, event.timezone, event.all_day)}
               </p>
-              {event.event_host?.name ? <p className="mt-2 text-sm text-muted-foreground">Hosted by {event.event_host.name}</p> : null}
-              {location ? <p className="mt-2 text-sm text-muted-foreground">{location}</p> : null}
+              {hosts.length > 0 ? (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Hosted by {hosts.map((host) => host.name).join(", ")}
+                </p>
+              ) : null}
+              {event.event_venue ? (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {event.event_venue.name}{location ? ` · ${location}` : ""}
+                </p>
+              ) : null}
             </div>
             <div className="flex flex-wrap gap-2">
               {eventJoinUrl && !isPast ? (
@@ -109,6 +140,64 @@ export default async function EventDetailPage({
           <SurfaceCard padding="lg" elevated>
             <EventDetailsBody content={body} />
           </SurfaceCard>
+        ) : null}
+
+        {(hosts.length > 0 || event.event_venue) ? (
+          <div className="grid gap-4 lg:grid-cols-2">
+            {hosts.length > 0 ? (
+              <SurfaceCard padding="lg">
+                <p className="ui-section-eyebrow mb-3">{hosts.length === 1 ? "Host" : "Hosts"}</p>
+                <div className="grid gap-4">
+                  {hosts.map((host) => (
+                    <div key={host.id} className="flex gap-3">
+                      {host.image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={host.image_url} alt="" className="h-14 w-14 rounded-full object-cover" />
+                      ) : null}
+                      <div>
+                        <Link href={`/events/hosts/${host.slug}`} className="font-semibold text-foreground hover:text-primary">
+                          {host.name}
+                        </Link>
+                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{hostRoleLabel(host.role)}</p>
+                        {hosts.length === 1 && host.bio ? (
+                          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{host.bio}</p>
+                        ) : null}
+                        {canShowHostContact(host) ? (
+                          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                            {host.email ? <a href={`mailto:${host.email}`} className="hover:text-primary">{host.email}</a> : null}
+                            {host.website_url ? <a href={host.website_url} target="_blank" rel="noopener noreferrer" className="hover:text-primary">Website</a> : null}
+                            {host.phone ? <span>{host.phone}</span> : null}
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </SurfaceCard>
+            ) : null}
+
+            {event.event_venue ? (
+              <SurfaceCard padding="lg">
+                <p className="ui-section-eyebrow mb-3">Venue</p>
+                <Link href={`/events/venues/${event.event_venue.slug}`} className="font-semibold text-foreground hover:text-primary">
+                  {event.event_venue.name}
+                </Link>
+                {event.venue_room_name ? <p className="mt-1 text-sm text-muted-foreground">{event.venue_room_name}</p> : null}
+                {location ? <p className="mt-2 text-sm text-muted-foreground">{location}</p> : null}
+                {event.venue_notes ? <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{event.venue_notes}</p> : null}
+                {event.event_venue.parking_notes ? <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{event.event_venue.parking_notes}</p> : null}
+                {event.event_venue.accessibility_notes ? <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{event.event_venue.accessibility_notes}</p> : null}
+                <div className="mt-3 flex flex-wrap gap-3 text-xs font-semibold text-primary">
+                  {event.event_venue.show_map_link && event.event_venue.map_url ? (
+                    <a href={event.event_venue.map_url} target="_blank" rel="noopener noreferrer">Open map</a>
+                  ) : null}
+                  {event.event_venue.website_url ? (
+                    <a href={event.event_venue.website_url} target="_blank" rel="noopener noreferrer">Venue website</a>
+                  ) : null}
+                </div>
+              </SurfaceCard>
+            ) : null}
+          </div>
         ) : null}
 
         {isPast ? (

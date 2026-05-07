@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { saveEventHost, saveEventType, saveEventVenue } from "./settings/actions";
 import type {
   EventHostSettingsRow,
@@ -60,16 +61,23 @@ function TextArea({
   );
 }
 
-function ActiveToggle({ active, label = "Active" }: { active: boolean; label?: string }) {
+function SelectInput({
+  label,
+  name,
+  defaultValue,
+  children,
+}: {
+  label: string;
+  name: string;
+  defaultValue?: string | null;
+  children: ReactNode;
+}) {
   return (
-    <label className="admin-form-field" style={{ display: "flex", alignItems: "center", gap: "0.65rem" }}>
-      <input
-        type="checkbox"
-        name="is_active"
-        defaultChecked={active}
-        style={{ width: "1rem", height: "1rem", accentColor: "var(--color-primary)" }}
-      />
-      <span className="admin-label" style={{ margin: 0 }}>{label}</span>
+    <label className="admin-form-field">
+      <span className="admin-label">{label}</span>
+      <select name={name} defaultValue={defaultValue ?? ""} className="admin-select">
+        {children}
+      </select>
     </label>
   );
 }
@@ -92,7 +100,15 @@ export function TypeForm({ type, returnTo = "/admin/events/types" }: { type?: Ev
         placeholder="Guided workshop or practice session."
       />
       <div className="admin-form-actions">
-        <ActiveToggle active={type?.is_active ?? true} />
+        <label className="admin-form-field" style={{ display: "flex", alignItems: "center", gap: "0.65rem" }}>
+          <input
+            type="checkbox"
+            name="is_active"
+            defaultChecked={type?.is_active ?? true}
+            style={{ width: "1rem", height: "1rem", accentColor: "var(--color-primary)" }}
+          />
+          <span className="admin-label" style={{ margin: 0 }}>Active</span>
+        </label>
         <button type="submit" className="admin-btn admin-btn--primary">
           {type?.id ? "Save type" : "Create type"}
         </button>
@@ -102,19 +118,43 @@ export function TypeForm({ type, returnTo = "/admin/events/types" }: { type?: Ev
 }
 
 export function HostForm({ host, returnTo = "/admin/events/hosts" }: { host?: EventHostSettingsRow; returnTo?: string }) {
+  const socials = host?.social_links ?? {};
   return (
     <form action={saveEventHost} className="admin-form-card">
       <input type="hidden" name="return_to" value={returnTo} />
       {host?.id ? <input type="hidden" name="id" value={host.id} /> : null}
       <div className="admin-form-grid-2">
         <TextInput label="Name" name="name" required defaultValue={host?.name} placeholder="Dr. Paul Jenkins" />
+        <TextInput label="Slug" name="slug" defaultValue={host?.slug} placeholder="dr-paul-jenkins" />
+        <SelectInput label="Host type" name="type" defaultValue={host?.type ?? "person"}>
+          <option value="person">Person</option>
+          <option value="organization">Organization</option>
+          <option value="brand">Brand</option>
+          <option value="internal_team">Internal team</option>
+        </SelectInput>
+        <SelectInput label="Contact visibility" name="contact_visibility" defaultValue={host?.contact_visibility ?? "logged_in"}>
+          <option value="public">Public</option>
+          <option value="logged_in">Logged-in members</option>
+          <option value="private">Private</option>
+        </SelectInput>
         <TextInput label="Email" name="email" type="email" defaultValue={host?.email} placeholder="host@example.com" />
+        <TextInput label="Phone" name="phone" defaultValue={host?.phone} />
         <TextInput label="Image URL" name="image_url" type="url" defaultValue={host?.image_url} />
+        <TextInput label="Logo URL" name="brand_logo_url" type="url" defaultValue={host?.brand_logo_url} />
         <TextInput label="Website URL" name="website_url" type="url" defaultValue={host?.website_url} />
+        <TextInput label="Support email" name="support_email" type="email" defaultValue={host?.support_email} />
+        <TextInput label="Instagram URL" name="social_instagram" type="url" defaultValue={socials.instagram} />
+        <TextInput label="LinkedIn URL" name="social_linkedin" type="url" defaultValue={socials.linkedin} />
+        <TextInput label="YouTube URL" name="social_youtube" type="url" defaultValue={socials.youtube} />
+        <TextInput label="Facebook URL" name="social_facebook" type="url" defaultValue={socials.facebook} />
       </div>
       <TextArea label="Bio" name="bio" defaultValue={host?.bio} placeholder="Short host bio for event detail pages." />
       <div className="admin-form-actions">
-        <ActiveToggle active={host?.is_active ?? true} />
+        <SelectInput label="Status" name="status" defaultValue={host?.status ?? "published"}>
+          <option value="published">Published</option>
+          <option value="draft">Draft</option>
+          <option value="archived">Archived</option>
+        </SelectInput>
         <button type="submit" className="admin-btn admin-btn--primary">
           {host?.id ? "Save host" : "Create host"}
         </button>
@@ -130,6 +170,9 @@ export function VenueForm({ venue, returnTo = "/admin/events/venues" }: { venue?
       {venue?.id ? <input type="hidden" name="id" value={venue.id} /> : null}
       <div className="admin-form-grid-2">
         <TextInput label="Name" name="name" required defaultValue={venue?.name} placeholder="Live On Purpose Studio" />
+        <TextInput label="Slug" name="slug" defaultValue={venue?.slug} placeholder="live-on-purpose-studio" />
+        <TextInput label="Featured image URL" name="featured_image_url" type="url" defaultValue={venue?.featured_image_url} />
+        <TextInput label="Email" name="email" type="email" defaultValue={venue?.email} />
         <TextInput label="Phone" name="phone" defaultValue={venue?.phone} />
         <TextInput label="Website URL" name="website_url" type="url" defaultValue={venue?.website_url} />
         <TextInput label="Map URL" name="map_url" type="url" defaultValue={venue?.map_url} />
@@ -145,8 +188,14 @@ export function VenueForm({ venue, returnTo = "/admin/events/venues" }: { venue?
         <TextInput label="Latitude" name="latitude" type="number" defaultValue={venue?.latitude} />
         <TextInput label="Longitude" name="longitude" type="number" defaultValue={venue?.longitude} />
       </div>
+      <TextArea label="Parking notes" name="parking_notes" defaultValue={venue?.parking_notes} />
+      <TextArea label="Accessibility notes" name="accessibility_notes" defaultValue={venue?.accessibility_notes} />
       <div className="admin-form-actions">
-        <ActiveToggle active={venue?.is_active ?? true} />
+        <SelectInput label="Status" name="status" defaultValue={venue?.status ?? "published"}>
+          <option value="published">Published</option>
+          <option value="draft">Draft</option>
+          <option value="archived">Archived</option>
+        </SelectInput>
         <label className="admin-form-field" style={{ display: "flex", alignItems: "center", gap: "0.65rem" }}>
           <input
             type="checkbox"
@@ -155,6 +204,24 @@ export function VenueForm({ venue, returnTo = "/admin/events/venues" }: { venue?
             style={{ width: "1rem", height: "1rem", accentColor: "var(--color-primary)" }}
           />
           <span className="admin-label" style={{ margin: 0 }}>Virtual venue</span>
+        </label>
+        <label className="admin-form-field" style={{ display: "flex", alignItems: "center", gap: "0.65rem" }}>
+          <input
+            type="checkbox"
+            name="show_map"
+            defaultChecked={venue?.show_map ?? true}
+            style={{ width: "1rem", height: "1rem", accentColor: "var(--color-primary)" }}
+          />
+          <span className="admin-label" style={{ margin: 0 }}>Show map</span>
+        </label>
+        <label className="admin-form-field" style={{ display: "flex", alignItems: "center", gap: "0.65rem" }}>
+          <input
+            type="checkbox"
+            name="show_map_link"
+            defaultChecked={venue?.show_map_link ?? true}
+            style={{ width: "1rem", height: "1rem", accentColor: "var(--color-primary)" }}
+          />
+          <span className="admin-label" style={{ margin: 0 }}>Show map link</span>
         </label>
         <button type="submit" className="admin-btn admin-btn--primary">
           {venue?.id ? "Save venue" : "Create venue"}

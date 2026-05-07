@@ -6,6 +6,7 @@ import {
   LEVEL_2_MEMBER_PASSWORD,
   createCompEventTicketFixture,
   cleanupEventUxFixturesByPrefix,
+  createEventHostVenueFixture,
   createEventUxZoomFixture,
   createTicketedEventFixture,
   loginWithPassword,
@@ -75,14 +76,15 @@ test("admin event form keeps advanced fields contextual and supports inline crea
   await expect(page.locator("select#type_id option:checked")).toHaveText(typeName);
 
   const hostName = `${EVENT_TITLE_PREFIX} Host`;
-  await page.getByLabel("Host").selectOption("__create");
+  await page.getByRole("button", { name: "Create new host" }).click();
   await page.getByRole("dialog").getByLabel("Name").fill(hostName);
   await page.getByRole("button", { name: "Create and select" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(page.locator("select#host_id option:checked")).toHaveText(hostName);
+  await expect(page.locator(".rounded-xl").filter({ hasText: hostName }).first()).toBeVisible();
+  await expect(page.getByLabel("Primary")).toBeChecked();
 
   const venueName = `${EVENT_TITLE_PREFIX} Venue`;
-  await page.getByLabel("Venue").selectOption("__create");
+  await page.getByRole("button", { name: "Create new venue" }).click();
   await page.getByRole("dialog").getByLabel("Name").fill(venueName);
   await page.getByRole("button", { name: "Create and select" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -118,8 +120,10 @@ test("event settings area splits resources into focused admin pages", async ({ p
   await expect(page.getByRole("heading", { name: "Event Types" })).toBeVisible();
   await page.goto("/admin/events/hosts");
   await expect(page.getByRole("heading", { name: "Hosts" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "New host" })).toBeVisible();
   await page.goto("/admin/events/venues");
   await expect(page.getByRole("heading", { name: "Venues" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "New venue" })).toBeVisible();
   await page.goto("/admin/events/ticketing");
   await expect(page.getByRole("heading", { name: "Ticketing" })).toBeVisible();
 });
@@ -327,4 +331,38 @@ test("ticketed event hides join access until a paid or comp ticket exists", asyn
   await page.reload();
   await expect(page.getByText("Ticket confirmed")).toBeVisible();
   await expect(page.getByRole("link", { name: "Join event" })).toBeVisible();
+});
+
+test("member event detail links to host and venue pages with eligible upcoming events", async ({
+  page,
+}) => {
+  const fixture = await createEventHostVenueFixture(EVENT_TITLE_PREFIX);
+
+  await loginWithPassword(page, {
+    email: LEVEL_2_MEMBER_EMAIL,
+    password: LEVEL_2_MEMBER_PASSWORD,
+    next: `/events/${fixture.eventId}`,
+  });
+
+  await expect(page.getByRole("heading", { name: fixture.title })).toBeVisible();
+  await expect(page.getByRole("link", { name: fixture.primaryHostName })).toBeVisible();
+  await expect(page.getByRole("link", { name: fixture.secondHostName })).toBeVisible();
+  await expect(page.getByRole("link", { name: fixture.venueName })).toBeVisible();
+  await expect(page.getByText("Studio B")).toBeVisible();
+  await expect(page.getByText("Use the north lot.")).toBeVisible();
+
+  await page.goto(`/events/hosts/${fixture.hostSlug}`);
+  await expect(page.getByRole("heading", { name: fixture.primaryHostName })).toBeVisible();
+  await expect(page.getByRole("link", { name: fixture.title })).toBeVisible();
+  await expect(page.getByText(`primary-host-`)).toBeVisible();
+
+  await page.goto(`/events/hosts/${fixture.secondHostSlug}`);
+  await expect(page.getByRole("heading", { name: fixture.secondHostName })).toBeVisible();
+  await expect(page.getByText("Contact details are private for this host.")).toBeVisible();
+
+  await page.goto(`/events/venues/${fixture.venueSlug}`);
+  await expect(page.getByRole("heading", { name: fixture.venueName })).toBeVisible();
+  await expect(page.getByRole("link", { name: fixture.title })).toBeVisible();
+  await expect(page.getByText("111 Test Avenue")).toBeVisible();
+  await expect(page.getByText("Step-free entry is available.")).toBeVisible();
 });

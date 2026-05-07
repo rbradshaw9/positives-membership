@@ -24,24 +24,43 @@ export type EventTypeOption = {
 
 export type EventHostOption = {
   id: string;
+  slug: string;
   name: string;
+  type: "person" | "organization" | "brand" | "internal_team";
   bio: string | null;
   image_url: string | null;
   email: string | null;
+  phone: string | null;
+  website_url: string | null;
+  social_links: Record<string, string>;
+  contact_visibility: "public" | "logged_in" | "private";
+  status: "published" | "draft" | "archived";
+  brand_logo_url: string | null;
+  support_email: string | null;
 };
 
 export type EventVenueOption = {
   id: string;
+  slug: string;
   name: string;
   description: string | null;
+  featured_image_url: string | null;
   address_line1: string | null;
   address_line2: string | null;
   city: string | null;
   region: string | null;
   postal_code: string | null;
   country: string | null;
+  email: string | null;
+  phone: string | null;
+  website_url: string | null;
   map_url: string | null;
+  show_map: boolean;
+  show_map_link: boolean;
+  accessibility_notes: string | null;
+  parking_notes: string | null;
   is_virtual: boolean;
+  status: "published" | "draft" | "archived";
 };
 
 export type ZoomConnectionOption = {

@@ -1,12 +1,11 @@
 import Link from "next/link";
-import { HostForm } from "../resource-forms";
 import { getEventSettingsOptions } from "@/lib/queries/get-events";
 
 export const metadata = {
   title: "Event Hosts - Positives Admin",
 };
 
-type SearchParams = Promise<{ error?: string; success?: string; q?: string; status?: string }>;
+type SearchParams = Promise<{ error?: string; success?: string; q?: string; status?: string; type?: string }>;
 
 const SUCCESS_COPY: Record<string, string> = {
   host_created: "Host created.",
@@ -22,10 +21,13 @@ export default async function EventHostsPage({ searchParams }: { searchParams: S
   const [params, settings] = await Promise.all([searchParams, getEventSettingsOptions()]);
   const q = params.q?.toLowerCase().trim() ?? "";
   const status = params.status ?? "all";
+  const type = params.type ?? "all";
   const hosts = settings.hosts.filter((host) => {
-    const matchesSearch = !q || host.name.toLowerCase().includes(q) || (host.email ?? "").toLowerCase().includes(q);
-    const matchesStatus = status === "all" || (status === "active" ? host.is_active : !host.is_active);
-    return matchesSearch && matchesStatus;
+    const searchable = [host.name, host.email, host.website_url, host.type].filter(Boolean).join(" ").toLowerCase();
+    const matchesSearch = !q || searchable.includes(q);
+    const matchesStatus = status === "all" || host.status === status;
+    const matchesType = type === "all" || host.type === type;
+    return matchesSearch && matchesStatus && matchesType;
   });
 
   return (
@@ -38,7 +40,7 @@ export default async function EventHostsPage({ searchParams }: { searchParams: S
         </div>
         <div className="admin-page-header__actions">
           <Link href="/admin/events/settings" className="admin-btn admin-btn--outline">Settings</Link>
-          <Link href="/admin/events/new" className="admin-btn admin-btn--primary">New event</Link>
+          <Link href="/admin/events/hosts/new" className="admin-btn admin-btn--primary">New host</Link>
         </div>
       </div>
 
@@ -54,8 +56,19 @@ export default async function EventHostsPage({ searchParams }: { searchParams: S
           <span className="admin-label">Status</span>
           <select name="status" defaultValue={status} className="admin-select">
             <option value="all">All</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
+            <option value="published">Published</option>
+            <option value="draft">Draft</option>
+            <option value="archived">Archived</option>
+          </select>
+        </label>
+        <label>
+          <span className="admin-label">Type</span>
+          <select name="type" defaultValue={type} className="admin-select">
+            <option value="all">All</option>
+            <option value="person">Person</option>
+            <option value="organization">Organization</option>
+            <option value="brand">Brand</option>
+            <option value="internal_team">Internal team</option>
           </select>
         </label>
         <div style={{ display: "flex", alignItems: "end" }}>
@@ -63,19 +76,18 @@ export default async function EventHostsPage({ searchParams }: { searchParams: S
         </div>
       </form>
 
-      <div className="grid gap-5 xl:grid-cols-[24rem_minmax(0,1fr)]">
-        <div>
-          <h2 className="admin-form-section__label mb-3" style={{ textWrap: "balance" }}>Create host</h2>
-          <HostForm />
-        </div>
+      <div className="grid gap-5">
         <div className="admin-table-wrap">
           <table className="admin-table">
             <thead>
               <tr>
                 <th>Host</th>
+                <th>Type</th>
                 <th>Email</th>
+                <th>Upcoming</th>
                 <th>Status</th>
                 <th>Website</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -84,16 +96,20 @@ export default async function EventHostsPage({ searchParams }: { searchParams: S
                   <td>
                     <div className="font-semibold text-foreground">{host.name}</div>
                     {host.bio ? <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{host.bio}</p> : null}
-                    <details className="mt-3">
-                      <summary className="cursor-pointer text-xs font-semibold text-primary">Edit</summary>
-                      <div className="mt-3"><HostForm host={host} /></div>
-                    </details>
                   </td>
+                  <td>{host.type.replace("_", " ")}</td>
                   <td>{host.email ?? "None"}</td>
-                  <td><span className={host.is_active ? "admin-badge admin-badge--published" : "admin-badge admin-badge--draft"}>{host.is_active ? "Active" : "Inactive"}</span></td>
+                  <td>{host.upcoming_count ?? 0}</td>
+                  <td><span className={host.status === "published" ? "admin-badge admin-badge--published" : "admin-badge admin-badge--draft"}>{host.status}</span></td>
                   <td>{host.website_url ? <a href={host.website_url} className="text-primary" target="_blank" rel="noopener noreferrer">Open</a> : "None"}</td>
+                  <td><Link href={`/admin/events/hosts/${host.id}/edit`} className="text-sm font-semibold text-primary">Edit</Link></td>
                 </tr>
               ))}
+              {hosts.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center text-sm text-muted-foreground">No hosts match these filters.</td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>

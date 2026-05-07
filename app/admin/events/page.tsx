@@ -89,6 +89,14 @@ function locationLabel(event: EventRow | null | undefined) {
   return event.event_venue?.name ?? "No venue";
 }
 
+function hostLabel(event: EventRow | null | undefined) {
+  const hosts = (event?.event_host_assignment ?? []).flatMap((assignment) =>
+    assignment.event_host ? [assignment.event_host.name] : []
+  );
+  if (hosts.length > 0) return hosts.join(", ");
+  return event?.event_host?.name ?? "No host";
+}
+
 function readinessLabel(event: EventRow) {
   if (event.status === "archived") return "Archived";
   if (event.status !== "published") return "Admin only";
@@ -306,7 +314,7 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
                         <span className="admin-badge admin-badge--draft">{virtualLabel(event)}</span>
                         <span className="admin-badge admin-badge--draft">{ticketLabel(event)}</span>
                       </div>
-                      <div className="mt-1 text-xs text-muted-foreground">{event.event_host?.name ?? "No host"}</div>
+                      <div className="mt-1 text-xs text-muted-foreground">{hostLabel(event)}</div>
                     </td>
                     <td>
                       <div className="font-medium text-foreground">{formatEventDateRange(event.starts_at, event.ends_at, event.timezone, event.all_day)}</div>

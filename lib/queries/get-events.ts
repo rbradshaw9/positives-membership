@@ -27,6 +27,16 @@ export type EventZoomRow = {
   zoom_connection?: ZoomConnectionOption | null;
 };
 
+export type EventHostAssignmentRow = {
+  id: string;
+  event_id: string;
+  host_id: string;
+  role: "host" | "organizer" | "speaker" | "instructor" | "partner";
+  sort_order: number;
+  is_primary: boolean;
+  event_host?: EventHostOption | null;
+};
+
 export type EventTicketTypeAccessRow = {
   subscription_tier: EventAccessLevel;
 };
@@ -55,6 +65,8 @@ export type EventRow = {
   type_id: string | null;
   host_id: string | null;
   venue_id: string | null;
+  venue_room_name: string | null;
+  venue_notes: string | null;
   title: string;
   excerpt: string | null;
   description: string | null;
@@ -75,6 +87,7 @@ export type EventRow = {
   event_type?: EventTypeOption | null;
   event_host?: EventHostOption | null;
   event_venue?: EventVenueOption | null;
+  event_host_assignment?: EventHostAssignmentRow[];
   member_event_access_level?: EventAccessRow[];
   event_zoom_meeting?: EventZoomRow | null;
   event_ticket_type?: EventTicketTypeRow[];
@@ -93,16 +106,17 @@ export type EventTypeSettingsRow = EventTypeOption & {
 };
 
 export type EventHostSettingsRow = EventHostOption & {
+  phone: string | null;
   website_url: string | null;
   is_active: boolean;
+  upcoming_count?: number;
 };
 
 export type EventVenueSettingsRow = EventVenueOption & {
-  phone: string | null;
-  website_url: string | null;
   latitude: number | null;
   longitude: number | null;
   is_active: boolean;
+  upcoming_count?: number;
 };
 
 export type EventSettingRow = {
@@ -137,13 +151,23 @@ function normalizeDefaults(settings: EventSettingRow[]): EventAdminDefaults {
   };
 }
 
+const EVENT_HOST_SELECT =
+  "id, slug, name, type, bio, image_url, email, phone, website_url, social_links, contact_visibility, status, brand_logo_url, support_email";
+
+const EVENT_VENUE_SELECT =
+  "id, slug, name, description, featured_image_url, address_line1, address_line2, city, region, postal_code, country, email, phone, website_url, map_url, show_map, show_map_link, accessibility_notes, parking_notes, is_virtual, status";
+
 const EVENT_SELECT = `
-  id, series_id, type_id, host_id, venue_id, title, excerpt, description, body, status,
+  id, series_id, type_id, host_id, venue_id, venue_room_name, venue_notes, title, excerpt, description, body, status,
   starts_at, ends_at, timezone, all_day, visibility, virtual_mode, ticketing_mode, manual_join_url, replay_url,
   replay_content_id, image_url, is_featured,
   event_type:event_type(id, slug, name, description, color),
-  event_host:event_host(id, name, bio, image_url, email),
-  event_venue:event_venue(id, name, description, address_line1, address_line2, city, region, postal_code, country, map_url, is_virtual),
+  event_host:event_host(id, slug, name, type, bio, image_url, email, phone, website_url, social_links, contact_visibility, status, brand_logo_url, support_email),
+  event_venue:event_venue(id, slug, name, description, featured_image_url, address_line1, address_line2, city, region, postal_code, country, email, phone, website_url, map_url, show_map, show_map_link, accessibility_notes, parking_notes, is_virtual, status),
+  event_host_assignment(
+    id, event_id, host_id, role, sort_order, is_primary,
+    event_host:event_host(id, slug, name, type, bio, image_url, email, phone, website_url, social_links, contact_visibility, status, brand_logo_url, support_email)
+  ),
   member_event_access_level(subscription_tier),
   event_ticket_type(
     id, event_id, name, description, price_cents, currency, capacity, max_per_order, status, sale_starts_at, sale_ends_at, sort_order,
@@ -156,10 +180,17 @@ const EVENT_SELECT = `
 `;
 
 function sortEventTickets(event: EventRow) {
+  const assignments = [...(event.event_host_assignment ?? [])].sort((a, b) => {
+    if (a.is_primary && !b.is_primary) return -1;
+    if (!a.is_primary && b.is_primary) return 1;
+    return a.sort_order - b.sort_order;
+  });
   return {
     ...event,
     ticketing_mode: event.ticketing_mode ?? "included",
     event_ticket_type: [...(event.event_ticket_type ?? [])].sort((a, b) => a.sort_order - b.sort_order),
+    event_host_assignment: assignments,
+    event_host: event.event_host ?? assignments[0]?.event_host ?? null,
   };
 }
 
@@ -173,13 +204,13 @@ export async function getEventAdminOptions() {
       .order("sort_order", { ascending: true }),
     supabase
       .from("event_host")
-      .select<EventHostOption>("id, name, bio, image_url, email")
-      .eq("is_active", true)
+      .select<EventHostOption>(EVENT_HOST_SELECT)
+      .neq("status", "archived")
       .order("name", { ascending: true }),
     supabase
       .from("event_venue")
-      .select<EventVenueOption>("id, name, description, address_line1, address_line2, city, region, postal_code, country, map_url, is_virtual")
-      .eq("is_active", true)
+      .select<EventVenueOption>(EVENT_VENUE_SELECT)
+      .neq("status", "archived")
       .order("name", { ascending: true }),
     supabase
       .from("zoom_connection")
@@ -204,19 +235,19 @@ export async function getEventAdminOptions() {
 
 export async function getEventSettingsOptions() {
   const supabase = asLooseSupabaseClient(getAdminClient());
-  const [typesResult, hostsResult, venuesResult, settingsResult, zoomResult, ticketTypesResult] = await Promise.all([
+  const [typesResult, hostsResult, venuesResult, settingsResult, zoomResult, ticketTypesResult, counts] = await Promise.all([
     supabase
       .from("event_type")
       .select<EventTypeSettingsRow>("id, slug, name, description, color, sort_order, is_active")
       .order("sort_order", { ascending: true }),
     supabase
       .from("event_host")
-      .select<EventHostSettingsRow>("id, name, bio, image_url, email, website_url, is_active")
+      .select<EventHostSettingsRow>(`${EVENT_HOST_SELECT}, is_active`)
       .order("name", { ascending: true }),
     supabase
       .from("event_venue")
       .select<EventVenueSettingsRow>(
-        "id, name, description, address_line1, address_line2, city, region, postal_code, country, phone, website_url, map_url, latitude, longitude, is_virtual, is_active"
+        `${EVENT_VENUE_SELECT}, latitude, longitude, is_active`
       )
       .order("name", { ascending: true }),
     supabase
@@ -236,17 +267,69 @@ export async function getEventSettingsOptions() {
       .neq("status", "archived")
       .order("created_at", { ascending: false })
       .limit(12),
+    getEventResourceCounts(),
   ]);
+  const hostCounts = counts.hostCounts;
+  const venueCounts = counts.venueCounts;
 
   return {
     types: (typesResult.data ?? []) as unknown as EventTypeSettingsRow[],
-    hosts: (hostsResult.data ?? []) as unknown as EventHostSettingsRow[],
-    venues: (venuesResult.data ?? []) as unknown as EventVenueSettingsRow[],
+    hosts: ((hostsResult.data ?? []) as unknown as EventHostSettingsRow[]).map((host) => ({
+      ...host,
+      upcoming_count: hostCounts.get(host.id) ?? 0,
+    })),
+    venues: ((venuesResult.data ?? []) as unknown as EventVenueSettingsRow[]).map((venue) => ({
+      ...venue,
+      upcoming_count: venueCounts.get(venue.id) ?? 0,
+    })),
     settings: (settingsResult.data ?? []) as unknown as EventSettingRow[],
     defaults: normalizeDefaults((settingsResult.data ?? []) as unknown as EventSettingRow[]),
     zoomConnections: (zoomResult.data ?? []) as unknown as ZoomConnectionOption[],
     recentTicketTypes: (ticketTypesResult.data ?? []) as unknown as EventTicketTypeRow[],
   };
+}
+
+export async function getEventResourceCounts() {
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  const now = new Date().toISOString();
+  const { data: events, error: eventsError } = await supabase
+    .from("member_event")
+    .select<Array<{ id: string; venue_id: string | null }>>("id, venue_id")
+    .gte("ends_at", now)
+    .neq("status", "archived");
+
+  if (eventsError) {
+    console.error("[getEventResourceCounts] events", eventsError.message);
+    return { hostCounts: new Map<string, number>(), venueCounts: new Map<string, number>() };
+  }
+
+  const rows = (events ?? []) as Array<{ id: string; venue_id: string | null }>;
+  const eventIds = rows.map((event) => event.id);
+  const venueCounts = new Map<string, number>();
+  for (const event of rows) {
+    if (event.venue_id) venueCounts.set(event.venue_id, (venueCounts.get(event.venue_id) ?? 0) + 1);
+  }
+
+  if (eventIds.length === 0) {
+    return { hostCounts: new Map<string, number>(), venueCounts };
+  }
+
+  const { data: assignments, error: assignmentsError } = await supabase
+    .from("event_host_assignment")
+    .select<Array<{ host_id: string }>>("host_id")
+    .in("event_id", eventIds);
+
+  if (assignmentsError) {
+    console.error("[getEventResourceCounts] assignments", assignmentsError.message);
+    return { hostCounts: new Map<string, number>(), venueCounts };
+  }
+
+  const hostCounts = new Map<string, number>();
+  for (const assignment of assignments ?? []) {
+    hostCounts.set(assignment.host_id, (hostCounts.get(assignment.host_id) ?? 0) + 1);
+  }
+
+  return { hostCounts, venueCounts };
 }
 
 export async function getAdminEvents(params: {
@@ -293,6 +376,7 @@ export async function getAdminEvents(params: {
         event.status,
         event.event_type?.name,
         event.event_host?.name,
+        ...(event.event_host_assignment ?? []).map((assignment) => assignment.event_host?.name),
         event.event_venue?.name,
       ]
         .filter(Boolean)
@@ -403,6 +487,111 @@ export async function getMemberEvent(id: string, memberTier: string | null, memb
   return {
     ...event,
     member_ticket_access: event.ticketing_mode !== "ticket_required" || ticketAccess.has(event.id),
+  };
+}
+
+function memberCanSeeEvent(event: EventRow, memberTier: string) {
+  return (
+    event.status === "published" &&
+    event.visibility !== "hidden" &&
+    (event.member_event_access_level ?? []).some((row) => row.subscription_tier === memberTier)
+  );
+}
+
+async function withMemberTicketAccess(events: EventRow[], memberId: string) {
+  const ticketAccess = await getMemberTicketAccess(memberId, events.map((event) => event.id));
+  return events.map((event) => ({
+    ...event,
+    member_ticket_access: event.ticketing_mode !== "ticket_required" || ticketAccess.has(event.id),
+  }));
+}
+
+export async function getMemberEventHostPage(slug: string, memberTier: string | null, memberId: string) {
+  if (!memberTier) return null;
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  const { data: host, error: hostError } = await supabase
+    .from("event_host")
+    .select<EventHostOption>(EVENT_HOST_SELECT)
+    .eq("slug", slug)
+    .neq("status", "archived")
+    .maybeSingle();
+
+  if (hostError) {
+    console.error("[getMemberEventHostPage] host", hostError.message);
+    return null;
+  }
+  if (!host) return null;
+
+  const { data: assignments, error: assignmentError } = await supabase
+    .from("event_host_assignment")
+    .select<Array<{ event_id: string }>>("event_id")
+    .eq("host_id", host.id);
+
+  if (assignmentError) {
+    console.error("[getMemberEventHostPage] assignments", assignmentError.message);
+    return { host: host as unknown as EventHostOption, events: [] };
+  }
+
+  const eventIds = [...new Set((assignments ?? []).map((assignment) => assignment.event_id))];
+  if (eventIds.length === 0) return { host: host as unknown as EventHostOption, events: [] };
+
+  const { data: events, error: eventsError } = await supabase
+    .from("member_event")
+    .select<EventRow>(EVENT_SELECT)
+    .in("id", eventIds)
+    .gte("ends_at", new Date().toISOString())
+    .order("starts_at", { ascending: true });
+
+  if (eventsError) {
+    console.error("[getMemberEventHostPage] events", eventsError.message);
+    return { host: host as unknown as EventHostOption, events: [] };
+  }
+
+  const visible = ((events ?? []) as unknown as EventRow[])
+    .map(sortEventTickets)
+    .filter((event) => memberCanSeeEvent(event, memberTier));
+
+  return {
+    host: host as unknown as EventHostOption,
+    events: await withMemberTicketAccess(visible, memberId),
+  };
+}
+
+export async function getMemberEventVenuePage(slug: string, memberTier: string | null, memberId: string) {
+  if (!memberTier) return null;
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  const { data: venue, error: venueError } = await supabase
+    .from("event_venue")
+    .select<EventVenueOption>(EVENT_VENUE_SELECT)
+    .eq("slug", slug)
+    .neq("status", "archived")
+    .maybeSingle();
+
+  if (venueError) {
+    console.error("[getMemberEventVenuePage] venue", venueError.message);
+    return null;
+  }
+  if (!venue) return null;
+
+  const { data: events, error: eventsError } = await supabase
+    .from("member_event")
+    .select<EventRow>(EVENT_SELECT)
+    .eq("venue_id", venue.id)
+    .gte("ends_at", new Date().toISOString())
+    .order("starts_at", { ascending: true });
+
+  if (eventsError) {
+    console.error("[getMemberEventVenuePage] events", eventsError.message);
+    return { venue: venue as unknown as EventVenueOption, events: [] };
+  }
+
+  const visible = ((events ?? []) as unknown as EventRow[])
+    .map(sortEventTickets)
+    .filter((event) => memberCanSeeEvent(event, memberTier));
+
+  return {
+    venue: venue as unknown as EventVenueOption,
+    events: await withMemberTicketAccess(visible, memberId),
   };
 }
 

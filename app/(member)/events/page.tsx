@@ -26,6 +26,14 @@ function joinUrl(event: Awaited<ReturnType<typeof getMemberEvents>>["events"][nu
   return null;
 }
 
+function eventHostNames(event: Awaited<ReturnType<typeof getMemberEvents>>["events"][number]) {
+  const hosts = (event.event_host_assignment ?? []).flatMap((assignment) =>
+    assignment.event_host ? [assignment.event_host.name] : []
+  );
+  if (hosts.length > 0) return hosts.join(", ");
+  return event.event_host?.name ?? "";
+}
+
 function EventListItem({
   event,
   nowMs,
@@ -38,6 +46,7 @@ function EventListItem({
   const isLive = starts <= nowMs && ends >= nowMs;
   const isPast = ends < nowMs;
   const eventJoinUrl = joinUrl(event);
+  const hosts = eventHostNames(event);
 
   return (
     <SurfaceCard elevated as="article" className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -70,8 +79,8 @@ function EventListItem({
         <p className="mt-1 text-sm text-muted-foreground">
           {formatEventDateRange(event.starts_at, event.ends_at, event.timezone, event.all_day)}
         </p>
-        {event.event_host?.name ? (
-          <p className="mt-1 text-xs font-medium text-muted-foreground">Hosted by {event.event_host.name}</p>
+        {hosts ? (
+          <p className="mt-1 text-xs font-medium text-muted-foreground">Hosted by {hosts}</p>
         ) : null}
         {(event.excerpt ?? event.description) ? (
           <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground">

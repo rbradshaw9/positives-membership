@@ -24,6 +24,7 @@ type EventInput = {
   typeId: string;
   hostId: string;
   hostName: string;
+  hostAssignments: EventHostAssignmentInput[];
   venueId: string;
   venueName: string;
   venueAddress1: string;
@@ -32,6 +33,8 @@ type EventInput = {
   venuePostalCode: string;
   venueCountry: string;
   venueMapUrl: string;
+  venueRoomName: string;
+  venueNotes: string;
   startsAt: string;
   endsAt: string;
   timezone: string;
@@ -50,6 +53,12 @@ type EventInput = {
   recurrenceCount: number;
   recurrenceUntil: string;
   accessLevels: string[];
+};
+
+type EventHostAssignmentInput = {
+  hostId: string;
+  role: "host" | "organizer" | "speaker" | "instructor" | "partner";
+  isPrimary: boolean;
 };
 
 type EventTicketInput = {
@@ -109,6 +118,8 @@ function intent(formData: FormData): EventInput["intent"] {
 
 function parseInput(formData: FormData): EventInput {
   const ticketConfig = parseTicketConfig(value(formData, "ticket_config"), formData.getAll("access_levels"));
+  const hostAssignments = parseHostAssignments(value(formData, "host_assignments"));
+  const legacyHostId = value(formData, "host_id");
   return {
     id: value(formData, "id") || undefined,
     intent: intent(formData),
@@ -117,8 +128,9 @@ function parseInput(formData: FormData): EventInput {
     body: value(formData, "body"),
     currentStatus: value(formData, "current_status") || "draft",
     typeId: value(formData, "type_id"),
-    hostId: value(formData, "host_id"),
+    hostId: legacyHostId,
     hostName: value(formData, "host_name"),
+    hostAssignments,
     venueId: value(formData, "venue_id"),
     venueName: value(formData, "venue_name"),
     venueAddress1: value(formData, "venue_address_line1"),
@@ -127,6 +139,8 @@ function parseInput(formData: FormData): EventInput {
     venuePostalCode: value(formData, "venue_postal_code"),
     venueCountry: value(formData, "venue_country") || "US",
     venueMapUrl: value(formData, "venue_map_url"),
+    venueRoomName: value(formData, "venue_room_name"),
+    venueNotes: value(formData, "venue_notes"),
     startsAt: value(formData, "starts_at"),
     endsAt: value(formData, "ends_at"),
     timezone: value(formData, "timezone") || "America/New_York",
@@ -148,6 +162,45 @@ function parseInput(formData: FormData): EventInput {
     recurrenceUntil: value(formData, "recurrence_until"),
     accessLevels: parseAccessLevels(formData.getAll("access_levels")),
   };
+}
+
+function parseHostAssignments(raw: string): EventHostAssignmentInput[] {
+  try {
+    const parsed = JSON.parse(raw || "[]") as Array<Record<string, unknown>>;
+    const allowedRoles = new Set(["host", "organizer", "speaker", "instructor", "partner"]);
+    const seen = new Set<string>();
+    const rows = parsed
+      .map((item): EventHostAssignmentInput | null => {
+        const hostId = String(item.hostId ?? item.host_id ?? "").trim();
+        if (!hostId || seen.has(hostId)) return null;
+        seen.add(hostId);
+        const role = String(item.role ?? "host").trim();
+        return {
+          hostId,
+          role: allowedRoles.has(role) ? (role as EventHostAssignmentInput["role"]) : "host",
+          isPrimary: item.isPrimary === true || item.is_primary === true,
+        };
+      })
+      .filter((item): item is EventHostAssignmentInput => Boolean(item));
+
+    if (rows.length > 0 && !rows.some((row) => row.isPrimary)) {
+      rows[0].isPrimary = true;
+    }
+    if (rows.filter((row) => row.isPrimary).length > 1) {
+      let primarySeen = false;
+      return rows.map((row) => {
+        if (!row.isPrimary) return row;
+        if (!primarySeen) {
+          primarySeen = true;
+          return row;
+        }
+        return { ...row, isPrimary: false };
+      });
+    }
+    return rows;
+  } catch {
+    return [];
+  }
 }
 
 function parseTicketConfig(raw: string, fallbackAccessLevels: FormDataEntryValue[]): {
@@ -217,9 +270,16 @@ async function maybeCreateHost(input: EventInput) {
   if (input.hostId) return input.hostId;
   if (!input.hostName) return null;
   const supabase = asLooseSupabaseClient(getAdminClient());
+  const slug = await uniqueResourceSlug("event_host", input.hostName);
   const { data, error } = await supabase
     .from("event_host")
-    .insert({ name: input.hostName, is_active: true })
+    .insert({
+      name: input.hostName,
+      slug,
+      type: "person",
+      status: "published",
+      is_active: true,
+    })
     .select<{ id: string }>("id")
     .single();
   if (error) throw new Error(error.message);
@@ -230,10 +290,12 @@ async function maybeCreateVenue(input: EventInput) {
   if (input.venueId) return input.venueId;
   if (!input.venueName) return null;
   const supabase = asLooseSupabaseClient(getAdminClient());
+  const slug = await uniqueResourceSlug("event_venue", input.venueName);
   const { data, error } = await supabase
     .from("event_venue")
     .insert({
       name: input.venueName,
+      slug,
       address_line1: input.venueAddress1 || null,
       city: input.venueCity || null,
       region: input.venueRegion || null,
@@ -241,6 +303,7 @@ async function maybeCreateVenue(input: EventInput) {
       country: input.venueCountry || null,
       map_url: input.venueMapUrl || null,
       is_virtual: false,
+      status: "published",
       is_active: true,
     })
     .select<{ id: string }>("id")
@@ -257,6 +320,26 @@ async function saveAccessLevels(eventId: string, accessLevels: string[]) {
     .from("member_event_access_level")
     .insert(accessLevels.map((subscription_tier) => ({ event_id: eventId, subscription_tier })));
   if (error) throw new Error(error.message);
+}
+
+async function saveHostAssignments(eventIds: string[], assignments: EventHostAssignmentInput[]) {
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  for (const eventId of eventIds) {
+    const { error: deleteError } = await supabase.from("event_host_assignment").delete().eq("event_id", eventId);
+    if (deleteError) throw new Error(deleteError.message);
+
+    if (assignments.length === 0) continue;
+
+    const rows = assignments.map((assignment, index) => ({
+      event_id: eventId,
+      host_id: assignment.hostId,
+      role: assignment.role,
+      sort_order: (index + 1) * 10,
+      is_primary: assignment.isPrimary,
+    }));
+    const { error } = await supabase.from("event_host_assignment").insert(rows);
+    if (error) throw new Error(error.message);
+  }
 }
 
 async function saveTicketTypes(eventId: string, input: EventInput) {
@@ -373,6 +456,8 @@ function baseEventRow(input: EventInput, userId: string, hostId: string | null, 
     type_id: input.typeId || null,
     host_id: hostId,
     venue_id: venueId,
+    venue_room_name: input.venueRoomName || null,
+    venue_notes: input.venueNotes || null,
     title: input.title,
     excerpt: input.excerpt || null,
     description: input.excerpt || null,
@@ -507,6 +592,12 @@ export async function saveEvent(formData: FormData) {
 
   try {
     const hostId = await maybeCreateHost(input);
+    const hostAssignments = input.hostAssignments.length > 0
+      ? input.hostAssignments
+      : hostId
+        ? [{ hostId, role: "host" as const, isPrimary: true }]
+        : [];
+    const primaryHostId = hostAssignments.find((assignment) => assignment.isPrimary)?.hostId ?? hostAssignments[0]?.hostId ?? null;
     const venueId = await maybeCreateVenue(input);
     let currentStatus = input.currentStatus;
 
@@ -558,7 +649,7 @@ export async function saveEvent(formData: FormData) {
       redirectForError(input, "ticket_required");
     }
 
-    const row = baseEventRow(input, user.id, hostId, venueId, desiredStatus);
+    const row = baseEventRow(input, user.id, primaryHostId, venueId, desiredStatus);
 
     if (input.id) {
       const zoomResponse = await createZoomMeeting({
@@ -570,6 +661,7 @@ export async function saveEvent(formData: FormData) {
       const { error } = await supabase.from("member_event").update(row).eq("id", input.id);
       if (error) throw new Error(error.message);
       await saveAccessLevels(input.id, input.accessLevels);
+      await saveHostAssignments([input.id], hostAssignments);
       await saveTicketTypes(input.id, input);
       await syncEventBodyMediaAssets(input.id, row.body);
       await saveSelectedZoomMeeting([input.id], input);
@@ -618,6 +710,7 @@ export async function saveEvent(formData: FormData) {
       draftFallbackId = createdEvents[0]?.id ?? null;
       for (const event of createdEvents) {
         await saveAccessLevels(event.id, input.accessLevels);
+        await saveHostAssignments([event.id], hostAssignments);
         await saveTicketTypes(event.id, input);
         await syncEventBodyMediaAssets(event.id, row.body);
       }
@@ -653,6 +746,7 @@ export async function saveEvent(formData: FormData) {
     if (error || !data) throw new Error(error?.message ?? "Event insert failed.");
     draftFallbackId = data.id;
     await saveAccessLevels(data.id, input.accessLevels);
+    await saveHostAssignments([data.id], hostAssignments);
     await saveTicketTypes(data.id, input);
     await syncEventBodyMediaAssets(data.id, row.body);
     await saveSelectedZoomMeeting([data.id], input);
@@ -730,6 +824,22 @@ async function uniqueEventTypeSlug(name: string) {
   return `${base}-${index}`;
 }
 
+async function uniqueResourceSlug(table: "event_host" | "event_venue", name: string) {
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  const base = slugify(name) || (table === "event_host" ? "host" : "venue");
+  const { data } = await supabase
+    .from(table)
+    .select<{ slug: string }>("slug")
+    .gte("slug", base)
+    .lt("slug", `${base}\uffff`);
+  const rows = (data ?? []) as unknown as Array<{ slug: string }>;
+  const existing = new Set(rows.map((row) => row.slug));
+  if (!existing.has(base)) return base;
+  let index = 2;
+  while (existing.has(`${base}-${index}`)) index += 1;
+  return `${base}-${index}`;
+}
+
 export async function createInlineEventType(input: {
   name: string;
   description?: string;
@@ -770,16 +880,20 @@ export async function createInlineEventHost(input: {
   if (!name) return { ok: false, error: "Name is required." };
 
   const supabase = asLooseSupabaseClient(getAdminClient());
+  const slug = await uniqueResourceSlug("event_host", name);
   const { data, error } = await supabase
     .from("event_host")
     .insert({
       name,
+      slug,
+      type: "person",
       email: input.email?.trim() || null,
       bio: input.bio?.trim() || null,
       image_url: input.image_url?.trim() || null,
+      status: "published",
       is_active: true,
     })
-    .select<EventHostOption>("id, name, bio, image_url, email")
+    .select<EventHostOption>("id, slug, name, type, bio, image_url, email, phone, website_url, social_links, contact_visibility, status, brand_logo_url, support_email")
     .single();
 
   if (error || !data) return { ok: false, error: error?.message ?? "Could not create host." };
@@ -802,10 +916,12 @@ export async function createInlineEventVenue(input: {
   if (!name) return { ok: false, error: "Name is required." };
 
   const supabase = asLooseSupabaseClient(getAdminClient());
+  const slug = await uniqueResourceSlug("event_venue", name);
   const { data, error } = await supabase
     .from("event_venue")
     .insert({
       name,
+      slug,
       is_virtual: Boolean(input.is_virtual),
       address_line1: input.address_line1?.trim() || null,
       city: input.city?.trim() || null,
@@ -813,9 +929,10 @@ export async function createInlineEventVenue(input: {
       postal_code: input.postal_code?.trim() || null,
       country: input.country?.trim() || "US",
       map_url: input.map_url?.trim() || null,
+      status: "published",
       is_active: true,
     })
-    .select<EventVenueOption>("id, name, description, address_line1, address_line2, city, region, postal_code, country, map_url, is_virtual")
+    .select<EventVenueOption>("id, slug, name, description, featured_image_url, address_line1, address_line2, city, region, postal_code, country, email, phone, website_url, map_url, show_map, show_map_link, accessibility_notes, parking_notes, is_virtual, status")
     .single();
 
   if (error || !data) return { ok: false, error: error?.message ?? "Could not create venue." };

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { VenueForm } from "../resource-forms";
 import { getEventSettingsOptions } from "@/lib/queries/get-events";
 
 export const metadata = {
@@ -26,7 +25,7 @@ export default async function EventVenuesPage({ searchParams }: { searchParams: 
   const venues = settings.venues.filter((venue) => {
     const location = [venue.name, venue.city, venue.region, venue.country].filter(Boolean).join(" ").toLowerCase();
     const matchesSearch = !q || location.includes(q);
-    const matchesStatus = status === "all" || (status === "active" ? venue.is_active : !venue.is_active);
+    const matchesStatus = status === "all" || venue.status === status;
     const matchesMode = mode === "all" || (mode === "virtual" ? venue.is_virtual : !venue.is_virtual);
     return matchesSearch && matchesStatus && matchesMode;
   });
@@ -41,7 +40,7 @@ export default async function EventVenuesPage({ searchParams }: { searchParams: 
         </div>
         <div className="admin-page-header__actions">
           <Link href="/admin/events/settings" className="admin-btn admin-btn--outline">Settings</Link>
-          <Link href="/admin/events/new" className="admin-btn admin-btn--primary">New event</Link>
+          <Link href="/admin/events/venues/new" className="admin-btn admin-btn--primary">New venue</Link>
         </div>
       </div>
 
@@ -57,8 +56,9 @@ export default async function EventVenuesPage({ searchParams }: { searchParams: 
           <span className="admin-label">Status</span>
           <select name="status" defaultValue={status} className="admin-select">
             <option value="all">All</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
+            <option value="published">Published</option>
+            <option value="draft">Draft</option>
+            <option value="archived">Archived</option>
           </select>
         </label>
         <label>
@@ -74,11 +74,7 @@ export default async function EventVenuesPage({ searchParams }: { searchParams: 
         </div>
       </form>
 
-      <div className="grid gap-5 xl:grid-cols-[24rem_minmax(0,1fr)]">
-        <div>
-          <h2 className="admin-form-section__label mb-3" style={{ textWrap: "balance" }}>Create venue</h2>
-          <VenueForm />
-        </div>
+      <div className="grid gap-5">
         <div className="admin-table-wrap">
           <table className="admin-table">
             <thead>
@@ -86,7 +82,9 @@ export default async function EventVenuesPage({ searchParams }: { searchParams: 
                 <th>Venue</th>
                 <th>Location</th>
                 <th>Mode</th>
+                <th>Upcoming</th>
                 <th>Status</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -95,16 +93,19 @@ export default async function EventVenuesPage({ searchParams }: { searchParams: 
                   <td>
                     <div className="font-semibold text-foreground">{venue.name}</div>
                     {venue.description ? <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{venue.description}</p> : null}
-                    <details className="mt-3">
-                      <summary className="cursor-pointer text-xs font-semibold text-primary">Edit</summary>
-                      <div className="mt-3"><VenueForm venue={venue} /></div>
-                    </details>
                   </td>
                   <td>{[venue.address_line1, venue.city, venue.region].filter(Boolean).join(", ") || "None"}</td>
                   <td><span className="admin-badge admin-badge--draft">{venue.is_virtual ? "Virtual" : "Physical"}</span></td>
-                  <td><span className={venue.is_active ? "admin-badge admin-badge--published" : "admin-badge admin-badge--draft"}>{venue.is_active ? "Active" : "Inactive"}</span></td>
+                  <td>{venue.upcoming_count ?? 0}</td>
+                  <td><span className={venue.status === "published" ? "admin-badge admin-badge--published" : "admin-badge admin-badge--draft"}>{venue.status}</span></td>
+                  <td><Link href={`/admin/events/venues/${venue.id}/edit`} className="text-sm font-semibold text-primary">Edit</Link></td>
                 </tr>
               ))}
+              {venues.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="text-center text-sm text-muted-foreground">No venues match these filters.</td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>

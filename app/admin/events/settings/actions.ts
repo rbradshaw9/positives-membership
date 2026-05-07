@@ -29,6 +29,19 @@ function numberOrNull(value: string) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function safeSlug(value: string, fallback: string) {
+  return slugify(value || fallback) || slugify(fallback) || "event-resource";
+}
+
+function socialLinksFromForm(formData: FormData) {
+  return {
+    instagram: clean(formData.get("social_instagram")),
+    linkedin: clean(formData.get("social_linkedin")),
+    youtube: clean(formData.get("social_youtube")),
+    facebook: clean(formData.get("social_facebook")),
+  };
+}
+
 function safeReturnTo(formData: FormData, fallback: string) {
   const raw = clean(formData.get("return_to"));
   return raw.startsWith("/admin/events") && !raw.startsWith("//") ? raw : fallback;
@@ -80,14 +93,23 @@ export async function saveEventHost(formData: FormData) {
   const returnTo = safeReturnTo(formData, "/admin/events/hosts");
   const name = clean(formData.get("name"));
   if (!name) redirectWithStatus(returnTo, "host_name_required", "error");
+  const status = clean(formData.get("status")) || "published";
 
   const row = {
     name,
+    slug: safeSlug(clean(formData.get("slug")), name),
+    type: clean(formData.get("type")) || "person",
     bio: clean(formData.get("bio")) || null,
     image_url: clean(formData.get("image_url")) || null,
+    brand_logo_url: clean(formData.get("brand_logo_url")) || null,
     email: clean(formData.get("email")) || null,
+    phone: clean(formData.get("phone")) || null,
     website_url: clean(formData.get("website_url")) || null,
-    is_active: checkbox(formData, "is_active"),
+    support_email: clean(formData.get("support_email")) || null,
+    social_links: socialLinksFromForm(formData),
+    contact_visibility: clean(formData.get("contact_visibility")) || "logged_in",
+    status,
+    is_active: status !== "archived",
     updated_at: new Date().toISOString(),
   };
 
@@ -113,23 +135,32 @@ export async function saveEventVenue(formData: FormData) {
   const returnTo = safeReturnTo(formData, "/admin/events/venues");
   const name = clean(formData.get("name"));
   if (!name) redirectWithStatus(returnTo, "venue_name_required", "error");
+  const status = clean(formData.get("status")) || "published";
 
   const row = {
     name,
+    slug: safeSlug(clean(formData.get("slug")), name),
     description: clean(formData.get("description")) || null,
+    featured_image_url: clean(formData.get("featured_image_url")) || null,
     address_line1: clean(formData.get("address_line1")) || null,
     address_line2: clean(formData.get("address_line2")) || null,
     city: clean(formData.get("city")) || null,
     region: clean(formData.get("region")) || null,
     postal_code: clean(formData.get("postal_code")) || null,
     country: clean(formData.get("country")) || "US",
+    email: clean(formData.get("email")) || null,
     phone: clean(formData.get("phone")) || null,
     website_url: clean(formData.get("website_url")) || null,
     map_url: clean(formData.get("map_url")) || null,
+    show_map: checkbox(formData, "show_map"),
+    show_map_link: checkbox(formData, "show_map_link"),
+    accessibility_notes: clean(formData.get("accessibility_notes")) || null,
+    parking_notes: clean(formData.get("parking_notes")) || null,
     latitude: numberOrNull(clean(formData.get("latitude"))),
     longitude: numberOrNull(clean(formData.get("longitude"))),
     is_virtual: checkbox(formData, "is_virtual"),
-    is_active: checkbox(formData, "is_active"),
+    status,
+    is_active: status !== "archived",
     updated_at: new Date().toISOString(),
   };
 
