@@ -254,6 +254,7 @@ export async function getAdminEvents(params: {
   status?: string;
   typeId?: string;
   accessLevel?: string;
+  query?: string;
 }) {
   const supabase = asLooseSupabaseClient(getAdminClient());
   const month = params.month ?? new Date().toISOString().slice(0, 7);
@@ -281,6 +282,24 @@ export async function getAdminEvents(params: {
     events = events.filter((event) =>
       (event.member_event_access_level ?? []).some((row) => row.subscription_tier === params.accessLevel)
     );
+  }
+  const normalizedQuery = params.query?.trim().toLowerCase();
+  if (normalizedQuery) {
+    events = events.filter((event) => {
+      const searchable = [
+        event.title,
+        event.excerpt,
+        event.description,
+        event.status,
+        event.event_type?.name,
+        event.event_host?.name,
+        event.event_venue?.name,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return searchable.includes(normalizedQuery);
+    });
   }
 
   const eventsByDate = new Map<string, EventRow[]>();

@@ -124,6 +124,28 @@ test("event settings area splits resources into focused admin pages", async ({ p
   await expect(page.getByRole("heading", { name: "Ticketing" })).toBeVisible();
 });
 
+test("admin events defaults to list management view and can switch to calendar", async ({ page }) => {
+  await loginWithPassword(page, {
+    email: ADMIN_EMAIL,
+    password: ADMIN_PASSWORD,
+    next: "/admin/events",
+  });
+
+  const main = page.getByRole("main");
+  await expect(main.getByRole("heading", { name: "Events" })).toBeVisible();
+  await expect(main.getByRole("navigation", { name: "Event view" }).getByRole("link", { name: "List" })).toHaveAttribute("aria-current", "page");
+  await expect(main.locator("table.admin-events-table")).toBeVisible();
+  await expect(main.locator(".admin-events-calendar-grid")).toHaveCount(0);
+
+  await main.getByRole("link", { name: "Calendar" }).click();
+  await expect(page).toHaveURL(/view=calendar/);
+  await expect(main.locator(".admin-events-calendar-grid")).toBeVisible();
+
+  await main.getByRole("link", { name: "List" }).click();
+  await expect(main.locator("table.admin-events-table")).toBeVisible();
+  await expect(main.getByRole("navigation", { name: "Event view" }).getByRole("link", { name: "List" })).toHaveAttribute("aria-current", "page");
+});
+
 test("admin event editor supports image width resizing", async ({ page }) => {
   await loginWithPassword(page, {
     email: ADMIN_EMAIL,

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 type AdminSidebarNavProps = {
@@ -17,6 +17,8 @@ type AdminNavItem = {
   exact?: boolean;
   subLinks?: Array<{ href: string; label: string }>;
 };
+
+type AdminSubLink = NonNullable<AdminNavItem["subLinks"]>[number];
 
 type AdminNavGroup = {
   id: string;
@@ -43,6 +45,16 @@ function isActivePath(pathname: string, item: AdminNavItem) {
 
 function hasActiveItem(pathname: string, items: AdminNavItem[]) {
   return items.some((item) => isActivePath(pathname, item));
+}
+
+function isActiveSubLink(pathname: string, view: "list" | "calendar", subLink: AdminSubLink) {
+  const [subPath, subQuery] = subLink.href.split("?");
+  if (pathname !== subPath) return false;
+  if (subPath === "/admin/events") {
+    const expectedView = new URLSearchParams(subQuery ?? "").get("view");
+    return expectedView === "calendar" ? view === "calendar" : view === "list";
+  }
+  return true;
 }
 
 function Icon({ name }: { name: IconName }) {
@@ -168,7 +180,8 @@ function buildNavGroups({
           label: "Events",
           icon: "calendar",
           subLinks: [
-            { href: "/admin/events", label: "Calendar" },
+            { href: "/admin/events", label: "List" },
+            { href: "/admin/events?view=calendar", label: "Calendar" },
             { href: "/admin/events/new", label: "Add new" },
             { href: "/admin/events/types", label: "Types" },
             { href: "/admin/events/hosts", label: "Hosts" },
@@ -196,6 +209,8 @@ function buildNavGroups({
 
 export function AdminSidebarNav(props: AdminSidebarNavProps) {
   const pathname = usePathname() || "/admin";
+  const searchParams = useSearchParams();
+  const currentEventView = searchParams.get("view") === "calendar" || searchParams.get("view") === "month" ? "calendar" : "list";
   const groups = buildNavGroups(props);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [openParents, setOpenParents] = useState<Record<string, boolean>>({});
@@ -260,7 +275,7 @@ export function AdminSidebarNav(props: AdminSidebarNavProps) {
                           className="admin-nav-sublist"
                         >
                           {item.subLinks?.map((sub) => {
-                            const subActive = pathname === sub.href;
+                            const subActive = isActiveSubLink(pathname, currentEventView, sub);
                             return (
                               <Link
                                 key={sub.href}

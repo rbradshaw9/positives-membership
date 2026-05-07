@@ -1576,6 +1576,100 @@ select.member-input { cursor: pointer; }
   flex-shrink: 0;
 }
 
+.admin-events-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.admin-events-toolbar__label {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--color-foreground);
+}
+
+.admin-events-toolbar__meta {
+  margin-top: 0.125rem;
+  font-size: 0.75rem;
+  color: var(--color-muted-fg);
+}
+
+.admin-view-toggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.625rem;
+  background: var(--color-card);
+  box-shadow: var(--shadow-soft);
+}
+
+.admin-view-toggle__link {
+  min-width: 5.25rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 0.45rem;
+  color: var(--color-muted-fg);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.admin-view-toggle__link:hover {
+  color: var(--color-foreground);
+}
+
+.admin-view-toggle__link--active {
+  background: var(--color-primary);
+  color: white;
+}
+
+.admin-view-toggle__link--active:hover {
+  color: white;
+}
+
+.admin-events-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.admin-events-summary-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.625rem;
+  background: var(--color-card);
+  box-shadow: var(--shadow-soft);
+}
+
+.admin-events-summary-card span {
+  color: var(--color-muted-fg);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.admin-events-summary-card strong {
+  color: var(--color-foreground);
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+@media (max-width: 768px) {
+  .admin-events-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 /* ── Admin stat cards ─────────────────────────────────────────────────────── */
 
 .admin-stat-card {
@@ -1726,7 +1820,7 @@ select.member-input { cursor: pointer; }
   background: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  overflow-x: auto;
   box-shadow: var(--shadow-soft);
 }
 
@@ -1768,6 +1862,46 @@ select.member-input { cursor: pointer; }
 .admin-table td {
   padding: 0.875rem 1rem;
   vertical-align: middle;
+}
+
+.admin-events-table {
+  min-width: 68rem;
+}
+
+.admin-events-table__title {
+  color: var(--color-foreground);
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.admin-events-table__title:hover {
+  color: var(--color-primary);
+}
+
+.admin-empty-state {
+  display: flex;
+  min-height: 15rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+.admin-empty-state h2 {
+  color: var(--color-foreground);
+  font-family: var(--font-heading);
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.admin-empty-state p {
+  max-width: 32rem;
+  color: var(--color-muted-fg);
+  font-size: 0.875rem;
+  line-height: 1.55;
 }
 
 /* ── Admin badge variants ─────────────────────────────────────────────────── */
