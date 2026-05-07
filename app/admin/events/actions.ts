@@ -70,6 +70,8 @@ type EventTicketInput = {
   priceCents: number;
   currency: string;
   capacity: number | null;
+  saleStartsAt: string;
+  saleEndsAt: string;
   maxPerOrder: number;
   status: "active" | "disabled" | "archived";
   accessLevels: string[];
@@ -275,6 +277,8 @@ function parseTicketConfig(raw: string, fallbackAccessLevels: FormDataEntryValue
           priceCents: centsFromDollars(ticket.priceDollars ?? ticket.price ?? ticket.priceCents),
           currency: String(ticket.currency ?? "usd").trim().toLowerCase() || "usd",
           capacity: intOrNull(ticket.capacity),
+          saleStartsAt: String(ticket.saleStartsAt ?? ticket.sale_starts_at ?? "").trim(),
+          saleEndsAt: String(ticket.saleEndsAt ?? ticket.sale_ends_at ?? "").trim(),
           maxPerOrder: intOrDefault(ticket.maxPerOrder, 4),
           status,
           accessLevels: accessLevels.length > 0 ? accessLevels : fallbackLevels,
@@ -416,6 +420,8 @@ async function saveTicketTypes(eventId: string, input: EventInput) {
       price_cents: ticket.priceCents,
       currency: ticket.currency || "usd",
       capacity: ticket.capacity,
+      sale_starts_at: toIso(ticket.saleStartsAt, input.timezone),
+      sale_ends_at: toIso(ticket.saleEndsAt, input.timezone),
       max_per_order: ticket.maxPerOrder,
       status: ticket.status,
       sort_order: (index + 1) * 10,

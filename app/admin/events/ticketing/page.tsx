@@ -17,6 +17,8 @@ type TicketAdminRow = {
   currency: string;
   capacity: number | null;
   max_per_order: number;
+  sale_starts_at: string | null;
+  sale_ends_at: string | null;
   status: string;
   member_event?: {
     id: string;
@@ -45,13 +47,31 @@ function money(cents: number, currency: string) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() }).format(cents / 100);
 }
 
+function dateLabel(value: string | null) {
+  if (!value) return null;
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function salesWindow(ticket: TicketAdminRow) {
+  if (ticket.sale_starts_at && ticket.sale_ends_at) return `${dateLabel(ticket.sale_starts_at)} - ${dateLabel(ticket.sale_ends_at)}`;
+  if (ticket.sale_starts_at) return `Opens ${dateLabel(ticket.sale_starts_at)}`;
+  if (ticket.sale_ends_at) return `Ends ${dateLabel(ticket.sale_ends_at)}`;
+  return "Closes at event start";
+}
+
 async function getTicketingRows() {
   const supabase = asLooseSupabaseClient(getAdminClient());
   const [ticketsResult, statsResult] = await Promise.all([
     supabase
       .from("event_ticket_type")
       .select<TicketAdminRow>(
-        "id, event_id, name, price_cents, currency, capacity, max_per_order, status, member_event:event_id(id, title, starts_at, status)"
+        "id, event_id, name, price_cents, currency, capacity, max_per_order, sale_starts_at, sale_ends_at, status, member_event:event_id(id, title, starts_at, status)"
       )
       .neq("status", "archived")
       .order("created_at", { ascending: false }),
@@ -101,6 +121,7 @@ export default async function EventTicketingPage({ searchParams }: { searchParam
         </div>
         <div className="admin-page-header__actions">
           <Link href="/admin/events/settings" className="admin-btn admin-btn--outline">Settings</Link>
+          <Link href="/admin/events/attendees/check-in" className="admin-btn admin-btn--outline">Check-In</Link>
           <Link href="/admin/events/new" className="admin-btn admin-btn--primary">New ticketed event</Link>
         </div>
       </div>
@@ -173,6 +194,7 @@ export default async function EventTicketingPage({ searchParams }: { searchParam
                   <th>Price</th>
                   <th>Capacity</th>
                   <th>Confirmed</th>
+                  <th>Sales</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -193,12 +215,13 @@ export default async function EventTicketingPage({ searchParams }: { searchParam
                     <td>{money(ticket.price_cents, ticket.currency)}</td>
                     <td>{ticket.capacity ?? "Unlimited"}</td>
                     <td>{ticket.stats.confirmed}{ticket.stats.held ? ` (${ticket.stats.held} held)` : ""}</td>
+                    <td>{salesWindow(ticket)}</td>
                     <td><span className={ticket.status === "active" ? "admin-badge admin-badge--published" : "admin-badge admin-badge--draft"}>{ticket.status}</span></td>
                   </tr>
                 ))}
                 {tickets.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-muted-foreground">No ticket types match these filters.</td>
+                    <td colSpan={7} className="text-muted-foreground">No ticket types match these filters.</td>
                   </tr>
                 ) : null}
               </tbody>

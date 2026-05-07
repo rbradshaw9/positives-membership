@@ -11,6 +11,7 @@ import {
   waitForMemberBillingState,
   waitForCourseEntitlementByPaymentIntent,
   waitForCourseEntitlementStatus,
+  waitForEventTicketAttendees,
   waitForEventTicketOrderStatus,
 } from "./helpers";
 
@@ -382,6 +383,26 @@ test.describe("Stripe webhook lifecycle", () => {
         },
       });
       await waitForEventTicketOrderStatus(directFixture.orderId, "paid", "active");
+      await waitForEventTicketAttendees(directFixture.orderId, "registered");
+
+      await postSignedEvent("payment_intent.succeeded", {
+        id: directPaymentIntent,
+        object: "payment_intent",
+        amount: 1200,
+        amount_received: 1200,
+        created: Math.floor(Date.now() / 1000),
+        currency: "usd",
+        customer: member.stripe_customer_id,
+        latest_charge: directCharge,
+        status: "succeeded",
+        metadata: {
+          purchase_type: "event_ticket",
+          event_id: directFixture.eventId,
+          order_id: directFixture.orderId,
+          member_id: member.id,
+        },
+      });
+      await waitForEventTicketAttendees(directFixture.orderId, "registered", 1);
 
       await postSignedEvent("charge.refunded", {
         id: refundCharge,
@@ -392,6 +413,7 @@ test.describe("Stripe webhook lifecycle", () => {
         payment_intent: refundPaymentIntent,
       });
       await waitForEventTicketOrderStatus(refundFixture.orderId, "refunded", "refunded");
+      await waitForEventTicketAttendees(refundFixture.orderId, "refunded");
 
       await postSignedEvent("charge.dispute.closed", {
         id: "dp_e2e_event_ticket_chargeback",
@@ -402,6 +424,7 @@ test.describe("Stripe webhook lifecycle", () => {
         status: "lost",
       });
       await waitForEventTicketOrderStatus(chargebackFixture.orderId, "chargeback", "chargeback");
+      await waitForEventTicketAttendees(chargebackFixture.orderId, "chargeback");
     } finally {
       await deleteEventFixture(directFixture.eventId);
       await deleteEventFixture(refundFixture.eventId);

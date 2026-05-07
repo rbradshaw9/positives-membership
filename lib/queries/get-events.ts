@@ -531,6 +531,56 @@ async function getEventRsvpState(event: EventRow, memberId?: string | null) {
   };
 }
 
+async function withEventTicketInventory(events: EventRow[]) {
+  const ticketTypeIds = events.flatMap((event) => (event.event_ticket_type ?? []).map((ticket) => ticket.id));
+  if (ticketTypeIds.length === 0) return events;
+
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  const { data, error } = await supabase
+    .from("event_ticket")
+    .select<Array<{
+      ticket_type_id: string | null;
+      status: string;
+      event_ticket_order?: { expires_at: string | null } | null;
+    }>>("ticket_type_id, status, event_ticket_order:order_id(expires_at)")
+    .in("ticket_type_id", ticketTypeIds)
+    .in("status", ["pending", "active", "comp"]);
+
+  if (error) {
+    console.error("[withEventTicketInventory]", error.message);
+    return events;
+  }
+
+  const now = Date.now();
+  const counts = new Map<string, { sold: number; held: number }>();
+  for (const row of data ?? []) {
+    if (!row.ticket_type_id) continue;
+    const current = counts.get(row.ticket_type_id) ?? { sold: 0, held: 0 };
+    if (row.status === "active" || row.status === "comp") {
+      current.sold += 1;
+    } else if (
+      row.status === "pending" &&
+      row.event_ticket_order?.expires_at &&
+      new Date(row.event_ticket_order.expires_at).getTime() > now
+    ) {
+      current.held += 1;
+    }
+    counts.set(row.ticket_type_id, current);
+  }
+
+  return events.map((event) => ({
+    ...event,
+    event_ticket_type: (event.event_ticket_type ?? []).map((ticket) => {
+      const count = counts.get(ticket.id);
+      return {
+        ...ticket,
+        sold_count: count?.sold ?? 0,
+        held_count: count?.held ?? 0,
+      };
+    }),
+  }));
+}
+
 export async function getMemberEvents(params: {
   month?: string;
   query?: string;
@@ -567,7 +617,8 @@ export async function getMemberEvents(params: {
     return true;
   });
   const ticketAccess = await getMemberTicketAccess(params.memberId, published.map((event) => event.id));
-  const withTicketAccess = published.map((event) => ({
+  const withInventory = await withEventTicketInventory(published);
+  const withTicketAccess = withInventory.map((event) => ({
     ...event,
     member_ticket_access: event.ticketing_mode !== "ticket_required" || ticketAccess.has(event.id),
   }));
@@ -587,16 +638,18 @@ export async function getMemberEvent(id: string, memberTier: string | null, memb
   if (!hasAccess) return null;
   if (!memberId) {
     const rsvpState = await getEventRsvpState(event, null);
+    const [withInventory] = await withEventTicketInventory([event]);
     return {
-      ...event,
+      ...withInventory,
       ...rsvpState,
       member_ticket_access: event.ticketing_mode !== "ticket_required",
     };
   }
   const ticketAccess = await getMemberTicketAccess(memberId, [event.id]);
   const rsvpState = await getEventRsvpState(event, memberId);
+  const [withInventory] = await withEventTicketInventory([event]);
   return {
-    ...event,
+    ...withInventory,
     ...rsvpState,
     member_ticket_access: event.ticketing_mode !== "ticket_required" || ticketAccess.has(event.id),
   };
@@ -654,7 +707,7 @@ export async function getMemberRelatedEvents(params: {
     })
     .slice(0, params.limit ?? 3);
 
-  return withMemberTicketAccess(visible, params.memberId);
+  return withMemberTicketAccess(await withEventTicketInventory(visible), params.memberId);
 }
 
 function memberCanSeeEvent(event: EventRow, memberTier: string) {
@@ -759,7 +812,7 @@ export async function getMemberEventHostPage(slug: string, memberTier: string | 
 
   return {
     host: host as unknown as EventHostOption,
-    events: await withMemberTicketAccess(visible, memberId),
+    events: await withMemberTicketAccess(await withEventTicketInventory(visible), memberId),
   };
 }
 
@@ -797,7 +850,7 @@ export async function getMemberEventVenuePage(slug: string, memberTier: string |
 
   return {
     venue: venue as unknown as EventVenueOption,
-    events: await withMemberTicketAccess(visible, memberId),
+    events: await withMemberTicketAccess(await withEventTicketInventory(visible), memberId),
   };
 }
 

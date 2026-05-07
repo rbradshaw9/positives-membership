@@ -33,6 +33,7 @@ type EventTicketOrderItemRow = {
 
 type EventTicketMemberRow = {
   id: string;
+  name: string | null;
   email: string | null;
   stripe_customer_id: string | null;
 };
@@ -97,7 +98,7 @@ async function getOrderBundle(orderId: string) {
       .order("created_at", { ascending: true }),
     supabase
       .from("member")
-      .select<EventTicketMemberRow>("id, email, stripe_customer_id")
+      .select<EventTicketMemberRow>("id, name, email, stripe_customer_id")
       .eq("id", order.member_id)
       .maybeSingle(),
     supabase
@@ -121,6 +122,61 @@ async function getOrderBundle(orderId: string) {
     member: memberResult.data as unknown as EventTicketMemberRow,
     event: eventResult.data as unknown as EventTicketEventRow,
   };
+}
+
+export async function ensureEventTicketAttendees(orderId: string) {
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  const { order, member } = await getOrderBundle(orderId);
+  const { data: tickets, error: ticketError } = await supabase
+    .from("event_ticket")
+    .select<Array<{
+      id: string;
+      ticket_type_id: string | null;
+      event_id: string;
+      member_id: string;
+      status: string;
+      guest_name: string | null;
+      guest_email: string | null;
+    }>>("id, ticket_type_id, event_id, member_id, status, guest_name, guest_email")
+    .eq("order_id", orderId)
+    .in("status", ["active", "comp"]);
+
+  if (ticketError) throw new Error(`[Stripe] Failed to fetch event tickets for attendee creation: ${ticketError.message}`);
+  if (!tickets || tickets.length === 0) return { created: 0 };
+
+  const ticketIds = tickets.map((ticket) => ticket.id);
+  const { data: existing, error: existingError } = await supabase
+    .from("event_attendee")
+    .select<Array<{ ticket_id: string | null }>>("ticket_id")
+    .in("ticket_id", ticketIds);
+
+  if (existingError) throw new Error(`[Stripe] Failed to check existing event attendees: ${existingError.message}`);
+  const existingTicketIds = new Set((existing ?? []).flatMap((row) => row.ticket_id ? [row.ticket_id] : []));
+  const rows = tickets
+    .filter((ticket) => !existingTicketIds.has(ticket.id))
+    .map((ticket) => ({
+      event_id: ticket.event_id,
+      ticket_id: ticket.id,
+      ticket_type_id: ticket.ticket_type_id,
+      order_id: orderId,
+      member_id: ticket.member_id,
+      name: ticket.guest_name || member.name || null,
+      email: ticket.guest_email || member.email || null,
+      purchaser_name: member.name,
+      purchaser_email: member.email,
+      status: "registered",
+      source: ticket.status === "comp" || order.status === "comp" ? "comp" : "paid",
+    }));
+
+  if (rows.length === 0) return { created: 0 };
+
+  const { error: insertError } = await supabase.from("event_attendee").insert(rows);
+  if (insertError) {
+    if ("code" in insertError && insertError.code === "23505") return { created: 0 };
+    throw new Error(`[Stripe] Failed to create event attendees from tickets: ${insertError.message}`);
+  }
+
+  return { created: rows.length };
 }
 
 export async function markEventTicketOrderPaid({
@@ -164,6 +220,8 @@ export async function markEventTicketOrderPaid({
     .in("status", ["pending", "active"]);
 
   if (ticketError) throw new Error(`[Stripe] Failed to activate event tickets: ${ticketError.message}`);
+
+  await ensureEventTicketAttendees(orderId);
 
   if (stripeCustomerId) {
     await supabase
@@ -246,6 +304,14 @@ async function markEventTicketOrderInactive({
 
   if (ticketError) throw new Error(`[Stripe] Failed to mark event tickets ${status}: ${ticketError.message}`);
 
+  const { error: attendeeError } = await supabase
+    .from("event_attendee")
+    .update({ status, updated_at: new Date().toISOString() })
+    .in("order_id", orderIds)
+    .in("status", ["registered", "checked_in"]);
+
+  if (attendeeError) throw new Error(`[Stripe] Failed to mark event attendees ${status}: ${attendeeError.message}`);
+
   await supabase.from("activity_event").insert(
     orders.map((order) => ({
       member_id: order.member_id,
@@ -286,7 +352,7 @@ export async function createEventTicketPaymentOrCheckout(orderId: string) {
     });
     return {
       status: "purchased" as const,
-      url: `/events/${order.event_id}?ticket=success`,
+      url: `/events/${order.event_id}/orders/${order.id}?ticket=success`,
       message: "Your event ticket is confirmed.",
     };
   }
@@ -324,7 +390,7 @@ export async function createEventTicketPaymentOrCheckout(orderId: string) {
           });
           return {
             status: "purchased" as const,
-            url: `/events/${order.event_id}?ticket=success`,
+            url: `/events/${order.event_id}/orders/${order.id}?ticket=success`,
             message: "Your event ticket is confirmed.",
           };
         }
@@ -361,7 +427,7 @@ export async function createEventTicketPaymentOrCheckout(orderId: string) {
       member_id: member.id,
       ...(member.email ? { buyer_email: member.email } : {}),
     },
-    success_url: `${appUrl}/events/${order.event_id}?ticket=success&session_id={CHECKOUT_SESSION_ID}`,
+    success_url: `${appUrl}/events/${order.event_id}/orders/${order.id}?ticket=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${appUrl}/events/${order.event_id}?ticket=canceled`,
     allow_promotion_codes: true,
     locale: "auto",

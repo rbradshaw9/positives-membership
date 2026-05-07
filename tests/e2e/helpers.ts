@@ -1510,15 +1510,32 @@ export async function createEventTicketWebhookFixture({
     .single();
   if (itemError || !item) throw new Error(`Failed to create event ticket webhook item: ${itemError?.message ?? "missing row"}`);
 
-  const { error: eventTicketError } = await supabase.from("event_ticket").insert({
-    order_id: order.id,
-    order_item_id: item.id,
-    ticket_type_id: ticketType.id,
-    event_id: event.id,
-    member_id: memberId,
-    status: orderStatus === "paid" ? "active" : "pending",
-  });
-  if (eventTicketError) throw new Error(`Failed to create event ticket webhook ticket: ${eventTicketError.message}`);
+  const { data: eventTicket, error: eventTicketError } = await supabase
+    .from("event_ticket")
+    .insert({
+      order_id: order.id,
+      order_item_id: item.id,
+      ticket_type_id: ticketType.id,
+      event_id: event.id,
+      member_id: memberId,
+      status: orderStatus === "paid" ? "active" : "pending",
+    })
+    .select("id")
+    .single();
+  if (eventTicketError || !eventTicket) throw new Error(`Failed to create event ticket webhook ticket: ${eventTicketError?.message ?? "missing row"}`);
+
+  if (orderStatus === "paid") {
+    const { error: attendeeError } = await supabase.from("event_attendee").insert({
+      event_id: event.id,
+      ticket_id: eventTicket.id,
+      ticket_type_id: ticketType.id,
+      order_id: order.id,
+      member_id: memberId,
+      status: "registered",
+      source: "paid",
+    });
+    if (attendeeError) throw new Error(`Failed to create event ticket webhook attendee: ${attendeeError.message}`);
+  }
 
   return {
     eventId: event.id,
@@ -1530,6 +1547,35 @@ export async function deleteEventFixture(eventId: string) {
   const supabase = getServiceRoleClient();
   const { error } = await supabase.from("member_event").delete().eq("id", eventId);
   if (error) throw new Error(`Failed to delete event fixture ${eventId}: ${error.message}`);
+}
+
+export async function waitForEventTicketAttendees(
+  orderId: string,
+  expectedStatus: "registered" | "checked_in" | "canceled" | "refunded" | "chargeback" | "no_show",
+  expectedCount = 1,
+  timeoutMs = 10_000
+) {
+  const supabase = getServiceRoleClient();
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    const { data: attendees, error } = await supabase
+      .from("event_attendee")
+      .select("id, ticket_id, status, security_code")
+      .eq("order_id", orderId);
+    if (error) throw new Error(`Failed to fetch event ticket attendees for ${orderId}: ${error.message}`);
+
+    if (
+      (attendees ?? []).length === expectedCount &&
+      (attendees ?? []).every((attendee) => attendee.status === expectedStatus && attendee.ticket_id && attendee.security_code)
+    ) {
+      return attendees;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+
+  throw new Error(`Event ticket order ${orderId} did not create ${expectedCount} attendee(s) with status ${expectedStatus}.`);
 }
 
 export async function waitForEventTicketOrderStatus(

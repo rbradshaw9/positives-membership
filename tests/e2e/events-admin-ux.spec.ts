@@ -77,6 +77,11 @@ test("admin event form keeps advanced fields contextual and supports inline crea
   await expect(page.getByLabel("Event details HTML")).toBeVisible();
   await page.getByRole("button", { name: "Visual" }).click();
 
+  await page.getByLabel("Ticketing mode").selectOption("ticket_required");
+  await expect(page.getByRole("heading", { name: "General Admission" })).toBeVisible();
+  await expect(page.getByLabel("Sales open")).toBeVisible();
+  await expect(page.getByLabel("Sales close")).toBeVisible();
+
   const typeName = `${EVENT_TITLE_PREFIX} Type`;
   await page.getByLabel("Event type").selectOption("__create");
   await page.getByRole("dialog").getByLabel("Name").fill(typeName);
@@ -123,6 +128,7 @@ test("event settings area splits resources into focused admin pages", async ({ p
   await expect(page.getByRole("link", { name: "Manage types" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Manage hosts" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Manage venues" })).toBeVisible();
+  await expect(page.getByRole("main").getByRole("link", { name: "Check-In", exact: true })).toBeVisible();
   await expect(page.getByRole("main").getByRole("link", { name: "Ticketing" })).toBeVisible();
 
   await page.goto("/admin/events/types");
@@ -251,7 +257,7 @@ test("draft publish and unpublish flow controls member event visibility", async 
         password: LEVEL_2_MEMBER_PASSWORD,
         next: memberEventsPath,
       });
-      await expect(memberPage.getByText(title)).toHaveCount(visible ? 1 : 0);
+      await expect(memberPage.getByRole("link", { name: title, exact: true })).toHaveCount(visible ? 1 : 0);
       if (detailsVisible) {
         const eventId = editPath.split("/").at(-2);
         await memberPage.goto(`/events/${eventId}`);
@@ -478,6 +484,18 @@ test("member RSVP creates an attendee that admins can check in", async ({
     await expect(adminPage).toHaveURL(new RegExp(`/admin/events/${fixture.eventId}/attendees\\?success=check_in_reversed$`));
     await expect(adminPage.getByText("Check-in reversed.")).toBeVisible();
     await expect(attendeeRow.getByText("Not checked in")).toBeVisible();
+
+    await adminPage.goto(`/admin/events/attendees/check-in?event_id=${fixture.eventId}`);
+    await expect(adminPage.getByRole("heading", { name: "Check-In" })).toBeVisible();
+    await adminPage.getByLabel("Lookup").fill(attendeeEmail);
+    await adminPage.getByRole("button", { name: "Check in attendee" }).click();
+    await expect(adminPage).toHaveURL(/\/admin\/events\/attendees\/check-in\?event_id=.*success=checked_in/);
+    await expect(adminPage.getByText("Attendee checked in.")).toBeVisible();
+
+    await adminPage.getByLabel("Lookup").fill(attendeeEmail);
+    await adminPage.getByRole("button", { name: "Check in attendee" }).click();
+    await expect(adminPage).toHaveURL(/\/admin\/events\/attendees\/check-in\?event_id=.*error=already_checked_in/);
+    await expect(adminPage.getByText("This attendee is already checked in.")).toBeVisible();
   } finally {
     await adminContext.close();
   }

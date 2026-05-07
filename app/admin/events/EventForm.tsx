@@ -61,6 +61,8 @@ type TicketDraft = {
   priceDollars: string;
   currency: string;
   capacity: string;
+  saleStartsAt: string;
+  saleEndsAt: string;
   maxPerOrder: string;
   status: "active" | "disabled";
   accessLevels: string[];
@@ -148,7 +150,7 @@ function dollarsFromCents(value?: number | null) {
   return (value / 100).toFixed(2);
 }
 
-function ticketDraftFromEvent(event?: EventRow | null): TicketDraft[] {
+function ticketDraftFromEvent(event?: EventRow | null, timezone = "America/New_York"): TicketDraft[] {
   return (event?.event_ticket_type ?? [])
     .filter((ticket) => ticket.status !== "archived")
     .map((ticket) => ({
@@ -158,6 +160,8 @@ function ticketDraftFromEvent(event?: EventRow | null): TicketDraft[] {
       priceDollars: dollarsFromCents(ticket.price_cents),
       currency: ticket.currency ?? "usd",
       capacity: ticket.capacity === null || ticket.capacity === undefined ? "" : String(ticket.capacity),
+      saleStartsAt: ticket.sale_starts_at ? datetimeLocal(ticket.sale_starts_at, timezone) : "",
+      saleEndsAt: ticket.sale_ends_at ? datetimeLocal(ticket.sale_ends_at, timezone) : "",
       maxPerOrder: String(ticket.max_per_order ?? 4),
       status: ticket.status === "disabled" ? "disabled" : "active",
       accessLevels: (ticket.event_ticket_type_access_level ?? []).map((row) => row.subscription_tier),
@@ -191,6 +195,8 @@ function newTicketDraft(accessLevels: string[]): TicketDraft {
     priceDollars: "",
     currency: "usd",
     capacity: "",
+    saleStartsAt: "",
+    saleEndsAt: "",
     maxPerOrder: "4",
     status: "active",
     accessLevels,
@@ -408,7 +414,7 @@ export function EventForm({
       .filter((level) => (event ? hasAccess(event, level.value) : defaultAccessValues(defaults).includes(level.value)))
       .map((level) => level.value)
   );
-  const [ticketTypes, setTicketTypes] = useState<TicketDraft[]>(() => ticketDraftFromEvent(event));
+  const [ticketTypes, setTicketTypes] = useState<TicketDraft[]>(() => ticketDraftFromEvent(event, initialTimezone));
   const initialRsvpDrafts = rsvpDraftFromEvent(event, initialTimezone);
   const [rsvpEnabled, setRsvpEnabled] = useState(initialRsvpDrafts.some((rsvp) => rsvp.status === "active"));
   const [rsvpTypes, setRsvpTypes] = useState<RsvpDraft[]>(() => initialRsvpDrafts);
@@ -1027,7 +1033,52 @@ export function EventForm({
           ) : null}
         </FieldSection>
 
-        <FieldSection title="Ticketing">
+        <FieldSection title="Tickets & RSVPs">
+          <div className="rounded-2xl border border-border bg-card p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Registration</p>
+                <h3 className="mt-1 font-heading text-lg font-semibold text-foreground" style={{ textWrap: "balance" }}>
+                  Build admission for this event
+                </h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Create tickets for paid admission, RSVPs for free registration, or leave both off when attendance is included.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="admin-btn admin-btn--outline"
+                  onClick={() => {
+                    setTicketingMode("ticket_required");
+                    setTicketTypes((current) =>
+                      current.length > 0
+                        ? current
+                        : [{ ...newTicketDraft(accessLevels), maxPerOrder: String(defaults?.defaultMaxPerOrder ?? 4) }]
+                    );
+                  }}
+                >
+                  New ticket
+                </button>
+                <button
+                  type="button"
+                  className="admin-btn admin-btn--outline"
+                  onClick={() => {
+                    setRsvpEnabled(true);
+                    setRsvpTypes((current) => current.length > 0 ? current : [newRsvpDraft(startsAt)]);
+                  }}
+                >
+                  New RSVP
+                </button>
+              </div>
+            </div>
+            {ticketingMode !== "ticket_required" && !rsvpEnabled ? (
+              <div className="mt-4 rounded-xl border border-dashed border-border bg-muted/25 p-4 text-sm text-muted-foreground">
+                No tickets or RSVPs have been created yet. Members can still view the event if it is published for their membership level.
+              </div>
+            ) : null}
+          </div>
+
           <div className="rounded-2xl border border-border bg-muted/30 p-4">
             <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
               <div>
@@ -1129,6 +1180,28 @@ export function EventForm({
                         inputMode="numeric"
                       />
                     </div>
+                    <div className="admin-form-field">
+                      <label className="admin-label" htmlFor={`ticket_sale_start_${index}`}>Sales open</label>
+                      <input
+                        id={`ticket_sale_start_${index}`}
+                        value={ticket.saleStartsAt}
+                        onChange={(event) => updateTicket(index, { saleStartsAt: event.target.value })}
+                        className="admin-input"
+                        type="datetime-local"
+                      />
+                      <p className="admin-hint">Optional. Leave blank to make the ticket available immediately.</p>
+                    </div>
+                    <div className="admin-form-field">
+                      <label className="admin-label" htmlFor={`ticket_sale_end_${index}`}>Sales close</label>
+                      <input
+                        id={`ticket_sale_end_${index}`}
+                        value={ticket.saleEndsAt}
+                        onChange={(event) => updateTicket(index, { saleEndsAt: event.target.value })}
+                        className="admin-input"
+                        type="datetime-local"
+                      />
+                      <p className="admin-hint">Optional. Leave blank to close sales at event start.</p>
+                    </div>
                   </div>
 
                   <div className="admin-form-field mt-4">
@@ -1174,9 +1247,7 @@ export function EventForm({
               </button>
             </div>
           ) : null}
-        </FieldSection>
 
-        <FieldSection title="RSVP">
           <div className="rounded-2xl border border-border bg-muted/30 p-4">
             <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
               <div>

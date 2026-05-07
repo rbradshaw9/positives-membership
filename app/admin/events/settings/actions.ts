@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/auth/require-admin";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import { parseAccessLevels } from "@/lib/events/types";
+import { ensureEventTicketAttendees } from "@/server/services/stripe/event-tickets";
 
 function clean(value: FormDataEntryValue | null) {
   return value?.toString().trim() ?? "";
@@ -325,6 +326,13 @@ export async function grantEventCompTickets(formData: FormData) {
   const { error: ticketError } = await supabase.from("event_ticket").insert(rows);
   if (ticketError) {
     console.error("[events/ticketing] grantEventCompTickets tickets", ticketError.message);
+    redirectWithStatus(returnTo, "comp_save_failed", "error");
+  }
+
+  try {
+    await ensureEventTicketAttendees(order.id);
+  } catch (error) {
+    console.error("[events/ticketing] grantEventCompTickets attendees", error instanceof Error ? error.message : String(error));
     redirectWithStatus(returnTo, "comp_save_failed", "error");
   }
 

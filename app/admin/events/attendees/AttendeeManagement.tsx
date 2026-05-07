@@ -55,6 +55,7 @@ const ERROR_COPY: Record<string, string> = {
   attendee_save_failed: "The attendee could not be added.",
   check_in_required: "Choose an attendee before changing check-in status.",
   check_in_blocked: "This attendee cannot be checked in.",
+  already_checked_in: "This attendee is already checked in.",
   check_in_failed: "Check-in could not be saved. The attendee may already be checked in.",
   check_in_reverse_failed: "Check-in could not be reversed.",
   attendee_required: "Choose an attendee before canceling.",
@@ -143,6 +144,7 @@ export function AttendeeManagement({
         </div>
         <div className="admin-page-header__actions">
           <Link href="/admin/events" className="admin-btn admin-btn--outline">Events</Link>
+          <Link href="/admin/events/attendees/check-in" className="admin-btn admin-btn--outline">Check-In</Link>
           <Link href={exportHref} className="admin-btn admin-btn--outline">Export CSV</Link>
         </div>
       </div>
