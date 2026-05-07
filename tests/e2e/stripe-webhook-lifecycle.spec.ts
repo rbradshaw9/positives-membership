@@ -2,13 +2,16 @@ import Stripe from "stripe";
 import { expect, test } from "@playwright/test";
 import {
   createCourseEntitlementWebhookFixture,
+  createEventTicketWebhookFixture,
   createStandaloneCourseFixture,
   deleteCourseFixture,
+  deleteEventFixture,
   getMemberBillingState,
   MEMBER_EMAIL,
   waitForMemberBillingState,
   waitForCourseEntitlementByPaymentIntent,
   waitForCourseEntitlementStatus,
+  waitForEventTicketOrderStatus,
 } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
@@ -199,10 +202,11 @@ test.describe("Stripe webhook lifecycle", () => {
       await expect(response.json()).resolves.toMatchObject({ received: true });
     };
 
-    const refundedPaymentIntent = "pi_e2e_course_refund";
-    const refundedCharge = "ch_e2e_course_refund";
-    const chargebackPaymentIntent = "pi_e2e_course_chargeback";
-    const chargebackCharge = "ch_e2e_course_chargeback";
+    const unique = Date.now();
+    const refundedPaymentIntent = `pi_e2e_course_refund_${unique}`;
+    const refundedCharge = `ch_e2e_course_refund_${unique}`;
+    const chargebackPaymentIntent = `pi_e2e_course_chargeback_${unique}`;
+    const chargebackCharge = `ch_e2e_course_chargeback_${unique}`;
 
     const refundFixture = await createCourseEntitlementWebhookFixture({
       memberId: member.id,
@@ -254,9 +258,10 @@ test.describe("Stripe webhook lifecycle", () => {
     const stripe = new Stripe("sk_test_placeholder", {
       apiVersion: "2026-03-25.dahlia",
     });
-    const paymentIntentId = "pi_e2e_course_direct_purchase";
-    const chargeId = "ch_e2e_course_direct_purchase";
-    const fixture = await createStandaloneCourseFixture("direct-purchase");
+    const unique = Date.now();
+    const paymentIntentId = `pi_e2e_course_direct_purchase_${unique}`;
+    const chargeId = `ch_e2e_course_direct_purchase_${unique}`;
+    const fixture = await createStandaloneCourseFixture(`direct-purchase-${unique}`);
 
     const payload = JSON.stringify(
       buildEvent("payment_intent.succeeded", {
@@ -264,6 +269,7 @@ test.describe("Stripe webhook lifecycle", () => {
         object: "payment_intent",
         amount: 5000,
         amount_received: 5000,
+        created: Math.floor(Date.now() / 1000),
         currency: "usd",
         customer: member.stripe_customer_id,
         latest_charge: chargeId,
@@ -295,6 +301,111 @@ test.describe("Stripe webhook lifecycle", () => {
       await waitForCourseEntitlementByPaymentIntent(paymentIntentId, "active");
     } finally {
       await deleteCourseFixture(fixture.courseId);
+    }
+  });
+
+  test("updates event tickets from payment, refund, and chargeback webhooks", async ({
+    request,
+  }) => {
+    const member = await getMemberBillingState(MEMBER_EMAIL);
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+    if (!webhookSecret) {
+      throw new Error("Missing STRIPE_WEBHOOK_SECRET required for event ticket webhook verification.");
+    }
+
+    const stripe = new Stripe("sk_test_placeholder", {
+      apiVersion: "2026-03-25.dahlia",
+    });
+
+    const postSignedEvent = async (type: string, object: Record<string, unknown>) => {
+      const payload = JSON.stringify(buildEvent(type, object));
+      const signature = stripe.webhooks.generateTestHeaderString({
+        payload,
+        secret: webhookSecret,
+      });
+
+      const response = await request.post("/api/webhooks/stripe", {
+        data: payload,
+        headers: {
+          "content-type": "application/json",
+          "stripe-signature": signature,
+        },
+      });
+
+      expect(response.status(), `${type} should return 200`).toBe(200);
+      await expect(response.json()).resolves.toMatchObject({ received: true });
+    };
+
+    const unique = Date.now();
+    const directPaymentIntent = `pi_e2e_event_ticket_direct_${unique}`;
+    const directCharge = `ch_e2e_event_ticket_direct_${unique}`;
+    const refundPaymentIntent = `pi_e2e_event_ticket_refund_${unique}`;
+    const refundCharge = `ch_e2e_event_ticket_refund_${unique}`;
+    const chargebackPaymentIntent = `pi_e2e_event_ticket_chargeback_${unique}`;
+    const chargebackCharge = `ch_e2e_event_ticket_chargeback_${unique}`;
+
+    const directFixture = await createEventTicketWebhookFixture({
+      memberId: member.id,
+      paymentIntentId: directPaymentIntent,
+      orderStatus: "pending",
+    });
+    const refundFixture = await createEventTicketWebhookFixture({
+      memberId: member.id,
+      paymentIntentId: refundPaymentIntent,
+      chargeId: refundCharge,
+      orderStatus: "paid",
+    });
+    const chargebackFixture = await createEventTicketWebhookFixture({
+      memberId: member.id,
+      paymentIntentId: chargebackPaymentIntent,
+      chargeId: chargebackCharge,
+      orderStatus: "paid",
+    });
+
+    try {
+      await postSignedEvent("payment_intent.succeeded", {
+        id: directPaymentIntent,
+        object: "payment_intent",
+        amount: 1200,
+        amount_received: 1200,
+        created: Math.floor(Date.now() / 1000),
+        currency: "usd",
+        customer: member.stripe_customer_id,
+        latest_charge: directCharge,
+        status: "succeeded",
+        metadata: {
+          purchase_type: "event_ticket",
+          event_id: directFixture.eventId,
+          order_id: directFixture.orderId,
+          member_id: member.id,
+        },
+      });
+      await waitForEventTicketOrderStatus(directFixture.orderId, "paid", "active");
+
+      await postSignedEvent("charge.refunded", {
+        id: refundCharge,
+        object: "charge",
+        amount: 1200,
+        amount_captured: 1200,
+        amount_refunded: 1200,
+        payment_intent: refundPaymentIntent,
+      });
+      await waitForEventTicketOrderStatus(refundFixture.orderId, "refunded", "refunded");
+
+      await postSignedEvent("charge.dispute.closed", {
+        id: "dp_e2e_event_ticket_chargeback",
+        object: "dispute",
+        amount: 1200,
+        charge: chargebackCharge,
+        payment_intent: chargebackPaymentIntent,
+        status: "lost",
+      });
+      await waitForEventTicketOrderStatus(chargebackFixture.orderId, "chargeback", "chargeback");
+    } finally {
+      await deleteEventFixture(directFixture.eventId);
+      await deleteEventFixture(refundFixture.eventId);
+      await deleteEventFixture(chargebackFixture.eventId);
     }
   });
 });

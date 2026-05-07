@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getAdminEvent, getAdminEvents, getEventAdminOptions } from "@/lib/queries/get-events";
+import { getAdminEvents, getEventAdminOptions, type EventRow } from "@/lib/queries/get-events";
 import { accessLevelLabel, EVENT_ACCESS_LEVELS } from "@/lib/events/types";
 import { formatEventDateRange, shiftMonth } from "@/lib/events/dates";
 
@@ -33,20 +33,24 @@ function buildHref(params: Record<string, string | undefined>) {
   return `/admin/events?${qs.toString()}`;
 }
 
-function accessLabels(event: Awaited<ReturnType<typeof getAdminEvent>>) {
+function accessLabels(event: EventRow | null | undefined) {
   return (event?.member_event_access_level ?? []).map((row) => accessLevelLabel(row.subscription_tier)).join(", ");
 }
 
-function virtualLabel(event: Awaited<ReturnType<typeof getAdminEvent>>) {
+function virtualLabel(event: EventRow | null | undefined) {
   if (event?.virtual_mode === "zoom") return "Zoom";
   if (event?.virtual_mode === "manual") return "Manual link";
   return "No virtual link";
 }
 
-function missingJoinLink(event: Awaited<ReturnType<typeof getAdminEvent>>) {
+function missingJoinLink(event: EventRow | null | undefined) {
   if (event?.virtual_mode === "zoom") return !event.event_zoom_meeting?.join_url;
   if (event?.virtual_mode === "manual") return !event.manual_join_url;
   return false;
+}
+
+function ticketLabel(event: EventRow | null | undefined) {
+  return event?.ticketing_mode === "ticket_required" ? "Ticket required" : "Included";
 }
 
 export default async function AdminEventsPage({ searchParams }: { searchParams: SearchParams }) {
@@ -157,6 +161,7 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
                       <span className="flex flex-wrap gap-1">
                         <span className={STATUS_BADGE[event.status] ?? "admin-badge"} style={{ fontSize: "0.58rem", padding: "0.1rem 0.4rem" }}>{event.status}</span>
                         <span className="admin-badge admin-badge--draft" style={{ fontSize: "0.58rem", padding: "0.1rem 0.4rem" }}>{virtualLabel(event)}</span>
+                        <span className="admin-badge admin-badge--draft" style={{ fontSize: "0.58rem", padding: "0.1rem 0.4rem" }}>{ticketLabel(event)}</span>
                         {missingJoinLink(event) ? <span className="admin-badge admin-badge--review" style={{ fontSize: "0.58rem", padding: "0.1rem 0.4rem" }}>Needs link</span> : null}
                       </span>
                       <span className="mt-1 line-clamp-2 block font-semibold text-foreground">{event.title}</span>
@@ -187,6 +192,7 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
                     <div className="font-semibold text-foreground">{event.title}</div>
                     <div className="mt-1 flex flex-wrap gap-1">
                       <span className="admin-badge admin-badge--draft">{virtualLabel(event)}</span>
+                      <span className="admin-badge admin-badge--draft">{ticketLabel(event)}</span>
                       {missingJoinLink(event) ? <span className="admin-badge admin-badge--review">Needs link</span> : null}
                     </div>
                     <div className="mt-1 text-xs text-muted-foreground">{event.event_host?.name ?? "No host"}</div>

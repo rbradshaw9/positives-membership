@@ -88,6 +88,10 @@ export default async function AdminLayout({
       subLinks: [
         { href: "/admin/events", label: "Calendar" },
         { href: "/admin/events/new", label: "Add New" },
+        { href: "/admin/events/types", label: "Types" },
+        { href: "/admin/events/hosts", label: "Hosts" },
+        { href: "/admin/events/venues", label: "Venues" },
+        { href: "/admin/events/ticketing", label: "Ticketing" },
         { href: "/admin/events/settings", label: "Settings" },
       ],
       icon: (

@@ -20,6 +20,7 @@ function href(params: Record<string, string>) {
 }
 
 function joinUrl(event: Awaited<ReturnType<typeof getMemberEvents>>["events"][number]) {
+  if (!event.member_ticket_access) return null;
   if (event.virtual_mode === "manual") return event.manual_join_url;
   if (event.virtual_mode === "zoom") return event.event_zoom_meeting?.join_url ?? null;
   return null;
@@ -53,6 +54,11 @@ function EventListItem({
           {isPast ? (
             <span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
               Past event
+            </span>
+          ) : null}
+          {event.ticketing_mode === "ticket_required" ? (
+            <span className="rounded-full bg-secondary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-secondary">
+              {event.member_ticket_access ? "Ticket confirmed" : "Ticket required"}
             </span>
           ) : null}
         </div>
@@ -93,6 +99,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Searc
   const view = params.view === "list" ? "list" : "month";
   const data = await getMemberEvents({
     month: params.month,
+    memberId: member.id,
     memberTier: member.subscription_tier,
   });
   const month = data.month;
@@ -153,6 +160,11 @@ export default async function EventsPage({ searchParams }: { searchParams: Searc
                         <span className="mt-1 block text-[11px] text-muted-foreground">
                           {new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: event.timezone }).format(new Date(event.starts_at))}
                         </span>
+                        {event.ticketing_mode === "ticket_required" ? (
+                          <span className="mt-1 block text-[10px] font-bold uppercase tracking-[0.12em] text-secondary">
+                            {event.member_ticket_access ? "Ticket confirmed" : "Ticket required"}
+                          </span>
+                        ) : null}
                       </Link>
                     ))}
                   </div>

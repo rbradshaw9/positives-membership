@@ -8,7 +8,11 @@ export const EVENT_ACCESS_LEVELS = [
 export type EventAccessLevel = (typeof EVENT_ACCESS_LEVELS)[number]["value"];
 export type EventStatus = "draft" | "ready_for_review" | "published" | "canceled" | "postponed" | "archived";
 export type EventVirtualMode = "none" | "manual" | "zoom";
+export type EventTicketingMode = "included" | "ticket_required";
 export type RecurrenceFrequency = "daily" | "weekly" | "monthly";
+export type EventTicketTypeStatus = "active" | "disabled" | "archived";
+export type EventTicketOrderStatus = "pending" | "paid" | "refunded" | "chargeback" | "canceled" | "comp" | "expired";
+export type EventTicketStatus = "pending" | "active" | "refunded" | "chargeback" | "canceled" | "comp" | "expired";
 
 export type EventTypeOption = {
   id: string;
@@ -55,4 +59,9 @@ export function accessLevelLabel(value: string) {
 export function parseAccessLevels(values: FormDataEntryValue[]) {
   const allowed = new Set(EVENT_ACCESS_LEVELS.map((level) => level.value));
   return values.map(String).filter((value): value is EventAccessLevel => allowed.has(value as EventAccessLevel));
+}
+
+export function normalizeEventAccessLevels(values: unknown) {
+  if (!Array.isArray(values)) return [];
+  return parseAccessLevels(values.map((value) => String(value)));
 }

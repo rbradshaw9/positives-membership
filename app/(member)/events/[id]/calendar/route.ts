@@ -8,7 +8,7 @@ type Params = Promise<{ id: string }>;
 export async function GET(request: Request, { params }: { params: Params }) {
   const member = await requireActiveMember();
   const { id } = await params;
-  const event = await getMemberEvent(id, member.subscription_tier);
+  const event = await getMemberEvent(id, member.subscription_tier, member.id);
   if (!event) return new NextResponse("Not found", { status: 404 });
 
   const url = new URL(request.url);

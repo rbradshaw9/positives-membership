@@ -1,17 +1,23 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import {
   ADMIN_EMAIL,
   ADMIN_PASSWORD,
   LEVEL_2_MEMBER_EMAIL,
   LEVEL_2_MEMBER_PASSWORD,
+  createCompEventTicketFixture,
   cleanupEventUxFixturesByPrefix,
   createEventUxZoomFixture,
+  createTicketedEventFixture,
   loginWithPassword,
 } from "./helpers";
 
 const EVENT_TITLE_PREFIX = "E2E Events UX";
 
 test.describe.configure({ mode: "serial", timeout: 60_000 });
+
+async function waitForEventFormReady(page: Page) {
+  await expect(page.locator('form[data-event-form-ready="true"]')).toBeVisible();
+}
 
 test.beforeEach(async () => {
   await cleanupEventUxFixturesByPrefix(EVENT_TITLE_PREFIX);
@@ -29,6 +35,7 @@ test("admin event form keeps advanced fields contextual and supports inline crea
     password: ADMIN_PASSWORD,
     next: "/admin/events/new",
   });
+  await waitForEventFormReady(page);
 
   await expect(page.getByRole("heading", { name: "New event" })).toBeVisible();
   await expect(page.getByText("Member visibility")).toBeVisible();
@@ -88,9 +95,33 @@ test("calendar quick create pre-fills local event time", async ({ page }) => {
     password: ADMIN_PASSWORD,
     next: "/admin/events/new?starts_at=2099-06-15T18:00",
   });
+  await waitForEventFormReady(page);
 
   await expect(page.getByLabel("Start date & time")).toHaveValue("2099-06-15T18:00");
   await expect(page.getByLabel("End date & time")).toHaveValue("2099-06-15T19:00");
+});
+
+test("event settings area splits resources into focused admin pages", async ({ page }) => {
+  await loginWithPassword(page, {
+    email: ADMIN_EMAIL,
+    password: ADMIN_PASSWORD,
+    next: "/admin/events/settings",
+  });
+
+  await expect(page.getByRole("heading", { name: "Event Settings" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Manage types" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Manage hosts" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Manage venues" })).toBeVisible();
+  await expect(page.getByRole("main").getByRole("link", { name: "Ticketing" })).toBeVisible();
+
+  await page.goto("/admin/events/types");
+  await expect(page.getByRole("heading", { name: "Event Types" })).toBeVisible();
+  await page.goto("/admin/events/hosts");
+  await expect(page.getByRole("heading", { name: "Hosts" })).toBeVisible();
+  await page.goto("/admin/events/venues");
+  await expect(page.getByRole("heading", { name: "Venues" })).toBeVisible();
+  await page.goto("/admin/events/ticketing");
+  await expect(page.getByRole("heading", { name: "Ticketing" })).toBeVisible();
 });
 
 test("admin event editor supports image width resizing", async ({ page }) => {
@@ -99,6 +130,7 @@ test("admin event editor supports image width resizing", async ({ page }) => {
     password: ADMIN_PASSWORD,
     next: "/admin/events/new",
   });
+  await waitForEventFormReady(page);
 
   await page.getByRole("button", { name: "HTML" }).click();
   await page
@@ -128,12 +160,14 @@ test("publishing a Zoom event requires a Zoom setup choice", async ({ page }) =>
     password: ADMIN_PASSWORD,
     next: "/admin/events/new",
   });
+  await waitForEventFormReady(page);
 
   await page.getByLabel("Short summary").fill("A fixture event for Zoom validation coverage.");
-  await page.getByLabel("Start date & time").fill("2099-06-15T18:00");
-  await page.getByLabel("End date & time").fill("2099-06-15T19:00");
   await page.getByLabel("Virtual mode").selectOption("zoom");
   await page.getByLabel("Title").fill(`${EVENT_TITLE_PREFIX} Zoom Validation`);
+  await page.getByLabel("Start date & time").fill("2099-06-15T18:00");
+  await expect(page.getByLabel("Start date & time")).toHaveValue("2099-06-15T18:00");
+  await page.getByLabel("End date & time").fill("2099-06-15T19:00");
   await page.getByRole("button", { name: "Publish event" }).click();
 
   await expect(page).toHaveURL(/\/admin\/events\/new\?error=zoom_setup_required$/);
@@ -150,6 +184,7 @@ test("editing an attached Zoom event requires detaching before choosing a differ
     password: ADMIN_PASSWORD,
     next: `/admin/events/${eventId}/edit`,
   });
+  await waitForEventFormReady(page);
 
   await expect(page.getByText("Current Zoom session")).toBeVisible();
   await expect(page.getByText("Zoom meeting")).toBeVisible();
@@ -187,6 +222,10 @@ test("draft publish and unpublish flow controls member event visibility", async 
         await memberPage.goto(`/events/${eventId}`);
         await expect(memberPage.getByRole("heading", { name: "Fixture details" })).toBeVisible();
         await expect(memberPage.getByText("This should render after sanitization.")).toBeVisible();
+        const detailImage = memberPage.locator('.prose-positives img[src*="/api/media/assets/"]').first();
+        await expect(detailImage).toHaveAttribute("alt", "Saved event image");
+        await expect(detailImage).toHaveAttribute("width", "420");
+        await expect(detailImage).toHaveAttribute("data-align", "left");
       }
     } finally {
       await memberContext.close();
@@ -198,12 +237,15 @@ test("draft publish and unpublish flow controls member event visibility", async 
     password: ADMIN_PASSWORD,
     next: "/admin/events/new",
   });
+  await waitForEventFormReady(page);
 
   await page.getByLabel("Short summary").fill("A fixture event for publishing UX coverage.");
   await page.getByRole("button", { name: "HTML" }).click();
   await page
     .getByLabel("Event details HTML")
-    .fill("<h2>Fixture details</h2><p>This should render after sanitization.</p>");
+    .fill(
+      '<h2>Fixture details</h2><p>This should render after sanitization.</p><img src="/api/media/assets/00000000-0000-0000-0000-000000000000" alt="Saved event image" title="Saved image" width="420" data-align="left" loading="lazy">'
+    );
   await expect(page.locator('input[name="body"]')).toHaveValue(/Fixture details/);
   await page.getByLabel("Start date & time").fill("2099-06-15T12:00");
   await page.getByLabel("End date & time").fill("2099-06-15T13:00");
@@ -216,6 +258,8 @@ test("draft publish and unpublish flow controls member event visibility", async 
   await page.getByRole("button", { name: "Save draft" }).click();
   await expect(page).toHaveURL(/\/admin\/events\/[a-f0-9-]+\/edit\?success=draft_saved$/);
   await expect(page.getByText("Draft saved. Members will not see this event until it is published.")).toBeVisible();
+  await expect(page.locator('.event-editor-image img[src*="/api/media/assets/"]').first()).toHaveAttribute("alt", "Saved event image");
+  await expect(page.locator(".event-editor-image").first()).toHaveAttribute("data-align", "left");
 
   editPath = new URL(page.url()).pathname;
 
@@ -234,4 +278,31 @@ test("draft publish and unpublish flow controls member event visibility", async 
   await expect(page.getByText("Event unpublished. Members can no longer see it.")).toBeVisible();
 
   await expectMemberVisibility(false);
+});
+
+test("ticketed event hides join access until a paid or comp ticket exists", async ({
+  page,
+}) => {
+  const fixture = await createTicketedEventFixture(EVENT_TITLE_PREFIX);
+
+  await loginWithPassword(page, {
+    email: LEVEL_2_MEMBER_EMAIL,
+    password: LEVEL_2_MEMBER_PASSWORD,
+    next: `/events/${fixture.eventId}`,
+  });
+
+  await expect(page.getByRole("heading", { name: fixture.title })).toBeVisible();
+  await expect(page.getByText("Ticket required")).toBeVisible();
+  await expect(page.getByText("Reserve your seat")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Join event" })).toHaveCount(0);
+
+  await createCompEventTicketFixture({
+    memberEmail: LEVEL_2_MEMBER_EMAIL,
+    eventId: fixture.eventId,
+    ticketTypeId: fixture.ticketTypeId,
+  });
+
+  await page.reload();
+  await expect(page.getByText("Ticket confirmed")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Join event" })).toBeVisible();
 });

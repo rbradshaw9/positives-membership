@@ -1100,6 +1100,271 @@ export async function createEventUxZoomFixture(prefix: string) {
   return { eventId: event.id };
 }
 
+export async function createTicketedEventFixture(prefix: string) {
+  const supabase = getServiceRoleClient();
+  const unique = Date.now();
+  const title = `${prefix} Ticketed ${unique}`;
+
+  const { data: event, error: eventError } = await supabase
+    .from("member_event")
+    .insert({
+      title,
+      excerpt: "Ticketed fixture event.",
+      status: "published",
+      starts_at: "2099-06-17T18:00:00.000Z",
+      ends_at: "2099-06-17T19:00:00.000Z",
+      timezone: "America/New_York",
+      visibility: "member",
+      virtual_mode: "manual",
+      manual_join_url: "https://example.com/e2e-ticketed-event",
+      ticketing_mode: "ticket_required",
+    })
+    .select("id")
+    .single();
+
+  if (eventError || !event) {
+    throw new Error(`Failed to create ticketed event fixture: ${eventError?.message ?? "missing row"}`);
+  }
+
+  const { error: accessError } = await supabase
+    .from("member_event_access_level")
+    .insert({ event_id: event.id, subscription_tier: "level_2" });
+  if (accessError) throw new Error(`Failed to create ticketed event access fixture: ${accessError.message}`);
+
+  const { data: ticketType, error: ticketError } = await supabase
+    .from("event_ticket_type")
+    .insert({
+      event_id: event.id,
+      name: "Member Ticket",
+      description: "Fixture ticket.",
+      price_cents: 2500,
+      currency: "usd",
+      capacity: 8,
+      max_per_order: 4,
+      status: "active",
+      sort_order: 10,
+    })
+    .select("id")
+    .single();
+  if (ticketError || !ticketType) {
+    throw new Error(`Failed to create ticket type fixture: ${ticketError?.message ?? "missing row"}`);
+  }
+
+  const { error: ticketAccessError } = await supabase
+    .from("event_ticket_type_access_level")
+    .insert({ ticket_type_id: ticketType.id, subscription_tier: "level_2" });
+  if (ticketAccessError) throw new Error(`Failed to create ticket access fixture: ${ticketAccessError.message}`);
+
+  return {
+    eventId: event.id,
+    ticketTypeId: ticketType.id,
+    title,
+  };
+}
+
+export async function createCompEventTicketFixture({
+  memberEmail,
+  eventId,
+  ticketTypeId,
+}: {
+  memberEmail: string;
+  eventId: string;
+  ticketTypeId: string;
+}) {
+  const supabase = getServiceRoleClient();
+  const { data: member, error: memberError } = await supabase
+    .from("member")
+    .select("id")
+    .eq("email", memberEmail)
+    .single();
+  if (memberError || !member) throw new Error(`Failed to find member ${memberEmail}: ${memberError?.message ?? "missing row"}`);
+
+  const { data: order, error: orderError } = await supabase
+    .from("event_ticket_order")
+    .insert({
+      member_id: member.id,
+      event_id: eventId,
+      status: "comp",
+      currency: "usd",
+      subtotal_cents: 0,
+      total_cents: 0,
+      quantity: 1,
+      paid_at: new Date().toISOString(),
+      grant_note: "E2E comp ticket fixture.",
+    })
+    .select("id")
+    .single();
+  if (orderError || !order) throw new Error(`Failed to create comp order fixture: ${orderError?.message ?? "missing row"}`);
+
+  const { data: item, error: itemError } = await supabase
+    .from("event_ticket_order_item")
+    .insert({
+      order_id: order.id,
+      ticket_type_id: ticketTypeId,
+      ticket_type_name: "Member Ticket",
+      quantity: 1,
+      unit_amount_cents: 0,
+      total_amount_cents: 0,
+      currency: "usd",
+    })
+    .select("id")
+    .single();
+  if (itemError || !item) throw new Error(`Failed to create comp item fixture: ${itemError?.message ?? "missing row"}`);
+
+  const { error: eventTicketError } = await supabase.from("event_ticket").insert({
+    order_id: order.id,
+    order_item_id: item.id,
+    ticket_type_id: ticketTypeId,
+    event_id: eventId,
+    member_id: member.id,
+    status: "comp",
+  });
+  if (eventTicketError) throw new Error(`Failed to create comp ticket fixture: ${eventTicketError.message}`);
+}
+
+export async function createEventTicketWebhookFixture({
+  memberId,
+  paymentIntentId,
+  chargeId = null,
+  orderStatus = "paid",
+}: {
+  memberId: string;
+  paymentIntentId: string;
+  chargeId?: string | null;
+  orderStatus?: "pending" | "paid";
+}) {
+  const supabase = getServiceRoleClient();
+  const slug = `e2e-event-ticket-webhook-${paymentIntentId}`;
+
+  const { data: event, error: eventError } = await supabase
+    .from("member_event")
+    .insert({
+      title: `E2E Event Ticket Webhook ${paymentIntentId}`,
+      excerpt: "Event ticket webhook fixture.",
+      status: "published",
+      starts_at: "2099-06-18T18:00:00.000Z",
+      ends_at: "2099-06-18T19:00:00.000Z",
+      timezone: "America/New_York",
+      visibility: "member",
+      virtual_mode: "manual",
+      manual_join_url: "https://example.com/e2e-event-ticket-webhook",
+      ticketing_mode: "ticket_required",
+      image_url: slug,
+    })
+    .select("id")
+    .single();
+  if (eventError || !event) throw new Error(`Failed to create event ticket webhook event: ${eventError?.message ?? "missing row"}`);
+
+  const { error: accessError } = await supabase
+    .from("member_event_access_level")
+    .insert({ event_id: event.id, subscription_tier: "level_1" });
+  if (accessError) throw new Error(`Failed to create event ticket webhook access: ${accessError.message}`);
+
+  const { data: ticketType, error: ticketError } = await supabase
+    .from("event_ticket_type")
+    .insert({
+      event_id: event.id,
+      name: "Webhook Ticket",
+      price_cents: 1200,
+      currency: "usd",
+      capacity: 20,
+      max_per_order: 4,
+      status: "active",
+      sort_order: 10,
+    })
+    .select("id")
+    .single();
+  if (ticketError || !ticketType) throw new Error(`Failed to create event ticket webhook type: ${ticketError?.message ?? "missing row"}`);
+
+  const { error: ticketAccessError } = await supabase
+    .from("event_ticket_type_access_level")
+    .insert({ ticket_type_id: ticketType.id, subscription_tier: "level_1" });
+  if (ticketAccessError) throw new Error(`Failed to create event ticket webhook ticket access: ${ticketAccessError.message}`);
+
+  const { data: order, error: orderError } = await supabase
+    .from("event_ticket_order")
+    .insert({
+      member_id: memberId,
+      event_id: event.id,
+      status: orderStatus,
+      currency: "usd",
+      subtotal_cents: 1200,
+      total_cents: 1200,
+      quantity: 1,
+      stripe_payment_intent_id: orderStatus === "paid" ? paymentIntentId : null,
+      stripe_charge_id: orderStatus === "paid" ? chargeId : null,
+      paid_at: orderStatus === "paid" ? new Date().toISOString() : null,
+      expires_at: orderStatus === "pending" ? new Date(Date.now() + 15 * 60_000).toISOString() : null,
+      grant_note: "E2E event ticket webhook fixture.",
+    })
+    .select("id")
+    .single();
+  if (orderError || !order) throw new Error(`Failed to create event ticket webhook order: ${orderError?.message ?? "missing row"}`);
+
+  const { data: item, error: itemError } = await supabase
+    .from("event_ticket_order_item")
+    .insert({
+      order_id: order.id,
+      ticket_type_id: ticketType.id,
+      ticket_type_name: "Webhook Ticket",
+      quantity: 1,
+      unit_amount_cents: 1200,
+      total_amount_cents: 1200,
+      currency: "usd",
+    })
+    .select("id")
+    .single();
+  if (itemError || !item) throw new Error(`Failed to create event ticket webhook item: ${itemError?.message ?? "missing row"}`);
+
+  const { error: eventTicketError } = await supabase.from("event_ticket").insert({
+    order_id: order.id,
+    order_item_id: item.id,
+    ticket_type_id: ticketType.id,
+    event_id: event.id,
+    member_id: memberId,
+    status: orderStatus === "paid" ? "active" : "pending",
+  });
+  if (eventTicketError) throw new Error(`Failed to create event ticket webhook ticket: ${eventTicketError.message}`);
+
+  return {
+    eventId: event.id,
+    orderId: order.id,
+  };
+}
+
+export async function deleteEventFixture(eventId: string) {
+  const supabase = getServiceRoleClient();
+  const { error } = await supabase.from("member_event").delete().eq("id", eventId);
+  if (error) throw new Error(`Failed to delete event fixture ${eventId}: ${error.message}`);
+}
+
+export async function waitForEventTicketOrderStatus(
+  orderId: string,
+  expectedStatus: "pending" | "paid" | "refunded" | "chargeback" | "canceled" | "comp",
+  expectedTicketStatus: "pending" | "active" | "refunded" | "chargeback" | "canceled" | "comp" = "active",
+  timeoutMs = 10_000
+) {
+  const supabase = getServiceRoleClient();
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    const [{ data: order, error: orderError }, { data: tickets, error: ticketError }] = await Promise.all([
+      supabase.from("event_ticket_order").select("status").eq("id", orderId).single(),
+      supabase.from("event_ticket").select("status").eq("order_id", orderId),
+    ]);
+    if (orderError) throw new Error(`Failed to fetch event ticket order ${orderId}: ${orderError.message}`);
+    if (ticketError) throw new Error(`Failed to fetch event tickets for ${orderId}: ${ticketError.message}`);
+
+    if (order.status === expectedStatus && (tickets ?? []).every((ticket) => ticket.status === expectedTicketStatus)) {
+      return { order, tickets };
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+
+  throw new Error(`Event ticket order ${orderId} did not reach status ${expectedStatus}/${expectedTicketStatus}.`);
+}
+
 export async function resetAffiliateTestState(email: string) {
   const supabase = getServiceRoleClient();
   const { error } = await supabase

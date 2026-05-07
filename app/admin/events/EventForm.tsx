@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useSyncExternalStore, useTransition } from "react";
 import type { ReactNode } from "react";
 import { formatInTimeZone } from "date-fns-tz";
 import {
@@ -18,8 +18,9 @@ import type {
   EventTypeOption,
   EventVenueOption,
   ZoomConnectionOption,
+  EventAccessLevel,
 } from "@/lib/events/types";
-import type { EventRow } from "@/lib/queries/get-events";
+import type { EventAdminDefaults, EventRow } from "@/lib/queries/get-events";
 import { ZoomMeetingPicker } from "@/components/admin/events/ZoomMeetingPicker";
 import { EventDetailsEditor } from "@/components/admin/events/EventDetailsEditor";
 
@@ -34,8 +35,31 @@ const TIMEZONES = [
   "UTC",
 ];
 
+function subscribeHydrationReady() {
+  return () => {};
+}
+
+function clientHydrationSnapshot() {
+  return true;
+}
+
+function serverHydrationSnapshot() {
+  return false;
+}
+
 type SearchParams = { error?: string; success?: string; zoomConnectionId?: string; starts_at?: string };
 type ModalKind = "type" | "host" | "venue" | null;
+type TicketDraft = {
+  id?: string;
+  name: string;
+  description: string;
+  priceDollars: string;
+  currency: string;
+  capacity: string;
+  maxPerOrder: string;
+  status: "active" | "disabled";
+  accessLevels: string[];
+};
 
 function normalizeLocalDateTime(value?: string | null) {
   if (!value) return "";
@@ -86,6 +110,7 @@ function errorMessage(error?: string) {
   if (error === "zoom_setup_required") return "Choose how Zoom should be set up before publishing.";
   if (error === "zoom_create_failed") return "Zoom could not create the session. The event was kept as a draft.";
   if (error === "zoom_detach_failed") return "Zoom could not be removed from this event. Try again.";
+  if (error === "ticket_required") return "Add at least one active ticket type before publishing a ticketed event.";
   return error ? "The event could not be saved. Check required fields and integration settings." : null;
 }
 
@@ -101,6 +126,44 @@ function zoomAccountLabel(event?: EventRow | null) {
   const zoom = event?.event_zoom_meeting;
   if (!zoom) return "No Zoom session";
   return zoom.zoom_connection?.label || zoom.zoom_connection?.zoom_user_email || zoom.host_email || "Zoom account";
+}
+
+function dollarsFromCents(value?: number | null) {
+  if (!value) return "";
+  return (value / 100).toFixed(2);
+}
+
+function ticketDraftFromEvent(event?: EventRow | null): TicketDraft[] {
+  return (event?.event_ticket_type ?? [])
+    .filter((ticket) => ticket.status !== "archived")
+    .map((ticket) => ({
+      id: ticket.id,
+      name: ticket.name,
+      description: ticket.description ?? "",
+      priceDollars: dollarsFromCents(ticket.price_cents),
+      currency: ticket.currency ?? "usd",
+      capacity: ticket.capacity === null || ticket.capacity === undefined ? "" : String(ticket.capacity),
+      maxPerOrder: String(ticket.max_per_order ?? 4),
+      status: ticket.status === "disabled" ? "disabled" : "active",
+      accessLevels: (ticket.event_ticket_type_access_level ?? []).map((row) => row.subscription_tier),
+    }));
+}
+
+function newTicketDraft(accessLevels: string[]): TicketDraft {
+  return {
+    name: "General Admission",
+    description: "",
+    priceDollars: "",
+    currency: "usd",
+    capacity: "",
+    maxPerOrder: "4",
+    status: "active",
+    accessLevels,
+  };
+}
+
+function defaultAccessValues(defaults?: EventAdminDefaults) {
+  return defaults?.accessLevels?.length ? defaults.accessLevels : (["level_2"] as EventAccessLevel[]);
 }
 
 function FieldSection({
@@ -234,6 +297,7 @@ export function EventForm({
   hosts: initialHosts,
   venues: initialVenues,
   zoomConnections,
+  defaults,
   searchParams,
 }: {
   event?: EventRow | null;
@@ -241,6 +305,7 @@ export function EventForm({
   hosts: EventHostOption[];
   venues: EventVenueOption[];
   zoomConnections: ZoomConnectionOption[];
+  defaults?: EventAdminDefaults;
   searchParams?: SearchParams;
 }) {
   const [types, setTypes] = useState(initialTypes);
@@ -248,9 +313,14 @@ export function EventForm({
   const [venues, setVenues] = useState(initialVenues);
   const [modal, setModal] = useState<ModalKind>(null);
   const [modalError, setModalError] = useState<string | null>(null);
+  const hydrated = useSyncExternalStore(
+    subscribeHydrationReady,
+    clientHydrationSnapshot,
+    serverHydrationSnapshot
+  );
   const [pending, startTransition] = useTransition();
 
-  const initialTimezone = event?.timezone ?? "America/New_York";
+  const initialTimezone = event?.timezone ?? defaults?.timezone ?? "America/New_York";
   const [title, setTitle] = useState(event?.title ?? "");
   const [typeId, setTypeId] = useState(event?.type_id ?? initialTypes[0]?.id ?? "");
   const [hostId, setHostId] = useState(event?.host_id ?? "");
@@ -266,12 +336,14 @@ export function EventForm({
   const [virtualMode, setVirtualMode] = useState(event?.virtual_mode ?? "none");
   const hasAttachedZoom = Boolean(event?.event_zoom_meeting?.id);
   const [zoomMode, setZoomMode] = useState(hasAttachedZoom ? "none" : "");
+  const [ticketingMode, setTicketingMode] = useState(event?.ticketing_mode ?? "included");
   const [recurrence, setRecurrence] = useState("none");
   const [accessLevels, setAccessLevels] = useState<string[]>(
     EVENT_ACCESS_LEVELS
-      .filter((level) => (event ? hasAccess(event, level.value) : level.value === "level_2"))
+      .filter((level) => (event ? hasAccess(event, level.value) : defaultAccessValues(defaults).includes(level.value)))
       .map((level) => level.value)
   );
+  const [ticketTypes, setTicketTypes] = useState<TicketDraft[]>(() => ticketDraftFromEvent(event));
 
   const selectedZoomConnection =
     searchParams?.zoomConnectionId ?? event?.event_zoom_meeting?.zoom_connection_id ?? "";
@@ -284,9 +356,14 @@ export function EventForm({
       ? "Zoom session removed from this event. The meeting or webinar was not deleted in Zoom."
       : message;
   const error = errorMessage(searchParams?.error);
+
   const selectedAccessText = useMemo(
     () => accessLevels.map(accessLevelLabel).join(", ") || "No levels selected",
     [accessLevels]
+  );
+  const ticketConfig = useMemo(
+    () => JSON.stringify({ mode: ticketingMode, ticketTypes }),
+    [ticketingMode, ticketTypes]
   );
 
   function toggleAccess(value: string) {
@@ -357,11 +434,30 @@ export function EventForm({
     });
   }
 
+  function updateTicket(index: number, patch: Partial<TicketDraft>) {
+    setTicketTypes((current) =>
+      current.map((ticket, ticketIndex) => ticketIndex === index ? { ...ticket, ...patch } : ticket)
+    );
+  }
+
+  function toggleTicketAccess(index: number, value: string) {
+    setTicketTypes((current) =>
+      current.map((ticket, ticketIndex) => {
+        if (ticketIndex !== index) return ticket;
+        const nextAccess = ticket.accessLevels.includes(value)
+          ? ticket.accessLevels.filter((entry) => entry !== value)
+          : [...ticket.accessLevels, value];
+        return { ...ticket, accessLevels: nextAccess };
+      })
+    );
+  }
+
   return (
     <>
-      <form action={saveEvent} className="admin-form-card pb-28">
+      <form action={saveEvent} className="admin-form-card pb-28" data-event-form-ready={hydrated ? "true" : "false"}>
         {event?.id ? <input type="hidden" name="id" value={event.id} /> : null}
         <input type="hidden" name="current_status" value={currentStatus} />
+        <input type="hidden" name="ticket_config" value={ticketConfig} />
 
         {error ? <div className="admin-banner admin-banner--error">{error}</div> : null}
         {displayMessage ? <div className="admin-banner admin-banner--success">{displayMessage}</div> : null}
@@ -511,8 +607,8 @@ export function EventForm({
               </select>
             </div>
           </div>
-          <Link href="/admin/events/settings#hosts" className="text-xs font-semibold text-primary">
-            Manage full event settings
+          <Link href="/admin/events/hosts" className="text-xs font-semibold text-primary">
+            Manage hosts and venues
           </Link>
         </FieldSection>
 
@@ -636,6 +732,155 @@ export function EventForm({
                   mode={zoomMode === "existing" ? "existing" : "create"}
                 />
               )}
+            </div>
+          ) : null}
+        </FieldSection>
+
+        <FieldSection title="Ticketing">
+          <div className="rounded-2xl border border-border bg-muted/30 p-4">
+            <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Access after publication</p>
+                <h3 className="mt-1 font-heading text-lg font-semibold text-foreground" style={{ textWrap: "balance" }}>
+                  {ticketingMode === "ticket_required" ? "Ticket required" : "Included with membership"}
+                </h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Ticketed events still use the selected membership levels. A ticket is required only for the join link and replay.
+                </p>
+              </div>
+              <select
+                value={ticketingMode}
+                onChange={(event) => {
+                  const nextMode = event.target.value as "included" | "ticket_required";
+                  setTicketingMode(nextMode);
+                  if (nextMode === "ticket_required" && ticketTypes.length === 0) {
+                    setTicketTypes([{ ...newTicketDraft(accessLevels), maxPerOrder: String(defaults?.defaultMaxPerOrder ?? 4) }]);
+                  }
+                }}
+                className="admin-select min-w-56"
+                aria-label="Ticketing mode"
+              >
+                <option value="included">Included with membership</option>
+                <option value="ticket_required">Ticket required</option>
+              </select>
+            </div>
+          </div>
+
+          {ticketingMode === "ticket_required" ? (
+            <div className="grid gap-4">
+              {ticketTypes.map((ticket, index) => (
+                <div key={ticket.id ?? index} className="rounded-2xl border border-border bg-card p-4">
+                  <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Ticket type</p>
+                      <h3 className="mt-1 font-heading text-lg font-semibold text-foreground" style={{ textWrap: "balance" }}>
+                        {ticket.name || "Untitled ticket"}
+                      </h3>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        className="admin-btn admin-btn--outline"
+                        onClick={() => updateTicket(index, { status: ticket.status === "active" ? "disabled" : "active" })}
+                      >
+                        {ticket.status === "active" ? "Disable" : "Enable"}
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-btn admin-btn--outline"
+                        onClick={() => setTicketTypes((current) => current.filter((_, ticketIndex) => ticketIndex !== index))}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="admin-form-grid-2">
+                    <div className="admin-form-field">
+                      <label className="admin-label" htmlFor={`ticket_name_${index}`}>Name</label>
+                      <input
+                        id={`ticket_name_${index}`}
+                        value={ticket.name}
+                        onChange={(event) => updateTicket(index, { name: event.target.value })}
+                        className="admin-input"
+                        placeholder="Member ticket"
+                      />
+                    </div>
+                    <div className="admin-form-field">
+                      <label className="admin-label" htmlFor={`ticket_price_${index}`}>Price</label>
+                      <input
+                        id={`ticket_price_${index}`}
+                        value={ticket.priceDollars}
+                        onChange={(event) => updateTicket(index, { priceDollars: event.target.value })}
+                        className="admin-input"
+                        inputMode="decimal"
+                        placeholder="49.00"
+                      />
+                    </div>
+                    <div className="admin-form-field">
+                      <label className="admin-label" htmlFor={`ticket_capacity_${index}`}>Capacity</label>
+                      <input
+                        id={`ticket_capacity_${index}`}
+                        value={ticket.capacity}
+                        onChange={(event) => updateTicket(index, { capacity: event.target.value })}
+                        className="admin-input"
+                        inputMode="numeric"
+                        placeholder="Leave blank for unlimited"
+                      />
+                    </div>
+                    <div className="admin-form-field">
+                      <label className="admin-label" htmlFor={`ticket_max_${index}`}>Max per order</label>
+                      <input
+                        id={`ticket_max_${index}`}
+                        value={ticket.maxPerOrder}
+                        onChange={(event) => updateTicket(index, { maxPerOrder: event.target.value })}
+                        className="admin-input"
+                        inputMode="numeric"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="admin-form-field mt-4">
+                    <label className="admin-label" htmlFor={`ticket_description_${index}`}>Description</label>
+                    <textarea
+                      id={`ticket_description_${index}`}
+                      value={ticket.description}
+                      onChange={(event) => updateTicket(index, { description: event.target.value })}
+                      className="admin-textarea"
+                      rows={2}
+                      placeholder="Optional helper text for members."
+                    />
+                  </div>
+
+                  <div className="admin-form-field mt-4">
+                    <span className="admin-label">Who can buy this ticket</span>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {EVENT_ACCESS_LEVELS.map((level) => (
+                        <label key={level.value} className="rounded-xl border border-border px-3 py-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={ticket.accessLevels.includes(level.value)}
+                            onChange={() => toggleTicketAccess(index, level.value)}
+                            className="mr-2 h-4 w-4"
+                          />
+                          {level.label}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              <button
+                type="button"
+                className="admin-btn admin-btn--outline justify-self-start"
+                onClick={() => setTicketTypes((current) => [
+                  ...current,
+                  { ...newTicketDraft(accessLevels), maxPerOrder: String(defaults?.defaultMaxPerOrder ?? 4) },
+                ])}
+              >
+                Add ticket type
+              </button>
             </div>
           ) : null}
         </FieldSection>

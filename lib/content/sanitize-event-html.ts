@@ -1,6 +1,7 @@
 import sanitizeHtml from "sanitize-html";
 
 const ALLOWED_SCHEMES = ["http", "https", "mailto", "tel"];
+const MEDIA_ASSET_SRC_RE = /^\/api\/media\/assets\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const ALLOWED_TAGS = [
   "p",
@@ -49,6 +50,18 @@ function safeImageAlignment(value: string | undefined) {
   return IMAGE_ALIGNMENTS.has(align) ? align : null;
 }
 
+function safeImageSrc(value: string | undefined) {
+  const src = String(value ?? "").trim();
+  if (!src) return null;
+  if (MEDIA_ASSET_SRC_RE.test(src)) return src;
+  try {
+    const parsed = new URL(src);
+    return parsed.protocol === "https:" || parsed.protocol === "http:" ? src : null;
+  } catch {
+    return null;
+  }
+}
+
 function normalizeWhitespace(value: string) {
   return value.replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
 }
@@ -95,7 +108,7 @@ export function sanitizeEventHtml(rawHtml: string | null | undefined) {
         };
       },
       img: (tagName, attribs) => {
-        const src = typeof attribs.src === "string" ? attribs.src.trim() : "";
+        const src = safeImageSrc(attribs.src);
         const width = safeImageDimension(attribs.width);
         const height = safeImageDimension(attribs.height);
         const align = safeImageAlignment(attribs["data-align"]);

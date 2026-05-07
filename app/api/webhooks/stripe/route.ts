@@ -17,6 +17,11 @@ import {
   handleCoursePaymentSucceeded,
   handleDisputeClosed,
 } from "@/server/services/stripe/handle-course-entitlements";
+import {
+  handleEventTicketChargeRefunded,
+  handleEventTicketDisputeClosed,
+  handleEventTicketPaymentSucceeded,
+} from "@/server/services/stripe/event-tickets";
 
 /**
  * app/api/webhooks/stripe/route.ts
@@ -34,9 +39,9 @@ import {
  *   customer.subscription.trial_will_end → send trial reminder email
  *   invoice.payment_succeeded       → send receipt email
  *   invoice.payment_failed          → mark past_due + send payment-failed email
- *   payment_intent.succeeded        → grant direct saved-card course purchase
- *   charge.refunded                 → mark matching course entitlement refunded
- *   charge.dispute.closed           → mark matching course entitlement chargeback if lost
+ *   payment_intent.succeeded        → grant direct saved-card course or event-ticket purchase
+ *   charge.refunded                 → mark matching course entitlement or event ticket refunded
+ *   charge.dispute.closed           → mark matching course entitlement or event ticket chargeback if lost
  *
  * Configure your Stripe webhook to point to:
  *   https://positives.life/api/webhooks/stripe
@@ -138,14 +143,17 @@ export async function POST(request: Request) {
 
       case "payment_intent.succeeded":
         await handleCoursePaymentSucceeded(event.data.object as Stripe.PaymentIntent);
+        await handleEventTicketPaymentSucceeded(event.data.object as Stripe.PaymentIntent);
         break;
 
       case "charge.refunded":
         await handleChargeRefunded(event.data.object as Stripe.Charge);
+        await handleEventTicketChargeRefunded(event.data.object as Stripe.Charge);
         break;
 
       case "charge.dispute.closed":
         await handleDisputeClosed(event.data.object as Stripe.Dispute);
+        await handleEventTicketDisputeClosed(event.data.object as Stripe.Dispute);
         break;
 
       default:

@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
-import { parseAccessLevels } from "@/lib/events/types";
+import { EVENT_ACCESS_LEVELS, parseAccessLevels } from "@/lib/events/types";
 import type { EventHostOption, EventTypeOption, EventVenueOption } from "@/lib/events/types";
 import { expandOccurrences } from "@/lib/events/recurrence";
 import { zoomApi } from "@/lib/zoom/client";
@@ -37,6 +37,8 @@ type EventInput = {
   timezone: string;
   allDay: boolean;
   virtualMode: string;
+  ticketingMode: "included" | "ticket_required";
+  ticketTypes: EventTicketInput[];
   manualJoinUrl: string;
   replayUrl: string;
   zoomMode: string;
@@ -47,6 +49,18 @@ type EventInput = {
   recurrenceFrequency: "none" | "daily" | "weekly" | "monthly";
   recurrenceCount: number;
   recurrenceUntil: string;
+  accessLevels: string[];
+};
+
+type EventTicketInput = {
+  id?: string;
+  name: string;
+  description: string;
+  priceCents: number;
+  currency: string;
+  capacity: number | null;
+  maxPerOrder: number;
+  status: "active" | "disabled" | "archived";
   accessLevels: string[];
 };
 
@@ -67,6 +81,26 @@ function value(formData: FormData, key: string) {
   return formData.get(key)?.toString().trim() ?? "";
 }
 
+function centsFromDollars(value: unknown) {
+  const raw = String(value ?? "").replace(/[^0-9.]/g, "");
+  if (!raw) return 0;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < 0) return 0;
+  return Math.round(parsed * 100);
+}
+
+function intOrNull(value: unknown) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? Math.max(0, Math.round(parsed)) : null;
+}
+
+function intOrDefault(value: unknown, fallback: number) {
+  const parsed = intOrNull(value);
+  return parsed && parsed > 0 ? parsed : fallback;
+}
+
 function intent(formData: FormData): EventInput["intent"] {
   const raw = value(formData, "intent");
   if (raw === "publish" || raw === "save" || raw === "unpublish") return raw;
@@ -74,6 +108,7 @@ function intent(formData: FormData): EventInput["intent"] {
 }
 
 function parseInput(formData: FormData): EventInput {
+  const ticketConfig = parseTicketConfig(value(formData, "ticket_config"), formData.getAll("access_levels"));
   return {
     id: value(formData, "id") || undefined,
     intent: intent(formData),
@@ -97,6 +132,8 @@ function parseInput(formData: FormData): EventInput {
     timezone: value(formData, "timezone") || "America/New_York",
     allDay: formData.get("all_day") === "on",
     virtualMode: value(formData, "virtual_mode") || "none",
+    ticketingMode: ticketConfig.mode,
+    ticketTypes: ticketConfig.ticketTypes,
     manualJoinUrl: value(formData, "manual_join_url"),
     replayUrl: value(formData, "replay_url"),
     zoomMode: value(formData, "zoom_mode") || "none",
@@ -111,6 +148,43 @@ function parseInput(formData: FormData): EventInput {
     recurrenceUntil: value(formData, "recurrence_until"),
     accessLevels: parseAccessLevels(formData.getAll("access_levels")),
   };
+}
+
+function parseTicketConfig(raw: string, fallbackAccessLevels: FormDataEntryValue[]): {
+  mode: EventInput["ticketingMode"];
+  ticketTypes: EventTicketInput[];
+} {
+  const fallbackLevels = parseAccessLevels(fallbackAccessLevels);
+  try {
+    const parsed = JSON.parse(raw || "{}") as {
+      mode?: string;
+      ticketTypes?: Array<Record<string, unknown>>;
+    };
+    const mode = parsed.mode === "ticket_required" ? "ticket_required" : "included";
+    const ticketTypes = (Array.isArray(parsed.ticketTypes) ? parsed.ticketTypes : [])
+      .map((ticket): EventTicketInput => {
+        const status = ticket.status === "disabled" || ticket.status === "archived" ? ticket.status : "active";
+        const accessLevels = parseAccessLevels(
+          Array.isArray(ticket.accessLevels) ? ticket.accessLevels.map((value) => String(value)) : fallbackLevels
+        );
+        return {
+          id: typeof ticket.id === "string" && ticket.id ? ticket.id : undefined,
+          name: String(ticket.name ?? "").trim(),
+          description: String(ticket.description ?? "").trim(),
+          priceCents: centsFromDollars(ticket.priceDollars ?? ticket.price ?? ticket.priceCents),
+          currency: String(ticket.currency ?? "usd").trim().toLowerCase() || "usd",
+          capacity: intOrNull(ticket.capacity),
+          maxPerOrder: intOrDefault(ticket.maxPerOrder, 4),
+          status,
+          accessLevels: accessLevels.length > 0 ? accessLevels : fallbackLevels,
+        };
+      })
+      .filter((ticket) => ticket.name);
+
+    return { mode, ticketTypes };
+  } catch {
+    return { mode: "included" as const, ticketTypes: [] };
+  }
 }
 
 function toIso(value: string, timezone: string) {
@@ -185,6 +259,71 @@ async function saveAccessLevels(eventId: string, accessLevels: string[]) {
   if (error) throw new Error(error.message);
 }
 
+async function saveTicketTypes(eventId: string, input: EventInput) {
+  const supabase = asLooseSupabaseClient(getAdminClient());
+
+  if (input.ticketingMode !== "ticket_required") {
+    const { error } = await supabase
+      .from("event_ticket_type")
+      .update({ status: "archived", updated_at: new Date().toISOString() })
+      .eq("event_id", eventId)
+      .neq("status", "archived");
+    if (error) throw new Error(error.message);
+    return;
+  }
+
+  const seenIds = new Set<string>();
+  const fallbackAccessLevels = input.accessLevels.length > 0
+    ? input.accessLevels
+    : EVENT_ACCESS_LEVELS.map((level) => level.value);
+
+  for (const [index, ticket] of input.ticketTypes.entries()) {
+    const row = {
+      event_id: eventId,
+      name: ticket.name,
+      description: ticket.description || null,
+      price_cents: ticket.priceCents,
+      currency: ticket.currency || "usd",
+      capacity: ticket.capacity,
+      max_per_order: ticket.maxPerOrder,
+      status: ticket.status,
+      sort_order: (index + 1) * 10,
+      updated_at: new Date().toISOString(),
+    };
+
+    const result = ticket.id
+      ? await supabase.from("event_ticket_type").update(row).eq("id", ticket.id).eq("event_id", eventId).select<{ id: string }>("id").single()
+      : await supabase.from("event_ticket_type").insert(row).select<{ id: string }>("id").single();
+
+    if (result.error || !result.data) throw new Error(result.error?.message ?? "Ticket type could not be saved.");
+    const ticketTypeId = result.data.id;
+    seenIds.add(ticketTypeId);
+
+    await supabase.from("event_ticket_type_access_level").delete().eq("ticket_type_id", ticketTypeId);
+    const accessLevels = ticket.accessLevels.length > 0 ? ticket.accessLevels : fallbackAccessLevels;
+    const { error: accessError } = await supabase
+      .from("event_ticket_type_access_level")
+      .insert(accessLevels.map((subscription_tier) => ({ ticket_type_id: ticketTypeId, subscription_tier })));
+    if (accessError) throw new Error(accessError.message);
+  }
+
+  const { data: existing, error: existingError } = await supabase
+    .from("event_ticket_type")
+    .select<Array<{ id: string }>>("id")
+    .eq("event_id", eventId)
+    .neq("status", "archived");
+  if (existingError) throw new Error(existingError.message);
+
+  const staleIds = (existing ?? []).map((row) => row.id).filter((id) => !seenIds.has(id));
+  if (staleIds.length > 0) {
+    const { error } = await supabase
+      .from("event_ticket_type")
+      .update({ status: "archived", updated_at: new Date().toISOString() })
+      .in("id", staleIds);
+    if (error) throw new Error(error.message);
+  }
+}
+
 function extractEventBodyAssetIds(html: string | null | undefined) {
   if (!html) return [];
   const ids = new Set<string>();
@@ -245,6 +384,7 @@ function baseEventRow(input: EventInput, userId: string, hostId: string | null, 
     all_day: input.allDay,
     visibility: "member",
     virtual_mode: input.virtualMode,
+    ticketing_mode: input.ticketingMode,
     manual_join_url: input.virtualMode === "manual" ? input.manualJoinUrl || null : null,
     replay_url: input.replayUrl || null,
     created_by: userId,
@@ -410,6 +550,13 @@ export async function saveEvent(formData: FormData) {
     ) {
       redirectForError(input, "zoom_setup_required");
     }
+    if (
+      desiredStatus === "published" &&
+      input.ticketingMode === "ticket_required" &&
+      input.ticketTypes.filter((ticket) => ticket.status === "active").length === 0
+    ) {
+      redirectForError(input, "ticket_required");
+    }
 
     const row = baseEventRow(input, user.id, hostId, venueId, desiredStatus);
 
@@ -423,6 +570,7 @@ export async function saveEvent(formData: FormData) {
       const { error } = await supabase.from("member_event").update(row).eq("id", input.id);
       if (error) throw new Error(error.message);
       await saveAccessLevels(input.id, input.accessLevels);
+      await saveTicketTypes(input.id, input);
       await syncEventBodyMediaAssets(input.id, row.body);
       await saveSelectedZoomMeeting([input.id], input);
       if (zoomResponse) await saveZoomMeetingForEvents([input.id], input, zoomResponse);
@@ -470,6 +618,7 @@ export async function saveEvent(formData: FormData) {
       draftFallbackId = createdEvents[0]?.id ?? null;
       for (const event of createdEvents) {
         await saveAccessLevels(event.id, input.accessLevels);
+        await saveTicketTypes(event.id, input);
         await syncEventBodyMediaAssets(event.id, row.body);
       }
       const first = createdEvents[0];
@@ -504,6 +653,7 @@ export async function saveEvent(formData: FormData) {
     if (error || !data) throw new Error(error?.message ?? "Event insert failed.");
     draftFallbackId = data.id;
     await saveAccessLevels(data.id, input.accessLevels);
+    await saveTicketTypes(data.id, input);
     await syncEventBodyMediaAssets(data.id, row.body);
     await saveSelectedZoomMeeting([data.id], input);
     if (zoomResponse) await saveZoomMeetingForEvents([data.id], input, zoomResponse);

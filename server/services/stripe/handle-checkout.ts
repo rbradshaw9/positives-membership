@@ -16,6 +16,7 @@ import { PLAN_NAME_BY_TIER } from "@/lib/plans";
 import type { Enums } from "@/types/supabase";
 import { recordCoursePaymentSucceeded } from "./member-billing-summary";
 import { resolveLaunchContext } from "@/lib/launch/context";
+import { handleEventTicketCheckout } from "./event-tickets";
 
 type SubscriptionTier = Enums<"subscription_tier">;
 type SubscriptionStatus = Enums<"subscription_status">;
@@ -155,6 +156,11 @@ export async function handleCheckoutSessionCompleted(
 
   if (session.metadata?.purchase_type === "course") {
     await handleCourseCheckout(session, customerId);
+    return;
+  }
+
+  if (session.metadata?.purchase_type === "event_ticket") {
+    await handleEventTicketCheckout(session, customerId);
     return;
   }
 

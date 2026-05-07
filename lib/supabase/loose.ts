@@ -33,6 +33,7 @@ type LooseQueryBuilder<T = unknown> = PromiseLike<LooseQueryResult<T>> & {
 
 type LooseFrom = {
   from(table: string): LooseQueryBuilder;
+  rpc<T = unknown>(fn: string, args?: unknown): Promise<LooseQueryResult<T>>;
 };
 
 export function asLooseSupabaseClient<TClient>(client: TClient): Omit<TClient, "from"> & LooseFrom {
