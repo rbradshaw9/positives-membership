@@ -60,6 +60,9 @@ type ZoomMeetingPayload = {
   occurrences?: Array<{ occurrence_id?: string | number; start_time?: string; duration?: number; status?: string }>;
 };
 
+const MEDIA_ASSET_SRC_RE =
+  /\/api\/media\/assets\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/gi;
+
 function value(formData: FormData, key: string) {
   return formData.get(key)?.toString().trim() ?? "";
 }
@@ -180,6 +183,46 @@ async function saveAccessLevels(eventId: string, accessLevels: string[]) {
     .from("member_event_access_level")
     .insert(accessLevels.map((subscription_tier) => ({ event_id: eventId, subscription_tier })));
   if (error) throw new Error(error.message);
+}
+
+function extractEventBodyAssetIds(html: string | null | undefined) {
+  if (!html) return [];
+  const ids = new Set<string>();
+  for (const match of html.matchAll(MEDIA_ASSET_SRC_RE)) {
+    ids.add(match[1]);
+  }
+  return [...ids];
+}
+
+async function syncEventBodyMediaAssets(eventId: string, body: string | null | undefined) {
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  await supabase
+    .from("member_event_media_asset")
+    .delete()
+    .eq("event_id", eventId)
+    .eq("usage", "body_image");
+
+  const assetIds = extractEventBodyAssetIds(body);
+  if (assetIds.length === 0) return;
+
+  const { data, error } = await supabase
+    .from("media_asset")
+    .select<Array<{ id: string }>>("id")
+    .in("id", assetIds)
+    .eq("kind", "image")
+    .eq("usage_context", "event")
+    .eq("status", "active");
+
+  if (error) throw new Error(error.message);
+
+  const validIds = (data ?? []).map((asset) => asset.id);
+  if (validIds.length === 0) return;
+
+  const { error: insertError } = await supabase
+    .from("member_event_media_asset")
+    .insert(validIds.map((asset_id) => ({ event_id: eventId, asset_id, usage: "body_image" })));
+
+  if (insertError) throw new Error(insertError.message);
 }
 
 function baseEventRow(input: EventInput, userId: string, hostId: string | null, venueId: string | null, status: string) {
@@ -380,6 +423,7 @@ export async function saveEvent(formData: FormData) {
       const { error } = await supabase.from("member_event").update(row).eq("id", input.id);
       if (error) throw new Error(error.message);
       await saveAccessLevels(input.id, input.accessLevels);
+      await syncEventBodyMediaAssets(input.id, row.body);
       await saveSelectedZoomMeeting([input.id], input);
       if (zoomResponse) await saveZoomMeetingForEvents([input.id], input, zoomResponse);
       revalidatePath("/events");
@@ -426,6 +470,7 @@ export async function saveEvent(formData: FormData) {
       draftFallbackId = createdEvents[0]?.id ?? null;
       for (const event of createdEvents) {
         await saveAccessLevels(event.id, input.accessLevels);
+        await syncEventBodyMediaAssets(event.id, row.body);
       }
       const first = createdEvents[0];
       if (first) {
@@ -459,6 +504,7 @@ export async function saveEvent(formData: FormData) {
     if (error || !data) throw new Error(error?.message ?? "Event insert failed.");
     draftFallbackId = data.id;
     await saveAccessLevels(data.id, input.accessLevels);
+    await syncEventBodyMediaAssets(data.id, row.body);
     await saveSelectedZoomMeeting([data.id], input);
     if (zoomResponse) await saveZoomMeetingForEvents([data.id], input, zoomResponse);
     revalidatePath("/events");
