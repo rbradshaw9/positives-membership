@@ -1,3 +1,5 @@
+import { SafeImage } from "@/components/media/SafeImage";
+
 /**
  * components/today/MediaStub.tsx
  * Minimal video/media placeholder that links out to the full player.
@@ -39,10 +41,11 @@ export function MediaStub({ vimeoId, youtubeId, title }: MediaStubProps) {
     >
       {/* Thumbnail or dark background */}
       {thumbnailUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <SafeImage
           src={thumbnailUrl}
           alt=""
+          fill
+          sizes="(max-width: 768px) 100vw, 720px"
           className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity"
         />
       ) : (

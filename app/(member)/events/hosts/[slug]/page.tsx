@@ -5,6 +5,7 @@ import { getMemberEventHostPage } from "@/lib/queries/get-events";
 import { formatEventDateRange } from "@/lib/events/dates";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { Button } from "@/components/ui/Button";
+import { SafeImage } from "@/components/media/SafeImage";
 
 type Params = Promise<{ slug: string }>;
 
@@ -69,8 +70,14 @@ export default async function EventHostPage({ params }: { params: Params }) {
 
         <SurfaceCard padding="lg" elevated>
           {host.image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={host.image_url} alt="" className="mb-4 aspect-square w-28 rounded-full object-cover" />
+            <SafeImage
+              src={host.image_url}
+              alt=""
+              width={112}
+              height={112}
+              sizes="112px"
+              className="mb-4 aspect-square w-28 rounded-full object-cover"
+            />
           ) : null}
           <p className="ui-section-eyebrow mb-2">{host.type.replace("_", " ")}</p>
           {showContact(host) ? (

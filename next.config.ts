@@ -39,6 +39,9 @@ const nextConfig: NextConfig = {
   // Declare all remote image origins used across the app.
   // Without this, next/image will refuse to optimize external images.
   images: {
+    formats: ["image/avif", "image/webp"],
+    minimumCacheTTL: 14400,
+    qualities: [50, 75],
     remotePatterns: [
       // Supabase Storage (member avatars, content assets)
       {
@@ -55,6 +58,11 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "*.cloud.vimeo.com",
+      },
+      // YouTube thumbnails for library and embedded video placeholders
+      {
+        protocol: "https",
+        hostname: "img.youtube.com",
       },
     ],
   },

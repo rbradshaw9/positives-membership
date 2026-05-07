@@ -52,7 +52,8 @@ export default async function SubscribeSuccessPage({
               width={89}
               height={26}
               style={{ width: "auto" }}
-              priority
+              fetchPriority="high"
+              loading="eager"
             />
           </Link>
         </div>

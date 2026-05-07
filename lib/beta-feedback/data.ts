@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import type {
@@ -74,7 +75,9 @@ export async function getBetaFeedbackCommentsMap(
   return grouped;
 }
 
-export async function getMemberBetaFeedbackThreads(memberId: string) {
+export const getMemberBetaFeedbackThreads = cache(async function getMemberBetaFeedbackThreads(
+  memberId: string
+) {
   const supabase = asLooseSupabaseClient(getAdminClient());
   const { data, error } = await supabase
     .from("beta_feedback_submission")
@@ -129,4 +132,4 @@ export async function getMemberBetaFeedbackThreads(memberId: string) {
     threads,
     unreadCount: threads.reduce((sum, thread) => sum + thread.unreadReplyCount, 0),
   };
-}
+});

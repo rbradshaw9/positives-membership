@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -7,7 +8,7 @@ import { createClient } from "@/lib/supabase/server";
  *
  * Use in Server Components, Route Handlers, and Server Actions.
  */
-export async function getSession() {
+export const getSession = cache(async function getSession() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -16,4 +17,4 @@ export async function getSession() {
 
   if (error || !user) return null;
   return user;
-}
+});

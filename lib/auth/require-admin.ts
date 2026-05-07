@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/get-session";
 import {
@@ -25,7 +26,7 @@ export function isBootstrapAdminEmail(email?: string | null) {
   return config.app.adminEmails.includes(normalizedEmail);
 }
 
-export async function requireAdmin() {
+export const requireAdmin = cache(async function requireAdmin() {
   const user = await getSession();
 
   if (!user) {
@@ -41,9 +42,11 @@ export async function requireAdmin() {
   }
 
   return user;
-}
+});
 
-async function memberHasAnyAdminRole(memberId: string): Promise<boolean> {
+const memberHasAnyAdminRole = cache(async function memberHasAnyAdminRole(
+  memberId: string
+): Promise<boolean> {
   const supabase = asLooseSupabaseClient(getAdminClient());
   const { data, error } = await supabase
     .from("admin_user_role")
@@ -57,9 +60,9 @@ async function memberHasAnyAdminRole(memberId: string): Promise<boolean> {
   }
 
   return (data ?? []).length > 0;
-}
+});
 
-export async function memberHasAdminRoleKey(
+export const memberHasAdminRoleKey = cache(async function memberHasAdminRoleKey(
   memberId: string,
   roleKey: "super_admin" | "admin" | "coach" | "support" | "readonly"
 ): Promise<boolean> {
@@ -92,9 +95,9 @@ export async function memberHasAdminRoleKey(
   }
 
   return (data ?? []).length > 0;
-}
+});
 
-export async function getAdminPermissionSet(
+export const getAdminPermissionSet = cache(async function getAdminPermissionSet(
   memberId: string,
   email?: string | null
 ): Promise<Set<AdminPermissionKey>> {
@@ -151,9 +154,9 @@ export async function getAdminPermissionSet(
   }
 
   return permissionSet;
-}
+});
 
-export async function hasAdminPermission(
+export const hasAdminPermission = cache(async function hasAdminPermission(
   memberId: string,
   permission: string,
   email?: string | null
@@ -164,9 +167,11 @@ export async function hasAdminPermission(
 
   const permissionSet = await getAdminPermissionSet(memberId, email);
   return permissionSet.has(permission);
-}
+});
 
-export async function requireAdminPermission(permission: string) {
+export const requireAdminPermission = cache(async function requireAdminPermission(
+  permission: string
+) {
   const user = await requireAdmin();
   const allowed = await hasAdminPermission(user.id, permission, user.email);
 
@@ -175,4 +180,4 @@ export async function requireAdminPermission(permission: string) {
   }
 
   return user;
-}
+});

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SafeImage } from "@/components/media/SafeImage";
 import type { CourseWithProgress } from "@/lib/queries/get-courses";
 import { TIER_ACCESS_LABEL_BY_TIER } from "@/lib/plans";
 
@@ -46,11 +47,12 @@ export function CourseCard({ course, index }: CourseCardProps) {
         style={{ aspectRatio: "16/9" }}
       >
         {course.cover_image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <SafeImage
             src={course.cover_image_url}
             alt={course.title}
-            className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
+            fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
           />
         ) : (
           <div

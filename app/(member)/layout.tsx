@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { requireMember } from "@/lib/auth/require-member";
 import { PasswordNudgeBanner } from "@/components/member/PasswordNudgeBanner";
 import { MemberShellClient } from "@/components/member/MemberShellClient";
@@ -27,24 +28,41 @@ export default async function MemberLayout({
 }) {
   const member = await requireMember();
 
-  await trackFirstMemberLogin({
-    memberId: member.id,
-    email: member.email,
-    firstLoginAt: member.first_login_at,
-    lastSeenAt: member.last_seen_at,
+  after(async () => {
+    try {
+      await trackFirstMemberLogin({
+        memberId: member.id,
+        email: member.email,
+        firstLoginAt: member.first_login_at,
+        lastSeenAt: member.last_seen_at,
+      });
+    } catch (error) {
+      console.error(
+        "[member-layout] deferred login tracking failed:",
+        error instanceof Error ? error.message : String(error)
+      );
+    }
   });
 
   const showPasswordNudge = member.password_set === false;
   const marketingOptedOut = member.email_unsubscribed === true;
-  const adminPermissionSet = await getAdminPermissionSet(member.id, member.email);
-  const showAdminNav = adminPermissionSet.size > 0;
   const hasCommunityAccess = checkTierAccess(member.subscription_tier, "level_2");
-  const communityUnreadCount = hasCommunityAccess ? await getCommunityUnreadCount(member.id) : 0;
-  const betaFeedbackInbox =
+  const adminPermissionSetPromise = getAdminPermissionSet(member.id, member.email);
+  const communityUnreadCountPromise = hasCommunityAccess
+    ? getCommunityUnreadCount(member.id)
+    : Promise.resolve(0);
+  const betaFeedbackInboxPromise =
     config.app.betaFeedbackEnabled &&
     (member.launch_cohort === "alpha" || member.launch_cohort === "beta")
-      ? await getMemberBetaFeedbackThreads(member.id)
-      : { threads: [], unreadCount: 0 };
+      ? getMemberBetaFeedbackThreads(member.id)
+      : Promise.resolve({ threads: [], unreadCount: 0 });
+
+  const [adminPermissionSet, communityUnreadCount, betaFeedbackInbox] = await Promise.all([
+    adminPermissionSetPromise,
+    communityUnreadCountPromise,
+    betaFeedbackInboxPromise,
+  ]);
+  const showAdminNav = adminPermissionSet.size > 0;
 
   // Only show a non-zero streak if the member practiced today or yesterday.
   // If they missed a day, show 0 — the DB value itself gets corrected on next listen.

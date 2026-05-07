@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import Player from "@vimeo/player";
+import { SafeImage } from "@/components/media/SafeImage";
 import { useMemberAudio } from "@/components/member/audio/MemberAudioProvider";
 import {
   recordVideoProgress,
@@ -468,10 +469,11 @@ export function VideoEmbed({
           className="group absolute inset-0 w-full h-full flex flex-col items-center justify-center focus:outline-none"
           aria-label={`Play: ${title} on YouTube`}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <SafeImage
             src={youtubeThumbnail}
             alt=""
+            fill
+            sizes="(max-width: 768px) 100vw, 720px"
             className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-70 transition-opacity duration-200"
           />
           <div aria-hidden="true" className="absolute inset-0 bg-black/30" />

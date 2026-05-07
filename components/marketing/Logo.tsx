@@ -51,7 +51,8 @@ export function Logo({
       alt="Positives"
       width={width}
       height={height}
-      priority
+      fetchPriority="high"
+      loading="eager"
       style={{
         height,
         width,

@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import { addDays, formatDateOnly, parseDateOnly } from "@/lib/dates/admin-calendar";
@@ -226,7 +227,7 @@ function sortEventTickets(event: EventRow) {
   };
 }
 
-export async function getEventAdminOptions() {
+async function fetchEventAdminOptions() {
   const supabase = asLooseSupabaseClient(getAdminClient());
   const [typesResult, hostsResult, venuesResult, zoomResult, settingsResult] = await Promise.all([
     supabase
@@ -264,6 +265,12 @@ export async function getEventAdminOptions() {
     defaults: normalizeDefaults(settings),
   };
 }
+
+export const getEventAdminOptions = unstable_cache(
+  fetchEventAdminOptions,
+  ["event-admin-options"],
+  { revalidate: 60 }
+);
 
 export async function getEventSettingsOptions() {
   const supabase = asLooseSupabaseClient(getAdminClient());
@@ -682,7 +689,7 @@ export async function getMemberEventVenuePage(slug: string, memberTier: string |
   };
 }
 
-export async function getZoomConnections() {
+async function fetchZoomConnections() {
   const supabase = asLooseSupabaseClient(getAdminClient());
   const { data, error } = await supabase
     .from("zoom_connection")
@@ -696,3 +703,9 @@ export async function getZoomConnections() {
   }
   return (data ?? []) as unknown as Array<ZoomConnectionOption & { last_connected_at: string | null; last_error: string | null }>;
 }
+
+export const getZoomConnections = unstable_cache(
+  fetchZoomConnections,
+  ["admin-zoom-connections"],
+  { revalidate: 30 }
+);

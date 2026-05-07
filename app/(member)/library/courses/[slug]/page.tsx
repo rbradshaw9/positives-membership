@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCourseBySlug, memberCanAccessCourse } from "@/lib/queries/get-courses";
 import { getLastWatchedLesson } from "@/app/(member)/today/video-actions";
 import { CourseOutline } from "@/components/courses/CourseOutline";
+import { SafeImage } from "@/components/media/SafeImage";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { hasActiveMemberAccess } from "@/lib/subscription/access";
@@ -104,9 +105,14 @@ export default async function CourseDetailPage({ params }: Props) {
         <div className="flex flex-col md:flex-row gap-6">
           {/* Cover */}
           {course.cover_image_url && (
-            <div className="flex-shrink-0 w-full md:w-48 rounded-2xl overflow-hidden border border-border" style={{ aspectRatio: "16/9" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={course.cover_image_url} alt="" className="w-full h-full object-cover" />
+            <div className="relative flex-shrink-0 w-full md:w-48 rounded-2xl overflow-hidden border border-border" style={{ aspectRatio: "16/9" }}>
+              <SafeImage
+                src={course.cover_image_url}
+                alt=""
+                fill
+                sizes="(max-width: 768px) 100vw, 192px"
+                className="h-full w-full object-cover"
+              />
             </div>
           )}
 

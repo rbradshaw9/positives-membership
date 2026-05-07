@@ -17,18 +17,23 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   const user = await requireAdmin();
-  const permissionSet = await getAdminPermissionSet(user.id, user.email);
-  const canReadMembers = permissionSet.has("members.read");
-  const canManageRoles = permissionSet.has("roles.manage");
-  const canModerateCommunity = permissionSet.has("community.moderate");
-
-  const { data: member } = await asLooseSupabaseClient(getAdminClient())
+  const permissionSetPromise = getAdminPermissionSet(user.id, user.email);
+  const memberPromise = asLooseSupabaseClient(getAdminClient())
     .from("member")
     .select<{ name: string | null; email: string | null; launch_cohort: string | null }>(
       "name, email, launch_cohort"
     )
     .eq("id", user.id)
     .maybeSingle();
+
+  const [permissionSet, memberResult] = await Promise.all([
+    permissionSetPromise,
+    memberPromise,
+  ]);
+  const { data: member } = memberResult;
+  const canReadMembers = permissionSet.has("members.read");
+  const canManageRoles = permissionSet.has("roles.manage");
+  const canModerateCommunity = permissionSet.has("community.moderate");
 
   const showBetaFeedback =
     config.app.betaFeedbackEnabled &&

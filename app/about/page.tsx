@@ -138,7 +138,7 @@ export default function AboutPage() {
                 fill
                 sizes="(max-width: 1024px) 80vw, 420px"
                 className="object-cover object-top"
-                priority
+                preload
               />
             </div>
           </div>

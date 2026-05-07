@@ -22,7 +22,8 @@ export function MemberHeader({ streak = 0 }: MemberHeaderProps) {
           width={88}
           height={20}
           style={{ height: 18, width: "auto", opacity: 0.55 }}
-          priority
+          fetchPriority="high"
+          loading="eager"
         />
         {streak > 0 && (
           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">

@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { config } from "@/lib/config";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
@@ -94,7 +95,7 @@ function attachWatchlist(transactions: SentryTransaction[]) {
   }));
 }
 
-export async function getOpsHealthSnapshot() {
+async function fetchOpsHealthSnapshot() {
   const supabase = asLooseSupabaseClient(getAdminClient());
   const appUrl = config.app.url.replace(/\/$/, "");
   const expectedStripeWebhookUrl = `${appUrl}/api/webhooks/stripe`;
@@ -149,6 +150,12 @@ export async function getOpsHealthSnapshot() {
     },
   };
 }
+
+export const getOpsHealthSnapshot = unstable_cache(
+  fetchOpsHealthSnapshot,
+  ["admin-ops-health-snapshot"],
+  { revalidate: 60 }
+);
 
 async function getFeedbackSnapshot(supabase: ReturnType<typeof asLooseSupabaseClient>) {
   const { data, error, count } = await supabase

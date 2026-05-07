@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 
 /**
@@ -35,7 +36,7 @@ function getMondayOfWeek(dateStr: string): string {
   return monday.toISOString().slice(0, 10);
 }
 
-export async function getContentReadiness(): Promise<ReadinessAlert[]> {
+async function fetchContentReadiness(): Promise<ReadinessAlert[]> {
   const supabase = adminClient();
   const alerts: ReadinessAlert[] = [];
 
@@ -175,3 +176,9 @@ export async function getContentReadiness(): Promise<ReadinessAlert[]> {
 
   return alerts;
 }
+
+export const getContentReadiness = unstable_cache(
+  fetchContentReadiness,
+  ["admin-content-readiness"],
+  { revalidate: 60 * 5 }
+);

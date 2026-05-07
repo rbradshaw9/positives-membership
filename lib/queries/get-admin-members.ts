@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { getAdminClient } from "@/lib/supabase/admin";
 import type { Tables } from "@/types/supabase";
 
@@ -163,7 +164,7 @@ export async function getMemberList(filters: MemberListFilters = {}): Promise<{
   };
 }
 
-export async function getAdminMemberOpsSnapshot(): Promise<{
+async function fetchAdminMemberOpsSnapshot(): Promise<{
   total: number;
   active: number;
   pastDue: number;
@@ -196,6 +197,12 @@ export async function getAdminMemberOpsSnapshot(): Promise<{
     missingPassword,
   };
 }
+
+export const getAdminMemberOpsSnapshot = unstable_cache(
+  fetchAdminMemberOpsSnapshot,
+  ["admin-member-ops-snapshot"],
+  { revalidate: 60 }
+);
 
 // ─────────────────────────────────────────────────
 // getMemberDetail

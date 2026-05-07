@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { NoteSheet } from "@/components/notes/NoteSheet";
 import { ResourceLinks } from "@/components/media/ResourceLinks";
+import { SafeImage } from "@/components/media/SafeImage";
 import { TypeBadge } from "@/components/member/TypeBadge";
 import type { Json } from "@/types/supabase";
 
@@ -100,10 +101,11 @@ export function LibraryList({ items }: LibraryListProps) {
             <article className="surface-card surface-card--editorial group flex h-full flex-col overflow-hidden transition-transform duration-200 hover:-translate-y-1 hover:shadow-large focus-within:-translate-y-1 focus-within:shadow-large">
               <div className={`relative aspect-[16/10] ${thumbClasses(item.type)}`}>
                 {youtubeThumbnailUrl(item) ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <SafeImage
                     src={youtubeThumbnailUrl(item)!}
                     alt=""
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
                     className="absolute inset-0 h-full w-full object-cover opacity-35 transition-opacity duration-200 group-hover:opacity-50"
                   />
                 ) : null}

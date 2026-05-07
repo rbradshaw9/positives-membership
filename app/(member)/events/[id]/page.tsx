@@ -6,6 +6,7 @@ import { currentTimestampMs, formatEventDateRange } from "@/lib/events/dates";
 import { EventDetailsBody } from "@/components/content/EventDetailsBody";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { Button } from "@/components/ui/Button";
+import { SafeImage } from "@/components/media/SafeImage";
 import { EventTicketPurchasePanel } from "./EventTicketPurchasePanel";
 import { registerEventRsvp } from "./actions";
 
@@ -241,8 +242,14 @@ export default async function EventDetailPage({
                   {hosts.map((host) => (
                     <div key={host.id} className="flex gap-3">
                       {host.image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={host.image_url} alt="" className="h-14 w-14 rounded-full object-cover" />
+                        <SafeImage
+                          src={host.image_url}
+                          alt=""
+                          width={56}
+                          height={56}
+                          sizes="56px"
+                          className="h-14 w-14 rounded-full object-cover"
+                        />
                       ) : null}
                       <div>
                         <Link href={`/events/hosts/${host.slug}`} className="font-semibold text-foreground hover:text-primary">

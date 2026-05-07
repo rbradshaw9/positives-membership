@@ -5,6 +5,7 @@ import { getMemberEventVenuePage } from "@/lib/queries/get-events";
 import { formatEventDateRange } from "@/lib/events/dates";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { Button } from "@/components/ui/Button";
+import { SafeImage } from "@/components/media/SafeImage";
 
 type Params = Promise<{ slug: string }>;
 
@@ -71,8 +72,15 @@ export default async function EventVenuePage({ params }: { params: Params }) {
 
         <SurfaceCard padding="lg" elevated>
           {venue.featured_image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={venue.featured_image_url} alt="" className="mb-4 aspect-[4/3] w-full rounded-xl object-cover" />
+            <div className="relative mb-4 aspect-[4/3] w-full overflow-hidden rounded-xl">
+              <SafeImage
+                src={venue.featured_image_url}
+                alt=""
+                fill
+                sizes="(max-width: 1024px) 100vw, 420px"
+                className="h-full w-full object-cover"
+              />
+            </div>
           ) : null}
           <p className="ui-section-eyebrow mb-2">{venue.is_virtual ? "Virtual Location" : "Location"}</p>
           {address ? <p className="text-sm leading-relaxed text-muted-foreground">{address}</p> : null}
