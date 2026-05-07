@@ -8,7 +8,7 @@ import { requireAdmin } from "@/lib/auth/require-admin";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import { EVENT_ACCESS_LEVELS, normalizeRegistrationFields, parseAccessLevels } from "@/lib/events/types";
-import type { EventHostOption, EventRegistrationField, EventTypeOption, EventVenueOption } from "@/lib/events/types";
+import type { EventHostOption, EventRegistrationField, EventRegistrationPlacement, EventTypeOption, EventVenueOption } from "@/lib/events/types";
 import { expandOccurrences } from "@/lib/events/recurrence";
 import { zoomApi } from "@/lib/zoom/client";
 import { encryptSecret } from "@/lib/zoom/crypto";
@@ -41,6 +41,8 @@ type EventInput = {
   allDay: boolean;
   virtualMode: string;
   ticketingMode: "included" | "ticket_required";
+  eventCapacity: number | null;
+  registrationPlacement: EventRegistrationPlacement;
   ticketTypes: EventTicketInput[];
   rsvpEnabled: boolean;
   rsvpTypes: EventRsvpInput[];
@@ -164,6 +166,10 @@ function parseInput(formData: FormData): EventInput {
     allDay: formData.get("all_day") === "on",
     virtualMode: value(formData, "virtual_mode") || "none",
     ticketingMode: ticketConfig.mode,
+    eventCapacity: intOrNull(value(formData, "event_capacity")),
+    registrationPlacement: ["below_hero", "sidebar"].includes(value(formData, "registration_placement"))
+      ? (value(formData, "registration_placement") as EventRegistrationPlacement)
+      : "after_description",
     ticketTypes: ticketConfig.ticketTypes,
     rsvpEnabled: rsvpConfig.enabled,
     rsvpTypes: rsvpConfig.rsvpTypes,
@@ -601,6 +607,8 @@ function baseEventRow(input: EventInput, userId: string, hostId: string | null, 
     visibility: "member",
     virtual_mode: input.virtualMode,
     ticketing_mode: input.ticketingMode,
+    ...(input.eventCapacity !== null ? { event_capacity: input.eventCapacity } : {}),
+    ...(input.registrationPlacement !== "after_description" ? { registration_placement: input.registrationPlacement } : {}),
     manual_join_url: input.virtualMode === "manual" ? input.manualJoinUrl || null : null,
     replay_url: input.replayUrl || null,
     created_by: userId,

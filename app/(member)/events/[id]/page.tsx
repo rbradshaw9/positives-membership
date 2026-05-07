@@ -259,6 +259,24 @@ export default async function EventDetailPage({
   const address = venueAddress(event);
   const location = eventLocationLabel(event);
   const hostNames = eventHostNames(event);
+  const registrationModule = (
+    <div id="event-registration" className="scroll-mt-24 space-y-4">
+      {query.ticket === "success" || hasTicketAccess && ticketRequired ? (
+        <SurfaceCard padding="lg">
+          <p className="ui-section-eyebrow mb-2">Ticket</p>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Your ticket is confirmed. The live link and replay are available from this page when they are ready.
+          </p>
+        </SurfaceCard>
+      ) : null}
+
+      {ticketRequired && !hasTicketAccess ? (
+        <EventTicketPurchasePanel event={event} ticketError={query.ticket_error} />
+      ) : null}
+
+      {rsvp ? <RsvpModule event={event} rsvp={rsvp} query={query} /> : null}
+    </div>
+  );
 
   return (
     <div className="member-container py-8 md:py-12">
@@ -301,6 +319,8 @@ export default async function EventDetailPage({
           <div className="space-y-6">
             <EventVisual event={event} priority className="rounded-[1.75rem]" />
 
+            {event.registration_placement === "below_hero" ? registrationModule : null}
+
             {event.excerpt ? (
               <p className="text-lg leading-relaxed text-muted-foreground">{event.excerpt}</p>
             ) : null}
@@ -311,22 +331,7 @@ export default async function EventDetailPage({
               </SurfaceCard>
             ) : null}
 
-            <div id="event-registration" className="scroll-mt-24 space-y-4">
-              {query.ticket === "success" || hasTicketAccess && ticketRequired ? (
-                <SurfaceCard padding="lg">
-                  <p className="ui-section-eyebrow mb-2">Ticket</p>
-                  <p className="text-sm leading-relaxed text-muted-foreground">
-                    Your ticket is confirmed. The live link and replay are available from this page when they are ready.
-                  </p>
-                </SurfaceCard>
-              ) : null}
-
-              {ticketRequired && !hasTicketAccess ? (
-                <EventTicketPurchasePanel event={event} ticketError={query.ticket_error} />
-              ) : null}
-
-              {rsvp ? <RsvpModule event={event} rsvp={rsvp} query={query} /> : null}
-            </div>
+            {event.registration_placement === "after_description" ? registrationModule : null}
 
             <SurfaceCard padding="lg" className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -353,6 +358,8 @@ export default async function EventDetailPage({
           </div>
 
           <aside className="space-y-4 lg:sticky lg:top-24">
+            {event.registration_placement === "sidebar" ? registrationModule : null}
+
             <SurfaceCard padding="lg" elevated>
               <p className="ui-section-eyebrow mb-3">Event Details</p>
               <dl>

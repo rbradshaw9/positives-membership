@@ -21,6 +21,7 @@ import {
 import type {
   EventHostOption,
   EventRegistrationField,
+  EventRegistrationPlacement,
   EventRegistrationFieldType,
   EventTypeOption,
   EventVenueOption,
@@ -442,6 +443,9 @@ export function EventForm({
   const hasAttachedZoom = Boolean(event?.event_zoom_meeting?.id);
   const [zoomMode, setZoomMode] = useState(hasAttachedZoom ? "none" : "");
   const [ticketingMode, setTicketingMode] = useState(event?.ticketing_mode ?? "included");
+  const [registrationPlacement, setRegistrationPlacement] = useState<EventRegistrationPlacement>(
+    event?.registration_placement ?? "after_description"
+  );
   const [recurrence, setRecurrence] = useState("none");
   const [accessLevels, setAccessLevels] = useState<string[]>(
     EVENT_ACCESS_LEVELS
@@ -1207,6 +1211,34 @@ export function EventForm({
                 No tickets or RSVPs have been created yet. Members can still view the event if it is published for their membership level.
               </div>
             ) : null}
+            <div className="admin-form-grid-2 mt-4">
+              <div className="admin-form-field">
+                <label htmlFor="event_capacity" className="admin-label">Shared capacity</label>
+                <input
+                  id="event_capacity"
+                  name="event_capacity"
+                  defaultValue={event?.event_capacity ?? ""}
+                  inputMode="numeric"
+                  className="admin-input"
+                  placeholder="Leave blank for unlimited"
+                />
+                <p className="admin-hint">Caps combined RSVPs, manual attendees, comps, paid tickets, and active ticket holds.</p>
+              </div>
+              <div className="admin-form-field">
+                <label htmlFor="registration_placement" className="admin-label">Member page placement</label>
+                <select
+                  id="registration_placement"
+                  name="registration_placement"
+                  value={registrationPlacement}
+                  onChange={(event) => setRegistrationPlacement(event.target.value as EventRegistrationPlacement)}
+                  className="admin-select"
+                >
+                  <option value="below_hero">Below hero image</option>
+                  <option value="after_description">After description</option>
+                  <option value="sidebar">Sidebar card</option>
+                </select>
+              </div>
+            </div>
           </div>
 
           <div className="rounded-2xl border border-border bg-muted/30 p-4">

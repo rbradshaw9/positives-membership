@@ -25,6 +25,7 @@ type TicketAdminRow = {
     title: string;
     starts_at: string;
     status: string;
+    event_capacity: number | null;
   } | null;
 };
 
@@ -67,12 +68,12 @@ function salesWindow(ticket: TicketAdminRow) {
 
 async function getTicketingRows() {
   const supabase = asLooseSupabaseClient(getAdminClient());
-  const [ticketsResult, statsResult] = await Promise.all([
+  const ticketSelect = "id, event_id, name, price_cents, currency, capacity, max_per_order, sale_starts_at, sale_ends_at, status, member_event:event_id(id, title, starts_at, status, event_capacity)";
+  const ticketSelectCompat = "id, event_id, name, price_cents, currency, capacity, max_per_order, sale_starts_at, sale_ends_at, status, member_event:event_id(id, title, starts_at, status)";
+  const [initialTicketsResult, statsResult] = await Promise.all([
     supabase
       .from("event_ticket_type")
-      .select<TicketAdminRow>(
-        "id, event_id, name, price_cents, currency, capacity, max_per_order, sale_starts_at, sale_ends_at, status, member_event:event_id(id, title, starts_at, status)"
-      )
+      .select<TicketAdminRow>(ticketSelect)
       .neq("status", "archived")
       .order("created_at", { ascending: false }),
     supabase
@@ -80,6 +81,14 @@ async function getTicketingRows() {
       .select<TicketStatsRow>("ticket_type_id, status")
       .in("status", ["pending", "active", "comp"]),
   ]);
+  let ticketsResult = initialTicketsResult;
+  if (ticketsResult.error?.message.includes("event_capacity")) {
+    ticketsResult = await supabase
+      .from("event_ticket_type")
+      .select<TicketAdminRow>(ticketSelectCompat)
+      .neq("status", "archived")
+      .order("created_at", { ascending: false });
+  }
 
   const stats = new Map<string, { held: number; confirmed: number }>();
   for (const row of (statsResult.data ?? []) as unknown as TicketStatsRow[]) {
@@ -193,6 +202,7 @@ export default async function EventTicketingPage({ searchParams }: { searchParam
                   <th>Event</th>
                   <th>Price</th>
                   <th>Capacity</th>
+                  <th>Event Cap</th>
                   <th>Confirmed</th>
                   <th>Sales</th>
                   <th>Status</th>
@@ -214,6 +224,7 @@ export default async function EventTicketingPage({ searchParams }: { searchParam
                     </td>
                     <td>{money(ticket.price_cents, ticket.currency)}</td>
                     <td>{ticket.capacity ?? "Unlimited"}</td>
+                    <td>{ticket.member_event?.event_capacity ?? "Unlimited"}</td>
                     <td>{ticket.stats.confirmed}{ticket.stats.held ? ` (${ticket.stats.held} held)` : ""}</td>
                     <td>{salesWindow(ticket)}</td>
                     <td><span className={ticket.status === "active" ? "admin-badge admin-badge--published" : "admin-badge admin-badge--draft"}>{ticket.status}</span></td>
@@ -221,7 +232,7 @@ export default async function EventTicketingPage({ searchParams }: { searchParam
                 ))}
                 {tickets.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-muted-foreground">No ticket types match these filters.</td>
+                    <td colSpan={8} className="text-muted-foreground">No ticket types match these filters.</td>
                   </tr>
                 ) : null}
               </tbody>

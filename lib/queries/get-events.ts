@@ -5,6 +5,7 @@ import { addDays, formatDateOnly, parseDateOnly } from "@/lib/dates/admin-calend
 import { calendarGridDays, eventDateKey, monthRange } from "@/lib/events/dates";
 import type {
   EventAccessLevel,
+  EventRegistrationPlacement,
   EventRegistrationField,
   EventTicketingMode,
   EventTicketTypeStatus,
@@ -111,6 +112,8 @@ export type EventRow = {
   visibility: "member" | "hidden";
   virtual_mode: "none" | "manual" | "zoom";
   ticketing_mode: EventTicketingMode;
+  event_capacity: number | null;
+  registration_placement: EventRegistrationPlacement;
   manual_join_url: string | null;
   replay_url: string | null;
   replay_content_id: string | null;
@@ -198,7 +201,7 @@ const EVENT_VENUE_SELECT =
 
 const EVENT_SELECT = `
   id, series_id, type_id, host_id, venue_id, venue_room_name, venue_notes, title, excerpt, description, body, status,
-  starts_at, ends_at, timezone, all_day, visibility, virtual_mode, ticketing_mode, manual_join_url, replay_url,
+  starts_at, ends_at, timezone, all_day, visibility, virtual_mode, ticketing_mode, event_capacity, registration_placement, manual_join_url, replay_url,
   replay_content_id, image_url, is_featured,
   event_type:event_type(id, slug, name, description, color),
   event_host:event_host(id, slug, name, type, bio, image_url, email, phone, website_url, social_links, contact_visibility, status, brand_logo_url, support_email),
@@ -219,7 +222,9 @@ const EVENT_SELECT = `
   )
 `;
 
-const EVENT_SELECT_COMPAT = EVENT_SELECT.replace(", registration_fields", "");
+const EVENT_SELECT_COMPAT = EVENT_SELECT
+  .replace(", event_capacity, registration_placement", "")
+  .replace(", registration_fields", "");
 
 function normalizeEventRows(rows: EventRow[]) {
   return rows.map((event) => ({
@@ -231,6 +236,14 @@ function normalizeEventRows(rows: EventRow[]) {
   }));
 }
 
+function eventSelectNeedsCompat(message?: string) {
+  return Boolean(
+    message?.includes("registration_fields") ||
+      message?.includes("event_capacity") ||
+      message?.includes("registration_placement")
+  );
+}
+
 function sortEventTickets(event: EventRow) {
   const assignments = [...(event.event_host_assignment ?? [])].sort((a, b) => {
     if (a.is_primary && !b.is_primary) return -1;
@@ -240,6 +253,8 @@ function sortEventTickets(event: EventRow) {
   return {
     ...event,
     ticketing_mode: event.ticketing_mode ?? "included",
+    event_capacity: event.event_capacity ?? null,
+    registration_placement: event.registration_placement ?? "after_description",
     event_ticket_type: [...(event.event_ticket_type ?? [])].sort((a, b) => a.sort_order - b.sort_order),
     event_rsvp_type: [...(event.event_rsvp_type ?? [])]
       .map((rsvp) => ({ ...rsvp, registration_fields: rsvp.registration_fields ?? [] }))
@@ -419,7 +434,7 @@ export async function getAdminEvents(params: {
   };
 
   let { data, error } = await runQuery(EVENT_SELECT);
-  if (error?.message.includes("registration_fields")) {
+  if (eventSelectNeedsCompat(error?.message)) {
     const compat = await runQuery(EVENT_SELECT_COMPAT);
     data = compat.data;
     error = compat.error;
@@ -480,7 +495,7 @@ export async function getAdminEvent(id: string) {
     .eq("id", id)
     .maybeSingle();
 
-  if (error?.message.includes("registration_fields")) {
+  if (eventSelectNeedsCompat(error?.message)) {
     const compat = await supabase
       .from("member_event")
       .select<EventRow>(EVENT_SELECT_COMPAT)
@@ -711,7 +726,7 @@ export async function getMemberRelatedEvents(params: {
 
   let relatedData = data;
   let relatedError = error;
-  if (relatedError?.message.includes("registration_fields")) {
+  if (eventSelectNeedsCompat(relatedError?.message)) {
     const compat = await supabase
       .from("member_event")
       .select<EventRow>(EVENT_SELECT_COMPAT)
@@ -852,7 +867,7 @@ export async function getMemberEventHostPage(slug: string, memberTier: string | 
     .gte("ends_at", new Date().toISOString())
     .order("starts_at", { ascending: true });
 
-  if (eventsError?.message.includes("registration_fields")) {
+  if (eventSelectNeedsCompat(eventsError?.message)) {
     const compat = await supabase
       .from("member_event")
       .select<EventRow>(EVENT_SELECT_COMPAT)
@@ -901,7 +916,7 @@ export async function getMemberEventVenuePage(slug: string, memberTier: string |
     .gte("ends_at", new Date().toISOString())
     .order("starts_at", { ascending: true });
 
-  if (eventsError?.message.includes("registration_fields")) {
+  if (eventSelectNeedsCompat(eventsError?.message)) {
     const compat = await supabase
       .from("member_event")
       .select<EventRow>(EVENT_SELECT_COMPAT)

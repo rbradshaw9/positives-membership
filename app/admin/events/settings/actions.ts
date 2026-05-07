@@ -250,16 +250,26 @@ export async function grantEventCompTickets(formData: FormData) {
   if (!ticketTypeId || !memberEmail) redirectWithStatus(returnTo, "comp_required", "error");
 
   const supabase = asLooseSupabaseClient(getAdminClient());
-  const [memberResult, ticketResult] = await Promise.all([
+  const [memberResult, initialTicketResult] = await Promise.all([
     supabase.from("member").select<{ id: string; email: string | null }>("id, email").eq("email", memberEmail).maybeSingle(),
     supabase
+      .from("event_ticket_type")
+      .select<{ id: string; event_id: string; name: string; price_cents: number; currency: string; member_event?: { event_capacity: number | null } | null }>(
+        "id, event_id, name, price_cents, currency, member_event:event_id(event_capacity)"
+      )
+      .eq("id", ticketTypeId)
+      .maybeSingle(),
+  ]);
+  let ticketResult = initialTicketResult;
+  if (ticketResult.error?.message.includes("event_capacity")) {
+    ticketResult = await supabase
       .from("event_ticket_type")
       .select<{ id: string; event_id: string; name: string; price_cents: number; currency: string }>(
         "id, event_id, name, price_cents, currency"
       )
       .eq("id", ticketTypeId)
-      .maybeSingle(),
-  ]);
+      .maybeSingle();
+  }
 
   if (memberResult.error || !memberResult.data || ticketResult.error || !ticketResult.data) {
     redirectWithStatus(returnTo, "comp_lookup_failed", "error");
@@ -268,6 +278,26 @@ export async function grantEventCompTickets(formData: FormData) {
   const ticket = ticketResult.data;
   const member = memberResult.data;
   if (!ticket || !member) redirectWithStatus(returnTo, "comp_lookup_failed", "error");
+
+  const sharedCapacity = ticket.member_event?.event_capacity ?? null;
+  if (sharedCapacity !== null) {
+    const [attendeesResult, ticketsResult] = await Promise.all([
+      supabase
+        .from("event_attendee")
+        .select("id", { count: "exact", head: true })
+        .eq("event_id", ticket.event_id)
+        .in("source", ["rsvp", "manual"])
+        .in("status", ["registered", "checked_in"]),
+      supabase
+        .from("event_ticket")
+        .select("id", { count: "exact", head: true })
+        .eq("event_id", ticket.event_id)
+        .in("status", ["pending", "active", "comp"]),
+    ]);
+    const activeCount = (attendeesResult.count ?? 0) + (ticketsResult.count ?? 0);
+    if (activeCount + quantity > sharedCapacity) redirectWithStatus(returnTo, "comp_save_failed", "error");
+  }
+
   const { data: order, error: orderError } = await supabase
     .from("event_ticket_order")
     .insert({
