@@ -5,6 +5,7 @@ import { addDays, formatDateOnly, parseDateOnly } from "@/lib/dates/admin-calend
 import { calendarGridDays, eventDateKey, monthRange } from "@/lib/events/dates";
 import type {
   EventAccessLevel,
+  EventRegistrationField,
   EventTicketingMode,
   EventTicketTypeStatus,
   EventHostOption,
@@ -69,6 +70,7 @@ export type EventRsvpTypeRow = {
   start_at: string | null;
   end_at: string | null;
   collect_attendee_info: boolean;
+  registration_fields: EventRegistrationField[];
   sort_order: number;
   status: "active" | "disabled" | "archived";
   confirmed_count?: number;
@@ -85,6 +87,7 @@ export type EventAttendeeRow = {
   email: string | null;
   status: "registered" | "checked_in" | "canceled" | "refunded" | "chargeback" | "no_show";
   source: "rsvp" | "manual" | "paid" | "comp";
+  custom_field_values?: Record<string, unknown>;
   created_at: string;
 };
 
@@ -209,12 +212,24 @@ const EVENT_SELECT = `
     id, event_id, name, description, price_cents, currency, capacity, max_per_order, status, sale_starts_at, sale_ends_at, sort_order,
     event_ticket_type_access_level(subscription_tier)
   ),
-  event_rsvp_type(id, event_id, name, description, capacity, start_at, end_at, collect_attendee_info, sort_order, status),
+  event_rsvp_type(id, event_id, name, description, capacity, start_at, end_at, collect_attendee_info, registration_fields, sort_order, status),
   event_zoom_meeting(
     id, zoom_connection_id, zoom_object_type, zoom_object_id, join_url, host_email, provider_status,
     zoom_connection:zoom_connection_id(id, label, owner_kind, zoom_user_email, status)
   )
 `;
+
+const EVENT_SELECT_COMPAT = EVENT_SELECT.replace(", registration_fields", "");
+
+function normalizeEventRows(rows: EventRow[]) {
+  return rows.map((event) => ({
+    ...event,
+    event_rsvp_type: (event.event_rsvp_type ?? []).map((rsvp) => ({
+      ...rsvp,
+      registration_fields: rsvp.registration_fields ?? [],
+    })),
+  }));
+}
 
 function sortEventTickets(event: EventRow) {
   const assignments = [...(event.event_host_assignment ?? [])].sort((a, b) => {
@@ -226,7 +241,9 @@ function sortEventTickets(event: EventRow) {
     ...event,
     ticketing_mode: event.ticketing_mode ?? "included",
     event_ticket_type: [...(event.event_ticket_type ?? [])].sort((a, b) => a.sort_order - b.sort_order),
-    event_rsvp_type: [...(event.event_rsvp_type ?? [])].sort((a, b) => a.sort_order - b.sort_order),
+    event_rsvp_type: [...(event.event_rsvp_type ?? [])]
+      .map((rsvp) => ({ ...rsvp, registration_fields: rsvp.registration_fields ?? [] }))
+      .sort((a, b) => a.sort_order - b.sort_order),
     event_host_assignment: assignments,
     event_host: event.event_host ?? assignments[0]?.event_host ?? null,
   };
@@ -388,23 +405,31 @@ export async function getAdminEvents(params: {
   const { start, end } = monthRange(month);
   const rangeStart = formatDateOnly(addDays(parseDateOnly(start), -2));
   const rangeEnd = formatDateOnly(addDays(parseDateOnly(end), 2));
-  let query = supabase
-    .from("member_event")
-    .select<EventRow>(EVENT_SELECT)
-    .gte("starts_at", `${rangeStart}T00:00:00.000Z`)
-    .lte("starts_at", `${rangeEnd}T23:59:59.999Z`)
-    .order("starts_at", { ascending: true });
+  const runQuery = (select: string) => {
+    let query = supabase
+      .from("member_event")
+      .select<EventRow>(select)
+      .gte("starts_at", `${rangeStart}T00:00:00.000Z`)
+      .lte("starts_at", `${rangeEnd}T23:59:59.999Z`)
+      .order("starts_at", { ascending: true });
 
-  if (params.status && params.status !== "all") query = query.eq("status", params.status);
-  if (params.typeId && params.typeId !== "all") query = query.eq("type_id", params.typeId);
+    if (params.status && params.status !== "all") query = query.eq("status", params.status);
+    if (params.typeId && params.typeId !== "all") query = query.eq("type_id", params.typeId);
+    return query;
+  };
 
-  const { data, error } = await query;
+  let { data, error } = await runQuery(EVENT_SELECT);
+  if (error?.message.includes("registration_fields")) {
+    const compat = await runQuery(EVENT_SELECT_COMPAT);
+    data = compat.data;
+    error = compat.error;
+  }
   if (error) {
     console.error("[getAdminEvents]", error.message);
     return { month, events: [], calendarDays: calendarGridDays(month).map((date) => ({ date, inMonth: date.startsWith(month), events: [] })) };
   }
 
-  let events = ((data ?? []) as unknown as EventRow[]).map(sortEventTickets);
+  let events = normalizeEventRows((data ?? []) as unknown as EventRow[]).map(sortEventTickets);
   if (params.accessLevel && params.accessLevel !== "all") {
     events = events.filter((event) =>
       (event.member_event_access_level ?? []).some((row) => row.subscription_tier === params.accessLevel)
@@ -449,17 +474,27 @@ export async function getAdminEvents(params: {
 
 export async function getAdminEvent(id: string) {
   const supabase = asLooseSupabaseClient(getAdminClient());
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("member_event")
     .select<EventRow>(EVENT_SELECT)
     .eq("id", id)
     .maybeSingle();
 
+  if (error?.message.includes("registration_fields")) {
+    const compat = await supabase
+      .from("member_event")
+      .select<EventRow>(EVENT_SELECT_COMPAT)
+      .eq("id", id)
+      .maybeSingle();
+    data = compat.data;
+    error = compat.error;
+  }
+
   if (error) {
     console.error("[getAdminEvent]", error.message);
     return null;
   }
-  return data ? sortEventTickets(data as unknown as EventRow) : null;
+  return data ? sortEventTickets(normalizeEventRows([data as unknown as EventRow])[0]) : null;
 }
 
 async function getMemberTicketAccess(memberId: string, eventIds: string[]) {
@@ -674,8 +709,24 @@ export async function getMemberRelatedEvents(params: {
     .order("starts_at", { ascending: true })
     .limit(24);
 
-  if (error) {
-    console.error("[getMemberRelatedEvents]", error.message);
+  let relatedData = data;
+  let relatedError = error;
+  if (relatedError?.message.includes("registration_fields")) {
+    const compat = await supabase
+      .from("member_event")
+      .select<EventRow>(EVENT_SELECT_COMPAT)
+      .neq("id", params.event.id)
+      .eq("status", "published")
+      .neq("visibility", "hidden")
+      .gte("ends_at", new Date().toISOString())
+      .order("starts_at", { ascending: true })
+      .limit(24);
+    relatedData = compat.data;
+    relatedError = compat.error;
+  }
+
+  if (relatedError) {
+    console.error("[getMemberRelatedEvents]", relatedError.message);
     return [];
   }
 
@@ -684,7 +735,7 @@ export async function getMemberRelatedEvents(params: {
   );
   if (params.event.host_id) currentHostIds.add(params.event.host_id);
 
-  const visible = ((data ?? []) as unknown as EventRow[])
+  const visible = normalizeEventRows((relatedData ?? []) as unknown as EventRow[])
     .map(sortEventTickets)
     .filter((event) => memberCanSeeEvent(event, params.memberTier as string))
     .sort((a, b) => {
@@ -794,19 +845,30 @@ export async function getMemberEventHostPage(slug: string, memberTier: string | 
   const eventIds = [...new Set((assignments ?? []).map((assignment) => assignment.event_id))];
   if (eventIds.length === 0) return { host: host as unknown as EventHostOption, events: [] };
 
-  const { data: events, error: eventsError } = await supabase
+  let { data: events, error: eventsError } = await supabase
     .from("member_event")
     .select<EventRow>(EVENT_SELECT)
     .in("id", eventIds)
     .gte("ends_at", new Date().toISOString())
     .order("starts_at", { ascending: true });
 
+  if (eventsError?.message.includes("registration_fields")) {
+    const compat = await supabase
+      .from("member_event")
+      .select<EventRow>(EVENT_SELECT_COMPAT)
+      .in("id", eventIds)
+      .gte("ends_at", new Date().toISOString())
+      .order("starts_at", { ascending: true });
+    events = compat.data;
+    eventsError = compat.error;
+  }
+
   if (eventsError) {
     console.error("[getMemberEventHostPage] events", eventsError.message);
     return { host: host as unknown as EventHostOption, events: [] };
   }
 
-  const visible = ((events ?? []) as unknown as EventRow[])
+  const visible = normalizeEventRows((events ?? []) as unknown as EventRow[])
     .map(sortEventTickets)
     .filter((event) => memberCanSeeEvent(event, memberTier));
 
@@ -832,19 +894,30 @@ export async function getMemberEventVenuePage(slug: string, memberTier: string |
   }
   if (!venue) return null;
 
-  const { data: events, error: eventsError } = await supabase
+  let { data: events, error: eventsError } = await supabase
     .from("member_event")
     .select<EventRow>(EVENT_SELECT)
     .eq("venue_id", venue.id)
     .gte("ends_at", new Date().toISOString())
     .order("starts_at", { ascending: true });
 
+  if (eventsError?.message.includes("registration_fields")) {
+    const compat = await supabase
+      .from("member_event")
+      .select<EventRow>(EVENT_SELECT_COMPAT)
+      .eq("venue_id", venue.id)
+      .gte("ends_at", new Date().toISOString())
+      .order("starts_at", { ascending: true });
+    events = compat.data;
+    eventsError = compat.error;
+  }
+
   if (eventsError) {
     console.error("[getMemberEventVenuePage] events", eventsError.message);
     return { venue: venue as unknown as EventVenueOption, events: [] };
   }
 
-  const visible = ((events ?? []) as unknown as EventRow[])
+  const visible = normalizeEventRows((events ?? []) as unknown as EventRow[])
     .map(sortEventTickets)
     .filter((event) => memberCanSeeEvent(event, memberTier));
 

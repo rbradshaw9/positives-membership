@@ -22,6 +22,7 @@ export type AttendeeAdminRow = {
   status: string;
   source: string;
   created_at: string;
+  custom_field_values: Record<string, unknown>;
   confirmation_sent_at: string | null;
   confirmation_send_attempted_at: string | null;
   confirmation_send_error: string | null;
@@ -35,6 +36,7 @@ export type AttendeeAdminRow = {
   event_rsvp_type?: {
     id: string;
     name: string;
+    registration_fields?: Array<{ id: string; label: string }>;
   } | null;
   event_check_in?: Array<{
     id: string;
@@ -59,14 +61,15 @@ export type AttendeeRsvpOption = {
 };
 
 const ATTENDEE_SELECT =
-  "id, event_id, rsvp_type_id, member_id, attendee_number, security_code, name, email, purchaser_name, purchaser_email, status, source, created_at, confirmation_sent_at, confirmation_send_attempted_at, confirmation_send_error, confirmation_resend_count, member_event:event_id(id, title, starts_at, status), event_rsvp_type:rsvp_type_id(id, name), event_check_in(id, status, checked_in_at, method)";
+  "id, event_id, rsvp_type_id, member_id, attendee_number, security_code, name, email, purchaser_name, purchaser_email, status, source, custom_field_values, created_at, confirmation_sent_at, confirmation_send_attempted_at, confirmation_send_error, confirmation_resend_count, member_event:event_id(id, title, starts_at, status), event_rsvp_type:rsvp_type_id(id, name, registration_fields), event_check_in(id, status, checked_in_at, method)";
 
 const ATTENDEE_SELECT_COMPAT =
-  "id, event_id, rsvp_type_id, member_id, attendee_number, security_code, name, email, purchaser_name, purchaser_email, status, source, created_at, member_event:event_id(id, title, starts_at, status), event_rsvp_type:rsvp_type_id(id, name), event_check_in(id, status, checked_in_at, method)";
+  "id, event_id, rsvp_type_id, member_id, attendee_number, security_code, name, email, purchaser_name, purchaser_email, status, source, custom_field_values, created_at, member_event:event_id(id, title, starts_at, status), event_rsvp_type:rsvp_type_id(id, name), event_check_in(id, status, checked_in_at, method)";
 
 function normalizeAttendeeRows(rows: unknown[] | null | undefined): AttendeeAdminRow[] {
   return ((rows ?? []) as Partial<AttendeeAdminRow>[]).map((row) => ({
     ...(row as AttendeeAdminRow),
+    custom_field_values: row.custom_field_values ?? {},
     confirmation_sent_at: row.confirmation_sent_at ?? null,
     confirmation_send_attempted_at: row.confirmation_send_attempted_at ?? null,
     confirmation_send_error: row.confirmation_send_error ?? null,
@@ -82,7 +85,7 @@ async function fetchAttendees() {
     .order("created_at", { ascending: false })
     .limit(500);
 
-  if (!result.error || !result.error.message.includes("confirmation_")) return result;
+  if (!result.error || (!result.error.message.includes("confirmation_") && !result.error.message.includes("registration_fields"))) return result;
 
   const compat = await supabase
     .from("event_attendee")

@@ -10,6 +10,7 @@ import {
   createRsvpEventFixture,
   createEventUxZoomFixture,
   createTicketedEventFixture,
+  eventRegistrationFieldsSupported,
   loginWithPassword,
 } from "./helpers";
 
@@ -496,6 +497,75 @@ test("member RSVP creates an attendee that admins can check in", async ({
     await adminPage.getByRole("button", { name: "Check in attendee" }).click();
     await expect(adminPage).toHaveURL(/\/admin\/events\/attendees\/check-in\?event_id=.*error=already_checked_in/);
     await expect(adminPage.getByText("This attendee is already checked in.")).toBeVisible();
+  } finally {
+    await adminContext.close();
+  }
+});
+
+test("custom RSVP fields are required for members and visible to admins", async ({
+  browser,
+}) => {
+  test.skip(!(await eventRegistrationFieldsSupported()), "registration_fields migration is not applied in this environment");
+
+  const fixture = await createRsvpEventFixture(EVENT_TITLE_PREFIX, {
+    registrationFields: [
+      {
+        id: "dietary_needs",
+        label: "Dietary needs",
+        type: "short_text",
+        required: true,
+        helpText: "Tell us what to plan around.",
+      },
+      {
+        id: "bring_guest",
+        label: "Bringing a guest",
+        type: "checkbox",
+        required: false,
+        helpText: "I may arrive with a guest.",
+      },
+    ],
+  });
+  const attendeeName = `${EVENT_TITLE_PREFIX} Field Attendee`;
+  const attendeeEmail = `event-rsvp-fields-${Date.now()}@example.com`;
+
+  const memberContext = await browser.newContext();
+  const memberPage = await memberContext.newPage();
+  try {
+    await loginWithPassword(memberPage, {
+      email: LEVEL_2_MEMBER_EMAIL,
+      password: LEVEL_2_MEMBER_PASSWORD,
+      next: `/events/${fixture.eventId}`,
+    });
+
+    await expect(memberPage.getByLabel("Dietary needs")).toBeVisible();
+    await memberPage.getByLabel("Name").fill(attendeeName);
+    await memberPage.getByLabel("Email").fill(attendeeEmail);
+    await memberPage.locator('input[name="custom_dietary_needs"]').evaluate((input) => input.removeAttribute("required"));
+    await memberPage.getByRole("button", { name: "Confirm RSVP" }).click();
+    await expect(memberPage).toHaveURL(new RegExp(`/events/${fixture.eventId}\\?rsvp_error=fields_required$`));
+    await expect(memberPage.getByText("Please complete the required registration details.")).toBeVisible();
+
+    await memberPage.getByLabel("Name").fill(attendeeName);
+    await memberPage.getByLabel("Email").fill(attendeeEmail);
+    await memberPage.getByLabel("Dietary needs").fill("Vegetarian");
+    await memberPage.getByRole("button", { name: "Confirm RSVP" }).click();
+    await expect(memberPage).toHaveURL(new RegExp(`/events/${fixture.eventId}\\?rsvp=success$`));
+  } finally {
+    await memberContext.close();
+  }
+
+  const adminContext = await browser.newContext();
+  const adminPage = await adminContext.newPage();
+  try {
+    await loginWithPassword(adminPage, {
+      email: ADMIN_EMAIL,
+      password: ADMIN_PASSWORD,
+      next: `/admin/events/${fixture.eventId}/attendees`,
+      allowBootstrapFallback: false,
+    });
+
+    const attendeeRow = adminPage.getByRole("row").filter({ hasText: attendeeName });
+    await expect(attendeeRow.getByText("Dietary needs: Vegetarian")).toBeVisible();
   } finally {
     await adminContext.close();
   }

@@ -1238,7 +1238,19 @@ export async function createEventHostVenueFixture(prefix: string) {
   };
 }
 
-export async function createRsvpEventFixture(prefix: string) {
+export async function eventRegistrationFieldsSupported() {
+  const supabase = getServiceRoleClient();
+  const { error } = await supabase
+    .from("event_rsvp_type")
+    .select("registration_fields")
+    .limit(1);
+  return !error?.message.includes("registration_fields");
+}
+
+export async function createRsvpEventFixture(
+  prefix: string,
+  options: { registrationFields?: Array<Record<string, unknown>> } = {}
+) {
   const supabase = getServiceRoleClient();
   const unique = Date.now();
   const title = `${prefix} RSVP ${unique}`;
@@ -1277,6 +1289,7 @@ export async function createRsvpEventFixture(prefix: string) {
       description: "Reserve a member spot for this fixture event.",
       capacity: 2,
       collect_attendee_info: true,
+      ...(options.registrationFields ? { registration_fields: options.registrationFields } : {}),
       sort_order: 10,
       status: "active",
     })

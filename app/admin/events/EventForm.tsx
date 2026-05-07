@@ -12,9 +12,16 @@ import {
   detachEventZoomSession,
   saveEvent,
 } from "./actions";
-import { EVENT_ACCESS_LEVELS, accessLevelLabel } from "@/lib/events/types";
+import {
+  EVENT_ACCESS_LEVELS,
+  EVENT_REGISTRATION_FIELD_TYPES,
+  accessLevelLabel,
+  normalizeRegistrationFields,
+} from "@/lib/events/types";
 import type {
   EventHostOption,
+  EventRegistrationField,
+  EventRegistrationFieldType,
   EventTypeOption,
   EventVenueOption,
   ZoomConnectionOption,
@@ -75,6 +82,7 @@ type RsvpDraft = {
   startAt: string;
   endAt: string;
   collectAttendeeInfo: boolean;
+  registrationFields: EventRegistrationField[];
   status: "active" | "disabled";
 };
 
@@ -214,6 +222,7 @@ function rsvpDraftFromEvent(event?: EventRow | null, timezone = "America/New_Yor
       startAt: rsvp.start_at ? datetimeLocal(rsvp.start_at, timezone) : "",
       endAt: rsvp.end_at ? datetimeLocal(rsvp.end_at, timezone) : "",
       collectAttendeeInfo: Boolean(rsvp.collect_attendee_info),
+      registrationFields: normalizeRegistrationFields(rsvp.registration_fields),
       status: rsvp.status === "disabled" ? "disabled" : "active",
     }));
 }
@@ -226,7 +235,32 @@ function newRsvpDraft(endAt: string): RsvpDraft {
     startAt: "",
     endAt,
     collectAttendeeInfo: false,
+    registrationFields: [],
     status: "active",
+  };
+}
+
+function draftId(prefix = "field") {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return `${prefix}_${crypto.randomUUID().slice(0, 8)}`;
+  }
+  return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function newRegistrationField(): EventRegistrationField {
+  return {
+    id: draftId("field"),
+    label: "",
+    type: "short_text",
+    required: false,
+  };
+}
+
+function newRegistrationOption(fieldId: string, index: number) {
+  return {
+    id: `${fieldId}_option_${index + 1}`,
+    label: "",
+    value: "",
   };
 }
 
@@ -570,6 +604,102 @@ export function EventForm({
   function updateRsvp(index: number, patch: Partial<RsvpDraft>) {
     setRsvpTypes((current) =>
       current.map((rsvp, rsvpIndex) => rsvpIndex === index ? { ...rsvp, ...patch } : rsvp)
+    );
+  }
+
+  function updateRegistrationField(
+    rsvpIndex: number,
+    fieldIndex: number,
+    patch: Partial<EventRegistrationField>
+  ) {
+    setRsvpTypes((current) =>
+      current.map((rsvp, index) => {
+        if (index !== rsvpIndex) return rsvp;
+        return {
+          ...rsvp,
+          registrationFields: rsvp.registrationFields.map((field, currentFieldIndex) =>
+            currentFieldIndex === fieldIndex ? { ...field, ...patch } : field
+          ),
+        };
+      })
+    );
+  }
+
+  function addRegistrationField(rsvpIndex: number) {
+    setRsvpTypes((current) =>
+      current.map((rsvp, index) =>
+        index === rsvpIndex
+          ? { ...rsvp, registrationFields: [...rsvp.registrationFields, newRegistrationField()] }
+          : rsvp
+      )
+    );
+  }
+
+  function removeRegistrationField(rsvpIndex: number, fieldIndex: number) {
+    setRsvpTypes((current) =>
+      current.map((rsvp, index) =>
+        index === rsvpIndex
+          ? { ...rsvp, registrationFields: rsvp.registrationFields.filter((_, currentIndex) => currentIndex !== fieldIndex) }
+          : rsvp
+      )
+    );
+  }
+
+  function updateRegistrationOption(
+    rsvpIndex: number,
+    fieldIndex: number,
+    optionIndex: number,
+    patch: { label?: string; value?: string }
+  ) {
+    setRsvpTypes((current) =>
+      current.map((rsvp, index) => {
+        if (index !== rsvpIndex) return rsvp;
+        return {
+          ...rsvp,
+          registrationFields: rsvp.registrationFields.map((field, currentFieldIndex) => {
+            if (currentFieldIndex !== fieldIndex) return field;
+            const options = field.options ?? [];
+            return {
+              ...field,
+              options: options.map((option, currentOptionIndex) =>
+                currentOptionIndex === optionIndex ? { ...option, ...patch } : option
+              ),
+            };
+          }),
+        };
+      })
+    );
+  }
+
+  function addRegistrationOption(rsvpIndex: number, fieldIndex: number) {
+    setRsvpTypes((current) =>
+      current.map((rsvp, index) => {
+        if (index !== rsvpIndex) return rsvp;
+        return {
+          ...rsvp,
+          registrationFields: rsvp.registrationFields.map((field, currentFieldIndex) => {
+            if (currentFieldIndex !== fieldIndex) return field;
+            const options = field.options ?? [];
+            return { ...field, options: [...options, newRegistrationOption(field.id, options.length)] };
+          }),
+        };
+      })
+    );
+  }
+
+  function removeRegistrationOption(rsvpIndex: number, fieldIndex: number, optionIndex: number) {
+    setRsvpTypes((current) =>
+      current.map((rsvp, index) => {
+        if (index !== rsvpIndex) return rsvp;
+        return {
+          ...rsvp,
+          registrationFields: rsvp.registrationFields.map((field, currentFieldIndex) =>
+            currentFieldIndex === fieldIndex
+              ? { ...field, options: (field.options ?? []).filter((_, currentOptionIndex) => currentOptionIndex !== optionIndex) }
+              : field
+          ),
+        };
+      })
     );
   }
 
@@ -1362,6 +1492,152 @@ export function EventForm({
                     />
                     Require attendee name and email
                   </label>
+
+                  <div className="mt-4 rounded-2xl border border-border bg-muted/25 p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                          Registration questions
+                        </p>
+                        <h4 className="mt-1 font-heading text-base font-semibold text-foreground" style={{ textWrap: "balance" }}>
+                          Custom fields
+                        </h4>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Collect event-specific details during RSVP. Required fields are enforced before check-in records are created.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className="admin-btn admin-btn--outline w-full sm:w-auto"
+                        onClick={() => addRegistrationField(index)}
+                      >
+                        Add field
+                      </button>
+                    </div>
+
+                    {rsvp.registrationFields.length > 0 ? (
+                      <div className="mt-4 grid gap-3">
+                        {rsvp.registrationFields.map((field, fieldIndex) => (
+                          <div key={field.id} className="rounded-xl border border-border bg-card p-3">
+                            <div className="grid gap-3 lg:grid-cols-[1fr_180px_auto] lg:items-end">
+                              <div className="admin-form-field">
+                                <label htmlFor={`rsvp_field_label_${index}_${fieldIndex}`} className="admin-label">
+                                  Field label
+                                </label>
+                                <input
+                                  id={`rsvp_field_label_${index}_${fieldIndex}`}
+                                  value={field.label}
+                                  onChange={(event) => updateRegistrationField(index, fieldIndex, { label: event.target.value })}
+                                  className="admin-input"
+                                  placeholder="Dietary needs"
+                                />
+                              </div>
+                              <div className="admin-form-field">
+                                <label htmlFor={`rsvp_field_type_${index}_${fieldIndex}`} className="admin-label">
+                                  Type
+                                </label>
+                                <select
+                                  id={`rsvp_field_type_${index}_${fieldIndex}`}
+                                  value={field.type}
+                                  onChange={(event) => {
+                                    const nextType = event.target.value as EventRegistrationFieldType;
+                                    updateRegistrationField(index, fieldIndex, {
+                                      type: nextType,
+                                      options: nextType === "select" ? field.options ?? [newRegistrationOption(field.id, 0)] : undefined,
+                                    });
+                                  }}
+                                  className="admin-select"
+                                >
+                                  {EVENT_REGISTRATION_FIELD_TYPES.map((type) => (
+                                    <option key={type.value} value={type.value}>{type.label}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <button
+                                type="button"
+                                className="admin-btn admin-btn--outline"
+                                onClick={() => removeRegistrationField(index, fieldIndex)}
+                              >
+                                Remove
+                              </button>
+                            </div>
+
+                            <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+                              <div className="admin-form-field">
+                                <label htmlFor={`rsvp_field_help_${index}_${fieldIndex}`} className="admin-label">
+                                  Helper text
+                                </label>
+                                <input
+                                  id={`rsvp_field_help_${index}_${fieldIndex}`}
+                                  value={field.helpText ?? ""}
+                                  onChange={(event) => updateRegistrationField(index, fieldIndex, { helpText: event.target.value })}
+                                  className="admin-input"
+                                  placeholder="Optional member-facing hint"
+                                />
+                              </div>
+                              <label className="flex items-center gap-3 rounded-xl border border-border px-3 py-2 text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={field.required}
+                                  onChange={(event) => updateRegistrationField(index, fieldIndex, { required: event.target.checked })}
+                                  className="h-4 w-4"
+                                />
+                                Required
+                              </label>
+                            </div>
+
+                            {field.type === "select" ? (
+                              <div className="mt-3 rounded-xl border border-border bg-background p-3">
+                                <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                  <p className="admin-label">Options</p>
+                                  <button
+                                    type="button"
+                                    className="admin-btn admin-btn--outline"
+                                    onClick={() => addRegistrationOption(index, fieldIndex)}
+                                  >
+                                    Add option
+                                  </button>
+                                </div>
+                                <div className="grid gap-2">
+                                  {(field.options ?? []).map((option, optionIndex) => (
+                                    <div key={option.id} className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                                      <input
+                                        value={option.label}
+                                        onChange={(event) =>
+                                          updateRegistrationOption(index, fieldIndex, optionIndex, { label: event.target.value })
+                                        }
+                                        className="admin-input"
+                                        placeholder="Member-facing label"
+                                      />
+                                      <input
+                                        value={option.value}
+                                        onChange={(event) =>
+                                          updateRegistrationOption(index, fieldIndex, optionIndex, { value: event.target.value })
+                                        }
+                                        className="admin-input"
+                                        placeholder="Stored value"
+                                      />
+                                      <button
+                                        type="button"
+                                        className="admin-btn admin-btn--outline"
+                                        onClick={() => removeRegistrationOption(index, fieldIndex, optionIndex)}
+                                      >
+                                        Remove
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-4 rounded-xl border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">
+                        No custom fields yet.
+                      </p>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

@@ -13,6 +13,22 @@ export type RecurrenceFrequency = "daily" | "weekly" | "monthly";
 export type EventTicketTypeStatus = "active" | "disabled" | "archived";
 export type EventTicketOrderStatus = "pending" | "paid" | "refunded" | "chargeback" | "canceled" | "comp" | "expired";
 export type EventTicketStatus = "pending" | "active" | "refunded" | "chargeback" | "canceled" | "comp" | "expired";
+export type EventRegistrationFieldType = "short_text" | "long_text" | "email" | "phone" | "select" | "checkbox";
+
+export type EventRegistrationFieldOption = {
+  id: string;
+  label: string;
+  value: string;
+};
+
+export type EventRegistrationField = {
+  id: string;
+  label: string;
+  type: EventRegistrationFieldType;
+  required: boolean;
+  helpText?: string;
+  options?: EventRegistrationFieldOption[];
+};
 
 export type EventTypeOption = {
   id: string;
@@ -83,4 +99,78 @@ export function parseAccessLevels(values: FormDataEntryValue[]) {
 export function normalizeEventAccessLevels(values: unknown) {
   if (!Array.isArray(values)) return [];
   return parseAccessLevels(values.map((value) => String(value)));
+}
+
+export const EVENT_REGISTRATION_FIELD_TYPES: Array<{ value: EventRegistrationFieldType; label: string }> = [
+  { value: "short_text", label: "Short text" },
+  { value: "long_text", label: "Long text" },
+  { value: "email", label: "Email" },
+  { value: "phone", label: "Phone" },
+  { value: "select", label: "Select" },
+  { value: "checkbox", label: "Checkbox" },
+];
+
+const REGISTRATION_FIELD_TYPE_VALUES = new Set(EVENT_REGISTRATION_FIELD_TYPES.map((type) => type.value));
+
+function fieldIdFromLabel(label: string, fallback: string) {
+  const slug = label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 40);
+  return slug || fallback;
+}
+
+export function normalizeRegistrationFields(value: unknown): EventRegistrationField[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  return value
+    .map((item, index): EventRegistrationField | null => {
+      if (!item || typeof item !== "object") return null;
+      const raw = item as Record<string, unknown>;
+      const label = String(raw.label ?? "").trim().slice(0, 120);
+      if (!label) return null;
+      const type = REGISTRATION_FIELD_TYPE_VALUES.has(raw.type as EventRegistrationFieldType)
+        ? (raw.type as EventRegistrationFieldType)
+        : "short_text";
+      let id = String(raw.id ?? "").trim() || fieldIdFromLabel(label, `field_${index + 1}`);
+      id = id
+        .toLowerCase()
+        .replace(/[^a-z0-9_]+/g, "_")
+        .replace(/^_+|_+$/g, "")
+        .slice(0, 48) || `field_${index + 1}`;
+      if (seen.has(id)) {
+        const suffix = `_${index + 1}`;
+        id = `${id.slice(0, 48 - suffix.length)}${suffix}`;
+      }
+      seen.add(id);
+      const options = Array.isArray(raw.options)
+        ? raw.options
+            .map((option, optionIndex): EventRegistrationFieldOption | null => {
+              if (!option || typeof option !== "object") return null;
+              const optionRaw = option as Record<string, unknown>;
+              const optionLabel = String(optionRaw.label ?? optionRaw.value ?? "").trim().slice(0, 100);
+              if (!optionLabel) return null;
+              const optionValue = String(optionRaw.value ?? optionLabel)
+                .trim()
+                .slice(0, 100);
+              return {
+                id: String(optionRaw.id ?? `${id}_option_${optionIndex + 1}`).trim(),
+                label: optionLabel,
+                value: optionValue,
+              };
+            })
+            .filter((option): option is EventRegistrationFieldOption => Boolean(option))
+        : [];
+      return {
+        id,
+        label,
+        type,
+        required: raw.required === true,
+        helpText: String(raw.helpText ?? raw.help_text ?? "").trim().slice(0, 200) || undefined,
+        options: type === "select" ? options : undefined,
+      };
+    })
+    .filter((field): field is EventRegistrationField => Boolean(field))
+    .slice(0, 12);
 }

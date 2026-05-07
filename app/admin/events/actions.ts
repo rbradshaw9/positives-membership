@@ -7,8 +7,8 @@ import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
-import { EVENT_ACCESS_LEVELS, parseAccessLevels } from "@/lib/events/types";
-import type { EventHostOption, EventTypeOption, EventVenueOption } from "@/lib/events/types";
+import { EVENT_ACCESS_LEVELS, normalizeRegistrationFields, parseAccessLevels } from "@/lib/events/types";
+import type { EventHostOption, EventRegistrationField, EventTypeOption, EventVenueOption } from "@/lib/events/types";
 import { expandOccurrences } from "@/lib/events/recurrence";
 import { zoomApi } from "@/lib/zoom/client";
 import { encryptSecret } from "@/lib/zoom/crypto";
@@ -85,6 +85,7 @@ type EventRsvpInput = {
   startAt: string;
   endAt: string;
   collectAttendeeInfo: boolean;
+  registrationFields: EventRegistrationField[];
   status: "active" | "disabled" | "archived";
 };
 
@@ -203,6 +204,7 @@ function parseRsvpConfig(raw: string): {
           startAt: String(rsvp.startAt ?? rsvp.start_at ?? "").trim(),
           endAt: String(rsvp.endAt ?? rsvp.end_at ?? "").trim(),
           collectAttendeeInfo: rsvp.collectAttendeeInfo === true || rsvp.collect_attendee_info === true,
+          registrationFields: normalizeRegistrationFields(rsvp.registrationFields ?? rsvp.registration_fields),
           status,
         };
       })
@@ -484,6 +486,7 @@ async function saveRsvpTypes(eventId: string, input: EventInput) {
         startAt: "",
         endAt: input.startsAt,
         collectAttendeeInfo: false,
+        registrationFields: [],
         status: "active" as const,
       }];
 
@@ -496,14 +499,23 @@ async function saveRsvpTypes(eventId: string, input: EventInput) {
       start_at: toIso(rsvp.startAt, input.timezone),
       end_at: toIso(rsvp.endAt, input.timezone),
       collect_attendee_info: rsvp.collectAttendeeInfo,
+      registration_fields: normalizeRegistrationFields(rsvp.registrationFields),
       status: rsvp.status,
       sort_order: (index + 1) * 10,
       updated_at: new Date().toISOString(),
     };
 
-    const result = rsvp.id
+    let result = rsvp.id
       ? await supabase.from("event_rsvp_type").update(row).eq("id", rsvp.id).eq("event_id", eventId).select<{ id: string }>("id").single()
       : await supabase.from("event_rsvp_type").insert(row).select<{ id: string }>("id").single();
+
+    if (result.error?.message.includes("registration_fields")) {
+      const { registration_fields: removedRegistrationFields, ...compatRow } = row;
+      void removedRegistrationFields;
+      result = rsvp.id
+        ? await supabase.from("event_rsvp_type").update(compatRow).eq("id", rsvp.id).eq("event_id", eventId).select<{ id: string }>("id").single()
+        : await supabase.from("event_rsvp_type").insert(compatRow).select<{ id: string }>("id").single();
+    }
 
     if (result.error || !result.data) throw new Error(result.error?.message ?? "RSVP could not be saved.");
     seenIds.add(result.data.id);

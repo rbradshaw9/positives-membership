@@ -84,6 +84,21 @@ function confirmationStatus(attendee: AttendeeAdminRow) {
   return { label: "Not sent", className: "admin-badge admin-badge--draft" };
 }
 
+function customFieldSummary(attendee: AttendeeAdminRow) {
+  const labelById = new Map(
+    (attendee.event_rsvp_type?.registration_fields ?? []).map((field) => [field.id, field.label])
+  );
+  const entries = Object.entries(attendee.custom_field_values ?? {}).filter(([, value]) => {
+    if (typeof value === "boolean") return value;
+    return String(value ?? "").trim();
+  });
+  if (entries.length === 0) return null;
+  return entries
+    .slice(0, 3)
+    .map(([key, value]) => `${labelById.get(key) ?? key.replaceAll("_", " ")}: ${typeof value === "boolean" ? "yes" : String(value)}`)
+    .join(" · ");
+}
+
 function eventLabel(event: AttendeeEventOption) {
   return `${event.title} · ${formatEventDateRange(event.starts_at, event.starts_at, "America/New_York", false)}`;
 }
@@ -299,6 +314,7 @@ export function AttendeeManagement({
             {attendees.map((attendee) => {
               const checkIn = activeCheckIn(attendee);
               const confirmation = confirmationStatus(attendee);
+              const customSummary = customFieldSummary(attendee);
               const returnTo = currentPath;
               return (
                 <tr key={attendee.id}>
@@ -324,6 +340,11 @@ export function AttendeeManagement({
                     <div className="mt-1 text-xs text-muted-foreground">
                       Purchaser: {attendee.purchaser_email ?? attendee.purchaser_name ?? "None"}
                     </div>
+                    {customSummary ? (
+                      <div className="mt-1 max-w-72 text-xs text-muted-foreground">
+                        {customSummary}
+                      </div>
+                    ) : null}
                   </td>
                   <td>
                     <span className={confirmation.className}>{confirmation.label}</span>

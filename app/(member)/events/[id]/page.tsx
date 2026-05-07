@@ -78,7 +78,70 @@ function rsvpState(event: MemberEvent) {
 function rsvpErrorMessage(error?: string) {
   if (error === "registration_failed") return "RSVP could not be saved. It may be closed or full.";
   if (error === "membership_required") return "An active membership is required to RSVP.";
+  if (error === "fields_required") return "Please complete the required registration details.";
   return error ? "RSVP could not be saved." : null;
+}
+
+function CustomRegistrationFields({
+  fields,
+}: {
+  fields: NonNullable<MemberEvent["event_rsvp_type"]>[number]["registration_fields"];
+}) {
+  if (!fields?.length) return null;
+  return (
+    <div className="grid gap-3">
+      {fields.map((field) => {
+        const fieldName = `custom_${field.id}`;
+        const commonProps = {
+          id: fieldName,
+          name: fieldName,
+          required: field.required,
+          className: "admin-input",
+        };
+        return (
+          <label key={field.id} htmlFor={fieldName} className="grid gap-1 text-sm font-medium text-foreground">
+            <span>
+              {field.label}
+              {field.required ? <span className="text-destructive"> *</span> : null}
+            </span>
+            {field.type === "long_text" ? (
+              <textarea {...commonProps} className="admin-textarea" rows={3} />
+            ) : field.type === "select" ? (
+              <select {...commonProps} className="admin-select" defaultValue="">
+                <option value="" disabled>
+                  Choose one
+                </option>
+                {(field.options ?? []).map((option) => (
+                  <option key={option.id} value={option.value || option.label}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            ) : field.type === "checkbox" ? (
+              <span className="flex items-start gap-3 rounded-xl border border-border px-3 py-2">
+                <input
+                  id={fieldName}
+                  name={fieldName}
+                  type="checkbox"
+                  required={field.required}
+                  className="mt-0.5 h-4 w-4"
+                />
+                <span className="text-sm text-muted-foreground">{field.helpText || "Yes"}</span>
+              </span>
+            ) : (
+              <input
+                {...commonProps}
+                type={field.type === "email" ? "email" : field.type === "phone" ? "tel" : "text"}
+              />
+            )}
+            {field.type !== "checkbox" && field.helpText ? (
+              <span className="text-xs font-normal text-muted-foreground">{field.helpText}</span>
+            ) : null}
+          </label>
+        );
+      })}
+    </div>
+  );
 }
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -157,6 +220,7 @@ function RsvpModule({
                 </label>
               </>
             ) : null}
+            <CustomRegistrationFields fields={rsvp.rsvp.registration_fields} />
             <Button type="submit" className="w-full justify-center">Confirm RSVP</Button>
           </form>
         )}
