@@ -82,6 +82,12 @@ test("admin event form keeps advanced fields contextual and supports inline crea
   await expect(page.getByRole("heading", { name: "General Admission" })).toBeVisible();
   await expect(page.getByLabel("Sales open")).toBeVisible();
   await expect(page.getByLabel("Sales close")).toBeVisible();
+  await page.getByRole("button", { name: "Done" }).click();
+  await expect(page.getByLabel("Sales open")).toHaveCount(0);
+  await expect(page.getByText("Open until event start")).toBeVisible();
+  await page.getByRole("button", { name: "Duplicate" }).click();
+  await expect(page.getByRole("heading", { name: "Copy of General Admission" })).toBeVisible();
+  await expect(page.getByLabel("Sales open")).toBeVisible();
 
   const typeName = `${EVENT_TITLE_PREFIX} Type`;
   await page.getByLabel("Event type").selectOption("__create");

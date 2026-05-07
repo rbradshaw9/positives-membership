@@ -265,6 +265,57 @@ function newRegistrationOption(fieldId: string, index: number) {
   };
 }
 
+function duplicateTicketDraft(ticket: TicketDraft): TicketDraft {
+  return {
+    ...ticket,
+    id: undefined,
+    name: ticket.name ? `Copy of ${ticket.name}` : "General Admission",
+    status: "active",
+  };
+}
+
+function duplicateRsvpDraft(rsvp: RsvpDraft): RsvpDraft {
+  return {
+    ...rsvp,
+    id: undefined,
+    name: rsvp.name ? `Copy of ${rsvp.name}` : "RSVP",
+    registrationFields: rsvp.registrationFields.map((field) => {
+      const fieldId = draftId("field");
+      return {
+        ...field,
+        id: fieldId,
+        options: field.options?.map((option, index) => ({
+          ...option,
+          id: `${fieldId}_option_${index + 1}`,
+        })),
+      };
+    }),
+    status: "active",
+  };
+}
+
+function ticketSummaryParts(ticket: TicketDraft) {
+  const price = ticket.priceDollars ? `$${ticket.priceDollars}` : "No price set";
+  const capacity = ticket.capacity ? `${ticket.capacity} seats` : "Unlimited";
+  const maxPerOrder = `${ticket.maxPerOrder || "4"} per order`;
+  const salesWindow = ticket.saleStartsAt || ticket.saleEndsAt
+    ? `${ticket.saleStartsAt || "Now"} to ${ticket.saleEndsAt || "event start"}`
+    : "Open until event start";
+  return [price, capacity, maxPerOrder, salesWindow];
+}
+
+function rsvpSummaryParts(rsvp: RsvpDraft) {
+  const capacity = rsvp.capacity ? `${rsvp.capacity} spots` : "Unlimited";
+  const window = rsvp.startAt || rsvp.endAt
+    ? `${rsvp.startAt || "Now"} to ${rsvp.endAt || "event start"}`
+    : "Open until event start";
+  const attendeeInfo = rsvp.collectAttendeeInfo ? "Name and email required" : "Member profile used";
+  const customFields = rsvp.registrationFields.length === 1
+    ? "1 custom field"
+    : `${rsvp.registrationFields.length} custom fields`;
+  return [capacity, window, attendeeInfo, customFields];
+}
+
 function defaultAccessValues(defaults?: EventAdminDefaults) {
   return defaults?.accessLevels?.length ? defaults.accessLevels : (["level_2"] as EventAccessLevel[]);
 }
@@ -452,10 +503,13 @@ export function EventForm({
       .filter((level) => (event ? hasAccess(event, level.value) : defaultAccessValues(defaults).includes(level.value)))
       .map((level) => level.value)
   );
-  const [ticketTypes, setTicketTypes] = useState<TicketDraft[]>(() => ticketDraftFromEvent(event, initialTimezone));
+  const initialTicketDrafts = ticketDraftFromEvent(event, initialTimezone);
+  const [ticketTypes, setTicketTypes] = useState<TicketDraft[]>(() => initialTicketDrafts);
+  const [expandedTicketIndex, setExpandedTicketIndex] = useState<number | null>(initialTicketDrafts.length ? null : 0);
   const initialRsvpDrafts = rsvpDraftFromEvent(event, initialTimezone);
   const [rsvpEnabled, setRsvpEnabled] = useState(initialRsvpDrafts.some((rsvp) => rsvp.status === "active"));
   const [rsvpTypes, setRsvpTypes] = useState<RsvpDraft[]>(() => initialRsvpDrafts);
+  const [expandedRsvpIndex, setExpandedRsvpIndex] = useState<number | null>(initialRsvpDrafts.length ? null : 0);
 
   const selectedZoomConnection =
     searchParams?.zoomConnectionId ?? event?.event_zoom_meeting?.zoom_connection_id ?? "";
@@ -605,10 +659,87 @@ export function EventForm({
     );
   }
 
+  function addTicketType() {
+    const nextIndex = ticketTypes.length;
+    setTicketingMode("ticket_required");
+    setTicketTypes([
+      ...ticketTypes,
+      { ...newTicketDraft(accessLevels), maxPerOrder: String(defaults?.defaultMaxPerOrder ?? 4) },
+    ]);
+    setExpandedTicketIndex(nextIndex);
+  }
+
+  function seedTicketTypeIfEmpty() {
+    setTicketingMode("ticket_required");
+    if (ticketTypes.length === 0) {
+      setTicketTypes([{ ...newTicketDraft(accessLevels), maxPerOrder: String(defaults?.defaultMaxPerOrder ?? 4) }]);
+      setExpandedTicketIndex(0);
+    }
+  }
+
+  function duplicateTicket(index: number) {
+    const source = ticketTypes[index];
+    if (!source) return;
+    setTicketTypes((current) => {
+      const next = [...current];
+      next.splice(index + 1, 0, duplicateTicketDraft(source));
+      return next;
+    });
+    setExpandedTicketIndex(index + 1);
+  }
+
+  function removeTicket(index: number) {
+    setTicketTypes((current) => current.filter((_, ticketIndex) => ticketIndex !== index));
+    setExpandedTicketIndex((current) => {
+      if (current === null) return current;
+      if (current === index) return null;
+      return current > index ? current - 1 : current;
+    });
+  }
+
   function updateRsvp(index: number, patch: Partial<RsvpDraft>) {
     setRsvpTypes((current) =>
       current.map((rsvp, rsvpIndex) => rsvpIndex === index ? { ...rsvp, ...patch } : rsvp)
     );
+  }
+
+  function addRsvpType() {
+    const nextIndex = rsvpTypes.length;
+    setRsvpEnabled(true);
+    setRsvpTypes([...rsvpTypes, newRsvpDraft(startsAt)]);
+    setExpandedRsvpIndex(nextIndex);
+  }
+
+  function seedRsvpTypeIfEmpty() {
+    setRsvpEnabled(true);
+    if (rsvpTypes.length === 0) {
+      setRsvpTypes([newRsvpDraft(startsAt)]);
+      setExpandedRsvpIndex(0);
+    }
+  }
+
+  function duplicateRsvp(index: number) {
+    const source = rsvpTypes[index];
+    if (!source) return;
+    setRsvpTypes((current) => {
+      const next = [...current];
+      next.splice(index + 1, 0, duplicateRsvpDraft(source));
+      return next;
+    });
+    setExpandedRsvpIndex(index + 1);
+  }
+
+  function removeRsvp(index: number) {
+    const next = rsvpTypes.filter((_, rsvpIndex) => rsvpIndex !== index);
+    setRsvpTypes(next);
+    if (next.length === 0) {
+      setRsvpEnabled(false);
+    }
+    setExpandedRsvpIndex((current) => {
+      if (current === null) return current;
+      if (current === index) return null;
+      return current > index ? current - 1 : current;
+    });
   }
 
   function updateRegistrationField(
@@ -1183,24 +1314,14 @@ export function EventForm({
                 <button
                   type="button"
                   className="admin-btn admin-btn--outline"
-                  onClick={() => {
-                    setTicketingMode("ticket_required");
-                    setTicketTypes((current) =>
-                      current.length > 0
-                        ? current
-                        : [{ ...newTicketDraft(accessLevels), maxPerOrder: String(defaults?.defaultMaxPerOrder ?? 4) }]
-                    );
-                  }}
+                  onClick={addTicketType}
                 >
                   New ticket
                 </button>
                 <button
                   type="button"
                   className="admin-btn admin-btn--outline"
-                  onClick={() => {
-                    setRsvpEnabled(true);
-                    setRsvpTypes((current) => current.length > 0 ? current : [newRsvpDraft(startsAt)]);
-                  }}
+                  onClick={addRsvpType}
                 >
                   New RSVP
                 </button>
@@ -1258,7 +1379,7 @@ export function EventForm({
                   const nextMode = event.target.value as "included" | "ticket_required";
                   setTicketingMode(nextMode);
                   if (nextMode === "ticket_required" && ticketTypes.length === 0) {
-                    setTicketTypes([{ ...newTicketDraft(accessLevels), maxPerOrder: String(defaults?.defaultMaxPerOrder ?? 4) }]);
+                    seedTicketTypeIfEmpty();
                   }
                 }}
                 className="admin-select min-w-56"
@@ -1272,33 +1393,62 @@ export function EventForm({
 
           {ticketingMode === "ticket_required" ? (
             <div className="grid gap-4">
-              {ticketTypes.map((ticket, index) => (
+              {ticketTypes.map((ticket, index) => {
+                const expanded = expandedTicketIndex === index;
+                return (
                 <div key={ticket.id ?? index} className="rounded-2xl border border-border bg-card p-4">
-                  <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0">
                       <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Ticket type</p>
                       <h3 className="mt-1 font-heading text-lg font-semibold text-foreground" style={{ textWrap: "balance" }}>
                         {ticket.name || "Untitled ticket"}
                       </h3>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <span className={ticket.status === "active" ? "admin-badge admin-badge--published" : "admin-badge admin-badge--draft"}>
+                          {ticket.status === "active" ? "Active" : "Disabled"}
+                        </span>
+                        {ticketSummaryParts(ticket).map((part) => (
+                          <span key={part} className="rounded-full border border-border bg-muted/30 px-2.5 py-1 text-xs font-semibold text-muted-foreground">
+                            {part}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="grid gap-2 sm:flex sm:flex-wrap sm:justify-end">
                       <button
                         type="button"
-                        className="admin-btn admin-btn--outline"
+                        className="admin-btn admin-btn--outline w-full sm:w-auto"
+                        aria-expanded={expanded}
+                        onClick={() => setExpandedTicketIndex(expanded ? null : index)}
+                      >
+                        {expanded ? "Done" : "Edit"}
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-btn admin-btn--outline w-full sm:w-auto"
+                        onClick={() => duplicateTicket(index)}
+                      >
+                        Duplicate
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-btn admin-btn--outline w-full sm:w-auto"
                         onClick={() => updateTicket(index, { status: ticket.status === "active" ? "disabled" : "active" })}
                       >
                         {ticket.status === "active" ? "Disable" : "Enable"}
                       </button>
                       <button
                         type="button"
-                        className="admin-btn admin-btn--outline"
-                        onClick={() => setTicketTypes((current) => current.filter((_, ticketIndex) => ticketIndex !== index))}
+                        className="admin-btn admin-btn--outline w-full sm:w-auto"
+                        onClick={() => removeTicket(index)}
                       >
                         Remove
                       </button>
                     </div>
                   </div>
 
+                  {expanded ? (
+                  <div className="mt-5 grid gap-4">
                   <div className="admin-form-grid-2">
                     <div className="admin-form-field">
                       <label className="admin-label" htmlFor={`ticket_name_${index}`}>Name</label>
@@ -1394,16 +1544,16 @@ export function EventForm({
                       ))}
                     </div>
                   </div>
+                  </div>
+                  ) : null}
                 </div>
-              ))}
+                );
+              })}
 
               <button
                 type="button"
                 className="admin-btn admin-btn--outline justify-self-start"
-                onClick={() => setTicketTypes((current) => [
-                  ...current,
-                  { ...newTicketDraft(accessLevels), maxPerOrder: String(defaults?.defaultMaxPerOrder ?? 4) },
-                ])}
+                onClick={addTicketType}
               >
                 Add ticket type
               </button>
@@ -1426,10 +1576,11 @@ export function EventForm({
                   type="checkbox"
                   checked={rsvpEnabled}
                   onChange={(event) => {
-                    setRsvpEnabled(event.target.checked);
                     if (event.target.checked && rsvpTypes.length === 0) {
-                      setRsvpTypes([newRsvpDraft(startsAt)]);
+                      seedRsvpTypeIfEmpty();
+                      return;
                     }
+                    setRsvpEnabled(event.target.checked);
                   }}
                   className="h-4 w-4"
                 />
@@ -1440,24 +1591,67 @@ export function EventForm({
 
           {rsvpEnabled ? (
             <div className="grid gap-4">
-              {(rsvpTypes.length > 0 ? rsvpTypes : [newRsvpDraft(startsAt)]).map((rsvp, index) => (
+              {rsvpTypes.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border bg-muted/25 p-4 text-sm text-muted-foreground">
+                  RSVP is enabled, but no RSVP types exist yet.
+                </div>
+              ) : null}
+              {rsvpTypes.map((rsvp, index) => {
+                const expanded = expandedRsvpIndex === index;
+                return (
                 <div key={rsvp.id ?? index} className="rounded-2xl border border-border bg-card p-4">
-                  <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0">
                       <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">RSVP type</p>
                       <h3 className="mt-1 font-heading text-lg font-semibold text-foreground" style={{ textWrap: "balance" }}>
                         {rsvp.name || "RSVP"}
                       </h3>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <span className={rsvp.status === "active" ? "admin-badge admin-badge--published" : "admin-badge admin-badge--draft"}>
+                          {rsvp.status === "active" ? "Active" : "Disabled"}
+                        </span>
+                        {rsvpSummaryParts(rsvp).map((part) => (
+                          <span key={part} className="rounded-full border border-border bg-muted/30 px-2.5 py-1 text-xs font-semibold text-muted-foreground">
+                            {part}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                    <button
-                      type="button"
-                      className="admin-btn admin-btn--outline"
-                      onClick={() => updateRsvp(index, { status: rsvp.status === "active" ? "disabled" : "active" })}
-                    >
-                      {rsvp.status === "active" ? "Disable" : "Enable"}
-                    </button>
+                    <div className="grid gap-2 sm:flex sm:flex-wrap sm:justify-end">
+                      <button
+                        type="button"
+                        className="admin-btn admin-btn--outline w-full sm:w-auto"
+                        aria-expanded={expanded}
+                        onClick={() => setExpandedRsvpIndex(expanded ? null : index)}
+                      >
+                        {expanded ? "Done" : "Edit"}
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-btn admin-btn--outline w-full sm:w-auto"
+                        onClick={() => duplicateRsvp(index)}
+                      >
+                        Duplicate
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-btn admin-btn--outline w-full sm:w-auto"
+                        onClick={() => updateRsvp(index, { status: rsvp.status === "active" ? "disabled" : "active" })}
+                      >
+                        {rsvp.status === "active" ? "Disable" : "Enable"}
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-btn admin-btn--outline w-full sm:w-auto"
+                        onClick={() => removeRsvp(index)}
+                      >
+                        Remove
+                      </button>
+                    </div>
                   </div>
 
+                  {expanded ? (
+                  <div className="mt-5 grid gap-4">
                   <div className="admin-form-grid-2">
                     <div className="admin-form-field">
                       <label htmlFor={`rsvp_name_${index}`} className="admin-label">Name</label>
@@ -1670,8 +1864,18 @@ export function EventForm({
                       </p>
                     )}
                   </div>
+                  </div>
+                  ) : null}
                 </div>
-              ))}
+                );
+              })}
+              <button
+                type="button"
+                className="admin-btn admin-btn--outline justify-self-start"
+                onClick={addRsvpType}
+              >
+                Add RSVP type
+              </button>
             </div>
           ) : null}
         </FieldSection>
