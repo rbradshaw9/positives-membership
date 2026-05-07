@@ -4,6 +4,7 @@ import { metricCount } from "@/lib/observability/metrics";
 import { getStripe } from "@/lib/stripe/config";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
+import { sendEventAttendeeConfirmationSafely } from "@/server/services/events/event-confirmations";
 
 type EventTicketOrderStatus = "pending" | "paid" | "refunded" | "chargeback" | "canceled" | "comp" | "expired";
 type EventTicketInactiveStatus = "refunded" | "chargeback" | "canceled";
@@ -170,12 +171,16 @@ export async function ensureEventTicketAttendees(orderId: string) {
 
   if (rows.length === 0) return { created: 0 };
 
-  const { error: insertError } = await supabase.from("event_attendee").insert(rows);
+  const { data: insertedAttendees, error: insertError } = await supabase
+    .from("event_attendee")
+    .insert(rows)
+    .select<Array<{ id: string }>>("id");
   if (insertError) {
     if ("code" in insertError && insertError.code === "23505") return { created: 0 };
     throw new Error(`[Stripe] Failed to create event attendees from tickets: ${insertError.message}`);
   }
 
+  await Promise.all((insertedAttendees ?? []).map((attendee) => sendEventAttendeeConfirmationSafely(attendee.id)));
   return { created: rows.length };
 }
 

@@ -22,6 +22,10 @@ export type AttendeeAdminRow = {
   status: string;
   source: string;
   created_at: string;
+  confirmation_sent_at: string | null;
+  confirmation_send_attempted_at: string | null;
+  confirmation_send_error: string | null;
+  confirmation_resend_count: number;
   member_event?: {
     id: string;
     title: string;
@@ -54,16 +58,48 @@ export type AttendeeRsvpOption = {
   status: string;
 };
 
+const ATTENDEE_SELECT =
+  "id, event_id, rsvp_type_id, member_id, attendee_number, security_code, name, email, purchaser_name, purchaser_email, status, source, created_at, confirmation_sent_at, confirmation_send_attempted_at, confirmation_send_error, confirmation_resend_count, member_event:event_id(id, title, starts_at, status), event_rsvp_type:rsvp_type_id(id, name), event_check_in(id, status, checked_in_at, method)";
+
+const ATTENDEE_SELECT_COMPAT =
+  "id, event_id, rsvp_type_id, member_id, attendee_number, security_code, name, email, purchaser_name, purchaser_email, status, source, created_at, member_event:event_id(id, title, starts_at, status), event_rsvp_type:rsvp_type_id(id, name), event_check_in(id, status, checked_in_at, method)";
+
+function normalizeAttendeeRows(rows: unknown[] | null | undefined): AttendeeAdminRow[] {
+  return ((rows ?? []) as Partial<AttendeeAdminRow>[]).map((row) => ({
+    ...(row as AttendeeAdminRow),
+    confirmation_sent_at: row.confirmation_sent_at ?? null,
+    confirmation_send_attempted_at: row.confirmation_send_attempted_at ?? null,
+    confirmation_send_error: row.confirmation_send_error ?? null,
+    confirmation_resend_count: row.confirmation_resend_count ?? 0,
+  }));
+}
+
+async function fetchAttendees() {
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  const result = await supabase
+    .from("event_attendee")
+    .select<AttendeeAdminRow>(ATTENDEE_SELECT)
+    .order("created_at", { ascending: false })
+    .limit(500);
+
+  if (!result.error || !result.error.message.includes("confirmation_")) return result;
+
+  const compat = await supabase
+    .from("event_attendee")
+    .select<AttendeeAdminRow>(ATTENDEE_SELECT_COMPAT)
+    .order("created_at", { ascending: false })
+    .limit(500);
+
+  return {
+    ...compat,
+    data: normalizeAttendeeRows(compat.data as unknown[] | null | undefined),
+  };
+}
+
 export async function getAttendeeAdminData(params: AttendeeAdminSearch = {}) {
   const supabase = asLooseSupabaseClient(getAdminClient());
   const [attendeesResult, eventsResult, rsvpResult] = await Promise.all([
-    supabase
-      .from("event_attendee")
-      .select<AttendeeAdminRow>(
-        "id, event_id, rsvp_type_id, member_id, attendee_number, security_code, name, email, purchaser_name, purchaser_email, status, source, created_at, member_event:event_id(id, title, starts_at, status), event_rsvp_type:rsvp_type_id(id, name), event_check_in(id, status, checked_in_at, method)"
-      )
-      .order("created_at", { ascending: false })
-      .limit(500),
+    fetchAttendees(),
     supabase
       .from("member_event")
       .select<AttendeeEventOption>("id, title, starts_at, status")
@@ -86,7 +122,7 @@ export async function getAttendeeAdminData(params: AttendeeAdminSearch = {}) {
   const checkIn = params.checkIn ?? "all";
   const eventId = params.eventId ?? "all";
 
-  const attendees = ((attendeesResult.data ?? []) as unknown as AttendeeAdminRow[]).filter((attendee) => {
+  const attendees = normalizeAttendeeRows(attendeesResult.data as unknown[] | null | undefined).filter((attendee) => {
     const activeCheckIn = attendee.event_check_in?.some((row) => row.status === "checked_in") ?? false;
     const searchable = [
       attendee.name,

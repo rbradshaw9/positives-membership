@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
+import { sendEventAttendeeConfirmation } from "@/server/services/events/event-confirmations";
 
 function clean(value: FormDataEntryValue | null) {
   return value?.toString().trim() ?? "";
@@ -284,5 +285,15 @@ export async function cancelEventAttendee(formData: FormData) {
 export async function resendEventAttendeeConfirmation(formData: FormData) {
   await requireAdmin();
   const returnTo = safeReturnTo(formData);
-  redirectWithStatus(returnTo, "confirmation_placeholder");
+  const attendeeId = clean(formData.get("attendee_id"));
+  const eventId = clean(formData.get("event_id"));
+  if (!attendeeId || !eventId) redirectWithStatus(returnTo, "attendee_required", "error");
+
+  const result = await sendEventAttendeeConfirmation(attendeeId, { force: true });
+  revalidatePath("/admin/events/attendees");
+  revalidatePath("/admin/events/attendees/check-in");
+  revalidatePath(`/admin/events/${eventId}/attendees`);
+
+  if (!result.ok) redirectWithStatus(returnTo, "confirmation_send_failed", "error");
+  redirectWithStatus(returnTo, result.status === "sent" ? "confirmation_sent" : "confirmation_skipped");
 }

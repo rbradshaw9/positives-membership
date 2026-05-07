@@ -5,6 +5,7 @@ import { requireActiveMember } from "@/lib/auth/require-active-member";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import { createEventTicketPaymentOrCheckout } from "@/server/services/stripe/event-tickets";
+import { sendEventAttendeeConfirmationSafely } from "@/server/services/events/event-confirmations";
 
 type TicketItem = {
   ticket_type_id: string;
@@ -94,7 +95,7 @@ export async function registerEventRsvp(formData: FormData) {
   const attendeeEmail = String(formData.get("attendee_email") ?? "").trim();
 
   const supabase = asLooseSupabaseClient(getAdminClient());
-  const { error } = await supabase.rpc("register_event_rsvp", {
+  const { data: attendeeId, error } = await supabase.rpc("register_event_rsvp", {
     p_member_id: member.id,
     p_event_id: eventId,
     p_member_tier: member.subscription_tier,
@@ -106,6 +107,10 @@ export async function registerEventRsvp(formData: FormData) {
   if (error) {
     console.warn("[event rsvp] registration failed:", error.message);
     eventRedirect(eventId, { rsvp_error: "registration_failed" });
+  }
+
+  if (attendeeId) {
+    await sendEventAttendeeConfirmationSafely(String(attendeeId));
   }
 
   eventRedirect(eventId, { rsvp: "success" });

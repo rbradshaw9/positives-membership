@@ -47,7 +47,8 @@ const SUCCESS_COPY: Record<string, string> = {
   checked_in: "Attendee checked in.",
   check_in_reversed: "Check-in reversed.",
   attendee_canceled: "Attendee canceled.",
-  confirmation_placeholder: "Confirmation resend is queued for the email phase.",
+  confirmation_sent: "Confirmation email sent.",
+  confirmation_skipped: "Confirmation email did not need to be resent.",
 };
 
 const ERROR_COPY: Record<string, string> = {
@@ -60,6 +61,7 @@ const ERROR_COPY: Record<string, string> = {
   check_in_reverse_failed: "Check-in could not be reversed.",
   attendee_required: "Choose an attendee before canceling.",
   attendee_cancel_failed: "The attendee could not be canceled.",
+  confirmation_send_failed: "Confirmation email could not be sent. Check the attendee email status.",
 };
 
 function queryString(params: Record<string, string | undefined>) {
@@ -73,6 +75,13 @@ function queryString(params: Record<string, string | undefined>) {
 
 function activeCheckIn(attendee: AttendeeAdminRow) {
   return attendee.event_check_in?.find((row) => row.status === "checked_in") ?? null;
+}
+
+function confirmationStatus(attendee: AttendeeAdminRow) {
+  if (attendee.confirmation_sent_at) return { label: "Sent", className: "admin-badge admin-badge--published" };
+  if (attendee.confirmation_send_error) return { label: "Send failed", className: "admin-badge admin-badge--review" };
+  if (attendee.confirmation_send_attempted_at) return { label: "Attempted", className: "admin-badge admin-badge--review" };
+  return { label: "Not sent", className: "admin-badge admin-badge--draft" };
 }
 
 function eventLabel(event: AttendeeEventOption) {
@@ -280,6 +289,7 @@ export function AttendeeManagement({
               <th>Attendee</th>
               <th>Event</th>
               <th>Registration</th>
+              <th>Confirmation</th>
               <th>Status</th>
               <th>Check-in</th>
               <th>Actions</th>
@@ -288,6 +298,7 @@ export function AttendeeManagement({
           <tbody>
             {attendees.map((attendee) => {
               const checkIn = activeCheckIn(attendee);
+              const confirmation = confirmationStatus(attendee);
               const returnTo = currentPath;
               return (
                 <tr key={attendee.id}>
@@ -313,6 +324,18 @@ export function AttendeeManagement({
                     <div className="mt-1 text-xs text-muted-foreground">
                       Purchaser: {attendee.purchaser_email ?? attendee.purchaser_name ?? "None"}
                     </div>
+                  </td>
+                  <td>
+                    <span className={confirmation.className}>{confirmation.label}</span>
+                    {attendee.confirmation_sent_at ? (
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {new Date(attendee.confirmation_sent_at).toLocaleString()}
+                      </div>
+                    ) : attendee.confirmation_send_error ? (
+                      <div className="mt-1 max-w-48 text-xs text-muted-foreground">
+                        {attendee.confirmation_send_error}
+                      </div>
+                    ) : null}
                   </td>
                   <td>
                     <span className={attendee.status === "canceled" ? "admin-badge admin-badge--archived" : attendee.status === "checked_in" ? "admin-badge admin-badge--published" : "admin-badge admin-badge--draft"}>
@@ -360,7 +383,7 @@ export function AttendeeManagement({
             })}
             {attendees.length === 0 ? (
               <tr>
-                <td colSpan={6}>
+                <td colSpan={7}>
                   <div className="admin-empty-state">
                     <h2 style={{ textWrap: "balance" }}>No attendees match these filters.</h2>
                     <p>RSVPs and manual attendees will show here once members register or an admin adds them.</p>

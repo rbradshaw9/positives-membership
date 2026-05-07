@@ -1,4 +1,5 @@
 import { renderAuthEmail } from "@/lib/email/templates/auth-email";
+import { sendPostmarkEmail } from "@/lib/email/postmark";
 import { Webhook } from "standardwebhooks";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
@@ -64,47 +65,6 @@ function buildActionUrl(params: {
   url.searchParams.set("type", mapVerifyType(params.actionType));
   url.searchParams.set("next", safeRedirectTarget(params.redirectTo));
   return url.toString();
-}
-
-async function sendPostmarkEmail(input: {
-  to: string;
-  subject: string;
-  html: string;
-  text: string;
-  tag: string;
-}) {
-  const token = process.env.POSTMARK_SERVER_TOKEN;
-  if (!token) throw new Error("POSTMARK_SERVER_TOKEN is not configured.");
-
-  const from = process.env.POSTMARK_FROM_EMAIL ?? "Positives <test@positives.life>";
-  const replyTo = process.env.POSTMARK_REPLY_TO_EMAIL ?? "support@positives.life";
-  const messageStream = process.env.POSTMARK_MESSAGE_STREAM ?? "outbound";
-
-  const response = await fetch("https://api.postmarkapp.com/email", {
-    method: "POST",
-    headers: {
-      "X-Postmark-Server-Token": token,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify({
-      From: from,
-      To: input.to,
-      ReplyTo: replyTo,
-      Subject: input.subject,
-      HtmlBody: input.html,
-      TextBody: input.text,
-      MessageStream: messageStream,
-      Tag: input.tag,
-      TrackOpens: false,
-      TrackLinks: "None",
-    }),
-  });
-
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(`Postmark send failed: ${response.status} ${detail.slice(0, 500)}`);
-  }
 }
 
 function buildEmailList(payload: SendEmailHookPayload): EmailToSend[] {
