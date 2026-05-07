@@ -4,6 +4,8 @@ import { PublicSiteHeader } from "@/components/marketing/PublicSiteHeader";
 import { ANONYMOUS_PUBLIC_SESSION_STATE } from "@/lib/marketing/public-session";
 import { JoinPageExperience } from "./JoinPageExperience";
 
+type JoinPageSearchParams = Promise<Record<string, string | string[] | undefined>>;
+
 export const metadata = {
   title: "Join Positives — Start Your Practice",
   description:
@@ -13,8 +15,17 @@ export const metadata = {
   },
 };
 
-export default function JoinPage() {
+function firstSearchParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export default async function JoinPage({
+  searchParams,
+}: {
+  searchParams?: JoinPageSearchParams;
+}) {
   const publicSession = ANONYMOUS_PUBLIC_SESSION_STATE;
+  const params = (await searchParams) ?? {};
 
   return (
     <div className="min-h-dvh flex flex-col overflow-x-hidden" style={{ background: "#FAFAF8" }}>
@@ -31,6 +42,9 @@ export default function JoinPage() {
         level2Annual={config.stripe.prices.level2Annual}
         level3Monthly={config.stripe.prices.level3Monthly}
         level3Annual={config.stripe.prices.level3Annual}
+        initialStep={firstSearchParam(params.step)}
+        initialEmail={firstSearchParam(params.email)}
+        initialError={firstSearchParam(params.error)}
       />
 
       <PublicSiteFooter

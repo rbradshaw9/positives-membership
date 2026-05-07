@@ -10,6 +10,9 @@ type JoinPageExperienceProps = {
   level2Annual: string;
   level3Monthly: string;
   level3Annual: string;
+  initialStep?: string;
+  initialEmail?: string;
+  initialError?: string;
 };
 
 export function JoinPageExperience({
@@ -19,15 +22,13 @@ export function JoinPageExperience({
   level2Annual,
   level3Monthly,
   level3Annual,
+  initialStep,
+  initialEmail,
+  initialError,
 }: JoinPageExperienceProps) {
-  const params =
-    typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search)
-      : null;
-
-  const step = params?.get("step");
-  const emailParam = params?.get("email");
-  const errorParam = params?.get("error");
+  const step = initialStep;
+  const emailParam = initialEmail;
+  const errorParam = initialError;
 
   if (step === "check-email") {
     return (

@@ -16,6 +16,9 @@ type BetaPageExperienceProps = {
   level2Annual: string;
   level3Monthly: string;
   level3Annual: string;
+  initialCohort?: string;
+  initialOffer?: string;
+  initialCampaignCode?: string;
 };
 
 export function BetaPageExperience({
@@ -27,19 +30,17 @@ export function BetaPageExperience({
   level2Annual,
   level3Monthly,
   level3Annual,
+  initialCohort,
+  initialOffer,
+  initialCampaignCode,
 }: BetaPageExperienceProps) {
-  const params =
-    typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search)
-      : null;
-
-  const requestedCohort = params?.get("cohort") === "alpha" ? "alpha" : "beta";
+  const requestedCohort = initialCohort === "alpha" ? "alpha" : "beta";
   const defaultOffer = requestedCohort === "alpha" ? "free" : "discount";
-  const inviteOffer = normalizeLaunchAccessOffer(params?.get("offer"), defaultOffer);
+  const inviteOffer = normalizeLaunchAccessOffer(initialOffer, defaultOffer);
   const fallbackSource = getInviteLaunchSource(requestedCohort, inviteOffer);
   const launchContext = resolveLaunchContext({
     cohort: requestedCohort,
-    campaignCode: params?.get("code") ?? null,
+    campaignCode: initialCampaignCode ?? null,
     fallbackCohort: requestedCohort,
     fallbackSource,
   });

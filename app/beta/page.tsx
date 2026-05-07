@@ -5,6 +5,8 @@ import { ANONYMOUS_PUBLIC_SESSION_STATE } from "@/lib/marketing/public-session";
 import { config } from "@/lib/config";
 import { BetaPageExperience } from "./BetaPageExperience";
 
+type BetaPageSearchParams = Promise<Record<string, string | string[] | undefined>>;
+
 export const metadata: Metadata = {
   title: "Private Beta — Positives",
   description:
@@ -18,8 +20,17 @@ export const metadata: Metadata = {
   },
 };
 
-export default function BetaPage() {
+function firstSearchParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export default async function BetaPage({
+  searchParams,
+}: {
+  searchParams?: BetaPageSearchParams;
+}) {
   const publicSession = ANONYMOUS_PUBLIC_SESSION_STATE;
+  const params = (await searchParams) ?? {};
 
   return (
     <div className="min-h-dvh flex flex-col" style={{ background: "#F8F5EF" }}>
@@ -38,6 +49,9 @@ export default function BetaPage() {
         level2Annual={config.stripe.prices.level2Annual}
         level3Monthly={config.stripe.prices.level3Monthly}
         level3Annual={config.stripe.prices.level3Annual}
+        initialCohort={firstSearchParam(params.cohort)}
+        initialOffer={firstSearchParam(params.offer)}
+        initialCampaignCode={firstSearchParam(params.code)}
       />
 
       <PublicSiteFooter paidHref="/beta" session={publicSession} />
