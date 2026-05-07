@@ -5,11 +5,11 @@ import { BetaFeedbackWidget } from "@/components/member/BetaFeedbackWidget";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import { getMemberBetaFeedbackThreads } from "@/lib/beta-feedback/data";
+import { AdminSidebarNav } from "./AdminSidebarNav";
 
 /**
  * app/admin/layout.tsx
- * Admin-area layout — redesigned with dark sidebar + brand identity.
- * Server-side email-based access guard via requireAdmin().
+ * Admin-area layout with server-side email-based access guard.
  */
 export default async function AdminLayout({
   children,
@@ -21,6 +21,7 @@ export default async function AdminLayout({
   const canReadMembers = permissionSet.has("members.read");
   const canManageRoles = permissionSet.has("roles.manage");
   const canModerateCommunity = permissionSet.has("community.moderate");
+
   const { data: member } = await asLooseSupabaseClient(getAdminClient())
     .from("member")
     .select<{ name: string | null; email: string | null; launch_cohort: string | null }>(
@@ -28,152 +29,25 @@ export default async function AdminLayout({
     )
     .eq("id", user.id)
     .maybeSingle();
+
   const showBetaFeedback =
     config.app.betaFeedbackEnabled &&
     (member?.launch_cohort === "alpha" || member?.launch_cohort === "beta");
   const betaFeedbackInbox =
     showBetaFeedback ? await getMemberBetaFeedbackThreads(user.id) : { threads: [], unreadCount: 0 };
 
-  const navItems = [
-    {
-      href: "/admin",
-      label: "Overview",
-      icon: (
-        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M7.07926 0.222253C7.31275 -0.007434 7.6873 -0.007434 7.92079 0.222253L14.6708 6.86227C14.907 7.09465 14.907 7.47322 14.6708 7.70559C14.4345 7.93797 14.0541 7.93797 13.8179 7.70559L7.50002 1.50016L1.18215 7.70559C0.945926 7.93797 0.565573 7.93797 0.329344 7.70559C0.0931149 7.47322 0.0931149 7.09465 0.329344 6.86227L7.07926 0.222253ZM7.50002 3.50016L13.5 9.50016V14.5002C13.5 14.7763 13.2762 15.0002 13 15.0002H10C9.72386 15.0002 9.50002 14.7763 9.50002 14.5002V11.5002H5.50002V14.5002C5.50002 14.7763 5.27617 15.0002 5.00002 15.0002H2.00002C1.72386 15.0002 1.50002 14.7763 1.50002 14.5002V9.50016L7.50002 3.50016Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"/>
-        </svg>
-      ),
-    },
-    {
-      href: "/admin/ops",
-      label: "Ops Health",
-      icon: (
-        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M7.5 1C4.46243 1 2 3.46243 2 6.5C2 9.53757 4.46243 12 7.5 12C10.5376 12 13 9.53757 13 6.5C13 3.46243 10.5376 1 7.5 1ZM1 6.5C1 2.91015 3.91015 0 7.5 0C11.0899 0 14 2.91015 14 6.5C14 10.0899 11.0899 13 7.5 13C3.91015 13 1 10.0899 1 6.5ZM7.5 3C7.77614 3 8 3.22386 8 3.5V6.29289L9.85355 8.14645C10.0488 8.34171 10.0488 8.65829 9.85355 8.85355C9.65829 9.04882 9.34171 9.04882 9.14645 8.85355L7.14645 6.85355C7.05268 6.75979 7 6.63261 7 6.5V3.5C7 3.22386 7.22386 3 7.5 3ZM4.5 14C4.22386 14 4 14.2239 4 14.5C4 14.7761 4.22386 15 4.5 15H10.5C10.7761 15 11 14.7761 11 14.5C11 14.2239 10.7761 14 10.5 14H4.5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"/>
-        </svg>
-      ),
-    },
-  ];
-
-  const contentItems = [
-    {
-      href: "/admin/months",
-      label: "Monthly Setup",
-      subLinks: [
-        { href: "/admin/months", label: "View All" },
-        { href: "/admin/months/new", label: "Add New" },
-      ],
-      icon: (
-        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M4.5 1C4.22386 1 4 1.22386 4 1.5V2H3C2.17157 2 1.5 2.67157 1.5 3.5V12.5C1.5 13.3284 2.17157 14 3 14H12C12.8284 14 13.5 13.3284 13.5 12.5V3.5C13.5 2.67157 12.8284 2 12 2H11V1.5C11 1.22386 10.7761 1 10.5 1C10.2239 1 10 1.22386 10 1.5V2H5V1.5C5 1.22386 4.77614 1 4.5 1ZM5 3V3.5C5 3.77614 5.22386 4 5.5 4C5.77614 4 6 3.77614 6 3.5V3H9V3.5C9 3.77614 9.22386 4 9.5 4C9.77614 4 10 3.77614 10 3.5V3H11C11.8284 3 12.5 3.67157 12.5 4.5V5H2.5V4.5C2.5 3.67157 3.17157 3 4 3H5ZM2.5 6H12.5V12.5C12.5 12.7761 12.2761 13 12 13H3C2.72386 13 2.5 12.7761 2.5 12.5V6Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"/>
-        </svg>
-      ),
-    },
-    {
-      href: "/admin/courses",
-      label: "Courses",
-      subLinks: [
-        { href: "/admin/courses", label: "View All" },
-        { href: "/admin/courses/new", label: "Add New" },
-      ],
-      icon: (
-        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M2 3.5C2 3.22386 2.22386 3 2.5 3H12.5C12.7761 3 13 3.22386 13 3.5V9.5C13 9.77614 12.7761 10 12.5 10H2.5C2.22386 10 2 9.77614 2 9.5V3.5ZM2.5 2C1.67157 2 1 2.67157 1 3.5V9.5C1 10.3284 1.67157 11 2.5 11H7V12H4.5C4.22386 12 4 12.2239 4 12.5C4 12.7761 4.22386 13 4.5 13H10.5C10.7761 13 11 12.7761 11 12.5C11 12.2239 10.7761 12 10.5 12H8V11H12.5C13.3284 11 14 10.3284 14 9.5V3.5C14 2.67157 13.3284 2 12.5 2H2.5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"/>
-        </svg>
-      ),
-    },
-    {
-      href: "/admin/events",
-      label: "Events",
-      subLinks: [
-        { href: "/admin/events", label: "Calendar" },
-        { href: "/admin/events/new", label: "Add New" },
-        { href: "/admin/events/types", label: "Types" },
-        { href: "/admin/events/hosts", label: "Hosts" },
-        { href: "/admin/events/venues", label: "Venues" },
-        { href: "/admin/events/ticketing", label: "Ticketing" },
-        { href: "/admin/events/settings", label: "Settings" },
-      ],
-      icon: (
-        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M4 1.5C4 1.22386 4.22386 1 4.5 1C4.77614 1 5 1.22386 5 1.5V2H10V1.5C10 1.22386 10.2239 1 10.5 1C10.7761 1 11 1.22386 11 1.5V2H12C12.8284 2 13.5 2.67157 13.5 3.5V12.5C13.5 13.3284 12.8284 14 12 14H3C2.17157 14 1.5 13.3284 1.5 12.5V3.5C1.5 2.67157 2.17157 2 3 2H4V1.5ZM2.5 5.5V12.5C2.5 12.7761 2.72386 13 3 13H12C12.2761 13 12.5 12.7761 12.5 12.5V5.5H2.5ZM4.25 7.5H6.25V9.5H4.25V7.5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"/>
-        </svg>
-      ),
-    },
-  ];
-
-  const managementItems = [
-    ...(canReadMembers ? [{
-      href: "/admin/members",
-      label: "Members",
-      icon: (
-        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M7.5 0.875C5.49797 0.875 3.875 2.49797 3.875 4.5C3.875 6.15288 4.98124 7.54738 6.49373 7.98351L5.42128 13.2907C5.36683 13.5613 5.54851 13.8267 5.81912 13.882C6.08974 13.9373 6.35494 13.7557 6.40939 13.485L7.5 7.99414L8.59061 13.485C8.64506 13.7557 8.91026 13.9373 9.18088 13.882C9.45149 13.8267 9.63317 13.5613 9.57872 13.2907L8.50627 7.98351C10.0188 7.54738 11.125 6.15288 11.125 4.5C11.125 2.49797 9.50203 0.875 7.5 0.875ZM4.875 4.5C4.875 3.05025 6.05025 1.875 7.5 1.875C8.94975 1.875 10.125 3.05025 10.125 4.5C10.125 5.94975 8.94975 7.125 7.5 7.125C6.05025 7.125 4.875 5.94975 4.875 4.5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"/>
-        </svg>
-      ),
-    }] : []),
-    ...(canReadMembers ? [{
-      href: "/admin/beta-feedback",
-      label: "Feedback",
-      icon: (
-        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M2 2.75C2 1.7835 2.7835 1 3.75 1H11.25C12.2165 1 13 1.7835 13 2.75V8.25C13 9.2165 12.2165 10 11.25 10H7.53L4.43302 12.7342C4.10875 13.0205 3.6 12.7904 3.6 12.3578V10H3.75C2.7835 10 2 9.2165 2 8.25V2.75Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"/>
-        </svg>
-      ),
-    }] : []),
-    ...(canModerateCommunity ? [{
-      href: "/admin/community",
-      label: "Community",
-      icon: (
-        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M2 2.75C2 1.7835 2.7835 1 3.75 1H11.25C12.2165 1 13 1.7835 13 2.75V8.25C13 9.2165 12.2165 10 11.25 10H7.53L4.43302 12.7342C4.10875 13.0205 3.6 12.7904 3.6 12.3578V10H3.75C2.7835 10 2 9.2165 2 8.25V2.75Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"/>
-        </svg>
-      ),
-    }] : []),
-    {
-      href: "/admin/ingestion",
-      label: "Ingestion",
-      icon: (
-        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M7.81825 1.18188C7.64251 1.00615 7.35759 1.00615 7.18185 1.18188L4.18185 4.18188C4.00611 4.35762 4.00611 4.64254 4.18185 4.81828C4.35759 4.99401 4.64251 4.99401 4.81825 4.81828L7.05005 2.58648V9.49996C7.05005 9.74849 7.25152 9.94996 7.50005 9.94996C7.74858 9.94996 7.95005 9.74849 7.95005 9.49996V2.58648L10.1819 4.81828C10.3576 4.99401 10.6425 4.99401 10.8182 4.81828C10.994 4.64254 10.994 4.35762 10.8182 4.18188L7.81825 1.18188ZM2.5 9.99997C2.77614 9.99997 3 10.2238 3 10.5V12C3 12.5538 3.44565 13 4 13H11C11.5538 13 12 12.5538 12 12V10.5C12 10.2238 12.2239 9.99997 12.5 9.99997C12.7761 9.99997 13 10.2238 13 10.5V12C13 13.1046 12.1046 14 11 14H4C2.89543 14 2 13.1046 2 12V10.5C2 10.2238 2.22386 9.99997 2.5 9.99997Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"/>
-        </svg>
-      ),
-    },
-    {
-      href: "/admin/integrations",
-      label: "Integrations",
-      icon: (
-        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M7.5 1.5A2.5 2.5 0 0 0 5 4H3.5A2.5 2.5 0 0 0 1 6.5V8a.5.5 0 0 0 1 0V6.5A1.5 1.5 0 0 1 3.5 5H5a2.5 2.5 0 0 0 5 0h1.5A1.5 1.5 0 0 1 13 6.5V8a.5.5 0 0 0 1 0V6.5A2.5 2.5 0 0 0 11.5 4H10a2.5 2.5 0 0 0-2.5-2.5ZM6 4a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0Zm-2.5 6A2.5 2.5 0 0 1 6 7.5h3A2.5 2.5 0 0 1 11.5 10v1A2.5 2.5 0 0 1 9 13.5H6A2.5 2.5 0 0 1 3.5 11v-1Zm1 0v1A1.5 1.5 0 0 0 6 12.5h3a1.5 1.5 0 0 0 1.5-1.5v-1A1.5 1.5 0 0 0 9 8.5H6A1.5 1.5 0 0 0 4.5 10Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"/>
-        </svg>
-      ),
-    },
-    ...(canManageRoles ? [{
-      href: "/admin/roles",
-      label: "Roles",
-      icon: (
-        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M7.5 1.25C5.84315 1.25 4.5 2.59315 4.5 4.25C4.5 5.90685 5.84315 7.25 7.5 7.25C9.15685 7.25 10.5 5.90685 10.5 4.25C10.5 2.59315 9.15685 1.25 7.5 1.25ZM5.5 4.25C5.5 3.14543 6.39543 2.25 7.5 2.25C8.60457 2.25 9.5 3.14543 9.5 4.25C9.5 5.35457 8.60457 6.25 7.5 6.25C6.39543 6.25 5.5 5.35457 5.5 4.25ZM3.25 12.75C3.25 10.5409 5.04086 8.75 7.25 8.75H7.75C9.95914 8.75 11.75 10.5409 11.75 12.75C11.75 13.0261 11.5261 13.25 11.25 13.25C10.9739 13.25 10.75 13.0261 10.75 12.75C10.75 11.0931 9.40685 9.75 7.75 9.75H7.25C5.59315 9.75 4.25 11.0931 4.25 12.75C4.25 13.0261 4.02614 13.25 3.75 13.25C3.47386 13.25 3.25 13.0261 3.25 12.75Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"/>
-        </svg>
-      ),
-    }] : []),
-  ];
-
-
   return (
     <div className="admin-shell">
-      {/* ── Sidebar ─────────────────────────────────────────────────────── */}
       <aside className="admin-sidebar hidden sm:flex flex-col">
-        {/* Logo / wordmark */}
         <div className="admin-sidebar__logo">
           <div className="admin-sidebar__logo-mark">
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="9" cy="9" r="9" fill="url(#admin-logo-grad)"/>
-              <path d="M6 9.5L8.2 11.5L12 7" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <circle cx="9" cy="9" r="9" fill="url(#admin-logo-grad)" />
+              <path d="M6 9.5 8.2 11.5 12 7" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               <defs>
                 <linearGradient id="admin-logo-grad" x1="0" y1="0" x2="18" y2="18" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="#2EC4B6"/>
-                  <stop offset="1" stopColor="#44A8D8"/>
+                  <stop stopColor="#2EC4B6" />
+                  <stop offset="1" stopColor="#44A8D8" />
                 </linearGradient>
               </defs>
             </svg>
@@ -182,60 +56,14 @@ export default async function AdminLayout({
           <span className="admin-sidebar__badge">Admin</span>
         </div>
 
-        {/* Nav ─────────────────────────────────────────────────────────── */}
-        <nav className="admin-sidebar__nav" aria-label="Admin navigation">
-          {/* Main */}
-          {navItems.map((item) => (
-            <AdminNavLink key={item.href} href={item.href} icon={item.icon} exact>
-              {item.label}
-            </AdminNavLink>
-          ))}
-
-          {/* Content section */}
-          <p className="admin-nav-section-label">Content</p>
-          {contentItems.map((item) => (
-            <div key={item.href}>
-              <AdminNavLink href={item.href} icon={item.icon}>
-                {item.label}
-              </AdminNavLink>
-              {item.subLinks && (
-                <div style={{ paddingLeft: "2rem", display: "flex", flexDirection: "column", gap: "0.125rem", marginTop: "-0.125rem", marginBottom: "0.25rem" }}>
-                  {item.subLinks.map((sub) => (
-                    <Link
-                      key={sub.href}
-                      href={sub.href}
-                      style={{
-                        fontSize: "0.6875rem",
-                        color: "var(--color-muted-fg)",
-                        textDecoration: "none",
-                        padding: "0.2rem 0.5rem",
-                        borderRadius: "0.25rem",
-                        transition: "color 120ms ease",
-                      }}
-                      className="admin-nav-sublink"
-                    >
-                      {sub.label}
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-
-          {/* Management section */}
-          <p className="admin-nav-section-label">Management</p>
-          {managementItems.map((item) => (
-            <AdminNavLink key={item.href} href={item.href} icon={item.icon}>
-              {item.label}
-            </AdminNavLink>
-          ))}
-        </nav>
+        <AdminSidebarNav
+          canReadMembers={canReadMembers}
+          canManageRoles={canManageRoles}
+          canModerateCommunity={canModerateCommunity}
+        />
 
         <div className="admin-sidebar__return">
-          <Link
-            href="/today"
-            className="admin-member-return-link"
-          >
+          <Link href="/today" className="admin-member-return-link">
             <svg
               width="15"
               height="15"
@@ -255,7 +83,6 @@ export default async function AdminLayout({
           </Link>
         </div>
 
-        {/* User footer */}
         <div className="admin-sidebar__footer">
           <div className="admin-sidebar__avatar">
             {user.email?.charAt(0).toUpperCase()}
@@ -264,29 +91,24 @@ export default async function AdminLayout({
         </div>
       </aside>
 
-      {/* ── Main area ────────────────────────────────────────────────────── */}
       <div className="admin-main">
-        {/* Mobile top bar */}
         <header className="admin-mobile-header sm:hidden">
           <span className="font-heading font-bold text-sm text-foreground">
             Positives
           </span>
           <div className="admin-mobile-header__actions">
-            <Link
-              href="/today"
-              className="admin-mobile-return-link"
-            >
+            <Link href="/today" className="admin-mobile-return-link">
               View Platform
             </Link>
             <span className="admin-sidebar__badge">Admin</span>
           </div>
         </header>
 
-        {/* Page content */}
         <main className="admin-content">
           {children}
         </main>
       </div>
+
       {showBetaFeedback ? (
         <BetaFeedbackWidget
           memberEmail={member?.email ?? user.email ?? null}
@@ -297,37 +119,5 @@ export default async function AdminLayout({
         />
       ) : null}
     </div>
-  );
-}
-
-/**
- * Server-rendered nav link helper.
- * We can't use usePathname in a server component, so we use a simple
- * structural component — active styling is applied via CSS :has() trick
- * or deferred to client. For simplicity, we render with full hover states
- * and let the browser handle .admin-nav-link styling.
- */
-function AdminNavLink({
-  href,
-  icon,
-  children,
-  indent,
-  exact,
-}: {
-  href: string;
-  icon: React.ReactNode;
-  children: React.ReactNode;
-  indent?: boolean;
-  exact?: boolean;
-}) {
-  void exact;
-  return (
-    <Link
-      href={href}
-      className={`admin-nav-link${indent ? " admin-nav-link--indent" : ""}`}
-    >
-      <span className="admin-nav-link__icon">{icon}</span>
-      <span>{children}</span>
-    </Link>
   );
 }
