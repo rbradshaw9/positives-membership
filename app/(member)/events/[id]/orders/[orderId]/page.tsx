@@ -1,5 +1,7 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
+import QRCode from "qrcode";
 import { requireActiveMember } from "@/lib/auth/require-active-member";
 import { getMemberEvent } from "@/lib/queries/get-events";
 import { currentTimestampMs, formatEventDateRange } from "@/lib/events/dates";
@@ -118,6 +120,23 @@ export default async function EventOrderConfirmationPage({
   );
   const nowMs = currentTimestampMs();
   const confirmed = order.status === "paid" || order.status === "comp";
+  const qrCodesByTicketId = new Map(
+    await Promise.all(
+      tickets.map(async (ticket) => {
+        const attendee = attendeesByTicketId.get(ticket.id);
+        const code = attendee?.security_code ?? ticket.ticket_code;
+        const dataUrl = await QRCode.toDataURL(code, {
+          margin: 1,
+          width: 168,
+          color: {
+            dark: "#09090B",
+            light: "#FFFFFF",
+          },
+        });
+        return [ticket.id, dataUrl] as const;
+      })
+    )
+  );
 
   return (
     <div className="member-container py-8 md:py-12">
@@ -156,38 +175,56 @@ export default async function EventOrderConfirmationPage({
             <div className="mt-4 grid gap-3">
               {tickets.map((ticket, index) => {
                 const attendee = attendeesByTicketId.get(ticket.id);
+                const qrCode = qrCodesByTicketId.get(ticket.id) ?? "";
                 return (
                   <div key={ticket.id} className="rounded-2xl border border-border bg-background p-4">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-start">
                       <div>
-                        <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                          Ticket {index + 1}
-                        </p>
-                        <h3 className="mt-1 font-heading text-lg font-semibold text-foreground">
-                          {attendee?.name || ticket.guest_name || member.name || "Member ticket"}
-                        </h3>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {attendee?.email || ticket.guest_email || member.email || "No email on ticket"}
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                              Ticket {index + 1}
+                            </p>
+                            <h3 className="mt-1 font-heading text-lg font-semibold text-foreground">
+                              {attendee?.name || ticket.guest_name || member.name || "Member ticket"}
+                            </h3>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              {attendee?.email || ticket.guest_email || member.email || "No email on ticket"}
+                            </p>
+                          </div>
+                          <span className="admin-badge admin-badge--published self-start">
+                            {attendee?.status ?? ticket.status}
+                          </span>
+                        </div>
+                        <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
+                          <div>
+                            <dt className="font-semibold text-foreground">Attendee No.</dt>
+                            <dd className="mt-1 text-muted-foreground">{attendee?.attendee_number ?? "Pending"}</dd>
+                          </div>
+                          <div>
+                            <dt className="font-semibold text-foreground">Security Code</dt>
+                            <dd className="mt-1 text-muted-foreground">{attendee?.security_code ?? ticket.ticket_code}</dd>
+                          </div>
+                          <div>
+                            <dt className="font-semibold text-foreground">Ticket Code</dt>
+                            <dd className="mt-1 break-all text-muted-foreground">{ticket.ticket_code}</dd>
+                          </div>
+                        </dl>
+                      </div>
+                      <div className="w-36 rounded-2xl border border-border bg-card p-2 text-center shadow-sm">
+                        <Image
+                          src={qrCode}
+                          alt={`QR code for ticket ${index + 1}`}
+                          width={168}
+                          height={168}
+                          unoptimized
+                          className="h-auto w-full"
+                        />
+                        <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                          Check-in QR
                         </p>
                       </div>
-                      <span className="admin-badge admin-badge--published self-start">
-                        {attendee?.status ?? ticket.status}
-                      </span>
                     </div>
-                    <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
-                      <div>
-                        <dt className="font-semibold text-foreground">Attendee No.</dt>
-                        <dd className="mt-1 text-muted-foreground">{attendee?.attendee_number ?? "Pending"}</dd>
-                      </div>
-                      <div>
-                        <dt className="font-semibold text-foreground">Security Code</dt>
-                        <dd className="mt-1 text-muted-foreground">{attendee?.security_code ?? ticket.ticket_code}</dd>
-                      </div>
-                      <div>
-                        <dt className="font-semibold text-foreground">Ticket Code</dt>
-                        <dd className="mt-1 break-all text-muted-foreground">{ticket.ticket_code}</dd>
-                      </div>
-                    </dl>
                   </div>
                 );
               })}
