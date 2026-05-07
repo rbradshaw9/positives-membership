@@ -34,6 +34,14 @@ const ALLOWED_ATTRIBUTES: sanitizeHtml.IOptions["allowedAttributes"] = {
   img: ["src", "alt", "title", "width", "height", "loading"],
 };
 
+function safeImageDimension(value: string | undefined) {
+  const match = String(value ?? "").trim().match(/^(\d{1,4})(?:px)?$/i);
+  if (!match) return null;
+  const numeric = Number(match[1]);
+  if (!Number.isFinite(numeric)) return null;
+  return String(Math.min(Math.max(Math.round(numeric), 1), 1600));
+}
+
 function normalizeWhitespace(value: string) {
   return value.replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
 }
@@ -81,12 +89,16 @@ export function sanitizeEventHtml(rawHtml: string | null | undefined) {
       },
       img: (tagName, attribs) => {
         const src = typeof attribs.src === "string" ? attribs.src.trim() : "";
+        const width = safeImageDimension(attribs.width);
+        const height = safeImageDimension(attribs.height);
         return {
           tagName,
           attribs: {
             ...(src ? { src } : {}),
             ...(attribs.alt ? { alt: String(attribs.alt).slice(0, 200) } : {}),
             ...(attribs.title ? { title: String(attribs.title).slice(0, 200) } : {}),
+            ...(width ? { width } : {}),
+            ...(height ? { height } : {}),
             loading: "lazy",
           },
         };

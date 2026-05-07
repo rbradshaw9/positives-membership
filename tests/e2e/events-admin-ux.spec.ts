@@ -87,6 +87,32 @@ test("calendar quick create pre-fills local event time", async ({ page }) => {
   await expect(page.getByLabel("End date & time")).toHaveValue("2099-06-15T19:00");
 });
 
+test("admin event editor supports image width resizing", async ({ page }) => {
+  await loginWithPassword(page, {
+    email: ADMIN_EMAIL,
+    password: ADMIN_PASSWORD,
+    next: "/admin/events/new",
+  });
+
+  await page.getByRole("button", { name: "HTML" }).click();
+  await page
+    .getByLabel("Event details HTML")
+    .fill('<p>Image sizing fixture</p><img src="/icon.png" alt="Resize me">');
+  await page.getByRole("button", { name: "Visual" }).click();
+
+  const editorImage = page.locator(".event-editor-image img").first();
+  await expect(editorImage).toBeVisible();
+  await editorImage.click();
+  await expect(page.getByLabel("Image width")).toBeVisible();
+
+  await page.getByLabel("Image width").fill("420");
+  await page.getByLabel("Image width").press("Enter");
+  await expect(editorImage).toHaveAttribute("width", "420");
+
+  await page.getByRole("button", { name: "HTML" }).click();
+  await expect(page.getByLabel("Event details HTML")).toHaveValue(/width="420"/);
+});
+
 test("publishing a Zoom event requires a Zoom setup choice", async ({ page }) => {
   await loginWithPassword(page, {
     email: ADMIN_EMAIL,

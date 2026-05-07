@@ -4,10 +4,11 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { Node, mergeAttributes } from "@tiptap/core";
+import { NodeSelection } from "@tiptap/pm/state";
 import { Link as TiptapLink } from "@tiptap/extension-link";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { EditorContent, NodeViewWrapper, ReactNodeViewRenderer, useEditor, type ReactNodeViewProps } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type PointerEvent } from "react";
 
 type EventImageAsset = {
   id: string;
@@ -20,6 +21,149 @@ type EventImageAsset = {
   createdAt: string;
 };
 
+const MIN_IMAGE_WIDTH = 120;
+const MAX_IMAGE_WIDTH = 1200;
+
+function normalizeImageWidth(value: unknown) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  const match = raw.match(/^(\d{1,4})(?:px)?$/i);
+  if (!match) return null;
+  const numeric = Number(match[1]);
+  if (!Number.isFinite(numeric)) return null;
+  return String(Math.min(Math.max(Math.round(numeric), MIN_IMAGE_WIDTH), MAX_IMAGE_WIDTH));
+}
+
+function ResizableEventImage({
+  node,
+  selected,
+  updateAttributes,
+  view,
+  getPos,
+}: ReactNodeViewProps<HTMLDivElement>) {
+  const imageRef = useRef<HTMLImageElement>(null);
+  const widthInputRef = useRef<HTMLInputElement>(null);
+  const resizeRef = useRef<{ pointerId: number; startX: number; startWidth: number; maxWidth: number } | null>(null);
+  const width = normalizeImageWidth(node.attrs.width);
+
+  function selectImage() {
+    if (typeof getPos !== "function") return;
+    const pos = getPos();
+    if (typeof pos !== "number") return;
+    view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, pos)));
+    view.focus();
+  }
+
+  function setWidth(value: string | null) {
+    const nextWidth = normalizeImageWidth(value);
+    if (widthInputRef.current) widthInputRef.current.value = nextWidth ?? "";
+    updateAttributes({ width: nextWidth });
+  }
+
+  function handleResizeStart(event: PointerEvent<HTMLButtonElement>) {
+    const image = imageRef.current;
+    if (!image) return;
+    event.preventDefault();
+    event.stopPropagation();
+    selectImage();
+    const editorWidth = image.closest(".tiptap-content")?.clientWidth ?? MAX_IMAGE_WIDTH;
+    resizeRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startWidth: image.getBoundingClientRect().width,
+      maxWidth: Math.min(Math.max(editorWidth - 24, MIN_IMAGE_WIDTH), MAX_IMAGE_WIDTH),
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handleResizeMove(event: PointerEvent<HTMLButtonElement>) {
+    const resizeState = resizeRef.current;
+    if (!resizeState || resizeState.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    const nextWidth = Math.min(
+      Math.max(Math.round(resizeState.startWidth + event.clientX - resizeState.startX), MIN_IMAGE_WIDTH),
+      resizeState.maxWidth
+    );
+    if (widthInputRef.current) widthInputRef.current.value = String(nextWidth);
+    updateAttributes({ width: String(nextWidth) });
+  }
+
+  function handleResizeEnd(event: PointerEvent<HTMLButtonElement>) {
+    if (resizeRef.current?.pointerId === event.pointerId) {
+      resizeRef.current = null;
+    }
+  }
+
+  return (
+    <NodeViewWrapper
+      as="figure"
+      className={`event-editor-image${selected ? " is-selected" : ""}`}
+      onClick={(event: MouseEvent<HTMLElement>) => {
+        if ((event.target as HTMLElement | null)?.closest("[data-event-image-control='true']")) return;
+        selectImage();
+      }}
+    >
+      <img
+        ref={imageRef}
+        src={node.attrs.src}
+        alt={node.attrs.alt ?? ""}
+        title={node.attrs.title ?? undefined}
+        width={width ?? undefined}
+        style={{ width: width ? `${width}px` : undefined }}
+        draggable={false}
+      />
+      <button
+        type="button"
+        className="event-editor-image__resize"
+        aria-label="Drag to resize image"
+        data-event-image-control="true"
+        onPointerDown={handleResizeStart}
+        onPointerMove={handleResizeMove}
+        onPointerUp={handleResizeEnd}
+        onPointerCancel={handleResizeEnd}
+      />
+      {selected ? (
+        <figcaption className="event-editor-image__controls" data-event-image-control="true" contentEditable={false}>
+          <label className="event-editor-image__width">
+            <span>Width</span>
+            <input
+              ref={widthInputRef}
+              key={width ?? "auto"}
+              type="number"
+              min={MIN_IMAGE_WIDTH}
+              max={MAX_IMAGE_WIDTH}
+              step={10}
+              defaultValue={width ?? ""}
+              placeholder="Auto"
+              aria-label="Image width"
+              onBlur={(event) => setWidth(event.currentTarget.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  setWidth(event.currentTarget.value);
+                }
+              }}
+            />
+            <span>px</span>
+          </label>
+          <button type="button" onClick={() => setWidth("320")}>
+            Small
+          </button>
+          <button type="button" onClick={() => setWidth("560")}>
+            Medium
+          </button>
+          <button type="button" onClick={() => setWidth("920")}>
+            Full
+          </button>
+          <button type="button" onClick={() => setWidth(null)}>
+            Auto
+          </button>
+        </figcaption>
+      ) : null}
+    </NodeViewWrapper>
+  );
+}
+
 const EventImage = Node.create({
   name: "eventImage",
   group: "block",
@@ -31,6 +175,14 @@ const EventImage = Node.create({
       src: { default: null },
       alt: { default: null },
       title: { default: null },
+      width: {
+        default: null,
+        parseHTML: (element) => normalizeImageWidth(element.getAttribute("width") ?? element.style.width),
+        renderHTML: (attributes) => {
+          const width = normalizeImageWidth(attributes.width);
+          return width ? { width } : {};
+        },
+      },
     };
   },
 
@@ -40,6 +192,13 @@ const EventImage = Node.create({
 
   renderHTML({ HTMLAttributes }) {
     return ["img", mergeAttributes(HTMLAttributes, { loading: "lazy" })];
+  },
+
+  addNodeView() {
+    return ReactNodeViewRenderer(ResizableEventImage, {
+      stopEvent: ({ event }) =>
+        Boolean((event.target as HTMLElement | null)?.closest("[data-event-image-control='true']")),
+    });
   },
 });
 

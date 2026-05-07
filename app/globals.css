@@ -855,6 +855,105 @@ select.member-input { cursor: pointer; }
   border: 1px solid var(--color-border);
 }
 
+.tiptap-content .ProseMirror .event-editor-image {
+  position: relative;
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0.75rem 0 1rem;
+  line-height: 0;
+}
+
+.tiptap-content .ProseMirror .event-editor-image img {
+  max-width: 100%;
+  height: auto;
+  margin: 0;
+}
+
+.event-editor-image.is-selected img {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 14%, transparent);
+}
+
+.event-editor-image__resize {
+  position: absolute;
+  right: -0.5rem;
+  bottom: -0.5rem;
+  width: 1.125rem;
+  height: 1.125rem;
+  border: 2px solid var(--color-background);
+  border-radius: 999px;
+  background: var(--color-primary);
+  cursor: nwse-resize;
+  opacity: 0;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.18);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.event-editor-image:hover .event-editor-image__resize,
+.event-editor-image.is-selected .event-editor-image__resize {
+  opacity: 1;
+}
+
+.event-editor-image__resize:hover {
+  transform: scale(1.08);
+}
+
+.event-editor-image__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  margin-top: 0.5rem;
+  padding: 0.375rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.375rem;
+  background: var(--color-card);
+  color: var(--color-muted-fg);
+  font-size: 0.75rem;
+  line-height: 1.2;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+}
+
+.event-editor-image__controls button {
+  border: 1px solid var(--color-border);
+  border-radius: 0.25rem;
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.35rem 0.5rem;
+  cursor: pointer;
+}
+
+.event-editor-image__controls button:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.event-editor-image__width {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding-right: 0.25rem;
+}
+
+.event-editor-image__width input {
+  width: 4.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.25rem;
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-size: 0.75rem;
+  padding: 0.35rem 0.4rem;
+}
+
+.event-editor-image__width input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 14%, transparent);
+}
+
 .tiptap-content .ProseMirror strong {
   font-weight: 600;
 }
