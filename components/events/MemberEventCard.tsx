@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatInTimeZone } from "date-fns-tz";
 import { Button } from "@/components/ui/Button";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { SafeImage } from "@/components/media/SafeImage";
@@ -198,6 +199,10 @@ export function EventVisual({
   className?: string;
 }) {
   const label = event.event_type?.name ?? "Event";
+  const month = formatInTimeZone(new Date(event.starts_at), event.timezone, "MMM");
+  const day = formatInTimeZone(new Date(event.starts_at), event.timezone, "d");
+  const time = formatInTimeZone(new Date(event.starts_at), event.timezone, "h:mm a zzz");
+  const location = eventLocationLabel(event);
   return (
     <div
       className={[
@@ -217,13 +222,31 @@ export function EventVisual({
           className="h-full w-full object-cover"
         />
       ) : (
-        <div className="flex h-full w-full flex-col justify-end bg-[radial-gradient(ellipse_at_20%_10%,rgba(46,196,182,0.24),transparent_50%),linear-gradient(135deg,rgba(255,255,255,0.96),rgba(232,246,243,0.88))] p-5">
-          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
-            {label}
-          </span>
-          <span className="mt-2 max-w-56 font-heading text-xl font-semibold leading-tight tracking-normal text-foreground">
-            {event.title}
-          </span>
+        <div className="flex h-full w-full flex-col justify-between bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(232,246,243,0.9))] p-5">
+          <div className="flex items-start justify-between gap-4">
+            <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
+              {label}
+            </span>
+            <span className="grid min-w-16 overflow-hidden rounded-xl border border-border bg-card text-center shadow-sm">
+              <span className="bg-primary px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white">
+                {month}
+              </span>
+              <span className="px-2 py-2 font-heading text-2xl font-bold leading-none text-foreground">
+                {day}
+              </span>
+            </span>
+          </div>
+          <div>
+            <span className="block max-w-72 font-heading text-xl font-semibold leading-tight tracking-normal text-foreground">
+              {event.title}
+            </span>
+            <span className="mt-3 block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              {time}
+            </span>
+            <span className="mt-1 block truncate text-sm text-muted-foreground">
+              {location}
+            </span>
+          </div>
         </div>
       )}
     </div>

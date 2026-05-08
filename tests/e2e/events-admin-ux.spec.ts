@@ -52,8 +52,13 @@ test("admin event form keeps advanced fields contextual and supports inline crea
   await expect(page.getByText("Member visibility")).toBeVisible();
   await expect(page.getByRole("button", { name: "Save draft" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Publish event" })).toBeVisible();
-  await expect(page.getByLabel("Event image")).toBeVisible();
-  await page.getByLabel("Event image").fill("/api/media/assets/00000000-0000-0000-0000-000000000000");
+  await expect(page.getByText("Event image").first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Upload image" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Choose from library" })).toBeVisible();
+  await page.getByRole("button", { name: "Upload image" }).click();
+  await expect(page.getByRole("dialog", { name: "Event Image" })).toBeVisible();
+  await expect(page.getByLabel("Image file")).toBeVisible();
+  await page.getByRole("button", { name: "Close" }).click();
 
   await expect(page.getByLabel("Occurrences")).toHaveCount(0);
   await page.getByLabel("Repeat").selectOption("weekly");
