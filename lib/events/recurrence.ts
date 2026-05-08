@@ -1,5 +1,7 @@
 import type { RecurrenceFrequency } from "@/lib/events/types";
 
+export const MAX_GENERATED_OCCURRENCES = 60;
+
 function addFrequency(date: Date, frequency: RecurrenceFrequency, interval: number) {
   const next = new Date(date);
   if (frequency === "daily") next.setUTCDate(next.getUTCDate() + interval);
@@ -18,7 +20,8 @@ export function expandOccurrences(params: {
 }) {
   const duration = params.endsAt.getTime() - params.startsAt.getTime();
   const occurrences: Array<{ startsAt: Date; endsAt: Date }> = [];
-  const maxCount = Math.min(Math.max(params.count ?? 1, 1), 60);
+  const requestedCount = !params.count || params.count <= 0 ? MAX_GENERATED_OCCURRENCES : params.count;
+  const maxCount = Math.min(Math.max(requestedCount, 1), MAX_GENERATED_OCCURRENCES);
   let current = params.startsAt;
 
   while (occurrences.length < maxCount) {

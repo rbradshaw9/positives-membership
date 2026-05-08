@@ -52,13 +52,25 @@ test("admin event form keeps advanced fields contextual and supports inline crea
   await expect(page.getByText("Member visibility")).toBeVisible();
   await expect(page.getByRole("button", { name: "Save draft" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Publish event" })).toBeVisible();
+  await expect(page.getByLabel("Event image")).toBeVisible();
+  await page.getByLabel("Event image").fill("/api/media/assets/00000000-0000-0000-0000-000000000000");
 
   await expect(page.getByLabel("Occurrences")).toHaveCount(0);
   await page.getByLabel("Repeat").selectOption("weekly");
+  await expect(page.getByLabel("Ends")).toBeVisible();
   await expect(page.getByLabel("Occurrences")).toBeVisible();
+  await expect(page.getByLabel("Occurrences")).toHaveAttribute("min", "0");
+  await expect(page.getByText("Use 0 for unlimited.")).toBeVisible();
+  await expect(page.getByLabel("End by")).toHaveCount(0);
+  await page.getByLabel("Ends").selectOption("date");
   await expect(page.getByLabel("End by")).toBeVisible();
+  await expect(page.getByLabel("Occurrences")).toHaveCount(0);
+  await page.getByLabel("Ends").selectOption("never");
+  await expect(page.getByLabel("End by")).toHaveCount(0);
+  await expect(page.getByLabel("Occurrences")).toHaveCount(0);
   await page.getByLabel("Repeat").selectOption("none");
   await expect(page.getByLabel("Occurrences")).toHaveCount(0);
+  await expect(page.getByLabel("Ends")).toHaveCount(0);
 
   await expect(page.getByLabel("Manual join URL")).toHaveCount(0);
   await page.getByLabel("Virtual mode").selectOption("manual");
@@ -340,7 +352,8 @@ test("ticketed event hides join access until a paid or comp ticket exists", asyn
   });
 
   await expect(page.getByRole("heading", { name: fixture.title })).toBeVisible();
-  await expect(page.getByText("Ticket required")).toBeVisible();
+  await expect(page.locator("aside").getByText("Cost")).toBeVisible();
+  await expect(page.getByText("From $25")).toBeVisible();
   await expect(page.getByText("Reserve your seat")).toBeVisible();
   await expect(page.locator("aside").getByRole("link", { name: "Join Event" })).toHaveCount(0);
 
@@ -351,8 +364,10 @@ test("ticketed event hides join access until a paid or comp ticket exists", asyn
   });
 
   await page.reload();
-  await expect(page.getByText("Ticket confirmed")).toBeVisible();
-  await expect(page.locator("aside").getByRole("link", { name: "Join Event" })).toBeVisible();
+  await expect(page.getByText("Your ticket is confirmed.")).toBeVisible();
+  await expect(page.locator("aside").getByRole("link", { name: "Join Event" })).toHaveCount(0);
+  await expect(page.locator("aside").getByRole("button", { name: "Join Event" })).toBeDisabled();
+  await expect(page.getByText("Join opens one hour before the event.")).toBeVisible();
 });
 
 test("member events browse uses designed month, list, and mobile layouts", async ({
@@ -455,6 +470,10 @@ test("member RSVP creates an attendee that admins can check in", async ({
     });
 
     await expect(memberPage.getByRole("heading", { name: fixture.title })).toBeVisible();
+    await expect(memberPage.getByRole("link", { name: "Add to Calendar" }).first()).toBeVisible();
+    await expect(memberPage.getByRole("complementary").getByText("Free for members")).toBeVisible();
+    await expect(memberPage.getByRole("link", { name: "Share by Email" })).toHaveCount(0);
+    await expect(memberPage.getByText("Share this event")).toHaveCount(0);
     await expect(memberPage.getByRole("heading", { name: "Member RSVP" })).toBeVisible();
     await memberPage.getByLabel("Name").fill(attendeeName);
     await memberPage.getByLabel("Email").fill(attendeeEmail);

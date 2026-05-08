@@ -19,7 +19,10 @@ test("admin sidebar groups expand and reveal focused subnavigation", async ({ pa
   await expect(adminNav.getByRole("link", { name: "Calendar" })).toHaveCount(0);
 
   await adminNav.getByRole("button", { name: "Expand Events" }).click();
-  await expect(adminNav.getByRole("link", { name: "Calendar" })).toBeVisible();
+  await expect(adminNav.getByRole("link", { name: "All Events" })).toBeVisible();
+  await expect(adminNav.getByRole("link", { name: "All Events" })).toHaveAttribute("href", "/admin/events");
+  await expect(adminNav.getByRole("link", { name: "List" })).toHaveCount(0);
+  await expect(adminNav.getByRole("link", { name: "Calendar" })).toHaveCount(0);
   await expect(adminNav.getByRole("link", { name: "Ticketing" })).toBeVisible();
 
   await adminNav.getByRole("button", { name: "Management" }).click();

@@ -52,6 +52,7 @@ function isActiveSubLink(pathname: string, view: "list" | "calendar", subLink: A
   if (pathname !== subPath) return false;
   if (subPath === "/admin/events") {
     const expectedView = new URLSearchParams(subQuery ?? "").get("view");
+    if (!expectedView) return true;
     return expectedView === "calendar" ? view === "calendar" : view === "list";
   }
   return true;
@@ -180,8 +181,7 @@ function buildNavGroups({
           label: "Events",
           icon: "calendar",
           subLinks: [
-            { href: "/admin/events", label: "List" },
-            { href: "/admin/events?view=calendar", label: "Calendar" },
+            { href: "/admin/events", label: "All Events" },
             { href: "/admin/events/new", label: "Add new" },
             { href: "/admin/events/types", label: "Types" },
             { href: "/admin/events/hosts", label: "Hosts" },

@@ -11,7 +11,6 @@ import { EventDetailsBody } from "@/components/content/EventDetailsBody";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { Button } from "@/components/ui/Button";
 import {
-  EventStatusBadges,
   EventVisual,
   MemberEventCard,
   eventCostLabel,
@@ -21,6 +20,7 @@ import {
 } from "@/components/events/MemberEventCard";
 import { SafeImage } from "@/components/media/SafeImage";
 import { EventTicketPurchasePanel } from "./EventTicketPurchasePanel";
+import { EventJoinButton } from "./EventJoinButton";
 import { registerEventRsvp } from "./actions";
 
 type Params = Promise<{ id: string }>;
@@ -194,9 +194,6 @@ function RsvpModule({
           <div className="rounded-2xl border border-border bg-muted/30 p-4 text-sm md:min-w-72">
             <p className="font-semibold text-foreground">{event.member_rsvp_attendee.name ?? "Registered attendee"}</p>
             <p className="mt-1 text-muted-foreground">{event.member_rsvp_attendee.attendee_number}</p>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Status: {event.member_rsvp_attendee.status.replace("_", " ")}
-            </p>
           </div>
         ) : rsvp.notOpen ? (
           <p className="rounded-2xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground md:min-w-72">RSVP has not opened yet.</p>
@@ -242,7 +239,6 @@ export default async function EventDetailPage({
   if (!event) notFound();
 
   const nowMs = currentTimestampMs();
-  const eventUrl = `/events/${event.id}`;
   const joinUrl = eventJoinUrl(event);
   const isPast = new Date(event.ends_at).getTime() < nowMs;
   const hosts = eventHosts(event);
@@ -288,7 +284,7 @@ export default async function EventDetailPage({
       </Link>
 
       <article className="space-y-7">
-        <header className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+        <header>
           <div>
             <p className="ui-section-eyebrow mb-3">{event.event_type?.name ?? "Event"}</p>
             <h1 className="heading-balance font-heading text-4xl font-bold leading-heading tracking-normal text-foreground md:text-5xl">
@@ -301,19 +297,7 @@ export default async function EventDetailPage({
               <p className="mt-2 text-sm text-muted-foreground">Hosted by {hostNames}</p>
             ) : null}
           </div>
-          <EventStatusBadges event={event} nowMs={nowMs} className="lg:justify-end" />
         </header>
-
-        {event.status === "canceled" || event.status === "postponed" ? (
-          <SurfaceCard padding="lg" className="border-amber-200 bg-amber-50/80">
-            <p className="font-semibold text-amber-900">
-              This event has been {event.status === "canceled" ? "canceled" : "postponed"}.
-            </p>
-            <p className="mt-1 text-sm text-amber-800">
-              Check back here for the latest event details.
-            </p>
-          </SurfaceCard>
-        ) : null}
 
         <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
           <div className="space-y-6">
@@ -338,7 +322,7 @@ export default async function EventDetailPage({
                 <p className="ui-section-eyebrow mb-2">Calendar</p>
                 <p className="text-sm text-muted-foreground">Save this event to your personal calendar.</p>
               </div>
-              <Button href={`/events/${event.id}/calendar`} variant="secondary" className="w-full justify-center sm:w-auto">
+              <Button href={`/events/${event.id}/calendar`} variant="primary" className="w-full justify-center sm:w-auto">
                 Add to Calendar
               </Button>
             </SurfaceCard>
@@ -368,15 +352,15 @@ export default async function EventDetailPage({
                 <DetailRow label="Cost" value={eventCostLabel(event)} />
                 <DetailRow label="Event Type" value={event.event_type?.name ?? "Event"} />
                 <DetailRow label="Location" value={location} />
-                <DetailRow label="Status" value={event.status.replaceAll("_", " ")} />
               </dl>
               <div className="mt-4 grid gap-2">
-                {joinUrl && !isPast ? (
-                  <Button href={joinUrl} target="_blank" rel="noopener noreferrer" className="w-full justify-center">
-                    Join Event
-                  </Button>
-                ) : null}
-                <Button href={`/events/${event.id}/calendar`} variant="secondary" className="w-full justify-center">
+                <EventJoinButton
+                  joinUrl={joinUrl}
+                  startsAt={event.starts_at}
+                  endsAt={event.ends_at}
+                  initialNowMs={nowMs}
+                />
+                <Button href={`/events/${event.id}/calendar`} variant="outline" className="w-full justify-center">
                   Add to Calendar
                 </Button>
               </div>
@@ -458,21 +442,6 @@ export default async function EventDetailPage({
                 </div>
               </SurfaceCard>
             ) : null}
-
-            <SurfaceCard padding="lg">
-              <p className="ui-section-eyebrow mb-3">Share</p>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                Share this event with someone who might want to join you.
-              </p>
-              <Button
-                href={`mailto:?subject=${encodeURIComponent(event.title)}&body=${encodeURIComponent(eventUrl)}`}
-                variant="outline"
-                size="sm"
-                className="mt-4 w-full justify-center"
-              >
-                Share by Email
-              </Button>
-            </SurfaceCard>
           </aside>
         </div>
 

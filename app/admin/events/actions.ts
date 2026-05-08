@@ -9,7 +9,7 @@ import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import { EVENT_ACCESS_LEVELS, normalizeRegistrationFields, parseAccessLevels } from "@/lib/events/types";
 import type { EventHostOption, EventRegistrationField, EventRegistrationPlacement, EventTypeOption, EventVenueOption } from "@/lib/events/types";
-import { expandOccurrences } from "@/lib/events/recurrence";
+import { expandOccurrences, MAX_GENERATED_OCCURRENCES } from "@/lib/events/recurrence";
 import { zoomApi } from "@/lib/zoom/client";
 import { encryptSecret } from "@/lib/zoom/crypto";
 import { sanitizeEventHtml } from "@/lib/content/sanitize-event-html";
@@ -20,6 +20,7 @@ type EventInput = {
   title: string;
   excerpt: string;
   body: string;
+  imageUrl: string;
   currentStatus: string;
   typeId: string;
   hostId: string;
@@ -54,6 +55,7 @@ type EventInput = {
   zoomObjectId: string;
   zoomJoinUrl: string;
   recurrenceFrequency: "none" | "daily" | "weekly" | "monthly";
+  recurrenceEndMode: "count" | "date" | "never";
   recurrenceCount: number;
   recurrenceUntil: string;
   accessLevels: string[];
@@ -139,12 +141,19 @@ function parseInput(formData: FormData): EventInput {
   const rsvpConfig = parseRsvpConfig(value(formData, "rsvp_config"));
   const hostAssignments = parseHostAssignments(value(formData, "host_assignments"));
   const legacyHostId = value(formData, "host_id");
+  const rawRecurrenceEndMode = value(formData, "recurrence_end_mode");
+  const recurrenceEndMode =
+    rawRecurrenceEndMode === "date" || rawRecurrenceEndMode === "never" ? rawRecurrenceEndMode : "count";
+  const rawRecurrenceCount = value(formData, "recurrence_count");
+  const recurrenceCount = Math.min(Math.max(Number(rawRecurrenceCount || 0), 0), 50);
+  const recurrenceUntil = recurrenceEndMode === "date" ? value(formData, "recurrence_until") : "";
   return {
     id: value(formData, "id") || undefined,
     intent: intent(formData),
     title: value(formData, "title"),
     excerpt: value(formData, "excerpt"),
     body: value(formData, "body"),
+    imageUrl: value(formData, "image_url"),
     currentStatus: value(formData, "current_status") || "draft",
     typeId: value(formData, "type_id"),
     hostId: legacyHostId,
@@ -183,8 +192,9 @@ function parseInput(formData: FormData): EventInput {
     recurrenceFrequency: ["daily", "weekly", "monthly"].includes(value(formData, "recurrence_frequency"))
       ? (value(formData, "recurrence_frequency") as "daily" | "weekly" | "monthly")
       : "none",
-    recurrenceCount: Math.min(Math.max(Number(value(formData, "recurrence_count") || 1), 1), 50),
-    recurrenceUntil: value(formData, "recurrence_until"),
+    recurrenceEndMode,
+    recurrenceCount: recurrenceEndMode === "never" || rawRecurrenceCount === "0" ? 0 : recurrenceCount || 1,
+    recurrenceUntil,
     accessLevels: parseAccessLevels(formData.getAll("access_levels")),
   };
 }
@@ -599,6 +609,7 @@ function baseEventRow(input: EventInput, userId: string, hostId: string | null, 
     excerpt: input.excerpt || null,
     description: input.excerpt || null,
     body: sanitizeEventHtml(input.body),
+    image_url: input.imageUrl || null,
     status,
     starts_at: startsAt,
     ends_at: endsAt,
@@ -625,7 +636,7 @@ function zoomRecurrence(input: EventInput, startsAt: string) {
   if (input.recurrenceFrequency === "none") return null;
   const end = input.recurrenceUntil
     ? { end_date_time: endOfDateIso(input.recurrenceUntil, input.timezone) }
-    : { end_times: input.recurrenceCount };
+    : { end_times: input.recurrenceCount > 0 ? input.recurrenceCount : MAX_GENERATED_OCCURRENCES };
   const startDate = new Date(startsAt);
   if (input.recurrenceFrequency === "daily") {
     return { type: 1, repeat_interval: 1, ...end };
@@ -820,7 +831,7 @@ export async function saveEvent(formData: FormData) {
         endsAt,
         frequency: input.recurrenceFrequency,
         interval: 1,
-        count: input.recurrenceUntil ? 50 : input.recurrenceCount,
+        count: input.recurrenceUntil ? 0 : input.recurrenceCount,
         until: input.recurrenceUntil ? fromZonedTime(`${input.recurrenceUntil}T23:59:59`, input.timezone) : null,
       });
       const { error: seriesError } = await supabase.from("event_series").insert({

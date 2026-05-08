@@ -18,11 +18,13 @@ type Badge = {
 
 type EventCta = {
   label: string;
-  href: string;
+  href?: string;
   variant: "primary" | "secondary" | "outline";
   target?: string;
   rel?: string;
 };
+
+const JOIN_WINDOW_MS = 60 * 60 * 1000;
 
 function badgeClasses(tone: BadgeTone) {
   if (tone === "secondary") return "bg-secondary/10 text-secondary";
@@ -68,20 +70,26 @@ export function eventJoinUrl(event: MemberEvent) {
   return null;
 }
 
+export function eventCanJoin(event: MemberEvent, nowMs: number) {
+  const starts = new Date(event.starts_at).getTime();
+  const ends = new Date(event.ends_at).getTime();
+  return nowMs >= starts - JOIN_WINDOW_MS && nowMs <= ends;
+}
+
 export function eventCostLabel(event: MemberEvent) {
   const tickets = (event.event_ticket_type ?? []).filter((ticket) => ticket.status === "active");
   if (event.ticketing_mode === "ticket_required" && tickets.length > 0) {
     const prices = tickets.map((ticket) => ticket.price_cents).filter((price) => Number.isFinite(price));
     if (prices.length === 0) return "Ticket required";
     const lowest = Math.min(...prices);
-    if (lowest <= 0) return "Free";
+    if (lowest <= 0) return "Free for members";
     return `From ${new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: tickets[0]?.currency?.toUpperCase() ?? "USD",
       maximumFractionDigits: lowest % 100 === 0 ? 0 : 2,
     }).format(lowest / 100)}`;
   }
-  return eventHasActiveRsvp(event) ? "Free RSVP" : "Included";
+  return "Free for members";
 }
 
 export function getEventBadges(event: MemberEvent, nowMs: number): Badge[] {
@@ -115,6 +123,13 @@ export function getEventCta(event: MemberEvent, nowMs: number): EventCta {
   const joinUrl = eventJoinUrl(event);
 
   if (joinUrl && !isPast) {
+    if (!eventCanJoin(event, nowMs)) {
+      return {
+        label: "Join Event",
+        variant: "outline",
+      };
+    }
+
     return {
       label: "Join Event",
       href: joinUrl,
@@ -143,7 +158,7 @@ export function getEventCta(event: MemberEvent, nowMs: number): EventCta {
   return {
     label: "View Event",
     href: `/events/${event.id}`,
-    variant: "secondary",
+    variant: "outline",
   };
 }
 
@@ -270,16 +285,28 @@ export function MemberEventCard({
           <span className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             {eventCostLabel(event)}
           </span>
-          <Button
-            href={cta.href}
-            variant={cta.variant}
-            size="sm"
-            target={cta.target}
-            rel={cta.rel}
-            className="w-full justify-center sm:w-auto"
-          >
-            {cta.label}
-          </Button>
+          {cta.href ? (
+            <Button
+              href={cta.href}
+              variant={cta.variant}
+              size="sm"
+              target={cta.target}
+              rel={cta.rel}
+              className="w-full justify-center sm:w-auto"
+            >
+              {cta.label}
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant={cta.variant}
+              size="sm"
+              disabled
+              className="w-full justify-center sm:w-auto"
+            >
+              {cta.label}
+            </Button>
+          )}
         </div>
       </div>
     </SurfaceCard>

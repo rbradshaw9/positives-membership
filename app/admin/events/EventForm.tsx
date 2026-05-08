@@ -498,6 +498,7 @@ export function EventForm({
     event?.registration_placement ?? "after_description"
   );
   const [recurrence, setRecurrence] = useState("none");
+  const [recurrenceEndMode, setRecurrenceEndMode] = useState<"count" | "date" | "never">("count");
   const [accessLevels, setAccessLevels] = useState<string[]>(
     EVENT_ACCESS_LEVELS
       .filter((level) => (event ? hasAccess(event, level.value) : defaultAccessValues(defaults).includes(level.value)))
@@ -908,6 +909,18 @@ export function EventForm({
           </div>
 
           <div className="admin-form-field">
+            <label htmlFor="image_url" className="admin-label">Event image</label>
+            <input
+              id="image_url"
+              name="image_url"
+              defaultValue={event?.image_url ?? ""}
+              className="admin-input"
+              placeholder="/api/media/assets/... or https://..."
+            />
+            <p className="admin-hint">Used as the member-facing event hero image. Leave blank to use the event placeholder.</p>
+          </div>
+
+          <div className="admin-form-field">
             <label className="admin-label">Event details</label>
             <EventDetailsEditor defaultValue={event?.body ?? event?.description ?? ""} />
             <p className="admin-hint">Supports formatted text, links, images, and safe HTML. Scripts and unsafe tags are removed on save.</p>
@@ -953,14 +966,35 @@ export function EventForm({
               {recurrence !== "none" ? (
                 <>
                   <div className="admin-form-field">
-                    <label htmlFor="recurrence_count" className="admin-label">Occurrences</label>
-                    <input id="recurrence_count" name="recurrence_count" type="number" min="1" max="50" defaultValue="4" className="admin-input" />
+                    <label htmlFor="recurrence_end_mode" className="admin-label">Ends</label>
+                    <select
+                      id="recurrence_end_mode"
+                      name="recurrence_end_mode"
+                      value={recurrenceEndMode}
+                      onChange={(event) => setRecurrenceEndMode(event.target.value as "count" | "date" | "never")}
+                      className="admin-select"
+                    >
+                      <option value="count">After a number of events</option>
+                      <option value="date">On a date</option>
+                      <option value="never">No end date</option>
+                    </select>
                   </div>
-                  <div className="admin-form-field">
-                    <label htmlFor="recurrence_until" className="admin-label">End by</label>
-                    <input id="recurrence_until" name="recurrence_until" type="date" className="admin-input" />
-                    <p className="admin-hint">Optional. Leave blank to use the occurrence count.</p>
-                  </div>
+                  {recurrenceEndMode === "count" ? (
+                    <div className="admin-form-field">
+                      <label htmlFor="recurrence_count" className="admin-label">Occurrences</label>
+                      <input id="recurrence_count" name="recurrence_count" type="number" min="0" max="50" defaultValue="4" className="admin-input" />
+                      <p className="admin-hint">Use 0 for unlimited. The next 60 occurrences are created now.</p>
+                    </div>
+                  ) : null}
+                  {recurrenceEndMode === "date" ? (
+                    <div className="admin-form-field">
+                      <label htmlFor="recurrence_until" className="admin-label">End by</label>
+                      <input id="recurrence_until" name="recurrence_until" type="date" required className="admin-input" />
+                    </div>
+                  ) : null}
+                  {recurrenceEndMode === "never" ? (
+                    <input type="hidden" name="recurrence_count" value="0" />
+                  ) : null}
                 </>
               ) : null}
             </div>
