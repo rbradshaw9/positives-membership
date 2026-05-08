@@ -18,6 +18,7 @@ import {
   deleteSession,
 } from "../actions";
 import { ConfirmDeleteButton } from "../ConfirmDeleteButton";
+import { CourseImagePicker } from "../CourseImagePicker";
 
 export const metadata = { title: "Edit Course — Positives Admin" };
 
@@ -38,9 +39,10 @@ type SessionRow = {
   duration_seconds: number | null; resources: string | null; sort_order: number;
 };
 type LessonRow = {
-  id: string; title: string; description: string | null;
-  body: string | null; video_url: string | null;
+  id: string; slug: string | null; title: string; description: string | null;
+  body: string | null; video_url: string | null; audio_url: string | null;
   duration_seconds: number | null; resources: string | null; sort_order: number;
+  status: string; is_preview: boolean;
   course_session: SessionRow[];
 };
 type ModuleRow = {
@@ -49,6 +51,9 @@ type ModuleRow = {
 };
 type CourseRow = {
   id: string; title: string; slug: string | null; description: string | null;
+  short_description: string | null; full_description: string | null; cover_image_url: string | null;
+  promo_video_url: string | null; estimated_duration_seconds: number | null; category: string | null;
+  access_type: string; visibility: string;
   status: string; admin_notes: string | null;
   stripe_product_id: string | null; stripe_price_id: string | null; is_standalone_purchasable: boolean;
   price_cents: number | null; points_price: number | null;
@@ -69,7 +74,7 @@ const BANNER: Record<string, string> = {
 function ContentFields({
   defaults,
 }: {
-  defaults: { description?: string | null; body?: string | null; video_url?: string | null; duration_seconds?: number | null; resources?: string | null };
+  defaults: { description?: string | null; body?: string | null; video_url?: string | null; audio_url?: string | null; duration_seconds?: number | null; resources?: string | null; status?: string | null; is_preview?: boolean | null };
 }) {
   return (
     <div className="admin-form-grid-2">
@@ -84,9 +89,29 @@ function ContentFields({
           className="admin-input" placeholder="https://vimeo.com/123456" />
       </div>
       <div className="admin-form-field">
+        <label className="admin-label">Audio URL</label>
+        <input name="audio_url" type="url" defaultValue={defaults.audio_url ?? ""}
+          className="admin-input" placeholder="https://.../lesson-audio.mp3" />
+      </div>
+      <div className="admin-form-field">
         <label className="admin-label">Duration (seconds)</label>
         <input name="duration_seconds" type="number" min="0"
           defaultValue={defaults.duration_seconds ?? ""} className="admin-input" placeholder="e.g. 1800" />
+      </div>
+      <div className="admin-form-field">
+        <label className="admin-label">Status</label>
+        <select name="status" defaultValue={defaults.status ?? "published"} className="admin-select">
+          <option value="published">Published</option>
+          <option value="draft">Draft</option>
+          <option value="archived">Archived</option>
+        </select>
+      </div>
+      <div className="admin-form-field">
+        <label className="admin-label">Preview lesson</label>
+        <select name="is_preview" defaultValue={defaults.is_preview ? "true" : "false"} className="admin-select">
+          <option value="false">Locked</option>
+          <option value="true">Public preview</option>
+        </select>
       </div>
       <div className="admin-form-field">
         <label className="admin-label">Resources (JSON)</label>
@@ -117,12 +142,13 @@ export default async function CourseEditorPage({
   const { data: course, error } = await supabase
     .from("course")
     .select(`
-      id, title, slug, description, status, admin_notes,
+      id, title, slug, description, short_description, full_description, cover_image_url,
+      promo_video_url, estimated_duration_seconds, category, access_type, visibility, status, admin_notes,
       stripe_product_id, stripe_price_id, is_standalone_purchasable, price_cents, points_price, points_unlock_enabled,
       course_module(
         id, title, description, sort_order,
         course_lesson(
-          id, title, description, body, video_url, duration_seconds, resources, sort_order,
+          id, slug, title, description, body, video_url, audio_url, duration_seconds, resources, sort_order, status, is_preview,
           course_session(id, title, description, body, video_url, duration_seconds, resources, sort_order)
         )
       )
@@ -239,6 +265,46 @@ export default async function CourseEditorPage({
                 <label className="admin-label">Description</label>
                 <textarea name="description" rows={3} defaultValue={c.description ?? ""}
                   className="admin-textarea admin-textarea--no-resize" />
+              </div>
+              <div className="admin-form-field">
+                <label className="admin-label">Short description</label>
+                <textarea name="short_description" rows={3} defaultValue={c.short_description ?? c.description ?? ""}
+                  className="admin-textarea admin-textarea--no-resize" />
+              </div>
+              <div className="admin-form-field" style={{ gridColumn: "1 / -1" }}>
+                <label className="admin-label">Full sales description</label>
+                <textarea name="full_description" rows={5} defaultValue={c.full_description ?? ""}
+                  className="admin-textarea" />
+              </div>
+              <CourseImagePicker defaultValue={c.cover_image_url} />
+              <div className="admin-form-field">
+                <label className="admin-label">Promo video URL</label>
+                <input name="promo_video_url" type="url" defaultValue={c.promo_video_url ?? ""} className="admin-input" />
+              </div>
+              <div className="admin-form-field">
+                <label className="admin-label">Estimated duration (seconds)</label>
+                <input name="estimated_duration_seconds" type="number" min="0" defaultValue={c.estimated_duration_seconds ?? ""} className="admin-input" />
+              </div>
+              <div className="admin-form-field">
+                <label className="admin-label">Category</label>
+                <input name="category" type="text" defaultValue={c.category ?? ""} className="admin-input" />
+              </div>
+              <div className="admin-form-field">
+                <label className="admin-label">Access type</label>
+                <select name="access_type" defaultValue={c.access_type ?? "membership_included"} className="admin-select">
+                  <option value="free">Free</option>
+                  <option value="paid">Paid</option>
+                  <option value="membership_included">Membership included</option>
+                  <option value="manual">Manual grant only</option>
+                </select>
+              </div>
+              <div className="admin-form-field">
+                <label className="admin-label">Visibility</label>
+                <select name="visibility" defaultValue={c.visibility ?? "public"} className="admin-select">
+                  <option value="public">Public catalog</option>
+                  <option value="members">Members only</option>
+                  <option value="hidden">Hidden</option>
+                </select>
               </div>
               <div className="admin-form-field">
                 <label className="admin-label">Status</label>

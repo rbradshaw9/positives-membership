@@ -50,6 +50,7 @@ test("course-only members keep owned course access and get calm resubscribe prom
     password: MEMBER_PASSWORD,
     next: "/today",
     expectedPath: "/library",
+    normalizeAccess: false,
   });
 
   await expect(page.getByRole("heading", { name: "Library" })).toBeVisible();
@@ -57,12 +58,11 @@ test("course-only members keep owned course access and get calm resubscribe prom
   await expect(page.getByRole("heading", { name: "Want the full daily practice?" })).toBeVisible();
 
   await page.getByRole("link", { name: /E2E Course Webhook Fixture/i }).click();
-  await expect(page).toHaveURL(new RegExp(`/library/courses/${courseSlug}$`));
+  await expect(page).toHaveURL(new RegExp(`/my-courses/${courseSlug}$`));
   await expect(page.getByRole("heading", { name: "E2E Course Webhook Fixture" })).toBeVisible();
 
   await page.goto("/courses");
-  await expect(page.getByText("You already have")).toBeVisible();
-  await expect(page.getByRole("link", { name: /E2E Course Webhook Fixture/i })).toHaveCount(0);
+  await expect(page.locator(`a[href="/courses/${courseSlug}"]`).first()).toBeVisible();
 
   await page.goto("/today");
   await expect(page).toHaveURL(/\/join$/);

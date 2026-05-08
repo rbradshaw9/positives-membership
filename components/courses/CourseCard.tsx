@@ -6,7 +6,7 @@ import { TIER_ACCESS_LABEL_BY_TIER } from "@/lib/plans";
 /**
  * components/courses/CourseCard.tsx
  *
- * Library dashboard card for a single course.
+ * Course dashboard card for a single course.
  * Shows cover art (or branded gradient), title, lesson count, and progress bar.
  */
 
@@ -33,7 +33,7 @@ export function CourseCard({ course, index }: CourseCardProps) {
       : 0;
   const isComplete = course.lesson_count > 0 && course.completed_count >= course.lesson_count;
 
-  const href = `/library/courses/${course.slug ?? course.id}`;
+  const href = `/my-courses/${course.slug ?? course.id}`;
 
   return (
     <Link

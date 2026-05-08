@@ -22,25 +22,25 @@ test.afterAll(async () => {
 test("logged-out visitors can open course details and start Stripe Checkout from the detail page", async ({
   page,
 }) => {
-  const fixture = await createStandaloneCourseFixture("detail-public", {
+  const fixture = await createStandaloneCourseFixture(`detail-public-${Date.now()}`, {
     withOutline: true,
     title: "E2E Public Course Detail",
   });
   fixtureCourseIds.push(fixture.courseId);
 
   await page.goto("/courses");
-  await expect(page.getByRole("heading", { name: "Keep the courses that matter to you." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Focused support you can keep." })).toBeVisible();
   await page.getByRole("link", { name: "E2E Public Course Detail", exact: true }).click();
 
   await expect(page).toHaveURL(new RegExp(`/courses/${fixture.courseSlug}$`));
   await expect(page.getByRole("heading", { name: "E2E Public Course Detail" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Keep it in your library." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Curriculum Preview" })).toBeVisible();
   await expect(page.getByText("Module 1: Foundations")).toBeVisible();
   await expect(page.getByText("Lesson 1: Setting a gentler rhythm")).toBeVisible();
 
   await Promise.all([
     page.waitForURL(/checkout\.stripe\.com/),
-    page.getByRole("button", { name: "Add to my library" }).click(),
+    page.getByRole("button", { name: "Add to My Courses" }).click(),
   ]);
 });
 
@@ -49,7 +49,7 @@ test("signed-in members can quick-buy from the course detail page and then open 
 }) => {
   await ensureMemberSavedPaymentMethod(LEVEL_2_MEMBER_EMAIL);
 
-  const fixture = await createStandaloneCourseFixture("detail-owned", {
+  const fixture = await createStandaloneCourseFixture(`detail-owned-${Date.now()}`, {
     withOutline: true,
     title: "E2E Saved Card Course",
   });
@@ -63,16 +63,16 @@ test("signed-in members can quick-buy from the course detail page and then open 
   });
 
   await expect(page.getByRole("heading", { name: "E2E Saved Card Course" })).toBeVisible();
-  await page.getByRole("button", { name: "Add to my library" }).click();
-  await page.getByRole("button", { name: "Confirm and add to library" }).click();
+  await page.getByRole("button", { name: "Add to My Courses" }).click();
+  await page.getByRole("button", { name: "Confirm and add" }).click();
 
-  await expect(page).toHaveURL(/\/library$/);
-  await expect(page.getByRole("link", { name: "E2E Saved Card Course" })).toBeVisible();
+  await expect(page).toHaveURL(/\/my-courses$/);
+  await expect(page.locator(`a[href="/my-courses/${fixture.courseSlug}"]`)).toBeVisible();
 
   await page.goto(`/courses/${fixture.courseSlug}`);
-  await expect(page.getByRole("link", { name: "Open in library" })).toBeVisible();
-  await page.getByRole("link", { name: "Open in library" }).click();
-  await expect(page).toHaveURL(new RegExp(`/library/courses/${fixture.courseSlug}$`));
+  await expect(page.getByRole("link", { name: "Open in My Courses" })).toBeVisible();
+  await page.getByRole("link", { name: "Open in My Courses" }).click();
+  await expect(page).toHaveURL(new RegExp(`/my-courses/${fixture.courseSlug}$`));
 
   await expect(page.getByRole("heading", { name: "E2E Saved Card Course" })).toBeVisible();
 });

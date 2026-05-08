@@ -360,10 +360,21 @@ export function LearnDashImportPanel() {
               >
                 {result.coursesImported} course{result.coursesImported !== 1 ? "s" : ""},
                 {" "}{result.modulesImported} module{result.modulesImported !== 1 ? "s" : ""},
-                {" "}{result.lessonsImported} lesson{result.lessonsImported !== 1 ? "s" : ""},
-                {" "}{result.sessionsImported} topic{result.sessionsImported !== 1 ? "s" : ""} imported.
+                {" "}{result.lessonsImported} lesson{result.lessonsImported !== 1 ? "s" : ""} imported.
               </p>
-              {result.errors.length > 0 && (
+              <p
+                style={{
+                  fontSize: "0.8125rem",
+                  color: "var(--color-muted-fg)",
+                  lineHeight: 1.6,
+                  marginTop: "0.35rem",
+                }}
+              >
+                Resources: {result.resourcesCopied ?? 0} copied to S3,
+                {" "}{result.resourcesLinked ?? 0} kept as external links,
+                {" "}{result.resourceFailures ?? 0} failed to save.
+              </p>
+              {[...(result.warnings ?? []), ...result.errors].length > 0 && (
                 <div style={{ marginTop: "0.5rem" }}>
                   <p
                     style={{
@@ -373,7 +384,7 @@ export function LearnDashImportPanel() {
                       marginBottom: "0.25rem",
                     }}
                   >
-                    Warnings ({result.errors.length}):
+                    Import review ({[...(result.warnings ?? []), ...result.errors].length}):
                   </p>
                   <ul
                     style={{
@@ -383,7 +394,7 @@ export function LearnDashImportPanel() {
                       lineHeight: 1.6,
                     }}
                   >
-                    {result.errors.slice(0, 10).map((e, i) => (
+                    {[...(result.warnings ?? []), ...result.errors].slice(0, 10).map((e, i) => (
                       <li key={i}>{e}</li>
                     ))}
                   </ul>

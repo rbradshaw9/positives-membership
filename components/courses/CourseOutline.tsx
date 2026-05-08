@@ -86,7 +86,7 @@ function LessonRow({ lesson, courseSlug, isNext }: LessonRowProps) {
   const [open, setOpen] = useState(false);
   const hasSessions = lesson.sessions.length > 0;
 
-  const href = `/library/courses/${courseSlug}/${lesson.id}`;
+  const href = `/my-courses/${courseSlug}/lessons/${lesson.slug ?? lesson.id}`;
 
   return (
     <div className="flex flex-col">

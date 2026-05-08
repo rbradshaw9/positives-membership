@@ -102,14 +102,14 @@ export function CourseCheckoutButton({
         }}
       >
         {owned
-          ? "In your library"
+          ? "In My Courses"
           : isPending
             ? signedIn
-              ? "Adding to library..."
+              ? "Adding to My Courses..."
               : "Opening checkout..."
             : confirming
-              ? "Confirm and add to library"
-              : "Add to my library"}
+              ? "Confirm and add"
+              : "Add to My Courses"}
       </button>
       {message && (
         <p style={{ marginTop: "0.6rem", fontSize: "0.82rem", color: "#146C5F" }}>

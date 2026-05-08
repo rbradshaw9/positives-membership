@@ -1806,15 +1806,19 @@ export async function loginWithPassword(
     next = "/today",
     expectedPath = next,
     allowBootstrapFallback = true,
+    normalizeAccess = true,
   }: {
     email: string;
     password: string;
     next?: string;
     expectedPath?: string;
     allowBootstrapFallback?: boolean;
+    normalizeAccess?: boolean;
   }
 ) {
-  await normalizeLoginFixtureAccess(email);
+  if (normalizeAccess) {
+    await normalizeLoginFixtureAccess(email);
+  }
   await page.goto(`/login?next=${encodeURIComponent(next)}`);
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);

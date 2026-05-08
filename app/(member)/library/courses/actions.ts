@@ -112,12 +112,16 @@ async function awardLessonAndCoursePoints({
 
 export async function markLessonComplete(lessonId: string, courseId: string) {
   const { supabase, member } = await getMemberAndCourse(courseId);
+  const looseSupabase = asLooseSupabaseClient(supabase);
 
-  await supabase.from("course_progress").upsert(
+  await looseSupabase.from("course_progress").upsert(
     {
       member_id: member.id,
       course_id: courseId,
       course_lesson_id: lessonId,
+      status: "completed",
+      started_at: new Date().toISOString(),
+      last_viewed_at: new Date().toISOString(),
       completed: true,
       completed_at: new Date().toISOString(),
     },
@@ -131,22 +135,32 @@ export async function markLessonComplete(lessonId: string, courseId: string) {
     lessonId,
   });
 
+  await updateEnrollmentProgress(supabase, member.id, courseId, lessonId);
+
   revalidatePath(`/library`);
+  revalidatePath(`/my-courses`);
   revalidatePath(`/library/courses/[slug]`, "page");
+  revalidatePath(`/my-courses/[slug]`, "page");
 }
 
 // ─── Mark lesson incomplete (undo) ────────────────────────────────────────────
 
 export async function markLessonIncomplete(lessonId: string, courseId: string) {
   const { supabase, member } = await getMemberAndCourse(courseId);
+  const looseSupabase = asLooseSupabaseClient(supabase);
 
-  await supabase
+  await looseSupabase
     .from("course_progress")
-    .update({ completed: false, completed_at: null, auto_completed: false })
-    .match({ member_id: member.id, course_lesson_id: lessonId });
+    .update({ completed: false, completed_at: null, auto_completed: false, status: "in_progress" })
+    .eq("member_id", member.id)
+    .eq("course_lesson_id", lessonId);
+
+  await updateEnrollmentProgress(supabase, member.id, courseId, lessonId);
 
   revalidatePath(`/library`);
+  revalidatePath(`/my-courses`);
   revalidatePath(`/library/courses/[slug]`, "page");
+  revalidatePath(`/my-courses/[slug]`, "page");
 }
 
 // ─── Update progress from video milestone (auto-mark at 95%) ──────────────────
@@ -157,6 +171,7 @@ export async function updateCourseVideoProgress(
   watchPercent: number
 ) {
   const { supabase, member } = await getMemberAndCourse(courseId);
+  const looseSupabase = asLooseSupabaseClient(supabase);
 
   const isComplete = watchPercent >= 95;
 
@@ -168,11 +183,14 @@ export async function updateCourseVideoProgress(
 
   if (existing) {
     const shouldAward = isComplete && !existing.completed;
-    await supabase
+    await looseSupabase
       .from("course_progress")
       .update({
         video_watch_percent: Math.max(existing.video_watch_percent, watchPercent),
         completed: existing.completed || isComplete,
+        status: existing.completed || isComplete ? "completed" : "in_progress",
+        started_at: new Date().toISOString(),
+        last_viewed_at: new Date().toISOString(),
         auto_completed: isComplete && !existing.completed,
         completed_at: isComplete && !existing.completed ? new Date().toISOString() : undefined,
       })
@@ -187,12 +205,15 @@ export async function updateCourseVideoProgress(
       });
     }
   } else {
-    await supabase.from("course_progress").insert({
+    await looseSupabase.from("course_progress").insert({
       member_id: member.id,
       course_id: courseId,
       course_lesson_id: lessonId,
       video_watch_percent: watchPercent,
       completed: isComplete,
+      status: isComplete ? "completed" : "in_progress",
+      started_at: new Date().toISOString(),
+      last_viewed_at: new Date().toISOString(),
       auto_completed: isComplete,
       completed_at: isComplete ? new Date().toISOString() : undefined,
     });
@@ -208,7 +229,65 @@ export async function updateCourseVideoProgress(
   }
 
   if (isComplete) {
+    await updateEnrollmentProgress(supabase, member.id, courseId, lessonId);
     revalidatePath(`/library`);
+    revalidatePath(`/my-courses`);
     revalidatePath(`/library/courses/[slug]`, "page");
+    revalidatePath(`/my-courses/[slug]`, "page");
   }
+}
+
+async function updateEnrollmentProgress(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  memberId: string,
+  courseId: string,
+  lessonId: string
+) {
+  const looseSupabase = asLooseSupabaseClient(supabase);
+  const { data: lessons } = await looseSupabase
+    .from("course_lesson")
+    .select("id, course_module!inner(course_id)")
+    .eq("course_module.course_id", courseId)
+    .eq("status", "published");
+
+  const lessonIds = ((lessons ?? []) as Array<{ id: string }>).map((lesson) => lesson.id);
+  const { data: progress } = await looseSupabase
+    .from("course_progress")
+    .select("course_lesson_id")
+    .eq("member_id", memberId)
+    .eq("course_id", courseId)
+    .eq("completed", true)
+    .in("course_lesson_id", lessonIds.length > 0 ? lessonIds : ["00000000-0000-0000-0000-000000000000"]);
+
+  const completedCount = ((progress ?? []) as Array<{ course_lesson_id: string | null }>).length;
+  const progressPercent = lessonIds.length > 0 ? Math.round((completedCount / lessonIds.length) * 100) : 0;
+
+  await looseSupabase
+    .from("course_entitlement")
+    .update({
+      last_accessed_lesson_id: lessonId,
+      last_accessed_at: new Date().toISOString(),
+      progress_percent: progressPercent,
+      completed_at: progressPercent >= 100 ? new Date().toISOString() : null,
+    })
+    .eq("member_id", memberId)
+    .eq("course_id", courseId)
+    .eq("status", "active");
+}
+
+export async function recordLessonViewed(lessonId: string, courseId: string) {
+  const { supabase, member } = await getMemberAndCourse(courseId);
+  const looseSupabase = asLooseSupabaseClient(supabase);
+  await looseSupabase.from("course_progress").upsert(
+    {
+      member_id: member.id,
+      course_id: courseId,
+      course_lesson_id: lessonId,
+      status: "in_progress",
+      started_at: new Date().toISOString(),
+      last_viewed_at: new Date().toISOString(),
+    },
+    { onConflict: "member_id,course_lesson_id" }
+  );
+  await updateEnrollmentProgress(supabase, member.id, courseId, lessonId);
 }

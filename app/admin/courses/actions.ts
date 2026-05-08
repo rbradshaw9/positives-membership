@@ -1,11 +1,13 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { sanitizeCourseHtml } from "@/lib/content/sanitize-course-html";
 import { getStripe } from "@/lib/stripe/config";
+import { getS3MediaConfig, mediaObjectKey, putMediaObject } from "@/lib/media/s3";
 
 /**
  * app/admin/courses/actions.ts
@@ -307,6 +309,16 @@ export async function updateCourse(formData: FormData) {
       title,
       slug: slugify(title!),
       description: formData.get("description")?.toString().trim() || null,
+      short_description: formData.get("short_description")?.toString().trim() || formData.get("description")?.toString().trim() || null,
+      full_description: sanitizeCourseHtml(formData.get("full_description")?.toString().trim() || null),
+      cover_image_url: formData.get("cover_image_url")?.toString().trim() || null,
+      promo_video_url: formData.get("promo_video_url")?.toString().trim() || null,
+      estimated_duration_seconds: formData.get("estimated_duration_seconds")?.toString()
+        ? parseInt(formData.get("estimated_duration_seconds")!.toString(), 10)
+        : null,
+      category: formData.get("category")?.toString().trim() || null,
+      access_type: formData.get("access_type")?.toString() || "membership_included",
+      visibility: formData.get("visibility")?.toString() || "public",
       status: formData.get("status")?.toString() || "draft",
       is_standalone_purchasable:
         formData.get("is_standalone_purchasable")?.toString() === "true",
@@ -483,12 +495,16 @@ export async function createLesson(formData: FormData) {
   await supabase.from("course_lesson").insert({
     module_id: moduleId,
     title,
+    slug: slugify(title),
     description: formData.get("description")?.toString().trim() || null,
     body: sanitizeCourseHtml(formData.get("body")?.toString().trim() || null),
     video_url: formData.get("video_url")?.toString().trim() || null,
+    audio_url: formData.get("audio_url")?.toString().trim() || null,
     duration_seconds: formData.get("duration_seconds")?.toString()
       ? parseInt(formData.get("duration_seconds")!.toString(), 10) : null,
     resources: formData.get("resources")?.toString().trim() || null,
+    is_preview: formData.get("is_preview")?.toString() === "true",
+    status: formData.get("status")?.toString() || "published",
     sort_order: (count ?? 0) + 1,
   });
 
@@ -507,12 +523,16 @@ export async function updateLesson(formData: FormData) {
     .from("course_lesson")
     .update({
       title,
+      slug: slugify(title),
       description: formData.get("description")?.toString().trim() || null,
       body: sanitizeCourseHtml(formData.get("body")?.toString().trim() || null),
       video_url: formData.get("video_url")?.toString().trim() || null,
+      audio_url: formData.get("audio_url")?.toString().trim() || null,
       duration_seconds: formData.get("duration_seconds")?.toString()
         ? parseInt(formData.get("duration_seconds")!.toString(), 10) : null,
       resources: formData.get("resources")?.toString().trim() || null,
+      is_preview: formData.get("is_preview")?.toString() === "true",
+      status: formData.get("status")?.toString() || "published",
       updated_at: new Date().toISOString(),
     })
     .eq("id", lessonId!);
@@ -608,6 +628,10 @@ export type LearnDashImportResult = {
   modulesImported: number;
   lessonsImported: number;
   sessionsImported: number;
+  resourcesCopied: number;
+  resourcesLinked: number;
+  resourceFailures: number;
+  warnings: string[];
   errors: string[];
 };
 
@@ -896,13 +920,59 @@ function resolveImportedVideoUrl(params: {
   );
 }
 
+type ImportedResourceItem = {
+  label: string;
+  url: string;
+  type: string;
+};
+
+type ImportResourceStats = {
+  resourcesCopied: number;
+  resourcesLinked: number;
+  resourceFailures: number;
+  warnings: string[];
+};
+
+const MAX_IMPORTED_RESOURCE_BYTES = 50 * 1024 * 1024;
+
+function resourceKind(type: string, contentType?: string | null) {
+  if (type === "audio" || contentType?.startsWith("audio/")) return "audio";
+  if (type === "video" || contentType?.startsWith("video/")) return "video";
+  if (type === "pdf" || type === "document" || contentType === "application/pdf") return "document";
+  return "other";
+}
+
+function safeResourceFilename(value: string) {
+  return (value.split("/").pop()?.split("?")[0] || "course-resource")
+    .normalize("NFKD")
+    .replace(/[^\w.\-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase() || "course-resource";
+}
+
+function inferResourceType(url: string, fallback = "file") {
+  let ext = "";
+  try {
+    ext = new URL(url).pathname.split(".").pop()?.toLowerCase() ?? "";
+  } catch {
+    ext = url.split("?")[0]?.split(".").pop()?.toLowerCase() ?? "";
+  }
+
+  if (ext === "pdf") return "pdf";
+  if (ext === "mp3" || ext === "m4a" || ext === "wav" || ext === "aac") return "audio";
+  if (ext === "mp4" || ext === "mov" || ext === "m4v" || ext === "webm") return "video";
+  if (ext === "zip") return "download";
+  if (["doc", "docx", "ppt", "pptx", "xls", "xlsx"].includes(ext)) return "document";
+  return fallback;
+}
+
 /**
- * Extract resource URLs (PDFs, MP3s, S3 files) from a materials shortcode or HTML content.
- * Returns a JSON string: [{label, url, type}]
+ * Extract resource URLs (PDFs, audio files, worksheets, S3 files) from
+ * LearnDash materials, rendered HTML, download shortcodes, and Elementor data.
  */
-function extractResources(...sources: Array<string | null | undefined>): string | null {
-  interface Resource { label: string; url: string; type: string }
-  const resources: Resource[] = [];
+function extractResourceItems(...sources: Array<string | null | undefined>): ImportedResourceItem[] {
+  const resources: ImportedResourceItem[] = [];
   const seen = new Set<string>();
   const sourceText = sources.filter(Boolean).join("\n");
 
@@ -917,24 +987,11 @@ function extractResources(...sources: Array<string | null | undefined>): string 
     const clean = decodeHtmlEntities(url).trim().replace(/[),.;]+$/, "");
     if (seen.has(clean) || !clean.startsWith("http")) return;
     seen.add(clean);
-    let ext = "";
-    try {
-      ext = new URL(clean).pathname.split(".").pop()?.toLowerCase() ?? "";
-    } catch {
-      ext = clean.split("?")[0]?.split(".").pop()?.toLowerCase() ?? "";
-    }
-    const detectedType =
-      ext === "pdf" ? "pdf"
-        : ext === "mp3" || ext === "m4a" ? "audio"
-          : ext === "mp4" || ext === "mov" || ext === "m4v" || ext === "webm" ? "video"
-            : ext === "zip" ? "download"
-              : ext === "doc" || ext === "docx" || ext === "ppt" || ext === "pptx" ? "document"
-                : type;
     const cleanLabel = stripHtml(decodeHtmlEntities(label)).trim();
     resources.push({
       label: cleanLabel || clean.split("/").pop()?.split("?")[0] || "Resource",
       url: clean,
-      type: detectedType,
+      type: inferResourceType(clean, type),
     });
   }
 
@@ -975,13 +1032,191 @@ function extractResources(...sources: Array<string | null | undefined>): string 
     if (isLikelyResourceUrl(url)) add(url);
   }
 
-  return resources.length > 0 ? JSON.stringify(resources) : null;
+  return resources;
+}
+
+async function fetchImportedResource(url: string) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
+
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: { "User-Agent": "Positives LearnDash Importer" },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const contentLength = Number(response.headers.get("content-length") ?? 0);
+    if (contentLength > MAX_IMPORTED_RESOURCE_BYTES) {
+      throw new Error("file is larger than 50 MB");
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    if (arrayBuffer.byteLength > MAX_IMPORTED_RESOURCE_BYTES) {
+      throw new Error("file is larger than 50 MB");
+    }
+
+    return {
+      body: Buffer.from(arrayBuffer),
+      contentType: response.headers.get("content-type")?.split(";")[0] ?? "application/octet-stream",
+      sizeBytes: arrayBuffer.byteLength,
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function copyImportedResourceToS3(params: {
+  item: ImportedResourceItem;
+  courseId: string;
+  sourceId?: string | null;
+}) {
+  const file = await fetchImportedResource(params.item.url);
+  const objectKey = mediaObjectKey(
+    "courses",
+    "learndash-imports",
+    params.courseId,
+    `${randomUUID()}-${safeResourceFilename(params.item.url)}`
+  );
+
+  await putMediaObject({
+    key: objectKey,
+    body: file.body,
+    contentType: file.contentType,
+  });
+
+  const { bucket } = getS3MediaConfig();
+  const { data: asset, error } = await adminClient()
+    .from("media_asset")
+    .insert({
+      storage_provider: "s3",
+      bucket,
+      object_key: objectKey,
+      kind: resourceKind(params.item.type, file.contentType),
+      usage_context: "course",
+      title: params.item.label,
+      original_filename: safeResourceFilename(params.item.url),
+      content_type: file.contentType,
+      size_bytes: file.sizeBytes,
+      status: "active",
+      visibility: "member",
+      metadata: {
+        source_system: "learndash",
+        source_url: params.item.url,
+        source_id: params.sourceId ?? null,
+      },
+    })
+    .select("id")
+    .single();
+
+  const assetRow = asset as { id: string } | null;
+  if (error || !assetRow) {
+    throw new Error(error?.message ?? "media asset insert failed");
+  }
+
+  return {
+    mediaAssetId: assetRow.id,
+    url: `/api/media/assets/${assetRow.id}`,
+    s3Key: objectKey,
+    contentType: file.contentType,
+    sizeBytes: file.sizeBytes,
+  };
+}
+
+async function persistImportedResources(params: {
+  courseId: string;
+  moduleId?: string | null;
+  lessonId?: string | null;
+  scope: "course" | "module" | "lesson";
+  sourceId?: string | null;
+  items: ImportedResourceItem[];
+  result: ImportResourceStats;
+}) {
+  if (params.items.length === 0) return;
+
+  for (let index = 0; index < params.items.length; index++) {
+    const item = params.items[index];
+    let copied:
+      | {
+          mediaAssetId: string;
+          url: string;
+          s3Key: string;
+          contentType: string;
+          sizeBytes: number;
+        }
+      | null = null;
+    let importStatus: "copied" | "external" | "failed" = "external";
+
+    try {
+      copied = await copyImportedResourceToS3({
+        item,
+        courseId: params.courseId,
+        sourceId: params.sourceId,
+      });
+      importStatus = "copied";
+      params.result.resourcesCopied++;
+    } catch (error) {
+      params.result.resourcesLinked++;
+      params.result.warnings.push(
+        `Kept external resource link for "${item.label}": ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    }
+
+    const { error } = await adminClient().from("course_resource").insert({
+      course_id: params.courseId,
+      module_id: params.scope === "module" || params.scope === "lesson" ? params.moduleId ?? null : null,
+      lesson_id: params.scope === "lesson" ? params.lessonId ?? null : null,
+      media_asset_id: copied?.mediaAssetId ?? null,
+      scope: params.scope,
+      label: item.label,
+      url: copied?.url ?? item.url,
+      s3_key: copied?.s3Key ?? null,
+      source_url: item.url,
+      source_system: "learndash",
+      source_id: params.sourceId ?? null,
+      source_metadata: { original_type: item.type },
+      file_type: item.type,
+      content_type: copied?.contentType ?? null,
+      size_bytes: copied?.sizeBytes ?? null,
+      sort_order: index + 1,
+      status: "active",
+      import_status: importStatus,
+    });
+
+    if (error) {
+      params.result.resourceFailures++;
+      params.result.warnings.push(`Could not save resource "${item.label}": ${error.message}`);
+    }
+  }
+}
+
+function primaryAudioUrl(items: ImportedResourceItem[]) {
+  return items.find((item) => item.type === "audio")?.url ?? null;
+}
+
+function hasMeaningfulImportedContent(params: {
+  body: string | null;
+  description: string | null;
+  videoUrl: string | null;
+  resources: ImportedResourceItem[];
+}) {
+  return Boolean(
+    params.videoUrl ||
+      params.resources.length > 0 ||
+      (params.body && stripHtml(params.body).length > 10) ||
+      (params.description && params.description.length > 10)
+  );
 }
 
 /**
- * Fully import a LearnDash course into the 4-level hierarchy.
- * LD: Course → Section → Lesson → Topic
- * Us: Course → Module → Lesson → Session
+ * Fully import a LearnDash course into the simplified Course → Module → Lesson
+ * hierarchy. LearnDash topics become lessons; materials become structured
+ * course_resource rows with S3 copies when the source file is fetchable.
  */
 export async function importFromLearnDash(formData: FormData): Promise<LearnDashImportResult> {
   await requireAdmin();
@@ -996,6 +1231,10 @@ export async function importFromLearnDash(formData: FormData): Promise<LearnDash
     modulesImported: 0,
     lessonsImported: 0,
     sessionsImported: 0,
+    resourcesCopied: 0,
+    resourcesLinked: 0,
+    resourceFailures: 0,
+    warnings: [],
     errors: [],
   };
 
@@ -1046,6 +1285,8 @@ export async function importFromLearnDash(formData: FormData): Promise<LearnDash
             ? stripHtml(decodeHtmlEntities(courseContentHtml)).slice(0, 500)
             : null;
         const courseCoverImageUrl = await getWpMediaUrl(baseUrl, hdrs, ldCourse.featured_media);
+        const courseMaterials = String(ldCourse.materials ?? "");
+        const courseResources = extractResourceItems(courseMaterials, courseContentHtml);
 
         // ── Create course ─────────────────────────────────────────────────────
         const { data: newCourse, error: courseErr } = await supabase
@@ -1054,8 +1295,15 @@ export async function importFromLearnDash(formData: FormData): Promise<LearnDash
             title: courseTitle,
             slug: slugify(courseTitle),
             description: courseDesc,
+            short_description: courseDesc,
+            full_description: cleanImportedHtml(courseContentHtml),
             cover_image_url: courseCoverImageUrl,
             status: "draft",
+            learndash_source: {
+              id: ldCourseId,
+              url: ldCourse.link || null,
+              imported_at: new Date().toISOString(),
+            },
             admin_notes: `Imported from LearnDash ID: ${ldCourseId} | URL: ${ldCourse.link || ""}`,
           })
           .select("id")
@@ -1066,6 +1314,14 @@ export async function importFromLearnDash(formData: FormData): Promise<LearnDash
           continue;
         }
         result.coursesImported++;
+
+        await persistImportedResources({
+          courseId: newCourse.id,
+          scope: "course",
+          sourceId: String(ldCourseId),
+          items: courseResources,
+          result,
+        });
 
         // ── Fetch course steps (section/lesson hierarchy) ─────────────────────
         const steps = await ldGet<{
@@ -1140,7 +1396,7 @@ export async function importFromLearnDash(formData: FormData): Promise<LearnDash
           }
         }
 
-        // ── Create lessons (LD lessons) and sessions (LD topics) ─────────────
+        // ── Create lessons. LearnDash topics become first-class lessons. ─────
         const lessonSortCounters = new Map<string, number>(); // moduleId → count
 
         for (const step of orderedSteps) {
@@ -1183,34 +1439,59 @@ export async function importFromLearnDash(formData: FormData): Promise<LearnDash
           const lessonDesc = lessonExcerptHtml
             ? stripHtml(decodeHtmlEntities(lessonExcerptHtml))
             : null;
-          const lessonResources = extractResources(lessonMaterials, lessonContentHtml, JSON.stringify(elementorData ?? ""));
-
-          // Sort order within this module
-          const lSortCount = lessonSortCounters.get(moduleId) ?? 0;
-          lessonSortCounters.set(moduleId, lSortCount + 1);
-
-          // Create the lesson row
-          const { data: newLesson, error: lessonErr } = await supabase
-            .from("course_lesson")
-            .insert({
-              module_id: moduleId,
-              title: lessonTitle,
-              description: lessonDesc,
+          const lessonResourceItems = extractResourceItems(lessonMaterials, lessonContentHtml, JSON.stringify(elementorData ?? ""));
+          const lessonResources = lessonResourceItems.length > 0 ? JSON.stringify(lessonResourceItems) : null;
+          const shouldCreateLesson =
+            step.topicIds.length === 0 ||
+            hasMeaningfulImportedContent({
               body: lessonBody,
-              video_url: lessonVideoUrl,
-              resources: lessonResources,
-              sort_order: lSortCount + 1,
-            })
-            .select("id")
-            .single();
+              description: lessonDesc,
+              videoUrl: lessonVideoUrl,
+              resources: lessonResourceItems,
+            });
 
-          if (lessonErr || !newLesson) {
-            result.errors.push(`Failed to create lesson "${lessonTitle}": ${lessonErr?.message}`);
-            continue;
+          if (shouldCreateLesson) {
+            const lSortCount = lessonSortCounters.get(moduleId) ?? 0;
+            lessonSortCounters.set(moduleId, lSortCount + 1);
+
+            const { data: newLesson, error: lessonErr } = await supabase
+              .from("course_lesson")
+              .insert({
+                module_id: moduleId,
+                title: lessonTitle,
+                slug: slugify(lessonTitle),
+                description: lessonDesc,
+                body: lessonBody,
+                video_url: lessonVideoUrl,
+                audio_url: primaryAudioUrl(lessonResourceItems),
+                resources: lessonResources,
+                sort_order: lSortCount + 1,
+                status: "published",
+                source_system: "learndash",
+                source_id: step.lessonId,
+                source_metadata: { source_type: "lesson", parent_course_id: ldCourseId },
+              })
+              .select("id")
+              .single();
+
+            if (lessonErr || !newLesson) {
+              result.errors.push(`Failed to create lesson "${lessonTitle}": ${lessonErr?.message}`);
+              continue;
+            }
+            result.lessonsImported++;
+
+            await persistImportedResources({
+              courseId: newCourse.id,
+              moduleId,
+              lessonId: newLesson.id,
+              scope: "lesson",
+              sourceId: step.lessonId,
+              items: lessonResourceItems,
+              result,
+            });
           }
-          result.lessonsImported++;
 
-          // ── Fetch and create topics (sessions) under this lesson ────────────
+          // ── Fetch LearnDash topics and import them as lessons ───────────────
           if (step.topicIds.length > 0) {
             // Fetch topics individually to preserve order
             for (let ti = 0; ti < step.topicIds.length; ti++) {
@@ -1245,23 +1526,48 @@ export async function importFromLearnDash(formData: FormData): Promise<LearnDash
                 const topicDesc = topicExcerptHtml
                   ? stripHtml(decodeHtmlEntities(topicExcerptHtml))
                   : null;
-                const topicResources = extractResources(topicMaterials, topicContentHtml, JSON.stringify(topicElementorData ?? ""));
+                const topicResourceItems = extractResourceItems(topicMaterials, topicContentHtml, JSON.stringify(topicElementorData ?? ""));
+                const topicResources = topicResourceItems.length > 0 ? JSON.stringify(topicResourceItems) : null;
 
-                const { error: sessErr } = await supabase.from("course_session").insert({
-                  lesson_id: newLesson.id,
+                const topicSortCount = lessonSortCounters.get(moduleId) ?? 0;
+                lessonSortCounters.set(moduleId, topicSortCount + 1);
+
+                const { data: topicLesson, error: topicLessonErr } = await supabase.from("course_lesson").insert({
                   module_id: moduleId,
                   title: topicTitle,
+                  slug: slugify(topicTitle),
                   description: topicDesc,
                   body: topicBody,
                   video_url: topicVideoUrl,
+                  audio_url: primaryAudioUrl(topicResourceItems),
                   resources: topicResources,
-                  sort_order: ti + 1,
-                });
+                  sort_order: topicSortCount + 1,
+                  status: "published",
+                  source_system: "learndash",
+                  source_id: topicId,
+                  source_parent_id: step.lessonId,
+                  source_metadata: {
+                    source_type: "topic",
+                    parent_lesson_id: step.lessonId,
+                    parent_lesson_title: lessonTitle,
+                    parent_course_id: ldCourseId,
+                  },
+                }).select("id").single();
 
-                if (sessErr) {
-                  result.errors.push(`Failed to create topic "${topicTitle}": ${sessErr.message}`);
+                if (topicLessonErr || !topicLesson) {
+                  result.errors.push(`Failed to create topic lesson "${topicTitle}": ${topicLessonErr?.message}`);
                 } else {
+                  result.lessonsImported++;
                   result.sessionsImported++;
+                  await persistImportedResources({
+                    courseId: newCourse.id,
+                    moduleId,
+                    lessonId: topicLesson.id,
+                    scope: "lesson",
+                    sourceId: topicId,
+                    items: topicResourceItems,
+                    result,
+                  });
                 }
               } catch (e) {
                 result.errors.push(`Failed to fetch topic ${topicId}: ${e}`);

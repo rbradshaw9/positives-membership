@@ -171,8 +171,8 @@ export async function getCourseCheckoutUrl(formData: FormData): Promise<CourseCh
       });
       return {
         status: "owned",
-        url: "/library",
-        message: "You already own this course. It is waiting in your library.",
+        url: "/my-courses",
+        message: "You already own this course. It is waiting in My Courses.",
       };
     }
   }
@@ -236,8 +236,8 @@ export async function getCourseCheckoutUrl(formData: FormData): Promise<CourseCh
             });
             return {
               status: "purchased",
-              url: "/library",
-              message: `${course.title} has been added to your library.`,
+              url: "/my-courses",
+              message: `${course.title} has been added to My Courses.`,
             };
           }
         } catch (quickPurchaseError) {

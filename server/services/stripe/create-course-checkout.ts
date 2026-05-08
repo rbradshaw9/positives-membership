@@ -43,7 +43,7 @@ export async function createCourseCheckoutSession({
     sourcePath?.startsWith("/") && !sourcePath.startsWith("//") ? sourcePath : "/courses";
   const successUrl =
     `${appUrl}/subscribe/success?session_id={CHECKOUT_SESSION_ID}` +
-    `&next=${encodeURIComponent("/library")}`;
+    `&next=${encodeURIComponent("/my-courses")}`;
 
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
@@ -89,10 +89,10 @@ export async function createCourseCheckoutSession({
     },
     custom_text: {
       after_submit: {
-        message: `${courseTitle} will be added to your Positives library permanently.`,
+        message: `${courseTitle} will be added to your Positives courses permanently.`,
       },
       submit: {
-        message: "This is a one-time course purchase. Your access stays in your library.",
+        message: "This is a one-time course purchase. Your access stays in My Courses.",
       },
     },
   });

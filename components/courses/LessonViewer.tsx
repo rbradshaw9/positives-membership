@@ -139,7 +139,14 @@ export function LessonViewer({ lesson, memberId }: LessonViewerProps) {
   void memberId;
   const [completed, setCompleted] = useState(lesson.completed ?? false);
   const [isPending, startTransition] = useTransition();
-  const lessonResources = parseResources(lesson.resources);
+  const lessonResources = [
+    ...parseResources(lesson.resources),
+    ...(lesson.course_resources ?? []).map((resource) => ({
+      label: resource.label,
+      url: resource.url,
+      type: resource.file_type,
+    })),
+  ];
 
   function handleToggleComplete() {
     startTransition(async () => {
@@ -160,10 +167,10 @@ export function LessonViewer({ lesson, memberId }: LessonViewerProps) {
     <div className="member-container py-8 md:py-10 flex flex-col gap-8">
       {/* ── Breadcrumb ─────────────────────────────────────────────────── */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/library" className="hover:text-foreground transition-colors">Library</Link>
+        <Link href="/my-courses" className="hover:text-foreground transition-colors">My Courses</Link>
         <span aria-hidden="true">/</span>
         <Link
-          href={`/library/courses/${lesson.course_slug ?? lesson.course_id}`}
+          href={`/my-courses/${lesson.course_slug ?? lesson.course_id}`}
           className="hover:text-foreground transition-colors"
         >
           {lesson.course_title}
@@ -213,6 +220,20 @@ export function LessonViewer({ lesson, memberId }: LessonViewerProps) {
               title={lesson.title}
             />
           )}
+        </div>
+      )}
+
+      {lesson.audio_url && (
+        <div className="rounded-2xl border border-border bg-surface-tint/40 p-4">
+          <h2 className="mb-3 font-heading text-sm font-semibold text-foreground">
+            Audio
+          </h2>
+          <audio controls preload="metadata" className="w-full">
+            <source src={lesson.audio_url} />
+            <a href={lesson.audio_url} target="_blank" rel="noopener noreferrer">
+              Open audio
+            </a>
+          </audio>
         </div>
       )}
 
@@ -345,7 +366,7 @@ export function LessonViewer({ lesson, memberId }: LessonViewerProps) {
       <div className="flex items-center justify-between pt-4 border-t" style={{ borderColor: "var(--color-border)" }}>
         {lesson.prev_lesson_id ? (
           <Link
-            href={`/library/courses/${lesson.course_slug}/${lesson.prev_lesson_id}`}
+            href={`/my-courses/${lesson.course_slug}/lessons/${lesson.prev_lesson_slug ?? lesson.prev_lesson_id}`}
             className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -359,7 +380,7 @@ export function LessonViewer({ lesson, memberId }: LessonViewerProps) {
 
         {lesson.next_lesson_id ? (
           <Link
-            href={`/library/courses/${lesson.course_slug}/${lesson.next_lesson_id}`}
+            href={`/my-courses/${lesson.course_slug}/lessons/${lesson.next_lesson_slug ?? lesson.next_lesson_id}`}
             className="flex items-center gap-2 text-sm font-semibold transition-colors hover:opacity-80"
             style={{ color: "var(--color-primary)" }}
           >
@@ -370,7 +391,7 @@ export function LessonViewer({ lesson, memberId }: LessonViewerProps) {
           </Link>
         ) : (
           <Link
-            href={`/library/courses/${lesson.course_slug}`}
+            href={`/my-courses/${lesson.course_slug}`}
             className="flex items-center gap-2 text-sm font-semibold transition-colors hover:opacity-80"
             style={{ color: "var(--color-primary)" }}
           >
