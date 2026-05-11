@@ -50,6 +50,7 @@ import {
   repairMemberStripeCoursePurchasesInline,
   removeAdminRoleFromMemberInline,
   removeAdminPermissionOverrideInline,
+  sendMemberMagicLoginLinkInline,
   resolveMemberFollowupTaskInline,
   revokeCourseEntitlementInline,
   setAdminPermissionOverrideInline,
@@ -61,6 +62,7 @@ import {
 } from "./actions";
 import { MemberCrmInlineForm } from "./MemberCrmInlineForm";
 import { MemberCrmProfileForm } from "./MemberCrmProfileForm";
+import { getMemberRecentStripeInvoices } from "@/server/services/stripe/member-billing-activity";
 
 export const metadata = {
   title: "Member Management — Positives Admin",
@@ -138,13 +140,11 @@ const EVENT_LABEL: Record<string, string> = {
 
 const CRM_TABS = [
   ["overview", "Overview"],
-  ["activity", "Activity"],
-  ["access", "Access"],
-  ["billing", "Billing"],
-  ["communication", "Communication"],
-  ["notes", "Notes"],
-  ["documents", "Documents"],
-  ["admin-access", "Admin Access"],
+  ["billing", "Membership & Billing"],
+  ["access", "Purchases & Access"],
+  ["communication", "Communication & Login"],
+  ["notes", "Notes & Follow-up"],
+  ["admin-access", "Staff Access"],
   ["audit", "Audit"],
 ] as const;
 
@@ -263,7 +263,7 @@ function buildUnifiedTimeline(args: {
           ? args.contentTitleMap.get(event.content_id) ?? "Product activity"
           : "Product activity",
       occurredAt: event.occurred_at,
-      tab: "activity",
+      tab: "overview",
     });
   }
 
@@ -1147,6 +1147,8 @@ export default async function AdminMemberDetailPage({
     documents,
     overrides,
     audit,
+    eventOrders,
+    eventAttendees,
     activity,
     stats,
     roles,
@@ -1185,6 +1187,7 @@ export default async function AdminMemberDetailPage({
   );
   const viewerPermissionSet = await getAdminPermissionSet(adminUser.id, adminUser.email);
   const canManageRoles = viewerPermissionSet.has("roles.manage");
+  const canSendLoginLink = viewerPermissionSet.has("members.send_login_link");
   const viewerCoachOnly = isCoachOnlyRoleSet(currentAdminRoles);
 
   let billingSummary = await getMemberBillingSummary(member.id);
@@ -1230,6 +1233,20 @@ export default async function AdminMemberDetailPage({
           throw error;
         })
       : null;
+
+  const recentStripeInvoices =
+    member.stripe_customer_id && !billingCustomerMissingInStripe
+      ? await getMemberRecentStripeInvoices(member.stripe_customer_id).catch((error) => {
+          if (isStripeResourceMissingError(error)) {
+            billingCustomerMissingInStripe = true;
+            console.warn(
+              `[admin/member-detail] linked Stripe customer missing during invoice lookup for member ${member.id}: ${member.stripe_customer_id}`
+            );
+            return [];
+          }
+          throw error;
+        })
+      : [];
 
   const [healthSnapshot, currentFollowupTask, followupTasks] = await Promise.all([
     refreshMemberHealthSnapshot({
@@ -1371,6 +1388,12 @@ export default async function AdminMemberDetailPage({
     if (tab === "billing" && sp.planTarget) query.set("planTarget", sp.planTarget);
     const href = `/admin/members/${member.id}?${query.toString()}`;
     return hash ? `${href}#${hash}` : href;
+  }
+
+  function supportTabHref(tab: string, hash?: string) {
+    if (isMemberCrmTab(tab)) return tabHref(tab, hash);
+    if (tab === "documents") return tabHref("notes", hash);
+    return tabHref("overview", hash);
   }
 
   const overviewCardOrder = viewerCoachOnly
@@ -1523,6 +1546,85 @@ export default async function AdminMemberDetailPage({
         ))}
       </div>
 
+      <Section
+        id="support-actions"
+        title="Support Actions"
+        description="Fast, audited actions for live support calls and member account help."
+      >
+        <div className="member-crm-grid-2">
+          <div className="member-crm-card">
+            <p className="member-crm-card-title">Common actions</p>
+            <div className="member-crm-quick-links" style={{ marginTop: "0.85rem" }}>
+              <Link className="admin-btn admin-btn--primary" href={tabHref("notes", "note-form")}>
+                Add note
+              </Link>
+              <Link className="admin-btn admin-btn--outline" href={tabHref("notes", "followup-form")}>
+                Set follow-up
+              </Link>
+              <Link className="admin-btn admin-btn--outline" href={tabHref("access")}>
+                Manage access
+              </Link>
+              <Link className="admin-btn admin-btn--outline" href={tabHref("billing")}>
+                Billing
+              </Link>
+              <Link className="admin-btn admin-btn--outline" href={tabHref("communication")}>
+                Beta/alpha
+              </Link>
+              {stripeUrl ? (
+                <a className="admin-btn admin-btn--outline" href={stripeUrl} target="_blank" rel="noopener noreferrer">
+                  Open Stripe
+                </a>
+              ) : null}
+            </div>
+            <p className="member-crm-record__note" style={{ marginTop: "0.85rem" }}>
+              Beta and alpha status only controls feedback access. Staff/admin permissions live in Staff Access.
+            </p>
+          </div>
+
+          {canSendLoginLink ? (
+            <MemberCrmInlineForm
+              action={sendMemberMagicLoginLinkInline}
+              className="member-crm-card"
+              submitLabel="Send magic login link"
+              pendingLabel="Sending..."
+              buttonStyle={{ marginTop: "0.75rem" }}
+              resetOnSuccess={false}
+            >
+              <input type="hidden" name="memberId" value={member.id} />
+              <p className="member-crm-card-title">Send member login link</p>
+              <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
+                Sends a secure sign-in email to {member.email}. The raw link is not shown here.
+              </p>
+              <label className="admin-form-field">
+                <span className="admin-search-bar__label">After sign-in</span>
+                <Select name="next" defaultValue="/today">
+                  <option value="/today">Today</option>
+                  <option value="/account">Account</option>
+                  <option value="/practice">My Practice</option>
+                  <option value="/events">Events</option>
+                </Select>
+              </label>
+              <label className="admin-form-field" style={{ marginTop: "0.75rem" }}>
+                <span className="admin-search-bar__label">Support note</span>
+                <TextInput
+                  name="loginLinkReason"
+                  required
+                  placeholder="Example: Member called and could not access their account."
+                />
+              </label>
+            </MemberCrmInlineForm>
+          ) : (
+            <div className="member-crm-card">
+              <p className="member-crm-card-title">Send member login link</p>
+              <p className="member-crm-record__note">
+                Your admin role can view support context, but sending sign-in links requires the
+                Send login links permission.
+              </p>
+            </div>
+          )}
+        </div>
+      </Section>
+
       {activeTab === "overview" ? (
         <>
           <Section id="overview" title="Overview" description="A support-first command center for this member record.">
@@ -1532,7 +1634,7 @@ export default async function AdminMemberDetailPage({
                 {needsAttention.length > 0 ? (
                   <div className="member-crm-list" style={{ marginTop: "0.75rem" }}>
                     {needsAttention.map((card: MemberNeedsAttentionCard) => (
-                      <Link key={card.key} href={tabHref(card.tab)} className="member-crm-record member-crm-record--link">
+                      <Link key={card.key} href={supportTabHref(card.tab)} className="member-crm-record member-crm-record--link">
                         <div>
                           <p className="member-crm-record__title">
                             {card.label}{" "}
@@ -1557,7 +1659,7 @@ export default async function AdminMemberDetailPage({
                 </p>
                 <p className="member-crm-record__note">{recommendedAction.detail}</p>
                 <div className="member-crm-quick-links" style={{ marginTop: "1rem" }}>
-                  <Link className="admin-btn admin-btn--primary" href={tabHref(recommendedAction.tab)}>
+                  <Link className="admin-btn admin-btn--primary" href={supportTabHref(recommendedAction.tab)}>
                     Go to recommended area
                   </Link>
                   <Link className="admin-btn admin-btn--outline" href={tabHref("notes")}>
@@ -1689,14 +1791,14 @@ export default async function AdminMemberDetailPage({
             <div className="member-crm-card" style={{ marginBottom: "1rem" }}>
               <p className="member-crm-card-title member-crm-card-title--row">
                 Recent timeline
-                <Link className="member-crm-link" href={tabHref("activity")}>
+                <Link className="member-crm-link" href={tabHref("overview", "activity")}>
                   Open activity
                 </Link>
               </p>
               {timelinePreview.length > 0 ? (
                 <div className="member-crm-timeline" style={{ marginTop: "0.75rem" }}>
                   {timelinePreview.map((item) => (
-                    <Link key={item.id} href={tabHref(item.tab)} className="member-crm-timeline-item member-crm-record--link">
+                    <Link key={item.id} href={supportTabHref(item.tab)} className="member-crm-timeline-item member-crm-record--link">
                       <span className="member-crm-timeline-dot" aria-hidden="true" />
                       <div>
                         <p className="member-crm-record__title">{item.title}</p>
@@ -1758,7 +1860,7 @@ export default async function AdminMemberDetailPage({
 
       {activeTab === "access" ? (
         <>
-          <Section id="access" title="Access" description="Operational access, profile context, course ownership, and point-based unlocks in one place.">
+          <Section id="access" title="Purchases & Access" description="Operational access, courses, event registrations, points, and safe account actions in one place.">
             <MemberCrmProfileForm
               action={updateMemberCrmProfileInline}
               coaches={coaches}
@@ -1786,10 +1888,11 @@ export default async function AdminMemberDetailPage({
             >
               <input type="hidden" name="memberId" value={member.id} />
               <input type="hidden" name="memberEmail" value={member.email} />
-              <p className="member-crm-card-title">Member removal</p>
+              <p className="member-crm-card-title">Danger zone: test member deletion</p>
               <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
                 This is only for accidental or test accounts. It is blocked for Stripe-linked members,
-                active access, staff accounts, or accounts with product history.
+                active access, staff accounts, or accounts with product history. Real member removal
+                should use a manual archive/anonymize workflow, not hard deletion.
               </p>
               <label className="admin-form-field">
                 <span className="admin-search-bar__label">Type member email to confirm</span>
@@ -2042,6 +2145,69 @@ export default async function AdminMemberDetailPage({
             </div>
           </Section>
 
+          <Section id="events" title="Events" description="Ticket orders, RSVPs, attendee records, and event access context.">
+            <div className="member-crm-grid-2">
+              <div className="member-crm-card">
+                <p className="member-crm-card-title">Recent ticket orders</p>
+                {eventOrders.length > 0 ? (
+                  <div className="member-crm-list" style={{ marginTop: "0.75rem" }}>
+                    {eventOrders.map((order) => (
+                      <div key={order.id} className="member-crm-record">
+                        <div>
+                          <p className="member-crm-record__title">
+                            {order.event?.title ?? "Event ticket order"}
+                          </p>
+                          <p className="member-crm-record__meta">
+                            {order.status} · {order.quantity} ticket{order.quantity === 1 ? "" : "s"} ·{" "}
+                            {formatMoney(order.total_cents, order.currency)}
+                          </p>
+                          <p className="member-crm-record__note">
+                            Ordered {formatDateTime(order.created_at)}
+                            {order.paid_at ? ` · Paid ${formatDateTime(order.paid_at)}` : ""}
+                            {order.refunded_at ? ` · Refunded ${formatDateTime(order.refunded_at)}` : ""}
+                          </p>
+                          {order.stripe_payment_intent_id ? (
+                            <p className="member-crm-record__meta">
+                              Stripe payment: <span className="member-crm-mono">{order.stripe_payment_intent_id}</span>
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState>No event ticket orders yet.</EmptyState>
+                )}
+              </div>
+
+              <div className="member-crm-card">
+                <p className="member-crm-card-title">Attendee records</p>
+                {eventAttendees.length > 0 ? (
+                  <div className="member-crm-list" style={{ marginTop: "0.75rem" }}>
+                    {eventAttendees.map((attendee) => (
+                      <div key={attendee.id} className="member-crm-record">
+                        <div>
+                          <p className="member-crm-record__title">
+                            {attendee.event?.title ?? "Event attendee"}
+                          </p>
+                          <p className="member-crm-record__meta">
+                            {attendee.status} · {attendee.source} · {attendee.attendee_number}
+                          </p>
+                          <p className="member-crm-record__note">
+                            {attendee.name ?? "No attendee name"}
+                            {attendee.email ? ` · ${attendee.email}` : ""}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState>No event attendee records yet.</EmptyState>
+                )}
+              </div>
+            </div>
+          </Section>
+
           <Section id="points" title="Points" description="Immutable ledger for engagement rewards, manual corrections, and unlock history.">
             <div className="member-crm-grid-2">
               <div className="member-crm-card">
@@ -2095,7 +2261,7 @@ export default async function AdminMemberDetailPage({
         </>
       ) : null}
 
-      {activeTab === "activity" ? (
+      {activeTab === "overview" ? (
         <Section id="activity" title="Activity" description="Recent product activity, lifecycle signals, and engagement health.">
           <div className="member-crm-grid-2" style={{ marginBottom: "1rem" }}>
             <div className="member-crm-card">
@@ -2127,7 +2293,7 @@ export default async function AdminMemberDetailPage({
               {unifiedTimeline.length > 0 ? (
                 <div className="member-crm-timeline" style={{ marginTop: "0.75rem" }}>
                   {unifiedTimeline.slice(0, 20).map((item) => (
-                    <Link key={item.id} href={tabHref(item.tab)} className="member-crm-timeline-item member-crm-record--link">
+                    <Link key={item.id} href={supportTabHref(item.tab)} className="member-crm-timeline-item member-crm-record--link">
                       <span className="member-crm-timeline-dot" aria-hidden="true" />
                       <div>
                         <p className="member-crm-record__title">{item.title}</p>
@@ -2174,7 +2340,7 @@ export default async function AdminMemberDetailPage({
       ) : null}
 
       {activeTab === "billing" ? (
-        <Section id="billing" title="Billing" description="Stripe remains the source of truth; this view adds local revenue context and review-first plan changes.">
+        <Section id="billing" title="Membership & Billing" description="Stripe remains the source of truth; this view adds local revenue context and review-first plan changes.">
           {billingCustomerMissingInStripe ? (
             <div className="admin-banner admin-banner--error" style={{ marginBottom: "1rem" }}>
               The linked Stripe customer could not be found in Stripe. Reconnect billing before
@@ -2206,7 +2372,71 @@ export default async function AdminMemberDetailPage({
             <ProfileField label="Billing Edit Policy">
               Use Stripe for invoice/payment-method changes; use admin fields only for operational corrections.
             </ProfileField>
+            <ProfileField label="Refund Total">
+              {formatMoney(billingSummary?.refund_total_cents ?? 0, billingSummary?.currency ?? "usd")}
+            </ProfileField>
+            <ProfileField label="Chargebacks">{String(billingSummary?.chargeback_count ?? 0)}</ProfileField>
+            <ProfileField label="Active Price">
+              {billingSummary?.active_subscription_price_id ? (
+                <span className="member-crm-mono">{billingSummary.active_subscription_price_id}</span>
+              ) : "Not tracked"}
+            </ProfileField>
+            <ProfileField label="Subscription Amount">
+              {billingSummary?.active_subscription_amount_cents
+                ? `${formatMoney(billingSummary.active_subscription_amount_cents, billingSummary.currency)} / ${billingSummary.active_subscription_interval ?? "period"}`
+                : "Not tracked"}
+            </ProfileField>
           </dl>
+
+          <div className="member-crm-card" style={{ marginTop: "1.25rem" }}>
+            <p className="member-crm-card-title">Recent Stripe invoices</p>
+            {recentStripeInvoices.length > 0 ? (
+              <div className="member-crm-list" style={{ marginTop: "0.75rem" }}>
+                {recentStripeInvoices.map((invoice) => (
+                  <div key={invoice.id} className="member-crm-record">
+                    <div>
+                      <p className="member-crm-record__title">
+                        {invoice.number ?? invoice.id}
+                      </p>
+                      <p className="member-crm-record__meta">
+                        {invoice.status ?? "unknown"} · Due{" "}
+                        {formatMoney(invoice.amountDueCents, invoice.currency)} · Paid{" "}
+                        {formatMoney(invoice.amountPaidCents, invoice.currency)} · {formatDateTime(invoice.createdAt)}
+                      </p>
+                    </div>
+                    <div className="member-crm-inline-actions">
+                      {invoice.hostedInvoiceUrl ? (
+                        <a
+                          href={invoice.hostedInvoiceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="member-crm-link"
+                        >
+                          View
+                        </a>
+                      ) : null}
+                      {invoice.invoicePdfUrl ? (
+                        <a
+                          href={invoice.invoicePdfUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="member-crm-link"
+                        >
+                          PDF
+                        </a>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState>
+                {member.stripe_customer_id
+                  ? "No recent Stripe invoices were found for this customer."
+                  : "Connect a Stripe customer to show invoices here."}
+              </EmptyState>
+            )}
+          </div>
 
           <div className="member-crm-grid-2" style={{ marginTop: "1.25rem" }}>
             <MemberCrmInlineForm
@@ -2351,7 +2581,7 @@ export default async function AdminMemberDetailPage({
       ) : null}
 
       {activeTab === "communication" ? (
-        <Section id="communication" title="Communication" description="Email preferences, affiliate/referral context, and lifecycle communication readiness.">
+        <Section id="communication" title="Communication & Login" description="Login support, testing cohort, email preferences, affiliate/referral context, and lifecycle communication readiness.">
           <dl className="member-crm-profile-grid">
             <ProfileField label="Marketing Email">
               {member.email_unsubscribed ? "Unsubscribed" : "Subscribed / not opted out"}
@@ -2511,7 +2741,7 @@ export default async function AdminMemberDetailPage({
       {activeTab === "notes" ? (
         <Section
           id="notes"
-          title="Notes"
+          title="Notes & Follow-up"
           description="Internal follow-up workflow plus support and coaching notes for durable context."
         >
           <div className="member-crm-grid-2">
@@ -2646,7 +2876,7 @@ export default async function AdminMemberDetailPage({
         </Section>
       ) : null}
 
-      {activeTab === "documents" ? (
+      {activeTab === "notes" ? (
         <Section
           id="documents"
           title="Documents"
@@ -2729,9 +2959,9 @@ export default async function AdminMemberDetailPage({
       ) : null}
 
       {activeTab === "admin-access" ? (
-        <Section id="admin-access" title="Admin Access" description="Roles, overrides, and effective admin permissions for this member.">
+        <Section id="admin-access" title="Staff Access" description="Roles, overrides, and effective admin permissions for this member.">
           <div className="member-crm-warning-note" style={{ marginBottom: "1rem" }}>
-            <strong>Admin roles are for staff access only.</strong>{" "}
+            <strong>Staff roles are for internal platform access only.</strong>{" "}
             To show the beta feedback button for a member, use the Testing and feedback access card
             on the Communication tab and set their cohort to Alpha or Beta.
           </div>
@@ -2740,7 +2970,7 @@ export default async function AdminMemberDetailPage({
               <p className="member-crm-card-title">Assigned admin roles</p>
               {!canManageRoles ? (
                 <p className="member-crm-muted" style={{ marginBottom: "0.85rem" }}>
-                  You can review this member&apos;s admin access here. Assigning roles or changing
+                  You can review this member&apos;s staff access here. Assigning roles or changing
                   overrides requires the <strong>Manage roles</strong> permission.
                 </p>
               ) : null}
@@ -2755,9 +2985,9 @@ export default async function AdminMemberDetailPage({
                   }}
                 >
                   <div>
-                    <p className="member-crm-record__title">Bootstrap admin access</p>
+                    <p className="member-crm-record__title">Bootstrap staff access</p>
                     <p className="member-crm-record__meta">
-                      This member has full admin access through <span className="member-crm-mono">ADMIN_EMAILS</span>
+                      This member has full staff access through <span className="member-crm-mono">ADMIN_EMAILS</span>
                       {" "}even if no database role is assigned yet.
                     </p>
                   </div>
@@ -2958,7 +3188,7 @@ export default async function AdminMemberDetailPage({
         </Section>
       ) : null}
 
-      {activeTab === "documents" ? (
+      {activeTab === "notes" && false ? (
         <Section
           id="documents"
           title="Documents"

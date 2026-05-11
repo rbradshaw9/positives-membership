@@ -3,6 +3,7 @@ export type AdminPermissionKey =
   | "members.update_profile"
   | "members.update_lifecycle"
   | "members.manage_billing"
+  | "members.send_login_link"
   | "community.moderate"
   | "courses.grant"
   | "courses.revoke"
@@ -36,6 +37,11 @@ export const ADMIN_PERMISSION_OPTIONS: Array<{
     key: "members.manage_billing",
     label: "Manage billing",
     description: "Preview and apply Stripe-backed plan changes.",
+  },
+  {
+    key: "members.send_login_link",
+    label: "Send login links",
+    description: "Send secure member sign-in links for support calls and account access help.",
   },
   {
     key: "community.moderate",

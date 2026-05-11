@@ -25,7 +25,7 @@ export type MemberCrmListFilters = {
   search?: string;
   status?: MemberCrmStatusFilter;
   tier?: MemberCrmTierFilter;
-  launchCohort?: "alpha" | "beta" | "live" | "";
+  launchCohort?: "alpha" | "beta" | "live" | "testing" | "";
   health?: MemberHealthStatusFilter;
   attention?: MemberAttentionFilter;
   billing?: "linked" | "missing" | "";
@@ -92,6 +92,17 @@ export type MemberCrmRow = Pick<
   health_status: MemberHealthStatusFilter;
   engagement_status: "engaged" | "warming_up" | "inactive" | "";
   needs_attention: boolean;
+};
+
+export type MemberCrmQueueSummary = {
+  active: number;
+  pastDue: number;
+  testing: number;
+  missingPassword: number;
+  missingStripe: number;
+  courseOnly: number;
+  needsAttention: number;
+  unassignedCoach: number;
 };
 
 export type MemberCrmDetailMember = Tables<"member"> & {
@@ -197,6 +208,43 @@ export type MemberAuditEntry = {
   reason: string | null;
   metadata: unknown;
   created_at: string;
+};
+
+export type MemberEventOrder = {
+  id: string;
+  member_id: string;
+  event_id: string;
+  status: string;
+  currency: string;
+  total_cents: number;
+  quantity: number;
+  stripe_checkout_session_id: string | null;
+  stripe_payment_intent_id: string | null;
+  paid_at: string | null;
+  refunded_at: string | null;
+  created_at: string;
+  event: {
+    title: string;
+    starts_at: string;
+    timezone: string;
+  } | null;
+};
+
+export type MemberEventAttendee = {
+  id: string;
+  event_id: string;
+  member_id: string | null;
+  attendee_number: string;
+  status: string;
+  source: string;
+  name: string | null;
+  email: string | null;
+  created_at: string;
+  event: {
+    title: string;
+    starts_at: string;
+    timezone: string;
+  } | null;
 };
 
 export type AdminRoleRow = {
@@ -394,7 +442,11 @@ export async function getMemberCrmList(filters: MemberCrmListFilters = {}): Prom
 
   if (filters.status) query = query.eq("subscription_status", filters.status);
   if (filters.tier) query = query.eq("subscription_tier", filters.tier);
-  if (filters.launchCohort) query = query.eq("launch_cohort", filters.launchCohort);
+  if (filters.launchCohort === "testing") {
+    query = query.in("launch_cohort", ["alpha", "beta"]);
+  } else if (filters.launchCohort) {
+    query = query.eq("launch_cohort", filters.launchCohort);
+  }
   if (filters.billing === "linked") query = query.not("stripe_customer_id", "is", null);
   if (filters.billing === "missing") query = query.is("stripe_customer_id", null);
   if (filters.password === "set") query = query.eq("password_set", true);
@@ -493,6 +545,131 @@ export async function getMemberCrmList(filters: MemberCrmListFilters = {}): Prom
   };
 }
 
+function readCount(
+  label: string,
+  result: { count?: number | null; error?: { message: string } | null }
+) {
+  if (result.error) {
+    console.error(`[member-crm] ${label} summary failed:`, result.error.message);
+    return 0;
+  }
+  return result.count ?? 0;
+}
+
+export async function getMemberCrmQueueSummary(): Promise<MemberCrmQueueSummary> {
+  const supabase = asLooseSupabaseClient(getAdminClient());
+
+  const [
+    activeResult,
+    pastDueResult,
+    testingResult,
+    missingPasswordResult,
+    missingStripeResult,
+    unassignedCoachResult,
+    courseEntitlementResult,
+    healthResult,
+    followupResult,
+    operationalResult,
+  ] = await Promise.all([
+    supabase
+      .from("member")
+      .select("id", { count: "exact", head: true })
+      .in("subscription_status", ["active", "trialing"]),
+    supabase
+      .from("member")
+      .select("id", { count: "exact", head: true })
+      .eq("subscription_status", "past_due"),
+    supabase
+      .from("member")
+      .select("id", { count: "exact", head: true })
+      .in("launch_cohort", ["alpha", "beta"]),
+    supabase
+      .from("member")
+      .select("id", { count: "exact", head: true })
+      .eq("password_set", false),
+    supabase
+      .from("member")
+      .select("id", { count: "exact", head: true })
+      .is("stripe_customer_id", null),
+    supabase
+      .from("member")
+      .select("id", { count: "exact", head: true })
+      .is("assigned_coach_id", null),
+    supabase
+      .from("course_entitlement")
+      .select<{ member_id: string }[]>("member_id")
+      .eq("status", "active"),
+    supabase
+      .from("member_health_snapshot")
+      .select<{ member_id: string }[]>("member_id")
+      .in("health_status", ["watch", "at_risk"]),
+    supabase
+      .from("member_followup_task")
+      .select<{ member_id: string }[]>("member_id")
+      .in("status", ["needs_followup", "waiting_on_member"]),
+    supabase
+      .from("member")
+      .select<{ id: string }[]>("id")
+      .or("subscription_status.eq.past_due,password_set.eq.false,stripe_customer_id.is.null"),
+  ]);
+
+  const active = readCount("active member", activeResult);
+  const pastDue = readCount("past due member", pastDueResult);
+  const testing = readCount("testing cohort", testingResult);
+  const missingPassword = readCount("missing password", missingPasswordResult);
+  const missingStripe = readCount("missing Stripe", missingStripeResult);
+  const unassignedCoach = readCount("unassigned coach", unassignedCoachResult);
+
+  const courseOnlyMemberIds = new Set((courseEntitlementResult.data ?? []).map((row) => row.member_id));
+  let courseOnly = 0;
+  if (courseEntitlementResult.error) {
+    console.error("[member-crm] course-only entitlement summary failed:", courseEntitlementResult.error.message);
+  } else if (courseOnlyMemberIds.size > 0) {
+    const { data, error } = await supabase
+      .from("member")
+      .select<{ id: string; subscription_status: string | null }[]>("id, subscription_status")
+      .in("id", [...courseOnlyMemberIds]);
+
+    if (error) {
+      console.error("[member-crm] course-only member summary failed:", error.message);
+    } else {
+      courseOnly = (data ?? []).filter(
+        (member) => !hasActiveMemberAccess(member.subscription_status)
+      ).length;
+    }
+  }
+
+  const needsAttentionMemberIds = new Set<string>();
+  if (healthResult.error) {
+    console.error("[member-crm] health summary failed:", healthResult.error.message);
+  } else {
+    for (const row of healthResult.data ?? []) needsAttentionMemberIds.add(row.member_id);
+  }
+
+  if (followupResult.error) {
+    console.error("[member-crm] follow-up summary failed:", followupResult.error.message);
+  } else {
+    for (const row of followupResult.data ?? []) needsAttentionMemberIds.add(row.member_id);
+  }
+
+  if (operationalResult.error) {
+    console.error("[member-crm] operational attention summary failed:", operationalResult.error.message);
+  } else {
+    for (const row of operationalResult.data ?? []) needsAttentionMemberIds.add(row.id);
+  }
+
+  return {
+    active,
+    pastDue,
+    testing,
+    missingPassword,
+    missingStripe,
+    courseOnly,
+    needsAttention: needsAttentionMemberIds.size,
+    unassignedCoach,
+  };
+}
+
 export async function getAdminAssignableMembers(): Promise<{ id: string; label: string }[]> {
   const supabase = asLooseSupabaseClient(getAdminClient());
   const bootstrapAdminEmails = config.app.adminEmails;
@@ -576,6 +753,8 @@ export async function getMemberCrmDetail(memberId: string) {
     documentsResult,
     overridesResult,
     auditResult,
+    eventOrdersResult,
+    eventAttendeesResult,
     coursesResult,
     activity,
     stats,
@@ -616,6 +795,22 @@ export async function getMemberCrmDetail(memberId: string) {
       .order("created_at", { ascending: false })
       .limit(50),
     supabase
+      .from("event_ticket_order")
+      .select<MemberEventOrder[]>(
+        "id, member_id, event_id, status, currency, total_cents, quantity, stripe_checkout_session_id, stripe_payment_intent_id, paid_at, refunded_at, created_at, event:event_id(title, starts_at, timezone)"
+      )
+      .eq("member_id", memberId)
+      .order("created_at", { ascending: false })
+      .limit(10),
+    supabase
+      .from("event_attendee")
+      .select<MemberEventAttendee[]>(
+        "id, event_id, member_id, attendee_number, status, source, name, email, created_at, event:event_id(title, starts_at, timezone)"
+      )
+      .eq("member_id", memberId)
+      .order("created_at", { ascending: false })
+      .limit(10),
+    supabase
       .from("course")
       .select<CourseGrantOption[]>("id, title, slug, status, tier_min, is_standalone_purchasable, price_cents, points_price")
       .order("title", { ascending: true }),
@@ -647,6 +842,8 @@ export async function getMemberCrmDetail(memberId: string) {
     documents: ((documentsResult.data ?? []) as MemberDocument[]),
     overrides: ((overridesResult.data ?? []) as MemberAccessOverride[]),
     audit: ((auditResult.data ?? []) as MemberAuditEntry[]),
+    eventOrders: ((eventOrdersResult.data ?? []) as MemberEventOrder[]),
+    eventAttendees: ((eventAttendeesResult.data ?? []) as MemberEventAttendee[]),
     grantableCourses,
     allCourses,
     activity,

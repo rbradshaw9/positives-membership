@@ -4,6 +4,7 @@ import {
   getAdminAssignableMembers,
   getAdminRolesForMember,
   getMemberCrmList,
+  getMemberCrmQueueSummary,
   type CourseEntitlementSource,
   type MemberAttentionFilter,
   type MemberCrmListFilters,
@@ -114,9 +115,60 @@ const LAUNCH_COHORT_FILTERS: {
   value: NonNullable<MemberCrmListFilters["launchCohort"]>;
 }[] = [
   { label: "All cohorts", value: "" },
+  { label: "Alpha or Beta", value: "testing" },
   { label: "Alpha", value: "alpha" },
   { label: "Beta", value: "beta" },
   { label: "Live", value: "live" },
+];
+
+const QUICK_VIEWS: Array<{
+  label: string;
+  description: string;
+  query: Record<string, string>;
+  summaryKey: keyof Awaited<ReturnType<typeof getMemberCrmQueueSummary>>;
+}> = [
+  {
+    label: "Needs attention",
+    description: "Billing, access, password, or support follow-up.",
+    query: { attention: "needs_attention" },
+    summaryKey: "needsAttention",
+  },
+  {
+    label: "Past due",
+    description: "Payment recovery and billing support.",
+    query: { status: "past_due" },
+    summaryKey: "pastDue",
+  },
+  {
+    label: "Beta/Alpha",
+    description: "Members with feedback access enabled.",
+    query: { launchCohort: "testing" },
+    summaryKey: "testing",
+  },
+  {
+    label: "Missing password",
+    description: "Still relying on magic-link access.",
+    query: { password: "missing" },
+    summaryKey: "missingPassword",
+  },
+  {
+    label: "No Stripe",
+    description: "Members without a billing customer link.",
+    query: { billing: "missing" },
+    summaryKey: "missingStripe",
+  },
+  {
+    label: "Course-only",
+    description: "Owns courses without active membership.",
+    query: { access: "course_only" },
+    summaryKey: "courseOnly",
+  },
+  {
+    label: "Unassigned coach",
+    description: "No staff owner assigned yet.",
+    query: { assignedCoach: "unassigned" },
+    summaryKey: "unassignedCoach",
+  },
 ];
 
 const ENTITLEMENT_SOURCE_FILTERS: { label: string; value: CourseEntitlementSource | "" }[] = [
@@ -176,7 +228,10 @@ export default async function AdminMembersPage({
     ? { ...filters, assignedCoach: adminUser.id }
     : filters;
 
-  const { members, total, page, totalPages } = await getMemberCrmList(effectiveFilters);
+  const [{ members, total, page, totalPages }, queueSummary] = await Promise.all([
+    getMemberCrmList(effectiveFilters),
+    getMemberCrmQueueSummary(),
+  ]);
 
   function buildUrl(overrides: Record<string, string>) {
     const q = new URLSearchParams();
@@ -206,6 +261,12 @@ export default async function AdminMembersPage({
     return `/admin/members?${q.toString()}`;
   }
 
+  function quickViewIsActive(query: Record<string, string>) {
+    return Object.entries(query).every(
+      ([key, value]) => String(effectiveFilters[key as keyof MemberCrmListFilters] ?? "") === value
+    );
+  }
+
   const hasFilters = Object.entries(filters).some(([key, value]) => {
     if (key === "page") return false;
     if (coachOnly && key === "assignedCoach") return false;
@@ -233,6 +294,62 @@ export default async function AdminMembersPage({
           Test member account deleted.
         </div>
       ) : null}
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(10rem, 1fr))",
+          gap: "0.75rem",
+          margin: "1.25rem 0",
+        }}
+        aria-label="Member support queue summary"
+      >
+        {[
+          ["Active", queueSummary.active, "Active or trialing"],
+          ["Past due", queueSummary.pastDue, "Payment support"],
+          ["Needs attention", queueSummary.needsAttention, "Support queue"],
+          ["Beta/Alpha", queueSummary.testing, "Feedback access"],
+          ["No password", queueSummary.missingPassword, "Magic-link only"],
+          ["Course-only", queueSummary.courseOnly, "Owned courses"],
+        ].map(([label, value, hint]) => (
+          <div
+            key={String(label)}
+            className="admin-table-wrap"
+            style={{ padding: "0.85rem", minHeight: "5.2rem" }}
+          >
+            <p style={{ fontSize: "1.35rem", fontWeight: 800, margin: 0 }}>
+              {value}
+            </p>
+            <p style={{ fontSize: "0.78rem", fontWeight: 800, margin: "0.2rem 0 0" }}>
+              {label}
+            </p>
+            <p style={{ fontSize: "0.72rem", color: "var(--color-muted-fg)", margin: "0.2rem 0 0" }}>
+              {hint}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <div className="admin-table-wrap" style={{ padding: "1rem", marginBottom: "1rem" }}>
+        <p className="admin-search-bar__label" style={{ marginBottom: "0.75rem" }}>
+          Support queues
+        </p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.55rem" }}>
+          {QUICK_VIEWS.map((view) => {
+            const active = quickViewIsActive(view.query);
+            return (
+              <Link
+                key={view.label}
+                href={buildUrl({ ...view.query, page: "" })}
+                className={active ? "admin-btn admin-btn--primary" : "admin-btn admin-btn--outline"}
+                title={view.description}
+              >
+                {view.label} ({queueSummary[view.summaryKey]})
+              </Link>
+            );
+          })}
+        </div>
+      </div>
 
       <form method="GET" action="/admin/members" className="admin-search-bar" style={{ alignItems: "end" }}>
         <div className="admin-search-bar__field" style={{ flex: "1 1 20rem", minWidth: "220px" }}>
@@ -270,6 +387,21 @@ export default async function AdminMembersPage({
             ))}
           </select>
         </div>
+
+        <details
+          open={hasFilters}
+          style={{
+            flex: "1 1 100%",
+            border: "1px solid var(--color-border)",
+            borderRadius: "0.9rem",
+            padding: "0.85rem",
+            background: "rgba(255,255,255,0.72)",
+          }}
+        >
+          <summary style={{ cursor: "pointer", fontWeight: 800, fontSize: "0.85rem" }}>
+            Advanced filters
+          </summary>
+          <div style={{ display: "flex", alignItems: "end", flexWrap: "wrap", gap: "0.85rem", marginTop: "0.85rem" }}>
 
         <div className="admin-search-bar__field">
           <label htmlFor="launch-cohort" className="admin-search-bar__label">Cohort</label>
@@ -385,6 +517,9 @@ export default async function AdminMembersPage({
           </select>
         </div>
 
+          </div>
+        </details>
+
         <button type="submit" className="admin-btn admin-btn--primary">
           Search
         </button>
@@ -424,6 +559,7 @@ export default async function AdminMembersPage({
                 <th className="hidden xl:table-cell">Coach</th>
                 <th className="hidden md:table-cell">Last seen</th>
                 <th className="hidden lg:table-cell">Joined</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -536,6 +672,22 @@ export default async function AdminMembersPage({
                     </td>
                     <td className="hidden lg:table-cell" style={{ fontSize: "0.75rem", color: "var(--color-muted-fg)" }}>
                       {formatDate(member.created_at)}
+                    </td>
+                    <td>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
+                        <Link href={`/admin/members/${member.id}`} className="admin-btn admin-btn--outline" style={{ fontSize: "0.72rem", padding: "0.35rem 0.55rem" }}>
+                          Open
+                        </Link>
+                        <Link href={`/admin/members/${member.id}?tab=billing`} className="admin-btn admin-btn--outline" style={{ fontSize: "0.72rem", padding: "0.35rem 0.55rem" }}>
+                          Billing
+                        </Link>
+                        <Link href={`/admin/members/${member.id}?tab=access`} className="admin-btn admin-btn--outline" style={{ fontSize: "0.72rem", padding: "0.35rem 0.55rem" }}>
+                          Access
+                        </Link>
+                        <Link href={`/admin/members/${member.id}?tab=notes#note-form`} className="admin-btn admin-btn--outline" style={{ fontSize: "0.72rem", padding: "0.35rem 0.55rem" }}>
+                          Note
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 );

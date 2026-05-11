@@ -10,6 +10,8 @@ import { config } from "@/lib/config";
 import { hasActiveMemberAccess } from "@/lib/subscription/access";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
+import { renderAuthEmail } from "@/lib/email/templates/auth-email";
+import { sendPostmarkEmail } from "@/lib/email/postmark";
 import { applyAdminPlanChange } from "@/server/services/stripe/admin-plan-change";
 import {
   backfillMemberBillingSummary,
@@ -97,6 +99,14 @@ function memberBillingPath(memberId: string, params: Record<string, string | nul
   query.set("tab", "billing");
   const suffix = query.size > 0 ? `?${query.toString()}` : "";
   return `/admin/members/${memberId}${suffix}`;
+}
+
+function buildConfirmUrl(params: { tokenHash: string; next: string }) {
+  const url = new URL("/auth/confirm", config.app.url);
+  url.searchParams.set("token_hash", params.tokenHash);
+  url.searchParams.set("type", "email");
+  url.searchParams.set("next", params.next.startsWith("/") ? params.next : "/today");
+  return url.toString();
 }
 
 function requireClientAuthorization(formData: FormData, reasonFieldName: string): ActionResult & {
@@ -340,6 +350,100 @@ export async function updateMemberLaunchCohortInline(
 ): Promise<ActionResult> {
   formData.set("returnState", "true");
   return updateMemberLaunchCohort(formData);
+}
+
+export async function sendMemberMagicLoginLink(formData: FormData): Promise<ActionResult> {
+  const actor = await requireAdminPermission("members.send_login_link");
+  const memberId = clean(formData.get("memberId"));
+  const loginReason = clean(formData.get("loginLinkReason"));
+  const next = clean(formData.get("next")) ?? "/today";
+
+  if (!memberId) return { error: "Missing member." };
+  if (!loginReason || loginReason.length < 3) {
+    return { error: "Add a short note explaining why this login link is being sent." };
+  }
+
+  const scopeError = await requireAssignedCoachScope(actor, memberId);
+  if (scopeError) return { error: scopeError };
+
+  const supabase = getAdminClient();
+  const db = asLooseSupabaseClient(supabase);
+  const { data: member, error: memberError } = await db
+    .from("member")
+    .select<{ id: string; email: string | null; name: string | null }>("id, email, name")
+    .eq("id", memberId)
+    .maybeSingle();
+
+  if (memberError) {
+    console.error("[admin/member-actions] login link member lookup failed:", memberError.message);
+    return { error: "Could not load this member before sending a login link." };
+  }
+
+  if (!member?.email) {
+    return { error: "This member does not have an email address for a login link." };
+  }
+
+  const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+    type: "magiclink",
+    email: member.email,
+    options: {
+      redirectTo: `${config.app.url}/auth/callback?next=${encodeURIComponent(next)}`,
+    },
+  });
+
+  const tokenHash = linkData?.properties?.hashed_token;
+  if (linkError || !tokenHash) {
+    console.error(
+      "[admin/member-actions] member login link generation failed:",
+      linkError?.message ?? "missing token hash"
+    );
+    return { error: "Could not create a secure sign-in link for this member." };
+  }
+
+  const actionUrl = buildConfirmUrl({ tokenHash, next });
+  const rendered = renderAuthEmail({
+    actionType: "magiclink",
+    actionUrl,
+    email: member.email,
+  });
+
+  try {
+    await sendPostmarkEmail({
+      to: member.email,
+      subject: rendered.subject,
+      html: rendered.html,
+      text: rendered.text,
+      tag: "auth_admin_magiclink",
+      idempotencyKey: `admin-member-login-link-${member.id}-${Date.now()}`,
+    });
+  } catch (error) {
+    console.error("[admin/member-actions] member login link email failed:", error);
+    return { error: "Could not send the login link email." };
+  }
+
+  await logAudit({
+    actorId: actor.id,
+    memberId,
+    action: "member.magic_login_link_sent",
+    targetType: "member",
+    targetId: memberId,
+    reason: loginReason,
+    metadata: {
+      target_email: member.email,
+      redirect_target: next,
+      sent_via: "postmark",
+    },
+  });
+
+  revalidatePath(`/admin/members/${memberId}`);
+  return { success: "Magic login link sent." };
+}
+
+export async function sendMemberMagicLoginLinkInline(
+  _previousState: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  return sendMemberMagicLoginLink(formData);
 }
 
 export async function deleteTestMemberAccount(formData: FormData): Promise<ActionResult> {

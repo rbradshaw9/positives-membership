@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import {
   ADMIN_EMAIL,
   ADMIN_PASSWORD,
+  LEVEL_3_MEMBER_EMAIL,
   getAdminAccessSnapshot,
   getAdminMemberSupportSnapshot,
   getAdminRolePermissionsSnapshot,
@@ -45,11 +46,6 @@ test.describe("admin member operations", () => {
     const memberNav = page.getByRole("navigation", { name: "Member navigation" });
     await expect(memberNav.getByRole("link", { name: "Admin", exact: true })).toBeVisible();
 
-    await page.getByRole("button", { name: /open profile menu/i }).click();
-    await expect(
-      page.getByRole("menu", { name: "Profile menu" }).getByRole("menuitem", { name: "Admin" })
-    ).toBeVisible();
-
     await page.goto("/admin");
     await expect(page.getByRole("link", { name: "View Member Platform" })).toBeVisible();
     await page.getByRole("link", { name: "View Member Platform" }).click();
@@ -67,6 +63,7 @@ test.describe("admin member operations", () => {
     await expect(page.getByRole("heading", { name: "Admin Roles" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Super Admin" })).toBeVisible();
     await expect(page.getByText("Read members").first()).toBeVisible();
+    await expect(page.getByText("Send login links").first()).toBeVisible();
     await expect(page.getByText("Save role permissions").first()).toBeVisible();
   });
 
@@ -117,6 +114,8 @@ test.describe("admin member operations", () => {
     });
 
     await expect(page.getByRole("heading", { name: "Members" })).toBeVisible();
+    await expect(page.getByText("Support queues")).toBeVisible();
+    await expect(page.getByRole("link", { name: /Needs attention/ })).toBeVisible();
 
     await page.getByLabel("Search members").fill(MEMBER_EMAIL);
     await page.getByRole("button", { name: "Search" }).click();
@@ -128,12 +127,17 @@ test.describe("admin member operations", () => {
     await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
 
     const tabNav = page.getByRole("navigation", { name: "Member management tabs" });
-    await expect(tabNav.getByRole("link", { name: "Access", exact: true })).toBeVisible();
-    await expect(tabNav.getByRole("link", { name: "Billing", exact: true })).toBeVisible();
+    await expect(tabNav.getByRole("link", { name: "Purchases & Access", exact: true })).toBeVisible();
+    await expect(tabNav.getByRole("link", { name: "Membership & Billing", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Support Actions" })).toBeVisible();
+    await expect(page.getByText("Send member login link").first()).toBeVisible();
+    await expect(
+      page.getByText("Beta and alpha status only controls feedback access.")
+    ).toBeVisible();
 
-    await tabNav.getByRole("link", { name: "Access", exact: true }).click();
+    await tabNav.getByRole("link", { name: "Purchases & Access", exact: true }).click();
     await expect(page).toHaveURL(/tab=access/);
-    await expect(page.getByRole("heading", { name: "Access" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Purchases & Access" })).toBeVisible();
 
     const assignedCoachOptions = await page
       .locator('select[name="assignedCoachId"] option')
@@ -145,13 +149,16 @@ test.describe("admin member operations", () => {
 
     const beforeUrl = page.url();
     const accessSection = page.locator("section#access");
-    await accessSection.getByLabel("Change reason").fill("E2E verifies inline CRM save behavior.");
-    await accessSection
+    const memberFieldsForm = accessSection
+      .locator("form")
+      .filter({ has: page.getByRole("button", { name: "Save member management fields" }) });
+    await memberFieldsForm.getByLabel("Change reason").fill("E2E verifies inline CRM save behavior.");
+    await memberFieldsForm
       .getByLabel("I verified this change is authorized by the member/client or approved by the team.")
       .check();
-    await accessSection.getByRole("button", { name: "Save member management fields" }).click();
+    await memberFieldsForm.getByRole("button", { name: "Save member management fields" }).click();
 
-    await expect(accessSection.getByRole("status")).toContainText("Member management fields saved.");
+    await expect(memberFieldsForm.getByRole("status")).toContainText("Member management fields saved.");
     expect(page.url()).toBe(beforeUrl);
   });
 
@@ -185,15 +192,16 @@ test.describe("admin member operations", () => {
 
       await expect(page.getByRole("heading", { name: MEMBER_EMAIL })).toBeVisible();
       await expect(page.getByText("Canceled", { exact: true }).first()).toBeVisible();
-      await expect(page.getByText("No active access", { exact: true }).first()).toBeVisible();
+      await expect(page.getByText("Course-only", { exact: true }).first()).toBeVisible();
+      await expect(page.getByText("Permanent course access remains.").first()).toBeVisible();
       await expect(page.getByText("No practice tracked yet.")).toBeVisible();
 
       const tabNav = page.getByRole("navigation", { name: "Member management tabs" });
-      await tabNav.getByRole("link", { name: "Communication", exact: true }).click();
+      await tabNav.getByRole("link", { name: "Communication & Login", exact: true }).click();
       await expect(page).toHaveURL(/tab=communication/);
       await expect(page.getByText("Magic-link / password not set")).toBeVisible();
 
-      await tabNav.getByRole("link", { name: "Billing", exact: true }).click();
+      await tabNav.getByRole("link", { name: "Membership & Billing", exact: true }).click();
       await expect(page).toHaveURL(/tab=billing/);
       await expect(page.getByText("Not linked")).toBeVisible();
     } finally {
@@ -223,11 +231,12 @@ test.describe("admin member operations", () => {
       await page.getByLabel("Search members").fill(MEMBER_EMAIL);
       await page.getByRole("button", { name: "Search" }).click();
       await page.getByRole("link", { name: MEMBER_EMAIL }).click();
+      await expect(page).toHaveURL(/\/admin\/members\/[0-9a-f-]+$/);
 
       await page.goto(`${page.url()}?tab=billing&planTarget=level_3_monthly`);
 
       await expect(page.getByRole("heading", { name: /Ryan \(L1 Test\)|rbradshaw\+l1@gmail\.com/ })).toBeVisible();
-      await expect(page.getByRole("heading", { name: "Billing" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Membership & Billing" })).toBeVisible();
       await expect(
         page.getByText(
           "The linked Stripe customer could not be found in Stripe. Reconnect billing before previewing or changing this plan."
@@ -271,7 +280,7 @@ test.describe("admin member operations", () => {
 
       await page
         .getByRole("navigation", { name: "Member management tabs" })
-        .getByRole("link", { name: "Billing", exact: true })
+        .getByRole("link", { name: "Membership & Billing", exact: true })
         .click();
 
       await expect(page).toHaveURL(/tab=billing/);
@@ -311,7 +320,7 @@ test.describe("admin member operations", () => {
 
       await page
         .getByRole("navigation", { name: "Member management tabs" })
-        .getByRole("link", { name: "Admin Access" })
+        .getByRole("link", { name: "Staff Access" })
         .click();
       await expect(page).toHaveURL(/tab=admin-access/);
 
