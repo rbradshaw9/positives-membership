@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { revalidateTag } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 
 /**
  * POST /api/admin/content/save-video
@@ -37,6 +39,11 @@ export async function POST(req: NextRequest) {
     console.error("[save-video] DB error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  revalidateTag(CACHE_TAGS.todayContent, "max");
+  revalidateTag(CACHE_TAGS.weeklyContent, "max");
+  revalidateTag(CACHE_TAGS.monthlyContent, "max");
+  revalidateTag(CACHE_TAGS.libraryContent, "max");
 
   return NextResponse.json({ ok: true });
 }
