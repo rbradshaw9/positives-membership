@@ -50,6 +50,10 @@ export default async function LessonPage({ params }: Props) {
     hasSubscriptionAccess: hasActiveMemberAccess(member.subscription_status),
     courseId: lesson.course_id,
     courseTierMin: lesson.course_tier_min,
+    courseAccessType: lesson.course_access_type,
+    courseIsStandalonePurchasable: lesson.course_is_standalone_purchasable,
+    courseStripePriceId: lesson.course_stripe_price_id,
+    coursePriceCents: lesson.course_price_cents,
   });
 
   if (!canAccess) redirect("/library?upgrade=true");

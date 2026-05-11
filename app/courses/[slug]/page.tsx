@@ -69,6 +69,10 @@ export default async function PublicCourseDetailPage({ params }: Props) {
         hasSubscriptionAccess: hasActiveMemberAccess(member.subscription_status),
         courseId: course.id,
         courseTierMin: course.tier_min,
+        courseAccessType: course.access_type,
+        courseIsStandalonePurchasable: course.is_standalone_purchasable,
+        courseStripePriceId: course.stripe_price_id,
+        coursePriceCents: course.price_cents,
       })
     : false;
   const hasAccess = owned || included;

@@ -46,6 +46,10 @@ export default async function MyCourseDetailPage({ params }: Props) {
     hasSubscriptionAccess,
     courseId: course.id,
     courseTierMin: course.tier_min,
+    courseAccessType: course.access_type,
+    courseIsStandalonePurchasable: course.is_standalone_purchasable,
+    courseStripePriceId: course.stripe_price_id,
+    coursePriceCents: course.price_cents,
   });
 
   if (!canAccess) redirect("/library?upgrade=true");

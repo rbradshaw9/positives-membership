@@ -30,6 +30,7 @@ type CourseRow = {
   sort_order: number;
   created_at: string;
   modules: { id: string; sessions: { id: string }[] }[];
+  entitlements: { id: string; status: string }[];
 };
 
 const STATUS_BADGE: Record<string, string> = {
@@ -50,7 +51,8 @@ export default async function AdminCoursesPage({
     .from("course")
     .select(
       `id, title, slug, description, status, sort_order, created_at,
-       modules:course_module(id, sessions:course_session(id))`
+       modules:course_module(id, sessions:course_session(id)),
+       entitlements:course_entitlement(id, status)`
     )
     .order("sort_order", { ascending: true });
 
@@ -103,16 +105,14 @@ export default async function AdminCoursesPage({
               ) ?? 0;
 
             return (
-              <Link
+              <article
                 key={course.id}
-                href={`/admin/courses/${course.id}`}
                 className="surface-card"
                 style={{
                   display: "flex",
                   alignItems: "center",
                   gap: "1rem",
                   padding: "1rem 1.25rem",
-                  textDecoration: "none",
                   borderRadius: "0.625rem",
                   transition: "transform 100ms ease, box-shadow 100ms ease",
                 }}
@@ -137,16 +137,18 @@ export default async function AdminCoursesPage({
 
                 {/* Title and description */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p
+                  <Link
+                    href={`/admin/courses/${course.id}`}
                     style={{
                       fontSize: "0.875rem",
                       fontWeight: 700,
                       color: "var(--color-foreground)",
                       letterSpacing: "-0.01em",
+                      textDecoration: "none",
                     }}
                   >
                     {course.title}
-                  </p>
+                  </Link>
                   {course.description && (
                     <p
                       style={{
@@ -168,6 +170,7 @@ export default async function AdminCoursesPage({
                   style={{
                     display: "flex",
                     alignItems: "center",
+                    flexWrap: "wrap",
                     gap: "1rem",
                     flexShrink: 0,
                   }}
@@ -183,22 +186,33 @@ export default async function AdminCoursesPage({
                     {sessionCount} session{sessionCount !== 1 ? "s" : ""}
                   </span>
                   <span
+                    style={{
+                      fontSize: "0.6875rem",
+                      color: "var(--color-muted-fg)",
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
+                    {(course.entitlements ?? []).filter((row) => row.status === "active").length} enrolled
+                  </span>
+                  <span
                     className={
                       STATUS_BADGE[course.status] ?? STATUS_BADGE.draft
                     }
                   >
-                    {course.status === "published" ? "Published" : "Draft"}
+                    {course.status === "published"
+                      ? "Published"
+                      : course.status === "archived"
+                        ? "Archived"
+                        : "Draft"}
                   </span>
-                  <span
-                    style={{
-                      fontSize: "0.75rem",
-                      color: "var(--color-muted-fg)",
-                    }}
-                  >
-                    →
-                  </span>
+                  <Link className="admin-btn admin-btn--ghost" href={`/admin/courses/${course.id}`}>
+                    Edit
+                  </Link>
+                  <Link className="admin-btn admin-btn--outline" href={`/admin/courses/${course.id}/enrollments`}>
+                    Enrollments
+                  </Link>
                 </div>
-              </Link>
+              </article>
             );
           })}
         </div>

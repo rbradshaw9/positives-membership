@@ -232,7 +232,15 @@ export default async function CourseEditorPage({
             </span>
           </div>
         </div>
-        <div style={{ display: "flex", gap: "0.5rem" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+          <Link className="admin-btn admin-btn--outline" href={`/admin/courses/${c.id}/enrollments`}>
+            Enrollments
+          </Link>
+          {c.slug ? (
+            <Link className="admin-btn admin-btn--outline" href={`/courses/${c.slug}`}>
+              View sales page
+            </Link>
+          ) : null}
           <ConfirmDeleteButton
             action={deleteCourse}
             fields={{ id: c.id }}

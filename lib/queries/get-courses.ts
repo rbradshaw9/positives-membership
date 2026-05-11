@@ -126,6 +126,10 @@ export type LessonWithContext = CourseLesson & {
   course_slug: string | null;
   module_title: string;
   course_tier_min: string | null;
+  course_access_type?: string | null;
+  course_is_standalone_purchasable?: boolean | null;
+  course_stripe_price_id?: string | null;
+  course_price_cents?: number | null;
   prev_lesson_id: string | null;
   next_lesson_id: string | null;
   prev_lesson_slug: string | null;
@@ -221,8 +225,20 @@ export async function memberCanAccessCourse(params: {
   hasSubscriptionAccess: boolean;
   courseId: string;
   courseTierMin: string | null;
+  courseAccessType?: string | null;
+  courseIsStandalonePurchasable?: boolean | null;
+  courseStripePriceId?: string | null;
+  coursePriceCents?: number | null;
 }): Promise<boolean> {
+  const subscriptionAllowed = courseAllowsSubscriptionAccess({
+    access_type: params.courseAccessType,
+    is_standalone_purchasable: params.courseIsStandalonePurchasable,
+    stripe_price_id: params.courseStripePriceId,
+    price_cents: params.coursePriceCents,
+  });
+
   if (
+    subscriptionAllowed &&
     params.hasSubscriptionAccess &&
     tierLevel(params.courseTierMin) <= tierLevel(params.memberTier)
   ) {
@@ -240,6 +256,10 @@ export async function canUserAccessLesson(params: {
   hasSubscriptionAccess?: boolean;
   courseId: string;
   courseTierMin: string | null;
+  courseAccessType?: string | null;
+  courseIsStandalonePurchasable?: boolean | null;
+  courseStripePriceId?: string | null;
+  coursePriceCents?: number | null;
   isPreview?: boolean | null;
 }): Promise<boolean> {
   if (params.isPreview) return true;
@@ -250,6 +270,10 @@ export async function canUserAccessLesson(params: {
     hasSubscriptionAccess: Boolean(params.hasSubscriptionAccess),
     courseId: params.courseId,
     courseTierMin: params.courseTierMin,
+    courseAccessType: params.courseAccessType,
+    courseIsStandalonePurchasable: params.courseIsStandalonePurchasable,
+    courseStripePriceId: params.courseStripePriceId,
+    coursePriceCents: params.coursePriceCents,
   });
 }
 
@@ -649,10 +673,24 @@ export async function getCourseLesson(
     .select<
       CourseLesson & {
         module_id: string;
-        course_module: { id: string; title: string; course_id: string; course: { id: string; title: string; slug: string | null; tier_min: string | null } };
+        course_module: {
+          id: string;
+          title: string;
+          course_id: string;
+          course: {
+            id: string;
+            title: string;
+            slug: string | null;
+            tier_min: string | null;
+            access_type?: string | null;
+            is_standalone_purchasable?: boolean | null;
+            stripe_price_id?: string | null;
+            price_cents?: number | null;
+          };
+        };
       }
     >(
-      "id, slug, title, description, body, video_url, audio_url, duration_seconds, resources, sort_order, status, is_preview, module_id, course_module!inner(id, title, course_id, course!inner(id, title, slug, tier_min))"
+      "id, slug, title, description, body, video_url, audio_url, duration_seconds, resources, sort_order, status, is_preview, module_id, course_module!inner(id, title, course_id, course!inner(id, title, slug, tier_min, access_type, is_standalone_purchasable, stripe_price_id, price_cents))"
     )
     .neq("status", "archived");
 
@@ -712,6 +750,10 @@ export async function getCourseLesson(
     course_title: course.title,
     course_slug: course.slug,
     course_tier_min: course.tier_min,
+    course_access_type: course.access_type,
+    course_is_standalone_purchasable: course.is_standalone_purchasable,
+    course_stripe_price_id: course.stripe_price_id,
+    course_price_cents: course.price_cents,
     module_title: courseModule.title,
     prev_lesson_id: prev?.id ?? null,
     next_lesson_id: next?.id ?? null,
