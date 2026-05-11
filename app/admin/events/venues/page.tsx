@@ -84,7 +84,7 @@ export default async function EventVenuesPage({ searchParams }: { searchParams: 
                 <th>Mode</th>
                 <th>Upcoming</th>
                 <th>Status</th>
-                <th></th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -98,7 +98,15 @@ export default async function EventVenuesPage({ searchParams }: { searchParams: 
                   <td><span className="admin-badge admin-badge--draft">{venue.is_virtual ? "Virtual" : "Physical"}</span></td>
                   <td>{venue.upcoming_count ?? 0}</td>
                   <td><span className={venue.status === "published" ? "admin-badge admin-badge--published" : "admin-badge admin-badge--draft"}>{venue.status}</span></td>
-                  <td><Link href={`/admin/events/venues/${venue.id}/edit`} className="text-sm font-semibold text-primary">Edit</Link></td>
+                  <td>
+                    <div className="flex flex-wrap gap-3 text-sm font-semibold">
+                      <Link href={`/admin/events/venues/${venue.id}/edit`} className="text-primary">Edit</Link>
+                      {venue.status === "published" ? (
+                        <Link href={`/events/venues/${venue.slug}`} className="text-primary">View</Link>
+                      ) : null}
+                      <Link href={`/admin/events?q=${encodeURIComponent(venue.name)}`} className="text-primary">Events</Link>
+                    </div>
+                  </td>
                 </tr>
               ))}
               {venues.length === 0 ? (

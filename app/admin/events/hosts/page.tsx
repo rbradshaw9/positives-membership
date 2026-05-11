@@ -87,7 +87,7 @@ export default async function EventHostsPage({ searchParams }: { searchParams: S
                 <th>Upcoming</th>
                 <th>Status</th>
                 <th>Website</th>
-                <th></th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -102,7 +102,15 @@ export default async function EventHostsPage({ searchParams }: { searchParams: S
                   <td>{host.upcoming_count ?? 0}</td>
                   <td><span className={host.status === "published" ? "admin-badge admin-badge--published" : "admin-badge admin-badge--draft"}>{host.status}</span></td>
                   <td>{host.website_url ? <a href={host.website_url} className="text-primary" target="_blank" rel="noopener noreferrer">Open</a> : "None"}</td>
-                  <td><Link href={`/admin/events/hosts/${host.id}/edit`} className="text-sm font-semibold text-primary">Edit</Link></td>
+                  <td>
+                    <div className="flex flex-wrap gap-3 text-sm font-semibold">
+                      <Link href={`/admin/events/hosts/${host.id}/edit`} className="text-primary">Edit</Link>
+                      {host.status === "published" ? (
+                        <Link href={`/events/hosts/${host.slug}`} className="text-primary">View</Link>
+                      ) : null}
+                      <Link href={`/admin/events?q=${encodeURIComponent(host.name)}`} className="text-primary">Events</Link>
+                    </div>
+                  </td>
                 </tr>
               ))}
               {hosts.length === 0 ? (

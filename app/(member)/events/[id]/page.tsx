@@ -12,6 +12,7 @@ import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { Button } from "@/components/ui/Button";
 import {
   EventVisual,
+  EventStatusBadges,
   MemberEventCard,
   eventCostLabel,
   eventHostNames,
@@ -55,6 +56,31 @@ function hostRoleLabel(role: string) {
   if (role === "instructor") return "Instructor";
   if (role === "partner") return "Partner";
   return "Host";
+}
+
+function statusLabel(status: string) {
+  if (status === "ready_for_review") return "Ready for review";
+  return status.slice(0, 1).toUpperCase() + status.slice(1).replace("_", " ");
+}
+
+function EventStatusNotice({ status }: { status: string }) {
+  if (status === "canceled") {
+    return (
+      <SurfaceCard padding="md" className="border-destructive/25 bg-destructive/5">
+        <p className="font-semibold text-destructive">This event has been canceled.</p>
+      </SurfaceCard>
+    );
+  }
+
+  if (status === "postponed") {
+    return (
+      <SurfaceCard padding="md" className="border-amber-300 bg-amber-50">
+        <p className="font-semibold text-amber-900">This event has been postponed. A new date will be shared when it is available.</p>
+      </SurfaceCard>
+    );
+  }
+
+  return null;
 }
 
 function rsvpState(event: MemberEvent) {
@@ -255,9 +281,10 @@ export default async function EventDetailPage({
   const address = venueAddress(event);
   const location = eventLocationLabel(event);
   const hostNames = eventHostNames(event);
+  const registrationPlacement = event.registration_placement ?? "after_description";
   const registrationModule = (
     <div id="event-registration" className="scroll-mt-24 space-y-4">
-      {query.ticket === "success" || hasTicketAccess && ticketRequired ? (
+      {query.ticket === "success" || (hasTicketAccess && ticketRequired) ? (
         <SurfaceCard padding="lg">
           <p className="ui-section-eyebrow mb-2">Ticket</p>
           <p className="text-sm leading-relaxed text-muted-foreground">
@@ -296,14 +323,17 @@ export default async function EventDetailPage({
             {hostNames ? (
               <p className="mt-2 text-sm text-muted-foreground">Hosted by {hostNames}</p>
             ) : null}
+            <EventStatusBadges event={event} nowMs={nowMs} className="mt-4" />
           </div>
         </header>
+
+        <EventStatusNotice status={event.status} />
 
         <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
           <div className="space-y-6">
             <EventVisual event={event} priority className="rounded-[1.75rem]" />
 
-            {event.registration_placement === "below_hero" ? registrationModule : null}
+            {registrationPlacement === "below_hero" ? registrationModule : null}
 
             {event.excerpt ? (
               <p className="text-lg leading-relaxed text-muted-foreground">{event.excerpt}</p>
@@ -315,7 +345,7 @@ export default async function EventDetailPage({
               </SurfaceCard>
             ) : null}
 
-            {event.registration_placement === "after_description" ? registrationModule : null}
+            {registrationPlacement === "after_description" ? registrationModule : null}
 
             <SurfaceCard padding="lg" className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -342,7 +372,7 @@ export default async function EventDetailPage({
           </div>
 
           <aside className="space-y-4 lg:sticky lg:top-24">
-            {event.registration_placement === "sidebar" ? registrationModule : null}
+            {registrationPlacement === "sidebar" ? registrationModule : null}
 
             <SurfaceCard padding="lg" elevated>
               <p className="ui-section-eyebrow mb-3">Event Details</p>
@@ -352,6 +382,7 @@ export default async function EventDetailPage({
                 <DetailRow label="Cost" value={eventCostLabel(event)} />
                 <DetailRow label="Event Type" value={event.event_type?.name ?? "Event"} />
                 <DetailRow label="Location" value={location} />
+                <DetailRow label="Status" value={statusLabel(event.status)} />
               </dl>
               <div className="mt-4 grid gap-2">
                 <EventJoinButton
