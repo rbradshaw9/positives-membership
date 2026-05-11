@@ -1583,6 +1583,7 @@ export default async function AdminMemberDetailPage({
 
           {canManageRoles ? (
             <MemberCrmInlineForm
+              id="support-impersonation-form"
               action={startMemberImpersonationInline}
               className="member-crm-card"
               submitLabel="Impersonate member"
@@ -1595,7 +1596,7 @@ export default async function AdminMemberDetailPage({
               <p className="member-crm-card-title">Impersonate member</p>
               <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
                 Opens a one-time member session for support or QA. A banner will appear in the
-                member site so you can exit back to admin sign-in when finished.
+                member site so you can exit back to this admin profile when finished.
               </p>
               <ClientAuthorizationFields
                 reasonName="impersonationReason"
@@ -3115,8 +3116,8 @@ export default async function AdminMemberDetailPage({
                   <p className="member-crm-card-title">Support impersonation</p>
                   <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
                     Creates a one-time Supabase sign-in link for this member and records the action
-                    in the audit log. This replaces your current browser session with the member&apos;s
-                    session, so use a separate browser profile if you want to stay signed in as admin.
+                    in the audit log. This temporarily swaps your browser into the member session;
+                    use the banner on the member site to return to this admin profile.
                   </p>
                   <ClientAuthorizationFields
                     reasonName="impersonationReason"

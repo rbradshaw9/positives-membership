@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { createHmac } from "node:crypto";
 import path from "node:path";
 import { expect, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
@@ -1844,4 +1845,65 @@ export async function loginWithPassword(
       }`
     );
   }
+}
+
+export async function createImpersonationPathForE2E(params: {
+  actorEmail: string;
+  targetEmail: string;
+  returnTo: string;
+}) {
+  ensureLocalEnvLoaded();
+  const supabase = getServiceRoleClient();
+
+  const { data: members, error: memberError } = await supabase
+    .from("member")
+    .select("id, email")
+    .in("email", [params.actorEmail, params.targetEmail]);
+
+  if (memberError) {
+    throw new Error(`Could not load impersonation members: ${memberError.message}`);
+  }
+
+  const actor = members?.find((member) => member.email === params.actorEmail);
+  const target = members?.find((member) => member.email === params.targetEmail);
+
+  if (!actor?.id || !target?.id) {
+    throw new Error("Could not find actor and target members for impersonation E2E.");
+  }
+
+  const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+    type: "magiclink",
+    email: params.targetEmail,
+    options: {
+      redirectTo: "http://localhost:3011/auth/callback?next=%2Ftoday",
+    },
+  });
+
+  const tokenHash = linkData?.properties?.hashed_token;
+  if (linkError || !tokenHash) {
+    throw new Error(
+      `Could not create target impersonation link: ${linkError?.message ?? "missing token hash"}`
+    );
+  }
+
+  const startedAt = Date.now();
+  const payload = {
+    version: 1,
+    actorId: actor.id,
+    targetMemberId: target.id,
+    returnTo: params.returnTo,
+    startedAt,
+    expiresAt: startedAt + 4 * 60 * 60 * 1000,
+  };
+  const encoded = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+  const secret = process.env.ABUSE_GUARD_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!secret) {
+    throw new Error("Missing signing secret for impersonation E2E.");
+  }
+  const signature = createHmac("sha256", secret).update(encoded).digest("hex");
+  const state = `${encoded}.${signature}`;
+
+  return `/auth/impersonate?token_hash=${encodeURIComponent(tokenHash)}&next=${encodeURIComponent(
+    "/today"
+  )}&state=${encodeURIComponent(state)}`;
 }

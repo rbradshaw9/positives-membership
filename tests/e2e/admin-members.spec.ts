@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import {
   ADMIN_EMAIL,
   ADMIN_PASSWORD,
+  createImpersonationPathForE2E,
   LEVEL_3_MEMBER_EMAIL,
   getAdminAccessSnapshot,
   getAdminMemberSupportSnapshot,
@@ -161,6 +162,43 @@ test.describe("admin member operations", () => {
 
     await expect(memberFieldsForm.getByRole("status")).toContainText("Member management fields saved.");
     expect(page.url()).toBe(beforeUrl);
+  });
+
+  test("admin can exit impersonation back to the member profile", async ({ page }) => {
+    test.setTimeout(90_000);
+
+    await loginWithPassword(page, {
+      email: ADMIN_EMAIL,
+      password: ADMIN_PASSWORD,
+      next: "/admin/members",
+    });
+
+    await page.getByLabel("Search members").fill(MEMBER_EMAIL);
+    await page.getByRole("button", { name: "Search" }).click();
+    await expect(page.getByRole("link", { name: MEMBER_EMAIL })).toBeVisible();
+    await page.getByRole("link", { name: MEMBER_EMAIL }).click();
+    await expect(page).toHaveURL(/\/admin\/members\/[0-9a-f-]+$/);
+    await expect(page.getByRole("heading", { name: /Ryan \(L1 Test\)|rbradshaw\+l1@gmail\.com/ })).toBeVisible();
+
+    const memberProfileUrl = page.url();
+    const impersonationPath = await createImpersonationPathForE2E({
+      actorEmail: ADMIN_EMAIL,
+      targetEmail: MEMBER_EMAIL,
+      returnTo: `${new URL(memberProfileUrl).pathname}?success=impersonation_ended&tab=overview`,
+    });
+    await page.goto(impersonationPath);
+
+    await expect(page).toHaveURL(/\/today$/);
+    await expect(page.getByText(/Support session: viewing as/i)).toBeVisible();
+
+    await page.getByRole("link", { name: "Exit to admin" }).click();
+
+    await expect(page).toHaveURL(/\/admin\/members\/.+impersonation_ended/);
+    expect(page.url()).toContain(new URL(memberProfileUrl).pathname);
+    await expect(page.getByRole("heading", { name: /Ryan \(L1 Test\)|rbradshaw\+l1@gmail\.com/ })).toBeVisible();
+
+    await page.goto("/admin");
+    await expect(page.getByRole("link", { name: "View Member Platform" })).toBeVisible();
   });
 
   test("admin detail flags canceled, incomplete, and billing-handoff edge cases", async ({

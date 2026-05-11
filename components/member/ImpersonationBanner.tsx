@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 type ImpersonationBannerProps = {
   memberName?: string | null;
 };
@@ -13,16 +11,16 @@ export function ImpersonationBanner({ memberName }: ImpersonationBannerProps) {
         <div>
           <p className="font-semibold">Support session: viewing as {label}</p>
           <p className="mt-0.5 text-xs leading-relaxed text-slate-700">
-            Exit when you are finished. This will sign out of the member session and return you to
-            admin sign-in.
+            Exit when you are finished. This will close the member session and return you to the
+            admin member profile.
           </p>
         </div>
-        <Link
+        <a
           href="/auth/impersonate/exit"
           className="inline-flex w-fit items-center justify-center rounded-full bg-slate-950 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-slate-800"
         >
           Exit to admin
-        </Link>
+        </a>
       </div>
     </div>
   );
