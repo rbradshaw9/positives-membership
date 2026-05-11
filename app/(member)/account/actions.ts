@@ -1,10 +1,12 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
+import { IMPERSONATION_COOKIE_NAME } from "@/lib/auth/impersonation-session";
 import { formatSupabaseAuthError } from "@/lib/auth/client-error";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { config } from "@/lib/config";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
@@ -263,6 +265,19 @@ export async function redirectToBillingPortal(): Promise<void> {
  */
 export async function signOut(): Promise<never> {
   const supabase = await createClient();
-  await supabase.auth.signOut();
-  redirect("/login");
+  await supabase.auth.signOut().catch((error) => {
+    console.warn("[Account] signOut failed:", error);
+  });
+
+  const cookieStore = await cookies();
+  for (const cookie of cookieStore.getAll()) {
+    if (cookie.name.startsWith("sb-") || cookie.name === IMPERSONATION_COOKIE_NAME) {
+      cookieStore.set(cookie.name, "", {
+        path: "/",
+        maxAge: 0,
+      });
+    }
+  }
+
+  redirect("/login?signed_out=1");
 }

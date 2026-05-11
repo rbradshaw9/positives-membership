@@ -25,6 +25,24 @@ test("signed-in non-admin is redirected away from admin", async ({ page }) => {
   await expect(page).toHaveURL(/\/today$/);
 });
 
+test("member sign out ends the session on the login page", async ({ page }) => {
+  await loginWithPassword(page, {
+    email: MEMBER_EMAIL,
+    password: MEMBER_PASSWORD,
+    next: "/today",
+  });
+
+  await page.goto("/account");
+  await page.getByRole("button", { name: "Sign out" }).click();
+
+  await expect(page).toHaveURL(/\/login\?signed_out=1$/);
+  await expect(page.getByRole("heading", { name: "Sign in to Positives" })).toBeVisible();
+  await expect(page.getByText("You’re signed out. Sign in when you’re ready.")).toBeVisible();
+
+  await page.goto("/today");
+  await expect(page).toHaveURL(/\/login\?next=%2Ftoday$/);
+});
+
 test("password sign-in redirects directly to the next destination", async ({ page }) => {
   await loginWithPassword(page, {
     email: LEVEL_3_MEMBER_EMAIL,

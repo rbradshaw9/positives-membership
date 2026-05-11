@@ -20,6 +20,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/today";
   const reason = searchParams.get("reason");
+  const signedOut = searchParams.get("signed_out") === "1";
 
   const [mode, setMode] = useState<Mode>("password");
   const [magicSent, setMagicSent] = useState(false);
@@ -143,6 +144,8 @@ function LoginForm() {
         >
           {reason === "subscription_inactive"
             ? "Your membership is inactive. Sign in to manage your account."
+            : signedOut
+              ? "You’re signed out. Sign in when you’re ready."
             : "Welcome back to your practice."}
         </p>
       </div>
