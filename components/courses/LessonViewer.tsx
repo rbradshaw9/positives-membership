@@ -135,18 +135,29 @@ function ResourceList({ resources }: { resources: CourseResource[] }) {
   );
 }
 
+function mergeLessonResources(lesson: LessonWithContext): CourseResource[] {
+  const importedResources = (lesson.course_resources ?? []).map((resource) => ({
+    label: resource.label,
+    url: resource.url,
+    type: resource.file_type,
+  }));
+
+  const fallbackResources = importedResources.length > 0 ? [] : parseResources(lesson.resources);
+  const seen = new Set<string>();
+
+  return [...fallbackResources, ...importedResources].filter((resource) => {
+    const key = `${resource.url}::${resource.label}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export function LessonViewer({ lesson, memberId }: LessonViewerProps) {
   void memberId;
   const [completed, setCompleted] = useState(lesson.completed ?? false);
   const [isPending, startTransition] = useTransition();
-  const lessonResources = [
-    ...parseResources(lesson.resources),
-    ...(lesson.course_resources ?? []).map((resource) => ({
-      label: resource.label,
-      url: resource.url,
-      type: resource.file_type,
-    })),
-  ];
+  const lessonResources = mergeLessonResources(lesson);
 
   function handleToggleComplete() {
     startTransition(async () => {

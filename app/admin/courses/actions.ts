@@ -945,6 +945,14 @@ function parsePositiveIntegerEnv(name: string, fallback: number) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function parseBooleanEnv(name: string, fallback = false) {
+  const raw = process.env[name]?.trim().toLowerCase();
+  if (!raw) return fallback;
+  if (["1", "true", "yes", "on"].includes(raw)) return true;
+  if (["0", "false", "no", "off"].includes(raw)) return false;
+  return fallback;
+}
+
 function getImportedResourceLimits() {
   const configuredMaxMb = parsePositiveIntegerEnv(
     "LEARNDASH_IMPORT_MAX_RESOURCE_MB",
@@ -961,6 +969,17 @@ function getImportedResourceLimits() {
     maxLabel: `${maxMb} MB`,
     timeoutMs: timeoutSeconds * 1000,
   };
+}
+
+function getImportedResourceCopyPolicy(item: ImportedResourceItem) {
+  if (item.type === "video" && !parseBooleanEnv("LEARNDASH_IMPORT_COPY_DIRECT_VIDEO")) {
+    return {
+      shouldCopy: false,
+      reason: "direct video files stay external while Vimeo/YouTube remain the video delivery system",
+    };
+  }
+
+  return { shouldCopy: true, reason: null };
 }
 
 function resourceKind(type: string, contentType?: string | null) {
@@ -1155,6 +1174,14 @@ async function copyImportedResourceToS3(params: {
   };
 }
 
+type PersistedImportedResource = ImportedResourceItem & {
+  mediaAssetId: string | null;
+  s3Key: string | null;
+  contentType: string | null;
+  sizeBytes: number | null;
+  importStatus: "copied" | "external" | "failed";
+};
+
 async function persistImportedResources(params: {
   courseId: string;
   moduleId?: string | null;
@@ -1163,9 +1190,10 @@ async function persistImportedResources(params: {
   sourceId?: string | null;
   items: ImportedResourceItem[];
   result: ImportResourceStats;
-}) {
-  if (params.items.length === 0) return;
+}): Promise<PersistedImportedResource[]> {
+  if (params.items.length === 0) return [];
 
+  const persisted: PersistedImportedResource[] = [];
   for (let index = 0; index < params.items.length; index++) {
     const item = params.items[index];
     let copied:
@@ -1178,21 +1206,29 @@ async function persistImportedResources(params: {
         }
       | null = null;
     let importStatus: "copied" | "external" | "failed" = "external";
+    const copyPolicy = getImportedResourceCopyPolicy(item);
 
-    try {
-      copied = await copyImportedResourceToS3({
-        item,
-        courseId: params.courseId,
-        sourceId: params.sourceId,
-      });
-      importStatus = "copied";
-      params.result.resourcesCopied++;
-    } catch (error) {
+    if (copyPolicy.shouldCopy) {
+      try {
+        copied = await copyImportedResourceToS3({
+          item,
+          courseId: params.courseId,
+          sourceId: params.sourceId,
+        });
+        importStatus = "copied";
+        params.result.resourcesCopied++;
+      } catch (error) {
+        params.result.resourcesLinked++;
+        params.result.warnings.push(
+          `Kept external resource link for "${item.label}": ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+      }
+    } else {
       params.result.resourcesLinked++;
       params.result.warnings.push(
-        `Kept external resource link for "${item.label}": ${
-          error instanceof Error ? error.message : String(error)
-        }`
+        `Kept external resource link for "${item.label}": ${copyPolicy.reason}.`
       );
     }
 
@@ -1208,7 +1244,10 @@ async function persistImportedResources(params: {
       source_url: item.url,
       source_system: "learndash",
       source_id: params.sourceId ?? null,
-      source_metadata: { original_type: item.type },
+      source_metadata: {
+        original_type: item.type,
+        copy_policy: copyPolicy.reason,
+      },
       file_type: item.type,
       content_type: copied?.contentType ?? null,
       size_bytes: copied?.sizeBytes ?? null,
@@ -1221,11 +1260,31 @@ async function persistImportedResources(params: {
       params.result.resourceFailures++;
       params.result.warnings.push(`Could not save resource "${item.label}": ${error.message}`);
     }
+
+    persisted.push({
+      ...item,
+      mediaAssetId: copied?.mediaAssetId ?? null,
+      url: copied?.url ?? item.url,
+      s3Key: copied?.s3Key ?? null,
+      contentType: copied?.contentType ?? null,
+      sizeBytes: copied?.sizeBytes ?? null,
+      importStatus,
+    });
   }
+
+  return persisted;
 }
 
 function primaryAudioUrl(items: ImportedResourceItem[]) {
   return items.find((item) => item.type === "audio")?.url ?? null;
+}
+
+function importedResourceJson(items: ImportedResourceItem[]) {
+  return items.length > 0 ? JSON.stringify(items.map((item) => ({
+    label: item.label,
+    url: item.url,
+    type: item.type,
+  }))) : null;
 }
 
 function hasMeaningfulImportedContent(params: {
@@ -1469,7 +1528,7 @@ export async function importFromLearnDash(formData: FormData): Promise<LearnDash
             ? stripHtml(decodeHtmlEntities(lessonExcerptHtml))
             : null;
           const lessonResourceItems = extractResourceItems(lessonMaterials, lessonContentHtml, JSON.stringify(elementorData ?? ""));
-          const lessonResources = lessonResourceItems.length > 0 ? JSON.stringify(lessonResourceItems) : null;
+          const lessonResources = importedResourceJson(lessonResourceItems);
           const shouldCreateLesson =
             step.topicIds.length === 0 ||
             hasMeaningfulImportedContent({
@@ -1509,7 +1568,7 @@ export async function importFromLearnDash(formData: FormData): Promise<LearnDash
             }
             result.lessonsImported++;
 
-            await persistImportedResources({
+            const persistedLessonResources = await persistImportedResources({
               courseId: newCourse.id,
               moduleId,
               lessonId: newLesson.id,
@@ -1518,6 +1577,21 @@ export async function importFromLearnDash(formData: FormData): Promise<LearnDash
               items: lessonResourceItems,
               result,
             });
+            if (persistedLessonResources.length > 0) {
+              const { error: lessonMediaUpdateErr } = await supabase
+                .from("course_lesson")
+                .update({
+                  audio_url: primaryAudioUrl(persistedLessonResources),
+                  resources: importedResourceJson(persistedLessonResources),
+                })
+                .eq("id", newLesson.id);
+
+              if (lessonMediaUpdateErr) {
+                result.warnings.push(
+                  `Could not update copied media URLs for lesson "${lessonTitle}": ${lessonMediaUpdateErr.message}`
+                );
+              }
+            }
           }
 
           // ── Fetch LearnDash topics and import them as lessons ───────────────
@@ -1556,7 +1630,7 @@ export async function importFromLearnDash(formData: FormData): Promise<LearnDash
                   ? stripHtml(decodeHtmlEntities(topicExcerptHtml))
                   : null;
                 const topicResourceItems = extractResourceItems(topicMaterials, topicContentHtml, JSON.stringify(topicElementorData ?? ""));
-                const topicResources = topicResourceItems.length > 0 ? JSON.stringify(topicResourceItems) : null;
+                const topicResources = importedResourceJson(topicResourceItems);
 
                 const topicSortCount = lessonSortCounters.get(moduleId) ?? 0;
                 lessonSortCounters.set(moduleId, topicSortCount + 1);
@@ -1588,7 +1662,7 @@ export async function importFromLearnDash(formData: FormData): Promise<LearnDash
                 } else {
                   result.lessonsImported++;
                   result.sessionsImported++;
-                  await persistImportedResources({
+                  const persistedTopicResources = await persistImportedResources({
                     courseId: newCourse.id,
                     moduleId,
                     lessonId: topicLesson.id,
@@ -1597,6 +1671,21 @@ export async function importFromLearnDash(formData: FormData): Promise<LearnDash
                     items: topicResourceItems,
                     result,
                   });
+                  if (persistedTopicResources.length > 0) {
+                    const { error: topicMediaUpdateErr } = await supabase
+                      .from("course_lesson")
+                      .update({
+                        audio_url: primaryAudioUrl(persistedTopicResources),
+                        resources: importedResourceJson(persistedTopicResources),
+                      })
+                      .eq("id", topicLesson.id);
+
+                    if (topicMediaUpdateErr) {
+                      result.warnings.push(
+                        `Could not update copied media URLs for topic "${topicTitle}": ${topicMediaUpdateErr.message}`
+                      );
+                    }
+                  }
                 }
               } catch (e) {
                 result.errors.push(`Failed to fetch topic ${topicId}: ${e}`);

@@ -79,6 +79,7 @@ These are not needed for Milestone 02 but are documented here for completeness.
 | `S3_MEDIA_PREFIX` | Ingestion | Optional root prefix for media object keys |
 | `LEARNDASH_IMPORT_MAX_RESOURCE_MB` | Courses | Max LearnDash resource file size to copy to S3. Defaults to 50 MB and is hard-capped at 500 MB. |
 | `LEARNDASH_IMPORT_RESOURCE_TIMEOUT_SECONDS` | Courses | Per-resource download timeout for LearnDash media import. Defaults to 30 seconds. |
+| `LEARNDASH_IMPORT_COPY_DIRECT_VIDEO` | Courses | Optional. Defaults to `false`, keeping `.mp4`/`.mov`/`.webm` files external while Vimeo/YouTube remain the video delivery path. |
 
 ### Google Drive
 
