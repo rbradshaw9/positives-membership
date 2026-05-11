@@ -43,6 +43,7 @@ import {
   assignAdminRoleToMemberInline,
   adjustMemberPointsInline,
   createMemberFollowupTaskInline,
+  deleteTestMemberAccountInline,
   grantCourseToMemberInline,
   previewMemberPlanChange,
   refreshMemberBillingSummaryInline,
@@ -56,6 +57,7 @@ import {
   unlockCourseWithPointsForMemberInline,
   updateMemberAvatarInline,
   updateMemberCrmProfileInline,
+  updateMemberLaunchCohortInline,
 } from "./actions";
 import { MemberCrmInlineForm } from "./MemberCrmInlineForm";
 import { MemberCrmProfileForm } from "./MemberCrmProfileForm";
@@ -100,6 +102,12 @@ const FOLLOWUP_LABEL: Record<string, string> = {
   needs_followup: "Needs follow-up",
   waiting_on_member: "Waiting on member",
   resolved: "Resolved",
+};
+
+const LAUNCH_COHORT_LABEL: Record<string, string> = {
+  alpha: "Alpha tester",
+  beta: "Beta tester",
+  live: "Live member",
 };
 
 const EVENT_LABEL: Record<string, string> = {
@@ -1766,6 +1774,34 @@ export default async function AdminMemberDetailPage({
               }}
             />
 
+            <MemberCrmInlineForm
+              action={deleteTestMemberAccountInline}
+              className="member-crm-card"
+              submitLabel="Delete test member"
+              pendingLabel="Checking..."
+              buttonClassName="admin-btn admin-btn--outline"
+              buttonStyle={{ marginTop: "0.75rem", borderColor: "rgba(220, 38, 38, 0.28)", color: "#b91c1c" }}
+              resetOnSuccess={false}
+              style={{ marginTop: "1rem" }}
+            >
+              <input type="hidden" name="memberId" value={member.id} />
+              <input type="hidden" name="memberEmail" value={member.email} />
+              <p className="member-crm-card-title">Member removal</p>
+              <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
+                This is only for accidental or test accounts. It is blocked for Stripe-linked members,
+                active access, staff accounts, or accounts with product history.
+              </p>
+              <label className="admin-form-field">
+                <span className="admin-search-bar__label">Type member email to confirm</span>
+                <TextInput name="confirmEmail" placeholder={member.email} required />
+              </label>
+              <ClientAuthorizationFields
+                reasonName="deleteReason"
+                reasonLabel="Deletion reason"
+                reasonPlaceholder="Example: Duplicate test signup created during QA."
+              />
+            </MemberCrmInlineForm>
+
             {stripeCoursePurchaseRepairPreview?.items.length ? (
               <div className="member-crm-card" style={{ marginTop: "1rem" }}>
                 <p className="member-crm-card-title">Stripe purchase reconciliation</p>
@@ -2338,7 +2374,9 @@ export default async function AdminMemberDetailPage({
             </ProfileField>
             <ProfileField label="First Login">{formatDateTime(member.first_login_at)}</ProfileField>
             <ProfileField label="Launch Cohort">
-              <span className="member-crm-mono">{member.launch_cohort ?? "live"}</span>
+              <span className="member-crm-mono">
+                {LAUNCH_COHORT_LABEL[member.launch_cohort ?? "live"] ?? member.launch_cohort ?? "Live member"}
+              </span>
             </ProfileField>
             <ProfileField label="Launch Source">
               {member.launch_source ?? "Not tracked"}
@@ -2351,6 +2389,33 @@ export default async function AdminMemberDetailPage({
           </dl>
 
           <div className="member-crm-grid-2" style={{ marginTop: "1.25rem" }}>
+            <MemberCrmInlineForm
+              action={updateMemberLaunchCohortInline}
+              className="member-crm-card"
+              submitLabel="Update testing cohort"
+              pendingLabel="Updating..."
+              resetOnSuccess={false}
+            >
+              <input type="hidden" name="memberId" value={member.id} />
+              <p className="member-crm-card-title">Testing and feedback access</p>
+              <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
+                Alpha and Beta members see the feedback button in the member platform. This does not give
+                staff or admin permissions.
+              </p>
+              <label className="admin-form-field">
+                <span className="admin-search-bar__label">Testing cohort</span>
+                <Select name="launchCohort" defaultValue={member.launch_cohort ?? "live"} required>
+                  <option value="live">Live member</option>
+                  <option value="beta">Beta tester</option>
+                  <option value="alpha">Alpha tester</option>
+                </Select>
+              </label>
+              <ClientAuthorizationFields
+                reasonName="cohortReason"
+                reasonPlaceholder="Example: Added to beta feedback group for launch QA."
+              />
+            </MemberCrmInlineForm>
+
             <div className="member-crm-card">
               <p className="member-crm-card-title member-crm-card-title--row">
                 Affiliate & referral
@@ -2665,6 +2730,11 @@ export default async function AdminMemberDetailPage({
 
       {activeTab === "admin-access" ? (
         <Section id="admin-access" title="Admin Access" description="Roles, overrides, and effective admin permissions for this member.">
+          <div className="member-crm-warning-note" style={{ marginBottom: "1rem" }}>
+            <strong>Admin roles are for staff access only.</strong>{" "}
+            To show the beta feedback button for a member, use the Testing and feedback access card
+            on the Communication tab and set their cohort to Alpha or Beta.
+          </div>
           <div className="member-crm-grid-2">
             <div className="member-crm-card">
               <p className="member-crm-card-title">Assigned admin roles</p>

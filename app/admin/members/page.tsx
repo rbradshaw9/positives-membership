@@ -228,6 +228,12 @@ export default async function AdminMembersPage({
         </div>
       </div>
 
+      {params.success === "member_deleted" ? (
+        <div className="admin-banner admin-banner--success">
+          Test member account deleted.
+        </div>
+      ) : null}
+
       <form method="GET" action="/admin/members" className="admin-search-bar" style={{ alignItems: "end" }}>
         <div className="admin-search-bar__field" style={{ flex: "1 1 20rem", minWidth: "220px" }}>
           <label htmlFor="member-search" className="admin-search-bar__label">

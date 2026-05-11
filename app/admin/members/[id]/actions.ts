@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { requireAdminPermission } from "@/lib/auth/require-admin";
+import { isBootstrapAdminEmail, requireAdminPermission } from "@/lib/auth/require-admin";
 import { getAdminRolesForMember } from "@/lib/admin/member-crm";
 import { isAdminPermissionKey } from "@/lib/admin/permissions";
 import { config } from "@/lib/config";
@@ -37,6 +37,29 @@ const FOLLOWUP_STATUSES = new Set([
   "waiting_on_member",
   "resolved",
 ]);
+const LAUNCH_COHORTS = new Set(["alpha", "beta", "live"]);
+
+const MEMBER_DELETE_BLOCKER_CHECKS: Array<{
+  table: string;
+  column: string;
+  label: string;
+}> = [
+  { table: "course_entitlement", column: "member_id", label: "course entitlements" },
+  { table: "event_ticket_order", column: "member_id", label: "event ticket orders" },
+  { table: "event_ticket", column: "member_id", label: "event tickets" },
+  { table: "event_attendee", column: "member_id", label: "event attendees" },
+  { table: "journal", column: "member_id", label: "journal entries" },
+  { table: "progress", column: "member_id", label: "practice progress rows" },
+  { table: "activity_event", column: "member_id", label: "activity events" },
+  { table: "community_post", column: "member_id", label: "community posts" },
+  { table: "community_thread", column: "member_id", label: "community threads" },
+  { table: "beta_feedback_submission", column: "member_id", label: "beta feedback submissions" },
+  { table: "member_points_ledger", column: "member_id", label: "points ledger rows" },
+  { table: "member_admin_note", column: "member_id", label: "admin notes" },
+  { table: "member_document", column: "member_id", label: "member documents" },
+  { table: "member_access_override", column: "member_id", label: "access overrides" },
+  { table: "admin_user_role", column: "member_id", label: "admin roles" },
+];
 
 function clean(value: FormDataEntryValue | null) {
   const text = value?.toString().trim() ?? "";
@@ -158,6 +181,33 @@ async function logAudit(params: {
   }
 }
 
+async function getMemberDeleteBlockers(memberId: string) {
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  const blockers: string[] = [];
+
+  for (const check of MEMBER_DELETE_BLOCKER_CHECKS) {
+    const { count, error } = await supabase
+      .from(check.table)
+      .select("id", { count: "exact", head: true })
+      .eq(check.column, memberId);
+
+    if (error) {
+      console.error(
+        `[admin/member-actions] delete blocker check failed for ${check.table}:`,
+        error.message
+      );
+      blockers.push(`unverified ${check.label}`);
+      continue;
+    }
+
+    if ((count ?? 0) > 0) {
+      blockers.push(`${count} ${check.label}`);
+    }
+  }
+
+  return blockers;
+}
+
 async function writeActivity(params: {
   memberId: string;
   eventType: string;
@@ -224,6 +274,171 @@ export async function updateMemberCrmProfileInline(
 ): Promise<ActionResult> {
   formData.set("returnState", "true");
   return updateMemberCrmProfile(formData);
+}
+
+export async function updateMemberLaunchCohort(formData: FormData): Promise<ActionResult> {
+  const actor = await requireAdminPermission("members.update_lifecycle");
+  const memberId = clean(formData.get("memberId"));
+  if (!memberId) return { error: "Missing member." };
+
+  const authorization = requireClientAuthorization(formData, "cohortReason");
+  if (authorization.error || !authorization.reason) return { error: authorization.error };
+
+  const launchCohort = clean(formData.get("launchCohort")) ?? "live";
+  if (!LAUNCH_COHORTS.has(launchCohort)) {
+    return { error: "Choose Alpha, Beta, or Live." };
+  }
+
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  const { data: member, error: lookupError } = await supabase
+    .from("member")
+    .select<{ id: string; launch_cohort: string }>("id, launch_cohort")
+    .eq("id", memberId)
+    .maybeSingle();
+
+  if (lookupError) {
+    console.error("[admin/member-actions] launch cohort lookup failed:", lookupError.message);
+    return { error: "Could not verify the member record." };
+  }
+
+  if (!member) return { error: "Member not found." };
+
+  const { error } = await supabase
+    .from("member")
+    .update({ launch_cohort: launchCohort })
+    .eq("id", memberId);
+
+  if (error) {
+    console.error("[admin/member-actions] launch cohort update failed:", error.message);
+    return { error: "Could not update testing cohort." };
+  }
+
+  await logAudit({
+    actorId: actor.id,
+    memberId,
+    action: "member.launch_cohort_updated",
+    reason: authorization.reason,
+    metadata: {
+      previous_launch_cohort: member.launch_cohort,
+      launch_cohort: launchCohort,
+      client_authorization_confirmed: true,
+    },
+  });
+
+  revalidatePath("/admin/members");
+  revalidatePath(`/admin/members/${memberId}`);
+  if (formData.get("returnState") === "true") {
+    return { success: "Testing cohort updated." };
+  }
+
+  redirect(memberPath(memberId, "launch_cohort_updated", "communication"));
+}
+
+export async function updateMemberLaunchCohortInline(
+  _previousState: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  formData.set("returnState", "true");
+  return updateMemberLaunchCohort(formData);
+}
+
+export async function deleteTestMemberAccount(formData: FormData): Promise<ActionResult> {
+  const actor = await requireAdminPermission("members.update_lifecycle");
+  const memberId = clean(formData.get("memberId"));
+  const expectedEmail = clean(formData.get("memberEmail"));
+  const confirmationEmail = clean(formData.get("confirmEmail"));
+  if (!memberId || !expectedEmail) return { error: "Missing member." };
+
+  if (actor.id === memberId) {
+    return { error: "You cannot delete your own account from this screen." };
+  }
+
+  if (confirmationEmail?.toLowerCase() !== expectedEmail.toLowerCase()) {
+    return { error: "Type the member email exactly to confirm deletion." };
+  }
+
+  const authorization = requireClientAuthorization(formData, "deleteReason");
+  if (authorization.error || !authorization.reason) return { error: authorization.error };
+
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  const { data: member, error: lookupError } = await supabase
+    .from("member")
+    .select<{
+      id: string;
+      email: string;
+      stripe_customer_id: string | null;
+      subscription_status: Enums<"subscription_status">;
+    }>("id, email, stripe_customer_id, subscription_status")
+    .eq("id", memberId)
+    .maybeSingle();
+
+  if (lookupError) {
+    console.error("[admin/member-actions] delete member lookup failed:", lookupError.message);
+    return { error: "Could not verify the member record." };
+  }
+
+  if (!member) return { error: "Member not found." };
+
+  if (isBootstrapAdminEmail(member.email)) {
+    return { error: "Bootstrap admin accounts cannot be deleted from this screen." };
+  }
+
+  if (member.email.toLowerCase() !== expectedEmail.toLowerCase()) {
+    return { error: "Member email changed. Refresh and try again." };
+  }
+
+  if (member.stripe_customer_id) {
+    return {
+      error:
+        "This member is linked to Stripe. Use a manual billing and data-removal process instead of deleting from the app.",
+    };
+  }
+
+  if (["active", "trialing", "past_due"].includes(member.subscription_status)) {
+    return {
+      error:
+        "This member has an active billing/access status. Cancel or resolve billing before account deletion.",
+    };
+  }
+
+  const blockers = await getMemberDeleteBlockers(memberId);
+  if (blockers.length > 0) {
+    return {
+      error: `This account has operational history (${blockers.slice(0, 5).join(", ")}${
+        blockers.length > 5 ? ", ..." : ""
+      }). Use a manual archive/anonymize process for records with history.`,
+    };
+  }
+
+  const adminClient = getAdminClient();
+  const { error: deleteError } = await adminClient.auth.admin.deleteUser(memberId);
+
+  if (deleteError) {
+    console.error("[admin/member-actions] auth user delete failed:", deleteError.message);
+    return { error: "Could not delete this member account." };
+  }
+
+  console.info("[admin/member-actions] test member account deleted", {
+    actor_member_id: actor.id,
+    deleted_member_id: memberId,
+    deleted_member_email: member.email,
+    reason: authorization.reason,
+  });
+
+  revalidatePath("/admin/members");
+  if (formData.get("returnState") === "true") {
+    return { redirectTo: "/admin/members?success=member_deleted" };
+  }
+
+  redirect("/admin/members?success=member_deleted");
+}
+
+export async function deleteTestMemberAccountInline(
+  _previousState: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  formData.set("returnState", "true");
+  return deleteTestMemberAccount(formData);
 }
 
 export async function updateMemberAvatar(formData: FormData): Promise<ActionResult> {
