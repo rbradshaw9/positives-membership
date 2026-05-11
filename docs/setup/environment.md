@@ -76,6 +76,9 @@ These are not needed for Milestone 02 but are documented here for completeness.
 | `AWS_ACCESS_KEY_ID` | Ingestion | IAM access key |
 | `AWS_SECRET_ACCESS_KEY` | Ingestion | IAM secret key |
 | `S3_BUCKET_NAME` | Ingestion | Audio storage bucket |
+| `S3_MEDIA_PREFIX` | Ingestion | Optional root prefix for media object keys |
+| `LEARNDASH_IMPORT_MAX_RESOURCE_MB` | Courses | Max LearnDash resource file size to copy to S3. Defaults to 50 MB and is hard-capped at 500 MB. |
+| `LEARNDASH_IMPORT_RESOURCE_TIMEOUT_SECONDS` | Courses | Per-resource download timeout for LearnDash media import. Defaults to 30 seconds. |
 
 ### Google Drive
 

@@ -933,7 +933,35 @@ type ImportResourceStats = {
   warnings: string[];
 };
 
-const MAX_IMPORTED_RESOURCE_BYTES = 50 * 1024 * 1024;
+const BYTES_PER_MB = 1024 * 1024;
+const DEFAULT_IMPORTED_RESOURCE_MAX_MB = 50;
+const HARD_IMPORTED_RESOURCE_MAX_MB = 500;
+const DEFAULT_IMPORTED_RESOURCE_TIMEOUT_SECONDS = 30;
+
+function parsePositiveIntegerEnv(name: string, fallback: number) {
+  const raw = process.env[name]?.trim();
+  if (!raw) return fallback;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function getImportedResourceLimits() {
+  const configuredMaxMb = parsePositiveIntegerEnv(
+    "LEARNDASH_IMPORT_MAX_RESOURCE_MB",
+    DEFAULT_IMPORTED_RESOURCE_MAX_MB
+  );
+  const maxMb = Math.min(configuredMaxMb, HARD_IMPORTED_RESOURCE_MAX_MB);
+  const timeoutSeconds = parsePositiveIntegerEnv(
+    "LEARNDASH_IMPORT_RESOURCE_TIMEOUT_SECONDS",
+    DEFAULT_IMPORTED_RESOURCE_TIMEOUT_SECONDS
+  );
+
+  return {
+    maxBytes: maxMb * BYTES_PER_MB,
+    maxLabel: `${maxMb} MB`,
+    timeoutMs: timeoutSeconds * 1000,
+  };
+}
 
 function resourceKind(type: string, contentType?: string | null) {
   if (type === "audio" || contentType?.startsWith("audio/")) return "audio";
@@ -1036,8 +1064,9 @@ function extractResourceItems(...sources: Array<string | null | undefined>): Imp
 }
 
 async function fetchImportedResource(url: string) {
+  const limits = getImportedResourceLimits();
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 12000);
+  const timeout = setTimeout(() => controller.abort(), limits.timeoutMs);
 
   try {
     const response = await fetch(url, {
@@ -1050,13 +1079,13 @@ async function fetchImportedResource(url: string) {
     }
 
     const contentLength = Number(response.headers.get("content-length") ?? 0);
-    if (contentLength > MAX_IMPORTED_RESOURCE_BYTES) {
-      throw new Error("file is larger than 50 MB");
+    if (contentLength > limits.maxBytes) {
+      throw new Error(`file is larger than ${limits.maxLabel}`);
     }
 
     const arrayBuffer = await response.arrayBuffer();
-    if (arrayBuffer.byteLength > MAX_IMPORTED_RESOURCE_BYTES) {
-      throw new Error("file is larger than 50 MB");
+    if (arrayBuffer.byteLength > limits.maxBytes) {
+      throw new Error(`file is larger than ${limits.maxLabel}`);
     }
 
     return {
