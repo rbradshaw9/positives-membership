@@ -7,6 +7,10 @@ import {
 import { getPositivesPlanName } from "@/lib/plans";
 import { getStripe } from "@/lib/stripe/config";
 import { isStripeResourceMissingError } from "@/lib/stripe/errors";
+import {
+  getMemberRecentStripeInvoices,
+  type MemberStripeInvoiceActivity,
+} from "@/server/services/stripe/member-billing-activity";
 import type { ScheduledBillingChange } from "@/server/services/stripe/get-scheduled-billing-change";
 
 type BillingChangeKind = ScheduledBillingChange["kind"];
@@ -15,6 +19,20 @@ export interface AccountBillingSummary {
   scheduledBillingChange: ScheduledBillingChange | null;
   nextRenewalDate: string | null;
   billingPortalAvailable: boolean;
+  currentSubscription: AccountSubscriptionSnapshot | null;
+  recentInvoices: MemberStripeInvoiceActivity[];
+  invoiceLoadFailed: boolean;
+}
+
+export interface AccountSubscriptionSnapshot {
+  id: string;
+  status: string;
+  planName: string | null;
+  amountLabel: string | null;
+  intervalLabel: string | null;
+  currentPeriodEndLabel: string | null;
+  cancelAtPeriodEnd: boolean;
+  cancelAtLabel: string | null;
 }
 
 const BILLING_SUMMARY_CACHE_SECONDS = 60 * 5;
@@ -25,6 +43,15 @@ function formatDate(timestamp: number) {
     day: "numeric",
     year: "numeric",
   }).format(new Date(timestamp * 1000));
+}
+
+function formatMoney(amountCents: number | null | undefined, currency = "usd") {
+  if (typeof amountCents !== "number") return null;
+
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency.toUpperCase(),
+  }).format(amountCents / 100);
 }
 
 function getPriceIdFromPhase(
@@ -131,6 +158,36 @@ function getScheduledChangeFromSubscription(
   };
 }
 
+function getSubscriptionSnapshot(
+  subscription: Stripe.Subscription | null | undefined
+): AccountSubscriptionSnapshot | null {
+  if (!subscription) return null;
+
+  const item = subscription.items.data[0];
+  const price = item?.price ?? null;
+  const analytics = getSubscriptionAnalyticsFromPriceId(price?.id ?? null);
+  const interval = price?.recurring?.interval ?? null;
+  const amount = formatMoney(price?.unit_amount ?? null, price?.currency ?? subscription.currency ?? "usd");
+  const planName = analytics.plan_level ? getPositivesPlanName(analytics.plan_level) : null;
+
+  return {
+    id: subscription.id,
+    status: subscription.status,
+    planName: planName
+      ? analytics.billing_interval === "annual"
+        ? `${planName} (annual)`
+        : analytics.billing_interval === "three_pay"
+          ? `${planName} (3-pay)`
+          : planName
+      : null,
+    amountLabel: amount,
+    intervalLabel: interval ? `/${interval}` : null,
+    currentPeriodEndLabel: item?.current_period_end ? formatDate(item.current_period_end) : null,
+    cancelAtPeriodEnd: subscription.cancel_at_period_end,
+    cancelAtLabel: subscription.cancel_at ? formatDate(subscription.cancel_at) : null,
+  };
+}
+
 async function fetchAccountBillingSummaryFromStripe(
   stripeCustomerId: string
 ): Promise<AccountBillingSummary> {
@@ -146,12 +203,24 @@ async function fetchAccountBillingSummaryFromStripe(
     const subscription = subscriptions.data.find((item) =>
       ["active", "trialing", "past_due", "unpaid", "paused"].includes(item.status)
     );
+    let recentInvoices: MemberStripeInvoiceActivity[] = [];
+    let invoiceLoadFailed = false;
+
+    try {
+      recentInvoices = await getMemberRecentStripeInvoices(stripeCustomerId, 6);
+    } catch (invoiceError) {
+      invoiceLoadFailed = true;
+      console.error("[account] Failed to load recent invoices:", invoiceError);
+    }
 
     if (!subscription) {
       return {
         scheduledBillingChange: null,
         nextRenewalDate: null,
         billingPortalAvailable: true,
+        currentSubscription: null,
+        recentInvoices,
+        invoiceLoadFailed,
       };
     }
 
@@ -161,6 +230,9 @@ async function fetchAccountBillingSummaryFromStripe(
       scheduledBillingChange: getScheduledChangeFromSubscription(subscription),
       nextRenewalDate: renewalAt ? formatDate(renewalAt) : null,
       billingPortalAvailable: true,
+      currentSubscription: getSubscriptionSnapshot(subscription),
+      recentInvoices,
+      invoiceLoadFailed,
     };
   } catch (error) {
     if (isStripeResourceMissingError(error)) {
@@ -171,6 +243,9 @@ async function fetchAccountBillingSummaryFromStripe(
         scheduledBillingChange: null,
         nextRenewalDate: null,
         billingPortalAvailable: false,
+        currentSubscription: null,
+        recentInvoices: [],
+        invoiceLoadFailed: false,
       };
     }
 
@@ -179,6 +254,9 @@ async function fetchAccountBillingSummaryFromStripe(
       scheduledBillingChange: null,
       nextRenewalDate: null,
       billingPortalAvailable: false,
+      currentSubscription: null,
+      recentInvoices: [],
+      invoiceLoadFailed: true,
     };
   }
 }
@@ -191,6 +269,9 @@ export async function getAccountBillingSummary(
       scheduledBillingChange: null,
       nextRenewalDate: null,
       billingPortalAvailable: false,
+      currentSubscription: null,
+      recentInvoices: [],
+      invoiceLoadFailed: false,
     };
   }
 

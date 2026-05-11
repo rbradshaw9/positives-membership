@@ -49,7 +49,9 @@ export async function resolvePostLoginDestination(
     .maybeSingle();
 
   if (hasActiveMemberAccess(member?.subscription_status)) return next;
-  if (member?.subscription_status === "past_due") return "/account";
+  if (member?.subscription_status === "past_due") {
+    return next.startsWith("/account") ? next : "/account/billing";
+  }
 
   if (member?.id) {
     const { data: entitlement } = await supabase

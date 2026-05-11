@@ -11,7 +11,15 @@ import { track } from "@/lib/analytics/ga";
  *   arrow icon, clearly interactive card treatment.
  */
 
-export function BillingButton() {
+type BillingButtonProps = {
+  label?: string;
+  description?: string;
+};
+
+export function BillingButton({
+  label = "Open billing center",
+  description = "Change plan, cancel, invoices, and payment method",
+}: BillingButtonProps) {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -33,18 +41,19 @@ export function BillingButton() {
 
   return (
     <button
+      type="button"
       onClick={handleClick}
       disabled={loading}
       className="w-full text-left bg-card rounded-2xl border border-border px-6 py-5 flex items-center justify-between gap-4 hover:bg-muted/30 transition-colors group disabled:opacity-50"
       style={{ boxShadow: "var(--shadow-medium)" }}
-      aria-label="Open billing portal"
+      aria-label={label}
     >
       <div>
         <p className="text-sm font-semibold text-foreground">
-          {loading ? "Loading…" : "Open billing center"}
+          {loading ? "Loading..." : label}
         </p>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Change plan, cancel, invoices, and payment method
+          {description}
         </p>
       </div>
       <svg
