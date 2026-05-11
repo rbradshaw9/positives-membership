@@ -21,7 +21,7 @@ import Link from "next/link";
  * Layout:
  *   1. Slim contextual bar  — date, greeting, streak
  *   2. Today's daily audio  — DailyPracticeCard, dominant
- *   3. Monthly theme + Weekly reflection — side-by-side grid
+ *   3. This month + this week — monthly context, weekly practice
  *   4. Weekly reflections archive — past weeks this month (accordion)
  *   5. Daily practice playlist — inline playback, no /library navigation
  */
@@ -149,17 +149,20 @@ export default async function TodayPage() {
 
         <section
           aria-label="Continue your practice"
-          className="rounded-[1.35rem] border border-border bg-surface-tint px-5 py-4 shadow-soft"
+          className="rounded-2xl border border-border/70 bg-card px-4 py-3 shadow-soft md:px-5"
         >
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="ui-section-eyebrow mb-2">Continue Your Practice</p>
-              <h2 className="heading-balance font-heading text-xl font-semibold tracking-[-0.02em] text-foreground">
-                Home is today&apos;s guidance. My Practice is your personal journey.
+              <p className="ui-section-eyebrow mb-1.5">Continue Your Practice</p>
+              <h2
+                className="heading-balance font-heading text-lg font-semibold tracking-[-0.02em] text-foreground"
+                style={{ textWrap: "balance" }}
+              >
+                Today is your next step. My Practice is your personal history.
               </h2>
-              <p className="mt-2 max-w-3xl text-sm leading-body text-muted-foreground">
-                Start here when you want the clearest next step. When you want to revisit
-                reflections, listening history, or your recent rhythm, My Practice is waiting.
+              <p className="mt-1.5 max-w-3xl text-sm leading-body text-muted-foreground">
+                Start here for the clearest next action. Revisit reflections,
+                listening history, and recent rhythm in My Practice.
               </p>
             </div>
             <Link
@@ -171,10 +174,10 @@ export default async function TodayPage() {
           </div>
         </section>
 
-        {/* ── Zone 2: Monthly theme + Weekly reflection ─────────────── */}
+        {/* ── Zone 2: Monthly context + Weekly practice ─────────────── */}
         <section aria-label="This month and this week" className="flex flex-col gap-3">
-          <div className="grid gap-5 lg:grid-cols-2">
-            {/* Monthly video — left on desktop */}
+          <div className="grid gap-5 lg:grid-cols-[0.92fr_1.08fr]">
+            {/* Monthly theme — grounding context */}
             <div className="flex flex-col gap-2">
               <span
                 className="text-[10px] font-bold uppercase tracking-[0.14em]"
@@ -189,13 +192,13 @@ export default async function TodayPage() {
               />
             </div>
 
-            {/* Weekly reflection — right on desktop */}
+            {/* Weekly reflection — current principle and action */}
             <div className="flex flex-col gap-2">
               <span
                 className="text-[10px] font-bold uppercase tracking-[0.14em]"
                 style={{ color: "var(--color-secondary)" }}
               >
-                Week {weekOfMonth} Reflection
+                Week {weekOfMonth} Practice
               </span>
               <WeeklyPrincipleCard
                 content={weeklyContent}

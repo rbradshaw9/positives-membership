@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import type { TodayContent } from "@/lib/queries/get-today-content";
 import { AudioPlayer } from "@/components/today/AudioPlayer";
 import { NoteSheet } from "@/components/notes/NoteSheet";
@@ -62,7 +63,7 @@ export function DailyPracticeCard({
   return (
     <>
       <article
-        aria-labelledby={hasContent ? "today-practice-title" : "today-practice-empty-title"}
+        aria-label="Daily Practice"
         role="region"
         className="rounded-[1.75rem] p-6 md:p-8 shadow-large relative overflow-hidden bg-[linear-gradient(180deg,#121418_0%,#0A0A0A_100%)]"
         style={{
@@ -110,7 +111,7 @@ export function DailyPracticeCard({
                   strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
-                Today&apos;s audio complete
+                Practice complete
               </span>
             ) : (
               <span
@@ -121,7 +122,7 @@ export function DailyPracticeCard({
                   border: "1px solid rgba(255,255,255,0.12)",
                 }}
               >
-                ○ Not listened yet
+                Ready when you are
               </span>
             )}
           </div>
@@ -143,11 +144,11 @@ export function DailyPracticeCard({
             <>
               <h2 className="font-heading font-bold text-2xl md:text-3xl leading-heading tracking-[-0.03em] mb-2"
                 id="today-practice-empty-title"
-                style={{ color: "rgba(255,255,255,0.5)" }}>
+                style={{ color: "rgba(255,255,255,0.5)", textWrap: "balance" }}>
                 Your practice is coming
               </h2>
               <p className="text-sm leading-body" style={{ color: "rgba(255,255,255,0.38)" }}>
-                Dr. Paul&apos;s practice for today will be here when you return. ☁️
+                Dr. Paul&apos;s practice for today will be here when you return.
               </p>
             </>
           ) : (
@@ -156,7 +157,7 @@ export function DailyPracticeCard({
               <h2
                 id="today-practice-title"
                 className="heading-balance font-heading font-bold text-2xl md:text-3xl leading-heading tracking-[-0.03em] mb-2"
-                style={{ color: "#ffffff" }}
+                style={{ color: "#ffffff", textWrap: "balance" }}
               >
                 {content.title}
               </h2>
@@ -172,6 +173,14 @@ export function DailyPracticeCard({
               {/* Audio player */}
               {audioUrl ? (
                 <div className="mt-2 mb-1">
+                  {!listened && (
+                    <p
+                      className="mb-3 text-xs font-semibold uppercase tracking-[0.16em]"
+                      style={{ color: "rgba(255,255,255,0.58)" }}
+                    >
+                      Start today&apos;s practice
+                    </p>
+                  )}
                   <AudioPlayer
                     trackId={content.id}
                     src={audioUrl}
@@ -193,7 +202,24 @@ export function DailyPracticeCard({
                     </svg>
                   </div>
                   <p className="text-sm" style={{ color: "rgba(255,255,255,0.45)" }}>
-                    Audio arriving soon
+                    Today&apos;s audio will appear here as soon as it is ready.
+                  </p>
+                </div>
+              )}
+
+              {listened && (
+                <div
+                  className="mt-5 rounded-2xl px-4 py-3"
+                  style={{
+                    background: "rgba(46,196,182,0.12)",
+                    border: "1px solid rgba(46,196,182,0.22)",
+                  }}
+                >
+                  <p className="text-sm font-semibold" style={{ color: "rgba(255,255,255,0.86)" }}>
+                    Today&apos;s practice is complete.
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.58)" }}>
+                    Take a breath, then save a private reflection if something feels worth remembering.
                   </p>
                 </div>
               )}
@@ -222,7 +248,11 @@ export function DailyPracticeCard({
                     <path d="M12 20h9" />
                     <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
                   </svg>
-                  {noteCount > 0 ? "Add another reflection" : "Reflect on this"}
+                  {noteCount > 0
+                    ? "Add another reflection"
+                    : listened
+                      ? "Save a reflection"
+                      : "Reflect on this"}
                   {noteCount > 0 && (
                     <span className="w-1.5 h-1.5 rounded-full inline-block"
                       style={{ background: "rgba(255,255,255,0.5)" }}
@@ -231,8 +261,14 @@ export function DailyPracticeCard({
                 </button>
                 <p className="mt-2 text-xs" style={{ color: "rgba(255,255,255,0.48)" }}>
                   {noteCount > 0
-                    ? `${noteCount} reflection${noteCount === 1 ? "" : "s"} saved. Revisit them any time in Journal.`
-                    : "Save a private reflection if something stands out. You can find it later in Journal."}
+                    ? `${noteCount} reflection${noteCount === 1 ? "" : "s"} saved.`
+                    : "Save a private reflection if something stands out."}{" "}
+                  <Link
+                    href="/journal"
+                    className="font-semibold text-white/70 underline decoration-white/20 underline-offset-4 transition-colors hover:text-white"
+                  >
+                    Find it later in Journal.
+                  </Link>
                 </p>
               </div>
             </>

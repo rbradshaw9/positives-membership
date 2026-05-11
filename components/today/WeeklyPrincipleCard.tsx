@@ -6,6 +6,7 @@ import { NoteSheet } from "@/components/notes/NoteSheet";
 import { AudioPlayer } from "@/components/today/AudioPlayer";
 import { ResourceLinks } from "@/components/media/ResourceLinks";
 import { MarkdownBody } from "@/components/content/MarkdownBody";
+import { VideoEmbed } from "@/components/media/VideoEmbed";
 import { trackWeeklyViewed } from "@/app/(member)/today/engagement-actions";
 import { stripCmsPreamble } from "@/lib/content/strip-cms-preamble";
 
@@ -31,6 +32,7 @@ export function WeeklyPrincipleCard({
 }: WeeklyPrincipleCardProps) {
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteCount, setNoteCount] = useState(initialNoteCount);
+  const [videoOpen, setVideoOpen] = useState(false);
   const trackFired = useRef(false);
 
   function fireTrack() {
@@ -49,7 +51,8 @@ export function WeeklyPrincipleCard({
     setNoteCount((prev) => prev + (result.isNew ? 1 : 0));
   }
 
-  // Weekly card is reflection-first: no video. Monthly owns the video.
+  // Weekly stays reflection-first; video is an intentional secondary reveal.
+  const hasVideo = !!(content?.vimeo_video_id || content?.youtube_video_id);
   const hasAudio = !!audioUrl;
   const hasBody = !!(content?.body || content?.description);
   const rawBodyText = content?.body || content?.description || "";
@@ -61,6 +64,7 @@ export function WeeklyPrincipleCard({
   return (
     <>
       <article
+        aria-label="This week's principle"
         className="surface-card--editorial rounded-[1.6rem] border border-border shadow-medium overflow-hidden"
         style={{ backgroundColor: "var(--color-surface-tint)" }}
       >
@@ -125,6 +129,62 @@ export function WeeklyPrincipleCard({
                 tone="light"
               />
             </div>
+          </div>
+        )}
+
+        {/* ── Compact weekly video reveal ─────────────────────────────── */}
+        {content && hasVideo && (
+          <div className="px-5 md:px-6 pt-4">
+            {videoOpen ? (
+              <div className="rounded-2xl border border-border/70 bg-card p-2 shadow-soft">
+                <VideoEmbed
+                  vimeoId={content.vimeo_video_id}
+                  youtubeId={content.youtube_video_id}
+                  contentId={content.id}
+                  title={content.title}
+                />
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  fireTrack();
+                  setVideoOpen(true);
+                }}
+                className="group flex w-full items-center justify-between gap-4 rounded-2xl border border-border/70 bg-card px-4 py-3 text-left shadow-soft transition-all hover:border-secondary/30 hover:bg-white"
+                aria-label={`Watch this week's video: ${content.title}`}
+              >
+                <span className="flex min-w-0 items-center gap-3">
+                  <span
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+                    style={{
+                      color: "var(--color-secondary)",
+                      background: "color-mix(in srgb, var(--color-secondary) 12%, transparent)",
+                      border: "1px solid color-mix(in srgb, var(--color-secondary) 22%, transparent)",
+                    }}
+                    aria-hidden="true"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                      <polygon points="5,3 19,12 5,21" />
+                    </svg>
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold text-foreground">
+                      Watch this week&apos;s video
+                    </span>
+                    <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
+                      A short companion to this week&apos;s reflection.
+                    </span>
+                  </span>
+                </span>
+                <span
+                  className="shrink-0 text-xs font-semibold transition-colors group-hover:text-secondary"
+                  style={{ color: "var(--color-muted-fg)" }}
+                >
+                  Open
+                </span>
+              </button>
+            )}
           </div>
         )}
 

@@ -74,11 +74,33 @@ test("member can navigate launch routes and use practice tabs", async ({ page })
   await expect(page.getByRole("region", { name: "Continue your practice" })).toBeVisible();
   await expect(
     page.getByRole("heading", {
-      name: "Home is today's guidance. My Practice is your personal journey.",
+      name: "Today is your next step. My Practice is your personal history.",
     })
   ).toBeVisible();
+  await expect(page.getByText("Home is today's guidance")).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Open My Practice" })).toBeVisible();
   await expect(page.getByText("Start your streak")).toHaveCount(0);
+  await expect(
+    page
+      .getByRole("region", { name: /daily practice/i })
+      .getByText(/Start today's practice|Today's practice is complete|Today's audio will appear here/)
+  ).toBeVisible();
+
+  const weeklyVideoButton = page.getByRole("button", { name: /watch this week's video/i });
+  if ((await weeklyVideoButton.count()) > 0) {
+    const weeklyCard = page.getByRole("article", { name: "This week's principle" });
+    await expect(weeklyCard.locator("iframe")).toHaveCount(0);
+    await weeklyVideoButton.first().click();
+    await expect(weeklyCard.locator("iframe")).toHaveCount(0);
+    await expect(weeklyCard.getByRole("button", { name: /play:/i })).toBeVisible();
+  }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const archiveToggle = page.getByRole("button", { name: "Explore past practices" });
+  if ((await archiveToggle.count()) > 0) {
+    await expect(archiveToggle).toBeVisible();
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
   await expect(memberNav.getByRole("link", { name: "Community", exact: true })).toHaveCount(0);
   await expect(memberNav.getByRole("link", { name: "Admin", exact: true })).toHaveCount(0);
 
