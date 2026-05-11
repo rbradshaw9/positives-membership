@@ -8,6 +8,7 @@ import { WelcomeModal } from "@/components/member/WelcomeModal";
 import { InstallAppPrompt } from "@/components/member/InstallAppPrompt";
 import { BetaFeedbackWidget } from "@/components/member/BetaFeedbackWidget";
 import { BetaWelcomeBanner } from "@/components/member/BetaWelcomeBanner";
+import { ImpersonationBanner } from "@/components/member/ImpersonationBanner";
 import type { MemberBetaFeedbackThread } from "@/lib/beta-feedback/data";
 
 interface MemberShellClientProps {
@@ -26,6 +27,7 @@ interface MemberShellClientProps {
   needsPasswordSetup?: boolean;
   marketingOptedOut?: boolean;
   showAdminNav?: boolean;
+  isImpersonating?: boolean;
   children: React.ReactNode;
 }
 
@@ -45,6 +47,7 @@ export function MemberShellClient({
   needsPasswordSetup = false,
   marketingOptedOut = false,
   showAdminNav = false,
+  isImpersonating = false,
   children,
 }: MemberShellClientProps) {
   const isEarlyReleaseMember = launchCohort === "alpha" || launchCohort === "beta";
@@ -61,6 +64,7 @@ export function MemberShellClient({
           communityPreviewEnabled={communityPreviewEnabled}
           showAdminNav={showAdminNav}
         />
+        {isImpersonating ? <ImpersonationBanner memberName={memberName} /> : null}
         <InstallAppPrompt />
         {betaWelcomeEnabled && isEarlyReleaseMember ? (
           <BetaWelcomeBanner memberName={memberName} />

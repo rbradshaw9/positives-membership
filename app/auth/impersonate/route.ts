@@ -1,4 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
+import {
+  IMPERSONATION_COOKIE_NAME,
+  IMPERSONATION_MAX_AGE_SECONDS,
+  verifyImpersonationSessionToken,
+} from "@/lib/auth/impersonation-session";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -18,6 +23,8 @@ export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const tokenHash = searchParams.get("token_hash");
   const next = sanitizeNext(searchParams.get("next"), origin);
+  const state = searchParams.get("state");
+  const impersonationSession = verifyImpersonationSessionToken(state);
 
   if (!tokenHash) {
     return NextResponse.redirect(`${origin}/login?error=auth_failed`);
@@ -40,5 +47,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login?error=auth_failed`);
   }
 
-  return NextResponse.redirect(`${origin}${next}`);
+  const response = NextResponse.redirect(`${origin}${next}`);
+
+  if (impersonationSession.ok && state) {
+    response.cookies.set(IMPERSONATION_COOKIE_NAME, state, {
+      httpOnly: true,
+      secure: origin.startsWith("https://"),
+      sameSite: "lax",
+      path: "/",
+      maxAge: IMPERSONATION_MAX_AGE_SECONDS,
+    });
+  }
+
+  return response;
 }

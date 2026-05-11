@@ -1,4 +1,5 @@
 import { after } from "next/server";
+import { cookies } from "next/headers";
 import { requireMember } from "@/lib/auth/require-member";
 import { PasswordNudgeBanner } from "@/components/member/PasswordNudgeBanner";
 import { MemberShellClient } from "@/components/member/MemberShellClient";
@@ -11,6 +12,10 @@ import { getAdminPermissionSet } from "@/lib/auth/require-admin";
 import { getCommunityUnreadCount } from "@/lib/queries/get-community-posts";
 import { checkTierAccess } from "@/lib/auth/check-tier-access";
 import { getMemberBetaFeedbackThreads } from "@/lib/beta-feedback/data";
+import {
+  IMPERSONATION_COOKIE_NAME,
+  verifyImpersonationSessionToken,
+} from "@/lib/auth/impersonation-session";
 
 /**
  * app/(member)/layout.tsx
@@ -62,6 +67,12 @@ export default async function MemberLayout({
     communityUnreadCountPromise,
     betaFeedbackInboxPromise,
   ]);
+  const cookieStore = await cookies();
+  const impersonationSession = verifyImpersonationSessionToken(
+    cookieStore.get(IMPERSONATION_COOKIE_NAME)?.value
+  );
+  const isImpersonating =
+    impersonationSession.ok && impersonationSession.payload.targetMemberId === member.id;
   const showAdminNav = adminPermissionSet.size > 0;
 
   // Only show a non-zero streak if the member practiced today or yesterday.
@@ -87,6 +98,7 @@ export default async function MemberLayout({
       needsPasswordSetup={showPasswordNudge}
       marketingOptedOut={marketingOptedOut}
       showAdminNav={showAdminNav}
+      isImpersonating={isImpersonating}
       memberEmail={member.email}
     >
       <ServiceWorkerRegistration />

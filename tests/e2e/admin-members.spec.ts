@@ -131,6 +131,7 @@ test.describe("admin member operations", () => {
     await expect(tabNav.getByRole("link", { name: "Membership & Billing", exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Support Actions" })).toBeVisible();
     await expect(page.getByText("Send member login link").first()).toBeVisible();
+    await expect(page.getByText("Impersonate member").first()).toBeVisible();
     await expect(
       page.getByText("Beta and alpha status only controls feedback access.")
     ).toBeVisible();

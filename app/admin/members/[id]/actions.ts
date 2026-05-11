@@ -8,6 +8,7 @@ import { getAdminRolesForMember } from "@/lib/admin/member-crm";
 import { isAdminPermissionKey } from "@/lib/admin/permissions";
 import { config } from "@/lib/config";
 import { hasActiveMemberAccess } from "@/lib/subscription/access";
+import { createImpersonationSessionToken } from "@/lib/auth/impersonation-session";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import { renderAuthEmail } from "@/lib/email/templates/auth-email";
@@ -1549,7 +1550,12 @@ export async function startMemberImpersonationInline(
     return { error: "Could not create a secure sign-in link for this member." };
   }
 
-  const actionPath = `/auth/impersonate?token_hash=${encodeURIComponent(tokenHash)}&next=${encodeURIComponent("/today")}`;
+  const state = createImpersonationSessionToken({
+    actorId: actor.id,
+    targetMemberId: memberId,
+    returnTo: memberPath(memberId, "impersonation_ended", "overview"),
+  });
+  const actionPath = `/auth/impersonate?token_hash=${encodeURIComponent(tokenHash)}&next=${encodeURIComponent("/today")}&state=${encodeURIComponent(state)}`;
 
   await logAudit({
     actorId: actor.id,

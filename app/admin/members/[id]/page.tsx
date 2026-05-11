@@ -1581,6 +1581,30 @@ export default async function AdminMemberDetailPage({
             </p>
           </div>
 
+          {canManageRoles ? (
+            <MemberCrmInlineForm
+              action={startMemberImpersonationInline}
+              className="member-crm-card"
+              submitLabel="Impersonate member"
+              pendingLabel="Creating secure session..."
+              buttonClassName="admin-btn admin-btn--outline"
+              buttonStyle={{ marginTop: "0.75rem" }}
+              resetOnSuccess={false}
+            >
+              <input type="hidden" name="memberId" value={member.id} />
+              <p className="member-crm-card-title">Impersonate member</p>
+              <p className="member-crm-muted" style={{ marginBottom: "0.75rem" }}>
+                Opens a one-time member session for support or QA. A banner will appear in the
+                member site so you can exit back to admin sign-in when finished.
+              </p>
+              <ClientAuthorizationFields
+                reasonName="impersonationReason"
+                reasonLabel="Impersonation reason"
+                reasonPlaceholder="What support or QA need requires signing in as this member?"
+              />
+            </MemberCrmInlineForm>
+          ) : null}
+
           {canSendLoginLink ? (
             <MemberCrmInlineForm
               action={sendMemberMagicLoginLinkInline}
