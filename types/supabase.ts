@@ -273,6 +273,7 @@ export type Database = {
           download_url: string | null
           duration_seconds: number | null
           excerpt: string | null
+          featured_image_url: string | null
           id: string
           is_active: boolean
           is_today_override: boolean
@@ -296,6 +297,7 @@ export type Database = {
           tier_min: Database["public"]["Enums"]["subscription_tier"] | null
           title: string
           transcription: string | null
+          thumbnail_image_url: string | null
           type: Database["public"]["Enums"]["content_type"]
           updated_at: string
           vimeo_video_id: string | null
@@ -313,6 +315,7 @@ export type Database = {
           download_url?: string | null
           duration_seconds?: number | null
           excerpt?: string | null
+          featured_image_url?: string | null
           id?: string
           is_active?: boolean
           is_today_override?: boolean
@@ -336,6 +339,7 @@ export type Database = {
           tier_min?: Database["public"]["Enums"]["subscription_tier"] | null
           title: string
           transcription?: string | null
+          thumbnail_image_url?: string | null
           type: Database["public"]["Enums"]["content_type"]
           updated_at?: string
           vimeo_video_id?: string | null
@@ -353,6 +357,7 @@ export type Database = {
           download_url?: string | null
           duration_seconds?: number | null
           excerpt?: string | null
+          featured_image_url?: string | null
           id?: string
           is_active?: boolean
           is_today_override?: boolean
@@ -376,6 +381,7 @@ export type Database = {
           tier_min?: Database["public"]["Enums"]["subscription_tier"] | null
           title?: string
           transcription?: string | null
+          thumbnail_image_url?: string | null
           type?: Database["public"]["Enums"]["content_type"]
           updated_at?: string
           vimeo_video_id?: string | null

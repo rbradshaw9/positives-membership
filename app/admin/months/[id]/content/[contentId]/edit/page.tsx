@@ -31,7 +31,7 @@ export default async function MonthContentEditPage({ params, searchParams }: Pro
     supabase
       .from("content")
       .select(
-        "id, monthly_practice_id, type, title, excerpt, description, body, reflection_prompt, download_url, resource_links, status, publish_date, week_start, month_year, duration_seconds, castos_episode_url, s3_audio_key, vimeo_video_id, youtube_video_id, admin_notes, tier_min, starts_at, join_url, send_reminders, send_replay_email"
+        "id, monthly_practice_id, type, title, excerpt, description, featured_image_url, thumbnail_image_url, body, reflection_prompt, download_url, resource_links, status, publish_date, week_start, month_year, duration_seconds, castos_episode_url, s3_audio_key, vimeo_video_id, youtube_video_id, admin_notes, tier_min, starts_at, join_url, send_reminders, send_replay_email"
       )
       .eq("id", contentId)
       .single(),
@@ -89,6 +89,8 @@ export default async function MonthContentEditPage({ params, searchParams }: Pro
           title: row.title,
           excerpt: row.excerpt ?? "",
           description: row.description ?? "",
+          featured_image_url: row.featured_image_url,
+          thumbnail_image_url: row.thumbnail_image_url,
           body: row.body,
           reflection_prompt: row.reflection_prompt,
           download_url: row.download_url,

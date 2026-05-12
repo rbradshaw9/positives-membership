@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import type { MonthlyContent } from "@/lib/queries/get-monthly-content";
 import { NoteSheet } from "@/components/notes/NoteSheet";
 import { VideoEmbed } from "@/components/media/VideoEmbed";
+import { SafeImage } from "@/components/media/SafeImage";
 import { ResourceLinks } from "@/components/media/ResourceLinks";
 import { MarkdownBody } from "@/components/content/MarkdownBody";
 import { trackMonthlyViewed } from "@/app/(member)/today/engagement-actions";
@@ -53,6 +54,8 @@ export function MonthlyThemeCard({
   }
 
   const hasVideo = !!(content?.vimeo_video_id || content?.youtube_video_id);
+  const imageUrl = content?.featured_image_url ?? content?.thumbnail_image_url ?? null;
+  const posterImageUrl = content?.thumbnail_image_url ?? content?.featured_image_url ?? null;
   const hasBody = !!(content?.body || content?.description);
   const rawBodyText = content?.body || content?.description || "";
   // Strip title + excerpt if the CMS baked them into the top of the body field
@@ -113,7 +116,22 @@ export function MonthlyThemeCard({
               youtubeId={content.youtube_video_id}
               contentId={content.id}
               title={content.title}
+              posterImageUrl={posterImageUrl}
             />
+          </div>
+        )}
+
+        {content && !hasVideo && imageUrl && (
+          <div className="px-5 md:px-6 pt-4">
+            <div className="relative aspect-video overflow-hidden rounded-2xl border border-border/70 bg-muted shadow-soft">
+              <SafeImage
+                src={imageUrl}
+                alt=""
+                fill
+                sizes="(max-width: 768px) 100vw, 44vw"
+                className="h-full w-full object-cover"
+              />
+            </div>
           </div>
         )}
 

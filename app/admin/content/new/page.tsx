@@ -5,6 +5,7 @@ import { getEffectiveDate } from "@/lib/dates/effective-date";
 import { ResourceLinksEditor } from "@/components/admin/ResourceLinksEditor";
 import { BodyEditor } from "@/components/admin/BodyEditor";
 import { ContentTypeSelect } from "@/components/admin/ContentTypeSelect";
+import { ContentImagePicker } from "@/components/admin/ContentImagePicker";
 
 /**
  * app/admin/content/new/page.tsx
@@ -97,6 +98,8 @@ export interface ContentFormValues {
   title?: string;
   excerpt?: string;
   description?: string;
+  featured_image_url?: string | null;
+  thumbnail_image_url?: string | null;
   body?: string | null;
   reflection_prompt?: string | null;
   download_url?: string | null;
@@ -281,6 +284,35 @@ export function ContentForm({
           <option value="published">Published — live on Today</option>
           <option value="archived">Archived</option>
         </select>
+      </div>
+
+      <div className="admin-form-section">
+        <p className="admin-form-section__label">Visuals (optional)</p>
+        <p className="admin-hint" style={{ marginBottom: "0.75rem" }}>
+          Images add character when they help the practice feel grounded. Leave these blank when
+          the content should stay audio- or text-led.
+        </p>
+
+        <div className="admin-form-grid-2">
+          <div className="admin-form-field">
+            <ContentImagePicker
+              name="featured_image_url"
+              label="Featured image"
+              defaultValue={values?.featured_image_url}
+              placeholder="Used on larger detail and monthly surfaces."
+              description="Best for monthly themes, library details, and gentle Daily card atmosphere."
+            />
+          </div>
+          <div className="admin-form-field">
+            <ContentImagePicker
+              name="thumbnail_image_url"
+              label="Thumbnail / poster"
+              defaultValue={values?.thumbnail_image_url}
+              placeholder="Used for compact cards and video posters."
+              description="Optional. If blank, the featured image is reused where a thumbnail is helpful."
+            />
+          </div>
+        </div>
       </div>
 
       {/* ─── Tier & scheduling (Sprint 10) ──────────────────────────────── */}

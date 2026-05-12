@@ -31,6 +31,8 @@ export type MonthDetail = {
     title: string;
     description: string | null;
     excerpt: string | null;
+    featured_image_url: string | null;
+    thumbnail_image_url: string | null;
     body: string | null;
     vimeo_video_id: string | null;
     youtube_video_id: string | null;
@@ -121,7 +123,7 @@ export async function getMonthDetail(monthYear: string): Promise<MonthDetail | n
   const [themeResult, weeklyResult, dailyCountResult] = await Promise.all([
     supabase
       .from("content")
-      .select("id, title, description, excerpt, body, vimeo_video_id, youtube_video_id, download_url, resource_links, reflection_prompt, month_year")
+      .select("id, title, description, excerpt, featured_image_url, thumbnail_image_url, body, vimeo_video_id, youtube_video_id, download_url, resource_links, reflection_prompt, month_year")
       .eq("type", "monthly_theme")
       .eq("month_year", monthYear)
       .eq("status", "published")

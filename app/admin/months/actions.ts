@@ -255,6 +255,8 @@ export async function createOrUpdateMasterclass(formData: FormData) {
   const title = formData.get("title")?.toString().trim();
   const description = formData.get("description")?.toString().trim() || null;
   const excerpt = formData.get("excerpt")?.toString().trim() || null;
+  const featuredImageUrl = formData.get("featured_image_url")?.toString().trim() || null;
+  const thumbnailImageUrl = formData.get("thumbnail_image_url")?.toString().trim() || null;
   const body = formData.get("body")?.toString().trim() || null;
   const reflectionPrompt = formData.get("reflection_prompt")?.toString().trim() || null;
   const mediaUrl = formData.get("media_url")?.toString().trim() || null;
@@ -281,6 +283,8 @@ export async function createOrUpdateMasterclass(formData: FormData) {
     title,
     description,
     excerpt,
+    featured_image_url: featuredImageUrl,
+    thumbnail_image_url: thumbnailImageUrl,
     body,
     reflection_prompt: reflectionPrompt,
     vimeo_video_id: vimeoVideoId,

@@ -18,6 +18,8 @@ export type ContentItem = {
   week_start: string | null;
   excerpt: string | null;
   description: string | null;
+  featured_image_url: string | null;
+  thumbnail_image_url: string | null;
   body: string | null;
   reflection_prompt: string | null;
   vimeo_video_id: string | null;
@@ -104,7 +106,7 @@ export async function getAdminMonthDetail(
   // 2. Fetch all child content
   const { data: contentRows } = await supabase
     .from("content")
-    .select("id, title, status, type, publish_date, week_start, excerpt, description, body, reflection_prompt, vimeo_video_id, youtube_video_id, tags")
+    .select("id, title, status, type, publish_date, week_start, excerpt, description, featured_image_url, thumbnail_image_url, body, reflection_prompt, vimeo_video_id, youtube_video_id, tags")
     .eq("monthly_practice_id", monthId)
     .order("publish_date", { ascending: true });
 
@@ -169,6 +171,8 @@ export async function getAdminMonthDetail(
       week_start: row.week_start,
       excerpt: row.excerpt,
       description: row.description,
+      featured_image_url: row.featured_image_url,
+      thumbnail_image_url: row.thumbnail_image_url,
       body: row.body,
       reflection_prompt: row.reflection_prompt,
       vimeo_video_id: row.vimeo_video_id,

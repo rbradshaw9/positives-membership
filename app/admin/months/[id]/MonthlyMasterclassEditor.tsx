@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ContentItem } from "@/lib/queries/get-admin-month-detail";
+import { ContentImagePicker } from "@/components/admin/ContentImagePicker";
 
 /**
  * MonthlyMasterclassEditor — inline create/edit for the monthly_theme.
@@ -125,6 +126,25 @@ export function MonthlyMasterclassEditor({
                 placeholder="Longer description of this month's theme…"
                 className="admin-textarea admin-textarea--no-resize"
               />
+            </div>
+
+            <div className="admin-form-grid-2">
+              <div className="admin-form-field">
+                <ContentImagePicker
+                  name="featured_image_url"
+                  label="Featured image"
+                  defaultValue={existing?.featured_image_url}
+                  placeholder="Used as the larger monthly theme artwork."
+                />
+              </div>
+              <div className="admin-form-field">
+                <ContentImagePicker
+                  name="thumbnail_image_url"
+                  label="Thumbnail / poster"
+                  defaultValue={existing?.thumbnail_image_url}
+                  placeholder="Used as a compact card or video poster."
+                />
+              </div>
             </div>
 
             <div className="admin-form-field">

@@ -9,6 +9,7 @@ import { resolveAudioUrl } from "@/lib/media/resolve-audio-url";
 import { MarkdownBody } from "@/components/content/MarkdownBody";
 import { TypeBadge } from "@/components/member/TypeBadge";
 import { VideoEmbed } from "@/components/media/VideoEmbed";
+import { SafeImage } from "@/components/media/SafeImage";
 import { ResourceLinks } from "@/components/media/ResourceLinks";
 import { LibraryReflectSection } from "@/components/library/LibraryReflectSection";
 import { AudioPlayer } from "@/components/today/AudioPlayer";
@@ -95,6 +96,8 @@ export default async function LibraryItemPage({ params }: Props) {
   const noteCount = noteCounts[id] ?? 0;
 
   const hasVideo = !!(item.vimeo_video_id || item.youtube_video_id);
+  const imageUrl = item.featured_image_url ?? item.thumbnail_image_url ?? null;
+  const posterImageUrl = item.thumbnail_image_url ?? item.featured_image_url ?? null;
   const hasBody = !!(item.body || item.description);
   const bodyContent = item.body || item.description || "";
   const dateContext = getDateContext(item);
@@ -157,6 +160,19 @@ export default async function LibraryItemPage({ params }: Props) {
               youtubeId={item.youtube_video_id}
               contentId={item.id}
               title={item.title}
+              posterImageUrl={posterImageUrl}
+            />
+          </div>
+        )}
+
+        {!hasVideo && imageUrl && (
+          <div className="relative aspect-video overflow-hidden rounded-2xl border border-border bg-muted shadow-soft">
+            <SafeImage
+              src={imageUrl}
+              alt=""
+              fill
+              sizes="(max-width: 768px) 100vw, 52rem"
+              className="h-full w-full object-cover"
             />
           </div>
         )}

@@ -28,6 +28,8 @@ type ContentInput = {
   title: string;
   excerpt: string;
   description: string;
+  featured_image_url: string;
+  thumbnail_image_url: string;
   body: string;
   reflection_prompt: string;
   download_url: string;
@@ -67,6 +69,8 @@ function parseFormData(formData: FormData): ContentInput {
     title: formData.get("title")?.toString().trim() ?? "",
     excerpt: formData.get("excerpt")?.toString().trim() ?? "",
     description: formData.get("description")?.toString().trim() ?? "",
+    featured_image_url: formData.get("featured_image_url")?.toString().trim() ?? "",
+    thumbnail_image_url: formData.get("thumbnail_image_url")?.toString().trim() ?? "",
     body: formData.get("body")?.toString().trim() ?? "",
     reflection_prompt: formData.get("reflection_prompt")?.toString().trim() ?? "",
     download_url: formData.get("download_url")?.toString().trim() ?? "",
@@ -110,6 +114,8 @@ function buildRow(input: ContentInput) {
     title: input.title,
     excerpt: input.excerpt || null,
     description: input.description || null,
+    featured_image_url: input.featured_image_url || null,
+    thumbnail_image_url: input.thumbnail_image_url || null,
     body: input.body || null,
     reflection_prompt: input.reflection_prompt || null,
     download_url: input.download_url || null,

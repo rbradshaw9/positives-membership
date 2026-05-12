@@ -65,6 +65,7 @@ interface VideoEmbedProps {
   viewerUserId?: string | null;
   title: string;
   dark?: boolean;
+  posterImageUrl?: string | null;
 }
 
 export function VideoEmbed({
@@ -74,6 +75,7 @@ export function VideoEmbed({
   courseLessonId,
   title,
   dark = false,
+  posterImageUrl,
 }: VideoEmbedProps) {
   const registryId = useId();
   const [expanded, setExpanded] = useState(false);
@@ -336,14 +338,23 @@ export function VideoEmbed({
             className="group absolute inset-0 w-full h-full flex flex-col items-center justify-center focus:outline-none"
             aria-label={`Play: ${title}`}
           >
-            {/* Vimeo blue glow */}
-            <div
-              aria-hidden="true"
-              className="absolute inset-0 opacity-20"
-              style={{
-                background: "radial-gradient(ellipse at 40% 50%, #1AB7EA 0%, transparent 65%)",
-              }}
-            />
+            {posterImageUrl ? (
+              <SafeImage
+                src={posterImageUrl}
+                alt=""
+                fill
+                sizes="(max-width: 768px) 100vw, 720px"
+                className="absolute inset-0 h-full w-full object-cover opacity-60 transition-opacity duration-200 group-hover:opacity-70"
+              />
+            ) : (
+              <div
+                aria-hidden="true"
+                className="absolute inset-0 opacity-20"
+                style={{
+                  background: "radial-gradient(ellipse at 40% 50%, #1AB7EA 0%, transparent 65%)",
+                }}
+              />
+            )}
             <div aria-hidden="true" className="absolute inset-0 bg-black/40" />
 
             <div className="relative z-10 flex flex-col items-center gap-2.5">
@@ -440,7 +451,7 @@ export function VideoEmbed({
 
   // ── YouTube ───────────────────────────────────────────────────────────────
   const youtubeSrc = `https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1&rel=0&modestbranding=1`;
-  const youtubeThumbnail = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
+  const youtubeThumbnail = posterImageUrl ?? `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
 
   function handleYouTubePlay() {
     pauseAllVideosRef.current(registryId);

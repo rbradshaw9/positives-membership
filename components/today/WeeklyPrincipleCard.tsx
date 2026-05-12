@@ -7,6 +7,7 @@ import { AudioPlayer } from "@/components/today/AudioPlayer";
 import { ResourceLinks } from "@/components/media/ResourceLinks";
 import { MarkdownBody } from "@/components/content/MarkdownBody";
 import { VideoEmbed } from "@/components/media/VideoEmbed";
+import { SafeImage } from "@/components/media/SafeImage";
 import { trackWeeklyViewed } from "@/app/(member)/today/engagement-actions";
 import { stripCmsPreamble } from "@/lib/content/strip-cms-preamble";
 
@@ -53,6 +54,7 @@ export function WeeklyPrincipleCard({
 
   // Weekly stays reflection-first; video is an intentional secondary reveal.
   const hasVideo = !!(content?.vimeo_video_id || content?.youtube_video_id);
+  const posterImageUrl = content?.thumbnail_image_url ?? content?.featured_image_url ?? null;
   const hasAudio = !!audioUrl;
   const hasBody = !!(content?.body || content?.description);
   const rawBodyText = content?.body || content?.description || "";
@@ -142,6 +144,7 @@ export function WeeklyPrincipleCard({
                   youtubeId={content.youtube_video_id}
                   contentId={content.id}
                   title={content.title}
+                  posterImageUrl={posterImageUrl}
                 />
               </div>
             ) : (
@@ -152,21 +155,24 @@ export function WeeklyPrincipleCard({
                   setVideoOpen(true);
                 }}
                 className="group flex w-full items-center justify-between gap-4 rounded-2xl border border-border/70 bg-card px-4 py-3 text-left shadow-soft transition-all hover:border-secondary/30 hover:bg-white"
-                aria-label={`Watch this week's video: ${content.title}`}
+                aria-label={`Play: Watch this week's video: ${content.title}`}
               >
                 <span className="flex min-w-0 items-center gap-3">
-                  <span
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
-                    style={{
-                      color: "var(--color-secondary)",
-                      background: "color-mix(in srgb, var(--color-secondary) 12%, transparent)",
-                      border: "1px solid color-mix(in srgb, var(--color-secondary) 22%, transparent)",
-                    }}
-                    aria-hidden="true"
-                  >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                      <polygon points="5,3 19,12 5,21" />
-                    </svg>
+                  <span className="relative flex h-12 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-secondary/20 bg-secondary/10" aria-hidden="true">
+                    {posterImageUrl ? (
+                      <SafeImage
+                        src={posterImageUrl}
+                        alt=""
+                        fill
+                        sizes="4rem"
+                        className="h-full w-full object-cover opacity-75 transition-opacity group-hover:opacity-90"
+                      />
+                    ) : null}
+                    <span className="relative z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur-sm">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" className="ml-0.5">
+                        <polygon points="5,3 19,12 5,21" />
+                      </svg>
+                    </span>
                   </span>
                   <span className="min-w-0">
                     <span className="block text-sm font-semibold text-foreground">

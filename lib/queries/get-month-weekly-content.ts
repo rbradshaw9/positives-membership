@@ -23,6 +23,8 @@ export type MonthWeeklyContent = Pick<
   | "title"
   | "excerpt"
   | "description"
+  | "featured_image_url"
+  | "thumbnail_image_url"
   | "body"
   | "reflection_prompt"
   | "vimeo_video_id"
@@ -55,7 +57,7 @@ async function fetchMonthWeeklyContent(
   const { data, error } = await supabase
     .from("content")
     .select(
-      "id, title, excerpt, description, body, reflection_prompt, vimeo_video_id, youtube_video_id, castos_episode_url, s3_audio_key, duration_seconds, week_start, month_year"
+      "id, title, excerpt, description, featured_image_url, thumbnail_image_url, body, reflection_prompt, vimeo_video_id, youtube_video_id, castos_episode_url, s3_audio_key, duration_seconds, week_start, month_year"
     )
     .eq("type", "weekly_principle")
     .eq("status", "published")

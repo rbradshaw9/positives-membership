@@ -23,6 +23,8 @@ export type TodayContent = Pick<
   | "title"
   | "description"
   | "excerpt"
+  | "featured_image_url"
+  | "thumbnail_image_url"
   | "reflection_prompt"
   | "duration_seconds"
   | "castos_episode_url"
@@ -37,7 +39,7 @@ async function fetchTodayContent(effectiveDate: string): Promise<TodayContent | 
   const { data, error } = await supabase
     .from("content")
     .select(
-      "id, title, description, excerpt, reflection_prompt, duration_seconds, castos_episode_url, s3_audio_key, publish_date"
+      "id, title, description, excerpt, featured_image_url, thumbnail_image_url, reflection_prompt, duration_seconds, castos_episode_url, s3_audio_key, publish_date"
     )
     .eq("type", "daily_audio")
     .eq("status", "published")

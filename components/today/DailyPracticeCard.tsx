@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { TodayContent } from "@/lib/queries/get-today-content";
 import { AudioPlayer } from "@/components/today/AudioPlayer";
 import { NoteSheet } from "@/components/notes/NoteSheet";
+import { SafeImage } from "@/components/media/SafeImage";
 
 /**
  * components/today/DailyPracticeCard.tsx
@@ -50,6 +51,7 @@ export function DailyPracticeCard({
 
   const hasContent = content !== null;
   const duration = hasContent ? formatDuration(content.duration_seconds) : "—";
+  const artworkUrl = content?.thumbnail_image_url ?? content?.featured_image_url ?? null;
 
   function handleOpenNote() {
     if (!content) return;
@@ -82,6 +84,23 @@ export function DailyPracticeCard({
               "radial-gradient(ellipse at 25% 70%, #2F6FED 0%, transparent 65%), radial-gradient(ellipse at 80% 20%, rgba(78,140,120,0.3) 0%, transparent 60%)",
           }}
         />
+
+        {artworkUrl ? (
+          <div aria-hidden="true" className="absolute inset-y-0 right-0 w-full md:w-[58%]">
+            <SafeImage
+              src={artworkUrl}
+              alt=""
+              fill
+              sizes="(max-width: 768px) 100vw, 48vw"
+              className="h-full w-full object-cover"
+              style={{
+                opacity: 0.18,
+                maskImage: "linear-gradient(to left, black 0%, transparent 82%)",
+                WebkitMaskImage: "linear-gradient(to left, black 0%, transparent 82%)",
+              }}
+            />
+          </div>
+        ) : null}
 
         <div className="relative z-10">
           {/* ── Header row: chip + listened state ──────────────────── */}

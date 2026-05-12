@@ -20,6 +20,8 @@ export type MonthlyContent = Pick<
   | "title"
   | "description"
   | "excerpt"
+  | "featured_image_url"
+  | "thumbnail_image_url"
   | "body"
   | "reflection_prompt"
   | "download_url"
@@ -36,7 +38,7 @@ async function fetchMonthlyContent(targetMonthYear: string): Promise<MonthlyCont
   const { data, error } = await supabase
     .from("content")
     .select(
-      "id, title, description, excerpt, body, reflection_prompt, download_url, resource_links, vimeo_video_id, youtube_video_id, month_year"
+      "id, title, description, excerpt, featured_image_url, thumbnail_image_url, body, reflection_prompt, download_url, resource_links, vimeo_video_id, youtube_video_id, month_year"
     )
     .eq("type", "monthly_theme")
     .eq("status", "published")
