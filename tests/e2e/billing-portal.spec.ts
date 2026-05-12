@@ -102,6 +102,36 @@ test.describe("member billing portal", () => {
     originalMemberState = null;
   });
 
+  test("first-login password setup link opens the account password form", async ({ page }) => {
+    originalMemberState = await getAdminMemberSupportSnapshot(MEMBER_EMAIL);
+    await updateAdminMemberSupportFields(MEMBER_EMAIL, {
+      subscription_status: "active",
+      subscription_tier: "level_1",
+      password_set: false,
+    });
+
+    await loginWithPassword(page, {
+      email: MEMBER_EMAIL,
+      password: MEMBER_PASSWORD,
+      next: "/today?welcome=1",
+      expectedPath: "/today",
+      normalizeAccess: false,
+    });
+
+    const welcomeDialog = page.getByRole("dialog", { name: "Welcome to Positives" });
+    await expect(welcomeDialog).toBeVisible();
+
+    await welcomeDialog.getByRole("link", { name: "Create my password" }).click();
+
+    await expect(page).toHaveURL(/\/account#password$/);
+    await expect(page.getByRole("heading", { name: "Account", exact: true })).toBeVisible();
+    await expect(page.locator("#password")).toBeVisible();
+    await expect(page.getByLabel("New password")).toBeFocused();
+
+    await updateAdminMemberSupportFields(MEMBER_EMAIL, originalMemberState);
+    originalMemberState = null;
+  });
+
   test("legacy /upgrade route hands active members into the billing center", async ({
     page,
   }) => {

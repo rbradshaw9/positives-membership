@@ -526,7 +526,7 @@ export default async function AccountPage({
           </div>
 
           <div className="flex flex-col gap-6">
-            <section aria-labelledby="section-security">
+            <section id="password" aria-labelledby="section-security" className="scroll-mt-24">
               <SectionLabel id="section-security">Security</SectionLabel>
               <div className="flex flex-col gap-3">
                 <SurfaceCard padding="sm" className="text-sm text-muted-foreground">

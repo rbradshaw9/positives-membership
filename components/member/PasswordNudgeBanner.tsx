@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 
+const PASSWORD_SETUP_HREF = "/account#password";
+
 /**
  * components/member/PasswordNudgeBanner.tsx
  *
@@ -39,7 +41,7 @@ export function PasswordNudgeBanner() {
         >
           Add a password for faster sign-in next time.{" "}
           <Link
-            href="/account"
+            href={PASSWORD_SETUP_HREF}
             style={{
               color: "#2F6FED",
               fontWeight: 600,

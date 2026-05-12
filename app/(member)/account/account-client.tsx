@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { setPassword } from "./actions";
 import { useFormStatus } from "react-dom";
 
@@ -36,6 +36,17 @@ function SubmitButton({ mode }: { mode: "create" | "change" }) {
 export function AccountClient({ mode = "create" }: AccountClientProps) {
   const [state, action] = useActionState<State, FormData>(setPassword, initial);
   const isChangeMode = mode === "change";
+  const passwordInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (window.location.hash !== "#password") return;
+
+    const focusTimer = window.setTimeout(() => {
+      passwordInputRef.current?.focus({ preventScroll: true });
+    }, 250);
+
+    return () => window.clearTimeout(focusTimer);
+  }, []);
 
   if (state.success) {
     return (
@@ -77,6 +88,7 @@ export function AccountClient({ mode = "create" }: AccountClientProps) {
           New password
         </label>
         <input
+          ref={passwordInputRef}
           id="account-password"
           name="password"
           type="password"

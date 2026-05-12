@@ -5,6 +5,8 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
+const PASSWORD_SETUP_HREF = "/account#password";
+
 /**
  * components/member/WelcomeModal.tsx
  *
@@ -117,7 +119,7 @@ export function WelcomeModal({
           ),
           label: "Save a direct password sign-in",
           sub: "No inbox detour the next time you want to get in quickly",
-          href: "/account",
+          href: PASSWORD_SETUP_HREF,
         },
         {
           icon: (
@@ -129,7 +131,7 @@ export function WelcomeModal({
           ),
           label: "Keep your account easier to recover",
           sub: "Password reset becomes much clearer than relying only on magic links",
-          href: "/account",
+          href: PASSWORD_SETUP_HREF,
         },
         {
           icon: (
@@ -141,7 +143,7 @@ export function WelcomeModal({
           ),
           label: "It takes less than a minute",
           sub: "You can still come back to your practice right after setting it",
-          href: "/account",
+          href: PASSWORD_SETUP_HREF,
         },
       ]
     : [
@@ -393,7 +395,7 @@ export function WelcomeModal({
             {isPasswordReminder ? (
               <>
                 <Link
-                  href="/account"
+                  href={PASSWORD_SETUP_HREF}
                   onClick={dismiss}
                   className="w-full inline-flex items-center justify-center rounded-full font-semibold"
                   style={{
@@ -452,7 +454,7 @@ export function WelcomeModal({
                 {needsPasswordSetup ? (
                   <>
                     <Link
-                      href="/account"
+                      href={PASSWORD_SETUP_HREF}
                       onClick={dismiss}
                       className="w-full inline-flex items-center justify-center rounded-full font-semibold"
                       style={{

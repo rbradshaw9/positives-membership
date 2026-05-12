@@ -158,10 +158,23 @@ export function NoteSheet({
   }
 
   function handleCancel() {
+    const hasUnsavedText = text.trim() !== initialText.trim() && saveState !== "saved";
+    if (hasUnsavedText) {
+      const confirmed = window.confirm("Close without saving this note?");
+      if (!confirmed) return;
+    }
+
     setText(initialText);
     setSaveState("idle");
     setSavedResult(null);
     onClose();
+  }
+
+  function handleContinueWriting() {
+    setText("");
+    setSaveState("idle");
+    setSavedResult(null);
+    window.setTimeout(() => textareaRef.current?.focus(), 0);
   }
 
   if (!isOpen) return null;
@@ -225,6 +238,7 @@ export function NoteSheet({
           onSave={handleSave}
           onCancel={handleCancel}
           onDelete={isEditing ? handleDelete : undefined}
+          onContinueWriting={contentId ? handleContinueWriting : undefined}
           textareaRef={textareaRef}
         />
       </aside>
@@ -265,6 +279,7 @@ export function NoteSheet({
           onSave={handleSave}
           onCancel={handleCancel}
           onDelete={isEditing ? handleDelete : undefined}
+          onContinueWriting={contentId ? handleContinueWriting : undefined}
           textareaRef={textareaRef}
         />
       </aside>
@@ -287,6 +302,7 @@ interface ContentProps {
   onSave: () => void;
   onCancel: () => void;
   onDelete?: () => void;
+  onContinueWriting?: () => void;
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
 }
 
@@ -303,8 +319,11 @@ function NoteSheetContent({
   onSave,
   onCancel,
   onDelete,
+  onContinueWriting,
   textareaRef,
 }: ContentProps) {
+  const wordCount = text.trim().length > 0 ? text.trim().split(/\s+/).length : 0;
+
   if (saveState === "saved" && savedResult) {
     return (
       <div className="flex flex-1 flex-col justify-between gap-5 p-5">
@@ -340,6 +359,19 @@ function NoteSheetContent({
               : "You can find this private note any time in Journal."}
           </p>
         </div>
+
+        {isReflection && onContinueWriting ? (
+          <button
+            type="button"
+            onClick={onContinueWriting}
+            className="rounded-2xl border border-border bg-card px-4 py-3 text-left text-sm text-muted-foreground transition-colors hover:bg-muted"
+          >
+            <span className="block font-semibold text-foreground">Add one more reflection</span>
+            <span className="mt-1 block">
+              Start another private note for this same practice.
+            </span>
+          </button>
+        ) : null}
 
         <div
           className="flex gap-3"
@@ -400,16 +432,18 @@ function NoteSheetContent({
         </button>
       </div>
 
-      <p className="text-sm leading-body text-muted-foreground">{helperText}</p>
+      <div className="rounded-2xl border border-border/80 bg-surface-tint px-4 py-3">
+        <p className="text-sm leading-body text-muted-foreground">{helperText}</p>
+      </div>
 
       {/* Textarea — warm writing surface */}
       <textarea
         ref={textareaRef}
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="What's coming up for you…"
+        placeholder="Write a few honest lines. This is just for you..."
         className={[
-          "flex-1 min-h-0 resize-none rounded-xl p-4",
+          "flex-1 min-h-[16rem] resize-none rounded-xl p-4 md:min-h-0",
           "text-[15px] text-foreground leading-body placeholder:text-muted-foreground",
           "border border-border",
           "focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60",
@@ -426,6 +460,11 @@ function NoteSheetContent({
           Something went wrong. Please try again.
         </p>
       )}
+
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+        <span>{wordCount} word{wordCount === 1 ? "" : "s"}</span>
+        <span>{isReflection ? "Saved reflections live in Journal." : "Saved notes live in Journal."}</span>
+      </div>
 
       <div
         className="flex gap-3 flex-shrink-0"
