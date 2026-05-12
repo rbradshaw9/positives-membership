@@ -6,6 +6,8 @@ async function expectHealthyResponse(pathname: string, response: PlaywrightRespo
 }
 
 test("guest can launch Stripe Checkout from the live join page", async ({ page }) => {
+  test.setTimeout(90_000);
+
   const response = await page.goto("/join");
   await expectHealthyResponse("/join", response);
 

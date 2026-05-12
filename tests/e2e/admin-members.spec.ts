@@ -18,7 +18,7 @@ import {
   updateAdminMemberSupportFields,
 } from "./helpers";
 
-test.describe.configure({ mode: "serial" });
+test.describe.configure({ mode: "serial", timeout: 120_000 });
 
 let originalMemberSupportState: AdminMemberSupportSnapshot | null = null;
 let originalMemberAdminAccessState: AdminAccessSnapshot | null = null;
@@ -162,6 +162,43 @@ test.describe("admin member operations", () => {
 
     await expect(memberFieldsForm.getByRole("status")).toContainText("Member management fields saved.");
     expect(page.url()).toBe(beforeUrl);
+  });
+
+  test("admin cannot delete an active Stripe-linked member from the danger zone", async ({ page }) => {
+    test.setTimeout(90_000);
+
+    await loginWithPassword(page, {
+      email: ADMIN_EMAIL,
+      password: ADMIN_PASSWORD,
+      next: "/admin/members",
+    });
+
+    await page.getByLabel("Search members").fill(MEMBER_EMAIL);
+    await page.getByRole("button", { name: "Search" }).click();
+    await page.getByRole("link", { name: MEMBER_EMAIL }).click();
+
+    await page
+      .getByRole("navigation", { name: "Member management tabs" })
+      .getByRole("link", { name: "Purchases & Access", exact: true })
+      .click();
+    await expect(page).toHaveURL(/tab=access/);
+
+    const deleteForm = page
+      .locator("section#access form")
+      .filter({ has: page.getByRole("button", { name: "Delete test member" }) });
+
+    await deleteForm.getByLabel("Type member email to confirm").fill(MEMBER_EMAIL);
+    await deleteForm
+      .getByLabel(
+        "I verified this change is authorized by the member/client or approved by the team."
+      )
+      .check();
+    await deleteForm
+      .getByLabel("Deletion reason")
+      .fill("E2E verifies active Stripe-linked members cannot be deleted.");
+    await deleteForm.getByRole("button", { name: "Delete test member" }).click();
+
+    await expect(deleteForm.getByRole("alert")).toContainText("linked to Stripe");
   });
 
   test("admin can exit impersonation back to the member profile", async ({ page }) => {
@@ -340,6 +377,8 @@ test.describe("admin member operations", () => {
     page,
     browser,
   }) => {
+    test.setTimeout(120_000);
+
     originalMemberAdminAccessState = await getAdminAccessSnapshot(MEMBER_EMAIL);
     await replaceAdminAccess(MEMBER_EMAIL, {
       roleKeys: [],

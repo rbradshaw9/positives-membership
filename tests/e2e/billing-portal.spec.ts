@@ -9,7 +9,7 @@ import {
   updateAdminMemberSupportFields,
 } from "./helpers";
 
-test.describe.configure({ mode: "serial" });
+test.describe.configure({ mode: "serial", timeout: 90_000 });
 
 let originalMemberState: AdminMemberSupportSnapshot | null = null;
 

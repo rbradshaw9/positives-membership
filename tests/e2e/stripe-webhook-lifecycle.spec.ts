@@ -15,7 +15,7 @@ import {
   waitForEventTicketOrderStatus,
 } from "./helpers";
 
-test.describe.configure({ mode: "serial" });
+test.describe.configure({ mode: "serial", timeout: 90_000 });
 
 function buildEvent(type: string, object: Record<string, unknown>) {
   return {

@@ -1517,14 +1517,14 @@ export default async function AdminMemberDetailPage({
         className="member-crm-nav"
       >
         {CRM_TABS.map(([tab, label]) => (
-          <Link
+          <a
             key={tab}
             href={tabHref(tab)}
             aria-current={activeTab === tab ? "page" : undefined}
             className={activeTab === tab ? "member-crm-nav__active" : undefined}
           >
             {label}
-          </Link>
+          </a>
         ))}
       </nav>
 

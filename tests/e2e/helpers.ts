@@ -662,15 +662,20 @@ async function createAuthBootstrapLink(
     throw new Error(`Failed to generate auth bootstrap link for ${email}: ${error.message}`);
   }
 
-  const actionLink =
-    (data as { properties?: { action_link?: string } } | null)?.properties?.action_link ??
-    (data as { action_link?: string } | null)?.action_link;
+  const tokenHash =
+    (data as { properties?: { hashed_token?: string } } | null)?.properties?.hashed_token ??
+    (data as { hashed_token?: string } | null)?.hashed_token;
 
-  if (!actionLink) {
-    throw new Error(`Auth bootstrap link for ${email} did not include an action link.`);
+  if (!tokenHash) {
+    throw new Error(`Auth bootstrap link for ${email} did not include a token hash.`);
   }
 
-  return actionLink;
+  const confirmUrl = new URL("/auth/confirm", origin);
+  confirmUrl.searchParams.set("token_hash", tokenHash);
+  confirmUrl.searchParams.set("type", "email");
+  confirmUrl.searchParams.set("next", next);
+
+  return confirmUrl.toString();
 }
 
 export async function getAdminAccessSnapshot(email: string): Promise<AdminAccessSnapshot> {
