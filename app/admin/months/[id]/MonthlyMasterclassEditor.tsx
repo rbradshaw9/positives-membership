@@ -20,7 +20,22 @@ const STATUS_BADGE: Record<string, string> = {
   published: "admin-badge admin-badge--published",
   draft: "admin-badge admin-badge--draft",
   ready_for_review: "admin-badge admin-badge--review",
+  archived: "admin-badge admin-badge--archived",
 };
+
+const STATUS_LABEL: Record<string, string> = {
+  published: "Published",
+  draft: "Draft",
+  ready_for_review: "Review",
+  archived: "Archived",
+};
+
+function reconstructMediaUrl(existing: ContentItem | null) {
+  if (!existing) return "";
+  if (existing.vimeo_video_id) return `https://vimeo.com/${existing.vimeo_video_id}`;
+  if (existing.youtube_video_id) return `https://youtube.com/watch?v=${existing.youtube_video_id}`;
+  return "";
+}
 
 export function MonthlyMasterclassEditor({
   monthId,
@@ -43,7 +58,7 @@ export function MonthlyMasterclassEditor({
         <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
           {existing && (
             <span className={STATUS_BADGE[existing.status] ?? STATUS_BADGE.draft}>
-              {existing.status === "published" ? "Published" : existing.status === "draft" ? "Draft" : "Review"}
+              {STATUS_LABEL[existing.status] ?? existing.status}
             </span>
           )}
           <span
@@ -106,8 +121,22 @@ export function MonthlyMasterclassEditor({
                 id="mc-description"
                 name="description"
                 rows={3}
-                defaultValue={""}
+                defaultValue={existing?.description ?? ""}
                 placeholder="Longer description of this month's theme…"
+                className="admin-textarea admin-textarea--no-resize"
+              />
+            </div>
+
+            <div className="admin-form-field">
+              <label htmlFor="mc-body" className="admin-label">
+                Body / supporting notes
+              </label>
+              <textarea
+                id="mc-body"
+                name="body"
+                rows={5}
+                defaultValue={existing?.body ?? ""}
+                placeholder="Supporting notes for the monthly theme…"
                 className="admin-textarea admin-textarea--no-resize"
               />
             </div>
@@ -120,7 +149,7 @@ export function MonthlyMasterclassEditor({
                 id="mc-media"
                 name="media_url"
                 type="url"
-                defaultValue={""}
+                defaultValue={reconstructMediaUrl(existing)}
                 placeholder="Paste a Vimeo or YouTube URL…"
                 className="admin-input"
               />
@@ -135,7 +164,7 @@ export function MonthlyMasterclassEditor({
                 id="mc-reflection"
                 name="reflection_prompt"
                 type="text"
-                defaultValue={""}
+                defaultValue={existing?.reflection_prompt ?? ""}
                 placeholder="How does this theme connect to your daily practice?"
                 className="admin-input"
               />
@@ -154,6 +183,7 @@ export function MonthlyMasterclassEditor({
                 <option value="draft">Draft</option>
                 <option value="ready_for_review">Ready for review</option>
                 <option value="published">Published</option>
+                <option value="archived">Archived</option>
               </select>
             </div>
 

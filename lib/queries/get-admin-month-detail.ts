@@ -17,6 +17,11 @@ export type ContentItem = {
   publish_date: string | null;
   week_start: string | null;
   excerpt: string | null;
+  description: string | null;
+  body: string | null;
+  reflection_prompt: string | null;
+  vimeo_video_id: string | null;
+  youtube_video_id: string | null;
   // Inline stats
   listens: number;
   views: number;
@@ -99,7 +104,7 @@ export async function getAdminMonthDetail(
   // 2. Fetch all child content
   const { data: contentRows } = await supabase
     .from("content")
-    .select("id, title, status, type, publish_date, week_start, excerpt, description, tags")
+    .select("id, title, status, type, publish_date, week_start, excerpt, description, body, reflection_prompt, vimeo_video_id, youtube_video_id, tags")
     .eq("monthly_practice_id", monthId)
     .order("publish_date", { ascending: true });
 
@@ -163,6 +168,11 @@ export async function getAdminMonthDetail(
       publish_date: row.publish_date,
       week_start: row.week_start,
       excerpt: row.excerpt,
+      description: row.description,
+      body: row.body,
+      reflection_prompt: row.reflection_prompt,
+      vimeo_video_id: row.vimeo_video_id,
+      youtube_video_id: row.youtube_video_id,
       listens: stats?.listens ?? 0,
       views: stats?.views ?? 0,
       notes: noteMap.get(row.id) ?? 0,

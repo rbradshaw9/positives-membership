@@ -133,7 +133,7 @@ export default async function MonthWorkspacePage({
     <div style={{ maxWidth: "60rem" }}>
       {/* Breadcrumb */}
       <Link href="/admin/months" className="admin-back-link">
-        ← Monthly Setup
+        ← Practice Content
       </Link>
 
       {/* Success / error banners */}
@@ -155,8 +155,13 @@ export default async function MonthWorkspacePage({
       {/* ─── Header ─── */}
       <div className="admin-page-header admin-page-header--split">
         <div>
-          <p className="admin-page-header__eyebrow">Month Workspace</p>
-          <h1 className="admin-page-header__title">{month.label}</h1>
+          <p className="admin-page-header__eyebrow">Practice Content</p>
+          <h1 className="admin-page-header__title" style={{ textWrap: "balance" }}>
+            {month.label}
+          </h1>
+          <p className="admin-page-header__subtitle" style={{ marginTop: "0.5rem" }}>
+            Manage this month&apos;s theme, weekly principles, and daily audio in one place.
+          </p>
           <div className="admin-month-status-row">
             <span className={STATUS_BADGE[month.status] ?? STATUS_BADGE.draft}>
               {STATUS_LABEL[month.status] ?? month.status}

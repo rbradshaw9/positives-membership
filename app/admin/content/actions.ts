@@ -46,6 +46,7 @@ type ContentInput = {
   starts_at: string;  // Sprint 10 (ISO datetime-local string)
   send_reminders: boolean;
   send_replay_email: boolean;
+  return_to: string;
 };
 
 function adminClient() {
@@ -88,7 +89,15 @@ function parseFormData(formData: FormData): ContentInput {
     send_replay_email: sendReplayValues.length > 0
       ? sendReplayValues.includes("on")
       : true,
+    return_to: formData.get("return_to")?.toString() ?? "",
   };
+}
+
+function safeAdminReturnTo(value: string) {
+  if (!value || !value.startsWith("/admin/") || value.startsWith("//")) {
+    return null;
+  }
+  return value;
 }
 
 function buildRow(input: ContentInput) {
@@ -211,7 +220,7 @@ export async function createContent(formData: FormData) {
 
   revalidateContentTags();
 
-  redirect("/admin/content?success=created");
+  redirect(safeAdminReturnTo(input.return_to) ?? "/admin/content?success=created");
 }
 
 /** Update an existing content record */
@@ -242,7 +251,7 @@ export async function updateContent(formData: FormData) {
 
   revalidateContentTags();
 
-  redirect("/admin/content?success=updated");
+  redirect(safeAdminReturnTo(input.return_to) ?? "/admin/content?success=updated");
 }
 
 /** Toggle status between published ↔ draft (quick publish) */

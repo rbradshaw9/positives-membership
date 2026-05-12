@@ -19,7 +19,14 @@ import type { Tables } from "@/types/supabase";
 
 type CalendarContentRow = Pick<
   Tables<"content">,
-  "id" | "title" | "type" | "status" | "publish_date" | "week_start" | "month_year"
+  | "id"
+  | "monthly_practice_id"
+  | "title"
+  | "type"
+  | "status"
+  | "publish_date"
+  | "week_start"
+  | "month_year"
 >;
 
 export type CalendarItem = {
@@ -84,12 +91,16 @@ function comparePriority(a: CalendarContentRow, b: CalendarContentRow): number {
 }
 
 function toCalendarItem(row: CalendarContentRow): CalendarItem {
+  const href = row.monthly_practice_id
+    ? `/admin/months/${row.monthly_practice_id}/content/${row.id}/edit`
+    : `/admin/content/${row.id}/edit`;
+
   return {
     id: row.id,
     title: row.title,
     type: row.type,
     status: row.status,
-    href: `/admin/content/${row.id}/edit`,
+    href,
   };
 }
 
@@ -134,7 +145,7 @@ export async function getAdminContentCalendar(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("content")
-    .select("id, title, type, status, publish_date, week_start, month_year")
+    .select("id, monthly_practice_id, title, type, status, publish_date, week_start, month_year")
     .in("type", CONTENT_TYPES)
     .neq("status", "archived")
     .or(
@@ -215,12 +226,12 @@ export async function getAdminContentCalendar(
       hasDailyPublishRisk: dailyRows.length > 0 && !hasPublishedDaily,
       hasWeeklyGap: isWeekStart && !publishedWeeklyStarts.has(weekStart),
       hasMonthlyGap: isMonthStart && !publishedMonths.has(monthYear),
-      createDailyHref: `/admin/content/new?type=daily_audio&publish_date=${date}`,
+      createDailyHref: `/admin/months?month_year=${monthYear}`,
       createWeeklyHref: isWeekStart
-        ? `/admin/content/new?type=weekly_principle&week_start=${weekStart}`
+        ? `/admin/months?month_year=${monthYear}`
         : null,
       createMonthlyHref: isMonthStart
-        ? `/admin/content/new?type=monthly_theme&month_year=${monthYear}`
+        ? `/admin/months?month_year=${monthYear}`
         : null,
     };
   });

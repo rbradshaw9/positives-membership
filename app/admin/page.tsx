@@ -44,9 +44,9 @@ const tiles = [
     icon: "📅",
     iconBg:
       "linear-gradient(135deg, rgba(139,92,246,0.12), rgba(68,168,216,0.12))",
-    title: "Monthly Setup",
+    title: "Practice Content",
     description:
-      "Create and manage monthly content — masterclass, weekly reflections, and daily audio — all in one workspace.",
+      "Create and manage monthly themes, weekly principles, and daily audio in one workspace.",
     status: "Live",
   },
   {
@@ -64,9 +64,9 @@ const tiles = [
     icon: "🗓",
     iconBg:
       "linear-gradient(135deg, rgba(245,158,11,0.12), rgba(239,68,68,0.08))",
-    title: "Calendar",
+    title: "Practice Calendar",
     description:
-      "Visual calendar view of scheduled content — see what's live on any given day.",
+      "Visual coverage view for the daily, weekly, and monthly practice rhythm.",
     status: "Live",
   },
   {

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createContent } from "../actions";
 import { getEffectiveDate } from "@/lib/dates/effective-date";
 import { ResourceLinksEditor } from "@/components/admin/ResourceLinksEditor";
@@ -24,6 +25,15 @@ type SearchParams = Promise<{
   month_year?: string;
 }>;
 
+const PRACTICE_CONTENT_TYPES = new Set(["daily_audio", "weekly_principle", "monthly_theme"]);
+
+function monthFromPracticeParams(params: Awaited<SearchParams>) {
+  if (params.month_year) return params.month_year;
+  if (params.publish_date) return params.publish_date.slice(0, 7);
+  if (params.week_start) return params.week_start.slice(0, 7);
+  return "";
+}
+
 export default async function AdminContentNewPage({
   searchParams,
 }: {
@@ -32,6 +42,14 @@ export default async function AdminContentNewPage({
   const params = await searchParams;
   const defaultType = params.type ?? "daily_audio";
   const todayEastern = getEffectiveDate();
+
+  if (PRACTICE_CONTENT_TYPES.has(defaultType)) {
+    const destinationParams = new URLSearchParams();
+    const monthYear = monthFromPracticeParams(params);
+    if (monthYear) destinationParams.set("month_year", monthYear);
+    destinationParams.set("from", "content");
+    redirect(`/admin/months${destinationParams.toString() ? `?${destinationParams.toString()}` : ""}`);
+  }
 
   return (
     <div className="max-w-2xl">
@@ -44,7 +62,8 @@ export default async function AdminContentNewPage({
       <div className="admin-page-header">
         <h1 className="admin-page-header__title">New content</h1>
         <p className="admin-page-header__subtitle">
-          Create a Daily, Weekly, Monthly, or Coaching content record.
+          Create a coaching or library content record. Daily, weekly, and monthly practice
+          content lives in Practice Content.
         </p>
       </div>
 
@@ -98,6 +117,7 @@ export interface ContentFormValues {
   join_url?: string | null;   // Sprint 10 patch: coaching Zoom link
   send_reminders?: boolean;
   send_replay_email?: boolean;
+  returnTo?: string;
 }
 
 /**
@@ -122,6 +142,8 @@ export function ContentForm({
   submitLabel,
   values,
   dateDefaults,
+  returnTo,
+  cancelHref = "/admin/content",
 }: {
   action: (formData: FormData) => Promise<void>;
   defaultType: string;
@@ -133,6 +155,8 @@ export function ContentForm({
     week_start?: string;
     month_year?: string;
   };
+  returnTo?: string;
+  cancelHref?: string;
 }) {
   const type = values?.type ?? defaultType;
   const isDaily = type === "daily_audio";
@@ -154,6 +178,7 @@ export function ContentForm({
   return (
     <form action={action} className="admin-form-card">
       {values?.id && <input type="hidden" name="id" value={values.id} />}
+      {returnTo && <input type="hidden" name="return_to" value={returnTo} />}
 
       {/* ─── Core ────────────────────────────────────────────────────────── */}
 
@@ -625,7 +650,7 @@ export function ContentForm({
         <button type="submit" className="admin-btn admin-btn--primary">
           {submitLabel}
         </button>
-        <Link href="/admin/content" className="admin-btn admin-btn--outline">
+        <Link href={cancelHref} className="admin-btn admin-btn--outline">
           Cancel
         </Link>
       </div>

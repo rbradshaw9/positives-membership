@@ -6,7 +6,7 @@ import {
 } from "@/lib/queries/get-admin-content-calendar";
 
 export const metadata = {
-  title: "Content Calendar — Positives Admin",
+  title: "Practice Content Calendar — Positives Admin",
 };
 
 type SearchParams = Promise<{ start?: string }>;
@@ -94,7 +94,7 @@ function ItemCard({
               className="text-[11px] font-medium transition-colors hover:text-foreground"
               style={{ color: "var(--color-text-subtle)" }}
             >
-              Edit
+              Open
             </Link>
           </div>
 
@@ -279,15 +279,15 @@ function DayCell({ day }: { day: AdminCalendarDay }) {
         className="mt-3 flex flex-wrap gap-2 pt-3"
         style={{ borderTop: "1px solid var(--color-border)" }}
       >
-        <Link
-          href={day.createDailyHref}
-          className="rounded-full px-3 py-1.5 text-[11px] font-medium transition-colors hover:bg-muted"
-          style={{
-            border: "1px solid var(--color-border)",
-            color: "var(--color-text-subtle)",
-          }}
-        >
-          + Daily
+          <Link
+            href={day.createDailyHref}
+            className="rounded-full px-3 py-1.5 text-[11px] font-medium transition-colors hover:bg-muted"
+            style={{
+              border: "1px solid var(--color-border)",
+              color: "var(--color-text-subtle)",
+            }}
+          >
+          Open month
         </Link>
 
         {day.createWeeklyHref && (
@@ -299,7 +299,7 @@ function DayCell({ day }: { day: AdminCalendarDay }) {
               color: "var(--color-text-subtle)",
             }}
           >
-            + Weekly
+            Weekly setup
           </Link>
         )}
 
@@ -312,7 +312,7 @@ function DayCell({ day }: { day: AdminCalendarDay }) {
               color: "var(--color-text-subtle)",
             }}
           >
-            + Monthly
+            Monthly setup
           </Link>
         )}
       </div>
@@ -336,15 +336,17 @@ export default async function AdminContentCalendarPage({
       <div className="admin-page-header">
         <div>
           <Link
-            href="/admin/content"
+            href="/admin/months"
             className="mb-3 inline-block text-xs font-medium transition-colors"
             style={{ color: "var(--color-text-subtle)" }}
           >
-            ← Content
+            ← Practice Content
           </Link>
-          <h1 className="admin-page-header__title">Content Calendar</h1>
+          <h1 className="admin-page-header__title" style={{ textWrap: "balance" }}>
+            Practice Content Calendar
+          </h1>
           <p className="admin-page-header__subtitle">
-            Four-week operational view for daily coverage, weekly principles, and monthly themes.
+            Four-week coverage view. Add and edit practice content from the matching month workspace.
           </p>
         </div>
 

@@ -110,7 +110,7 @@ function WeekSlotRow({
             Wk {slot.weekNumber} · {slot.weekLabel}
           </span>
           <Link
-            href={`/admin/content/${slot.content.id}/edit`}
+            href={`/admin/months/${monthId}/content/${slot.content.id}/edit`}
             style={{
               fontSize: "0.8125rem",
               fontWeight: 600,

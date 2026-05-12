@@ -15,40 +15,28 @@ type AdminContentSearchParams = Promise<{
 const contentSurfaces = [
   {
     href: "/admin/months",
-    title: "Monthly Setup",
+    title: "Practice Content",
     description:
-      "The main workspace for planning a month: theme, weekly reflections, and daily audio coverage.",
+      "The single workspace for planning and editing monthly themes, weekly principles, and daily audio.",
     badge: "Primary workspace",
   },
   {
     href: "/admin/content/calendar",
-    title: "Content Calendar",
+    title: "Practice Calendar",
     description:
-      "See daily, weekly, and monthly coverage on the calendar so publishing gaps are easy to spot.",
+      "Scan daily, weekly, and monthly coverage, then open the matching month workspace to make changes.",
     badge: "Scheduling view",
   },
   {
-    href: "/admin/content/new",
-    title: "Create Standalone Content",
+    href: "/admin/content/new?type=coaching_call",
+    title: "Coaching Content",
     description:
-      "Create a Daily, Weekly, Monthly, or Coaching record directly when you are working outside a month workspace.",
-    badge: "Direct create",
+      "Create or edit coaching records that do not belong to the daily, weekly, and monthly practice calendar.",
+    badge: "Separate flow",
   },
 ] as const;
 
 const quickCreateLinks = [
-  {
-    href: "/admin/content/new?type=daily_audio",
-    label: "New daily audio",
-  },
-  {
-    href: "/admin/content/new?type=weekly_principle",
-    label: "New weekly reflection",
-  },
-  {
-    href: "/admin/content/new?type=monthly_theme",
-    label: "New monthly theme",
-  },
   {
     href: "/admin/content/new?type=coaching_call",
     label: "New coaching call",
@@ -73,6 +61,22 @@ export default async function AdminContentPage({
   }
 
   if (createParams.toString()) {
+    const contentType = resolvedSearchParams.type;
+    if (
+      contentType === "daily_audio" ||
+      contentType === "weekly_principle" ||
+      contentType === "monthly_theme"
+    ) {
+      const monthYear =
+        resolvedSearchParams.month_year ??
+        resolvedSearchParams.publish_date?.slice(0, 7) ??
+        resolvedSearchParams.week_start?.slice(0, 7);
+      const monthParams = new URLSearchParams();
+      if (monthYear) monthParams.set("month_year", monthYear);
+      monthParams.set("from", "content");
+      redirect(`/admin/months?${monthParams.toString()}`);
+    }
+
     redirect(`/admin/content/new?${createParams.toString()}`);
   }
 
@@ -80,10 +84,12 @@ export default async function AdminContentPage({
     <div style={{ maxWidth: "64rem" }}>
       <div className="admin-page-header">
         <p className="admin-page-header__eyebrow">Content</p>
-        <h1 className="admin-page-header__title">Content Workspace</h1>
+        <h1 className="admin-page-header__title" style={{ textWrap: "balance" }}>
+          Content Workspace
+        </h1>
         <p className="admin-page-header__subtitle">
-          Use Monthly Setup for the normal publishing rhythm, or jump straight into a specific
-          content record when you need a faster path.
+          Daily, weekly, and monthly practice content now lives in one place: Practice Content.
+          Coaching content stays separate because it follows a different workflow.
         </p>
       </div>
 
@@ -114,8 +120,8 @@ export default async function AdminContentPage({
         <div style={{ marginBottom: "1rem" }}>
           <p className="admin-form-section__label">Quick create</p>
           <p className="admin-page-header__subtitle" style={{ marginTop: "0.375rem" }}>
-            Useful when the calendar or another admin surface sends you here with a specific
-            creation intent.
+            Daily, weekly, and monthly creation happens from the month workspace so the practice
+            calendar stays organized.
           </p>
         </div>
 

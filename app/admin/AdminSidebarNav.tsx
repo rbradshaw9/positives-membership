@@ -168,7 +168,7 @@ function buildNavGroups({
       items: [
         {
           href: "/admin/months",
-          label: "Monthly Setup",
+          label: "Practice Content",
           icon: "calendar",
         },
         {

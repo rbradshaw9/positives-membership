@@ -1,58 +1,51 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { updateContent } from "../../actions";
-import { ContentForm } from "../../new/page";
+import { updateContent } from "@/app/admin/content/actions";
+import { ContentForm } from "@/app/admin/content/new/page";
 import { getEffectiveDate } from "@/lib/dates/effective-date";
 import { VideoUploadPanel } from "@/components/admin/VideoUploadPanel";
 
-/**
- * app/admin/content/[id]/edit/page.tsx
- * Edit an existing content record.
- * Sprint 5 — passes richer fields (body, reflection_prompt, download_url,
- * vimeo_video_id, youtube_video_id) to the ContentForm.
- */
-
 export const metadata = {
-  title: "Edit Content — Positives Admin",
+  title: "Edit Practice Content — Positives Admin",
 };
 
-const PRACTICE_CONTENT_TYPES = new Set(["daily_audio", "weekly_principle", "monthly_theme"]);
-
 type Props = {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string; contentId: string }>;
   searchParams: Promise<{ error?: string }>;
 };
 
-export default async function AdminContentEditPage({ params, searchParams }: Props) {
-  const { id } = await params;
+export default async function MonthContentEditPage({ params, searchParams }: Props) {
+  const { id: monthId, contentId } = await params;
   const { error: errorParam } = await searchParams;
   const todayEastern = getEffectiveDate();
+  const returnTo = `/admin/months/${monthId}`;
 
   const supabase = await createClient();
-  const { data: row, error } = await supabase
-    .from("content")
-    .select(
-      "id, monthly_practice_id, type, title, excerpt, description, body, reflection_prompt, download_url, resource_links, status, publish_date, week_start, month_year, duration_seconds, castos_episode_url, s3_audio_key, vimeo_video_id, youtube_video_id, admin_notes, tier_min, starts_at, join_url, send_reminders, send_replay_email"
-    )
-    .eq("id", id)
-    .single();
+  const [{ data: month }, { data: row, error }] = await Promise.all([
+    supabase
+      .from("monthly_practice")
+      .select("id, label, month_year")
+      .eq("id", monthId)
+      .single(),
+    supabase
+      .from("content")
+      .select(
+        "id, monthly_practice_id, type, title, excerpt, description, body, reflection_prompt, download_url, resource_links, status, publish_date, week_start, month_year, duration_seconds, castos_episode_url, s3_audio_key, vimeo_video_id, youtube_video_id, admin_notes, tier_min, starts_at, join_url, send_reminders, send_replay_email"
+      )
+      .eq("id", contentId)
+      .single(),
+  ]);
 
-  if (error || !row) notFound();
-
-  if (row.monthly_practice_id && PRACTICE_CONTENT_TYPES.has(row.type)) {
-    redirect(
-      `/admin/months/${row.monthly_practice_id}/content/${row.id}/edit${
-        errorParam ? `?error=${encodeURIComponent(errorParam)}` : ""
-      }`
-    );
+  if (error || !row || !month || row.monthly_practice_id !== monthId) {
+    notFound();
   }
 
   return (
     <div className="max-w-2xl">
       <div className="admin-breadcrumb">
-        <Link href="/admin/content" className="admin-breadcrumb__back">
-          ← Back to content
+        <Link href={returnTo} className="admin-breadcrumb__back">
+          ← {month.label}
         </Link>
         <Link
           href="/today"
@@ -65,8 +58,14 @@ export default async function AdminContentEditPage({ params, searchParams }: Pro
       </div>
 
       <div className="admin-page-header">
-        <h1 className="admin-page-header__title">Edit content</h1>
-        <p className="admin-page-header__subtitle">{row.title}</p>
+        <p className="admin-page-header__eyebrow">Practice Content</p>
+        <h1 className="admin-page-header__title" style={{ textWrap: "balance" }}>
+          Edit {row.title}
+        </h1>
+        <p className="admin-page-header__subtitle">
+          This is managed inside {month.label}, the single workspace for daily, weekly, and
+          monthly practice content.
+        </p>
       </div>
 
       {errorParam && (
@@ -81,7 +80,9 @@ export default async function AdminContentEditPage({ params, searchParams }: Pro
         action={updateContent}
         defaultType={row.type}
         todayEastern={todayEastern}
-        submitLabel="Save changes"
+        submitLabel="Save practice content"
+        returnTo={returnTo}
+        cancelHref={returnTo}
         values={{
           id: row.id,
           type: row.type,
@@ -110,7 +111,6 @@ export default async function AdminContentEditPage({ params, searchParams }: Pro
         }}
       />
 
-      {/* Video upload panel — visible for all video-capable types */}
       {row.type !== "daily_audio" && (
         <div className="admin-form-card" style={{ marginTop: "1rem" }}>
           <VideoUploadPanel

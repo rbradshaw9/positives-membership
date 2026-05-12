@@ -244,7 +244,7 @@ export function DailyAudioGrid({
                     onDragEnd={handleDragEnd}
                   >
                     <Link
-                      href={`/admin/content/${slot.content!.id}/edit`}
+                      href={`/admin/months/${monthId}/content/${slot.content!.id}/edit`}
                       style={{
                         fontSize: "0.5625rem",
                         color: "var(--color-foreground)",

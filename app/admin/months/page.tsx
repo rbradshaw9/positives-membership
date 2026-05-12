@@ -25,7 +25,7 @@ const STATUS_LABEL: Record<string, string> = {
   archived: "Archived",
 };
 
-type SearchParams = Promise<{ success?: string; error?: string }>;
+type SearchParams = Promise<{ success?: string; error?: string; month_year?: string; from?: string }>;
 
 export default async function AdminMonthsPage({
   searchParams,
@@ -50,9 +50,12 @@ export default async function AdminMonthsPage({
       >
         <div>
           <p className="admin-page-header__eyebrow">Content</p>
-          <h1 className="admin-page-header__title">Months</h1>
+          <h1 className="admin-page-header__title" style={{ textWrap: "balance" }}>
+            Practice Content
+          </h1>
           <p className="admin-page-header__subtitle">
-            {months.length} month{months.length !== 1 ? "s" : ""}
+            Manage each monthly theme, weekly principle, and daily practice from one monthly
+            workspace. {months.length} month{months.length !== 1 ? "s" : ""} created.
           </p>
         </div>
 
@@ -62,6 +65,7 @@ export default async function AdminMonthsPage({
             type="month"
             name="month_year"
             required
+            defaultValue={params.month_year ?? ""}
             style={{
               background: "var(--color-card)",
               border: "1px solid var(--color-border)",
@@ -115,6 +119,15 @@ export default async function AdminMonthsPage({
             : params.error === "create_failed"
               ? "Failed to create month."
               : "Something went wrong."}
+        </div>
+      )}
+      {params.from === "content" && (
+        <div
+          className="admin-banner admin-banner--info"
+          style={{ marginBottom: "1.25rem" }}
+        >
+          Daily, weekly, and monthly practice content is managed from the matching month.
+          Open an existing month below or create it with the prefilled date above.
         </div>
       )}
 
