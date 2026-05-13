@@ -18,6 +18,7 @@ declare global {
 
 const ACTIVE_CAMPAIGN_FORM_ID = "6";
 const ACTIVE_CAMPAIGN_ENDPOINT = "https://positives.activehosted.com/proc.php";
+const ACTIVE_CAMPAIGN_ORIGIN_TOKEN = "11c7086a-b93a-4bc2-b8f3-2ec4793be323";
 
 function stripHtml(value: string) {
   return value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
@@ -138,10 +139,12 @@ export function LaunchWaitlistForm() {
 
   return (
     <form
+      id="_form_6_"
       ref={formRef}
       method="POST"
       action={ACTIVE_CAMPAIGN_ENDPOINT}
-      className="space-y-4"
+      className="_form _form_6 _inline-form _dark space-y-4"
+      data-styles-version="5"
       noValidate
       onSubmit={handleSubmit}
     >
@@ -155,7 +158,7 @@ export function LaunchWaitlistForm() {
       <input
         type="hidden"
         name="or"
-        value="3ea57bde-c7a9-4c32-adc6-9ef8fb75fb76"
+        value={ACTIVE_CAMPAIGN_ORIGIN_TOKEN}
       />
 
       <div>
