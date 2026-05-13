@@ -48,7 +48,7 @@ export function LaunchWaitlistForm() {
     setSuccess(null);
 
     if (!isValidEmail(email)) {
-      setError("Enter a valid email address to join the launch list.");
+      setError("Enter a valid email address to join the beta launch list.");
       return;
     }
 
@@ -68,7 +68,7 @@ export function LaunchWaitlistForm() {
       setIsSubmitting(false);
       setSuccess(
         stripHtml(message) ||
-          "You are on the launch list. We will send the next update soon.",
+          "You are on the beta launch list. We will send the next update soon.",
       );
     };
 
@@ -111,11 +111,11 @@ export function LaunchWaitlistForm() {
         role="status"
       >
         <p className="font-heading text-xl font-bold" style={{ textWrap: "balance" }}>
-          You are on the list.
+          You are on the Beta Launch List.
         </p>
         <p className="mt-3 text-sm leading-7">
-          We will let you know as soon as Positives opens and send a few simple
-          updates as we get closer.
+          We will let you know when early access becomes available and send a
+          few simple beta updates as we get closer.
         </p>
       </div>
     );
@@ -209,11 +209,11 @@ export function LaunchWaitlistForm() {
           boxShadow: "0 10px 24px rgba(47,111,237,0.24)",
         }}
       >
-        {isSubmitting ? "Joining..." : "Join the launch waitlist"}
+        {isSubmitting ? "Joining..." : "Get on the Beta Launch List"}
       </button>
 
       <p className="text-center text-xs leading-6" style={{ color: "#68707A" }}>
-        No spam. Just launch updates and early details from Positives.
+        No spam. Just simple updates and early access details from Positives.
       </p>
     </form>
   );

@@ -7,9 +7,9 @@ import { ANONYMOUS_PUBLIC_SESSION_STATE } from "@/lib/marketing/public-session";
 import { LaunchWaitlistForm } from "./launch-waitlist-form";
 
 export const metadata: Metadata = {
-  title: "Positives — Join the Launch Waitlist",
+  title: "Positives — Get Beta Access",
   description:
-    "Join the Positives launch waitlist for a simple daily practice with Dr. Paul Jenkins: short guided audio, a weekly principle, and a monthly theme.",
+    "Join the Positives beta launch list for a simple daily mindset practice with Dr. Paul Jenkins: short guided audio, weekly practices, and monthly themes.",
   alternates: {
     canonical: "/",
   },
@@ -20,30 +20,45 @@ const practiceRhythm = [
     label: "Daily",
     title: "A short guided reset",
     description:
-      "A few minutes of audio to help you pause, reframe, and choose your next step.",
+      "A few minutes of audio to help you pause, reframe your thoughts, and choose your next step with more intention.",
   },
   {
     label: "Weekly",
-    title: "One principle to practice",
+    title: "One idea to practice",
     description:
-      "A focused idea for the week, with reflection prompts that keep it practical.",
+      "A practical principle for the week, with simple reflection prompts that help you apply it to real situations.",
   },
   {
     label: "Monthly",
-    title: "A theme to return to",
+    title: "A theme to grow with",
     description:
-      "A broader pattern for growth, repeated gently so members never feel behind.",
+      "Each month focuses on one meaningful theme, giving you time to practice it in your everyday life without feeling rushed or behind.",
   },
 ];
 
 const launchSteps = [
-  "Join the waitlist.",
-  "Get simple launch updates.",
-  "Be first to know when Positives opens.",
+  {
+    title: "Join the Beta Launch List.",
+    description: "Add your name and email so we can keep you updated.",
+  },
+  {
+    title: "Get beta launch updates.",
+    description:
+      "We will send early details about Positives, what is included, and how the beta will work.",
+  },
+  {
+    title: "Get first access when the beta opens.",
+    description:
+      "When we are ready, you will be among the first invited to join Positives during the beta launch.",
+  },
 ];
 
 export default function LandingPage() {
   const session = ANONYMOUS_PUBLIC_SESSION_STATE;
+  const footerSession = {
+    ...session,
+    paidShortLabel: "Get Beta Access",
+  };
 
   return (
     <div className="min-h-dvh overflow-x-hidden" style={{ background: "#FAFAF8" }}>
@@ -51,11 +66,11 @@ export default function LandingPage() {
         signInHref={session.signInHref}
         signInLabel={session.signInLabel}
         primaryCtaHref="#launch-waitlist"
-        primaryCtaLabel="Join waitlist"
+        primaryCtaLabel="Get Beta Access"
         navLinks={[
-          { href: "#how-it-works", label: "Practice", hiddenOnMobile: true },
+          { href: "#practice", label: "Practice", hiddenOnMobile: true },
           { href: "#dr-paul", label: "Dr. Paul", hiddenOnMobile: true },
-          { href: "/learn", label: "Learn more", hiddenOnMobile: true },
+          { href: "#how-it-works", label: "How it works", hiddenOnMobile: true },
         ]}
       />
 
@@ -69,7 +84,7 @@ export default function LandingPage() {
                 className="mb-5 text-xs font-bold uppercase"
                 style={{ color: "#2EC4B6", letterSpacing: "0.16em" }}
               >
-                Launching soon
+                Beta launching soon
               </p>
               <h1
                 className="font-heading text-5xl font-bold sm:text-6xl lg:text-7xl"
@@ -79,19 +94,28 @@ export default function LandingPage() {
                   textWrap: "balance",
                 }}
               >
-                Build a more positive life, a few minutes at a time.
+                Help shape Positives before it opens to everyone.
               </h1>
               <p
                 className="mt-6 max-w-2xl text-lg leading-8 sm:text-xl sm:leading-9"
                 style={{ color: "#4F5760" }}
               >
-                Positives is a daily practice from Dr. Paul Jenkins: short
-                guided audio, a weekly principle, and a monthly theme for real
-                life. No catching up. No pressure.
+                Positives is a simple daily mindset practice from Dr. Paul
+                Jenkins. During the beta launch, members will get early access
+                to short guided audio, weekly practices, and monthly themes
+                designed to help you feel more steady, clear, and positive in
+                everyday life.
+              </p>
+              <p
+                className="mt-4 max-w-2xl text-base leading-8 sm:text-lg"
+                style={{ color: "#4F5760" }}
+              >
+                This is not another course you have to finish. It is a small
+                daily practice you can return to whenever you need a reset.
               </p>
 
               <div className="mt-8 flex flex-wrap gap-3">
-                {["Daily audio", "Weekly principle", "Monthly theme"].map((item) => (
+                {["Daily audio", "Weekly practice", "Monthly theme"].map((item) => (
                   <span
                     key={item}
                     className="rounded-full border px-4 py-2 text-sm font-semibold"
@@ -115,18 +139,24 @@ export default function LandingPage() {
                 borderColor: "#DDD7CF",
                 boxShadow: "0 22px 60px rgba(18,20,23,0.08)",
               }}
-              aria-label="Join the Positives launch waitlist"
+              aria-label="Join the Positives beta launch list"
             >
               <div className="mb-6">
                 <p
                   className="font-heading text-2xl font-bold"
                   style={{ color: "#121417", textWrap: "balance" }}
                 >
-                  Know when Positives opens.
+                  Get on the Beta Launch List
                 </p>
                 <p className="mt-3 text-sm leading-7" style={{ color: "#68707A" }}>
-                  We will send launch updates, early details, and a clear next
-                  step when membership opens.
+                  We are getting ready to open Positives to a small group of
+                  early members.
+                </p>
+                <p className="mt-3 text-sm leading-7" style={{ color: "#68707A" }}>
+                  Join the Beta Launch List and we will let you know when early
+                  access becomes available. You will get launch updates, beta
+                  details, and the first opportunity to join before Positives
+                  opens more widely.
                 </p>
               </div>
               <LaunchWaitlistForm />
@@ -140,25 +170,31 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="how-it-works" className="border-b border-[#DDD7CF]/70">
+        <section id="practice" className="border-b border-[#DDD7CF]/70">
           <div className="mx-auto max-w-6xl px-5 py-14 sm:px-8 sm:py-20">
             <div className="max-w-3xl">
               <p
                 className="mb-4 text-xs font-bold uppercase"
                 style={{ color: "#68707A", letterSpacing: "0.14em" }}
               >
-                The rhythm
+                How Positives works
               </p>
               <h2
+                id="how-it-works"
                 className="font-heading text-4xl font-bold sm:text-5xl"
                 style={{ color: "#121417", lineHeight: "1.08", textWrap: "balance" }}
               >
-                A practice, not another course to finish.
+                A daily practice you can actually keep doing.
               </h2>
               <p className="mt-5 text-lg leading-8" style={{ color: "#4F5760" }}>
-                Positives is built around return and repetition. Members get a
-                next step for today, context for the week, and a theme for the
-                month.
+                Positives is built around small, steady repetition. Each day
+                gives you a simple reset. Each week gives you one principle to
+                practice. Each month gives you a bigger theme to return to.
+              </p>
+              <p className="mt-4 text-lg leading-8" style={{ color: "#4F5760" }}>
+                You do not have to catch up. You do not have to complete
+                everything perfectly. Just listen, reflect, practice, and come
+                back tomorrow.
               </p>
             </div>
 
@@ -213,12 +249,17 @@ export default function LandingPage() {
                 className="font-heading text-4xl font-bold sm:text-5xl"
                 style={{ color: "#121417", lineHeight: "1.08", textWrap: "balance" }}
               >
-                Practical psychology for ordinary, complicated days.
+                Practical psychology for real life.
               </h2>
               <p className="mt-5 text-lg leading-8" style={{ color: "#4F5760" }}>
-                Positives brings Dr. Paul&apos;s simple, steady teaching style
-                into a daily rhythm members can actually use: listen, reflect,
-                and return tomorrow.
+                Dr. Paul Jenkins has spent years helping people understand
+                their thoughts, emotions, relationships, and choices in a
+                simple, practical way.
+              </p>
+              <p className="mt-4 text-lg leading-8" style={{ color: "#4F5760" }}>
+                Positives brings his steady teaching style into a daily rhythm
+                you can actually use: listen, reflect, practice, and return
+                tomorrow.
               </p>
               <Link
                 href="/learn"
@@ -243,19 +284,22 @@ export default function LandingPage() {
                   className="mb-4 text-xs font-bold uppercase"
                   style={{ color: "#68707A", letterSpacing: "0.14em" }}
                 >
-                  After you join
+                  Beta access launching soon
                 </p>
                 <h2
                   className="font-heading text-4xl font-bold sm:text-5xl"
                   style={{ color: "#121417", lineHeight: "1.08", textWrap: "balance" }}
                 >
-                  We will keep the launch updates simple.
+                  What happens after you join the Beta Launch List?
                 </h2>
+                <p className="mt-5 text-lg leading-8" style={{ color: "#4F5760" }}>
+                  We will keep it simple.
+                </p>
               </div>
               <div className="space-y-3">
                 {launchSteps.map((step, index) => (
                   <div
-                    key={step}
+                    key={step.title}
                     className="flex items-center gap-4 rounded-[8px] border p-4"
                     style={{ background: "#FFFFFF", borderColor: "#DDD7CF" }}
                   >
@@ -265,9 +309,14 @@ export default function LandingPage() {
                     >
                       {index + 1}
                     </span>
-                    <p className="font-semibold" style={{ color: "#3F4852" }}>
-                      {step}
-                    </p>
+                    <div>
+                      <p className="font-semibold" style={{ color: "#3F4852" }}>
+                        {step.title}
+                      </p>
+                      <p className="mt-1 text-sm leading-6" style={{ color: "#68707A" }}>
+                        {step.description}
+                      </p>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -276,7 +325,7 @@ export default function LandingPage() {
         </section>
       </main>
 
-      <PublicSiteFooter paidHref="#launch-waitlist" session={session} />
+      <PublicSiteFooter paidHref="#launch-waitlist" session={footerSession} />
     </div>
   );
 }
