@@ -19,18 +19,23 @@ export default function manifest(): MetadataRoute.Manifest {
     prefer_related_applications: false,
     icons: [
       {
+        src: "/favicon.ico",
+        sizes: "any",
+        type: "image/x-icon",
+      },
+      {
         src: "/icon.png",
-        sizes: "450x450",
+        sizes: "512x512",
         type: "image/png",
       },
       {
-        src: "/apple-icon.png",
-        sizes: "450x450",
+        src: "/apple-touch-icon.png",
+        sizes: "180x180",
         type: "image/png",
       },
       {
-        src: "/logos/png/positives-logos_positives-icon-square.png",
-        sizes: "450x450",
+        src: "/icon.png",
+        sizes: "512x512",
         type: "image/png",
         purpose: "maskable",
       },
@@ -41,21 +46,21 @@ export default function manifest(): MetadataRoute.Manifest {
         short_name: "Today",
         description: "Open today’s practice.",
         url: "/today?source=pwa-shortcut-today",
-        icons: [{ src: "/icon.png", sizes: "450x450", type: "image/png" }],
+        icons: [{ src: "/icon.png", sizes: "512x512", type: "image/png" }],
       },
       {
         name: "My Practice",
         short_name: "Practice",
         description: "Open your practice history and collections.",
         url: "/practice?source=pwa-shortcut-practice",
-        icons: [{ src: "/icon.png", sizes: "450x450", type: "image/png" }],
+        icons: [{ src: "/icon.png", sizes: "512x512", type: "image/png" }],
       },
       {
         name: "Account",
         short_name: "Account",
         description: "Manage membership and billing.",
         url: "/account?source=pwa-shortcut-account",
-        icons: [{ src: "/icon.png", sizes: "450x450", type: "image/png" }],
+        icons: [{ src: "/icon.png", sizes: "512x512", type: "image/png" }],
       },
     ],
   };

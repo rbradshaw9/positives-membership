@@ -1,10 +1,10 @@
-const CACHE_NAME = "positives-shell-v1";
+const CACHE_NAME = "positives-shell-v2";
 const OFFLINE_URL = "/offline";
 const PRECACHE_URLS = [
   OFFLINE_URL,
   "/manifest.webmanifest",
   "/icon.png",
-  "/apple-icon.png",
+  "/apple-touch-icon.png",
 ];
 
 self.addEventListener("install", (event) => {
