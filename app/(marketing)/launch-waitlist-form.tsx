@@ -11,6 +11,8 @@ declare global {
       email?: string,
     ) => void;
     _show_error?: (id: string, message: string, html?: string) => void;
+    visitorGlobalObjectAlias?: string;
+    vgo?: (...args: unknown[]) => void;
   }
 }
 
@@ -23,6 +25,18 @@ function stripHtml(value: string) {
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function updateActiveCampaignVisitor(email: string) {
+  const alias = window.visitorGlobalObjectAlias ?? "vgo";
+  const visitor = (window as unknown as Record<string, unknown>)[alias];
+
+  if (typeof visitor !== "function") {
+    return;
+  }
+
+  visitor("setEmail", email);
+  visitor("update");
 }
 
 export function LaunchWaitlistForm() {
@@ -66,6 +80,7 @@ export function LaunchWaitlistForm() {
       }
 
       setIsSubmitting(false);
+      updateActiveCampaignVisitor(email);
       setSuccess(
         stripHtml(message) ||
           "You are on the beta launch list. We will send the next update soon.",

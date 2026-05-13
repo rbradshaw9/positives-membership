@@ -262,7 +262,7 @@ export default function LandingPage() {
                 tomorrow.
               </p>
               <Link
-                href="/learn"
+                href="#practice"
                 className="mt-7 inline-flex min-h-11 items-center justify-center rounded-full border px-5 text-sm font-semibold"
                 style={{
                   background: "#FFFFFF",

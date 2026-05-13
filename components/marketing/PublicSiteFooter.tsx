@@ -133,9 +133,6 @@ export function PublicSiteFooter({
           <span className="text-[0.78rem] sm:text-xs" style={{ color: "#AAA298" }}>
             © {new Date().getFullYear()} Positives. All rights reserved.
           </span>
-          <p className="text-[0.78rem] text-center sm:text-xs" style={{ color: "#AAA298" }}>
-            From $37/month · Cancel anytime · 30-day guarantee
-          </p>
         </div>
       </div>
     </footer>
