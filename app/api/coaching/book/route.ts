@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
 
     // ── 1. Find the oldest eligible pack to deduct from ──────────────────────
     const now = new Date().toISOString();
-    const { data: packs, error: packError } = await supabase
+    const { data: packsRaw, error: packError } = await supabase
       .from("coaching_session_pack")
       .select("id, sessions_remaining, expires_at")
       .eq("member_id", member.id)
@@ -63,6 +63,7 @@ export async function POST(req: NextRequest) {
       .order("expires_at", { ascending: true, nullsFirst: false }) // use soonest-to-expire first
       .order("created_at", { ascending: true })
       .limit(1);
+    const packs = packsRaw as Array<{ id: string; sessions_remaining: number; expires_at: string | null }> | null;
 
     if (packError || !packs || packs.length === 0) {
       return NextResponse.json(
@@ -75,11 +76,12 @@ export async function POST(req: NextRequest) {
 
     // ── 2. Validate the slot is still available ───────────────────────────────
     // Check for conflicting bookings for this coach (within session duration)
-    const { data: coach } = await supabase
+    const { data: coachRaw } = await supabase
       .from("coach_profile")
       .select("session_duration_minutes, buffer_minutes_after, display_name")
       .eq("id", coachId)
       .single();
+    const coach = coachRaw as { session_duration_minutes: number; buffer_minutes_after: number; display_name: string } | null;
 
     if (!coach) {
       return NextResponse.json({ error: "Coach not found" }, { status: 404 });
@@ -89,7 +91,7 @@ export async function POST(req: NextRequest) {
       sessionTime.getTime() +
       (coach.session_duration_minutes + coach.buffer_minutes_after) * 60 * 1000;
 
-    const { data: conflicts } = await supabase
+    const { data: conflictsRaw } = await supabase
       .from("coaching_booking")
       .select("id")
       .eq("coach_id", coachId)
@@ -97,6 +99,7 @@ export async function POST(req: NextRequest) {
       .lte("scheduled_at", new Date(sessionEndMs).toISOString())
       .gte("scheduled_at", new Date(sessionTime.getTime() - coach.session_duration_minutes * 60 * 1000).toISOString())
       .limit(1);
+    const conflicts = conflictsRaw as Array<{ id: string }> | null;
 
     if (conflicts && conflicts.length > 0) {
       return NextResponse.json(
@@ -106,7 +109,7 @@ export async function POST(req: NextRequest) {
     }
 
     // ── 3. Create the booking record ─────────────────────────────────────────
-    const { data: booking, error: bookingError } = await supabase
+    const { data: bookingRaw, error: bookingError } = await supabase
       .from("coaching_booking")
       .insert({
         member_id: member.id,
@@ -120,6 +123,7 @@ export async function POST(req: NextRequest) {
       })
       .select("id")
       .single();
+    const booking = bookingRaw as { id: string } | null;
 
     if (bookingError || !booking) {
       console.error("[coaching/book] booking insert error:", bookingError);

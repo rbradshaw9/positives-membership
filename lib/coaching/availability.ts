@@ -54,32 +54,35 @@ export async function getAvailableSlots(params: {
   const rangeEnd = new Date(now.getTime() + daysAhead * 24 * 60 * 60 * 1000);
 
   // Load active coaches
-  const { data: coaches } = await supabase
+  const { data: coachesRaw } = await supabase
     .from("coach_profile")
     .select(
       "id, display_name, avatar_url, session_duration_minutes, buffer_minutes_after"
     )
     .eq("is_active", true);
+  const coaches = coachesRaw as CoachProfileRow[] | null;
 
   if (!coaches || coaches.length === 0) return {};
 
   const coachIds = coaches.map((c: CoachProfileRow) => c.id);
 
   // Load availability windows for all active coaches
-  const { data: windows } = await supabase
+  const { data: windowsRaw } = await supabase
     .from("coach_availability")
     .select("coach_id, day_of_week, start_minutes, end_minutes, timezone")
     .in("coach_id", coachIds)
     .eq("is_active", true);
+  const windows = windowsRaw as Array<AvailabilityWindow & { coach_id: string }> | null;
 
   // Load existing confirmed bookings in range (to block those slots)
-  const { data: existingBookings } = await supabase
+  const { data: existingBookingsRaw } = await supabase
     .from("coaching_booking")
     .select("coach_id, scheduled_at, duration_minutes")
     .in("coach_id", coachIds)
     .in("status", ["confirmed", "pending"])
     .gte("scheduled_at", rangeStart.toISOString())
     .lte("scheduled_at", rangeEnd.toISOString());
+  const existingBookings = existingBookingsRaw as Array<{ coach_id: string; scheduled_at: string; duration_minutes: number }> | null;
 
   const slots: TimeSlot[] = [];
 

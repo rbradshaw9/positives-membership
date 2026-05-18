@@ -33,7 +33,17 @@ export async function GET(
     const supabase = asLooseSupabaseClient(getAdminClient());
 
     // Load booking with coach info
-    const { data: booking, error } = await supabase
+    type BookingRow = {
+      id: string;
+      member_id: string;
+      coach_id: string;
+      status: string;
+      scheduled_at: string;
+      duration_minutes: number;
+      livekit_room_name: string | null;
+      coach: { id: string; member_id: string; display_name: string } | Array<{ id: string; member_id: string; display_name: string }>;
+    };
+    const { data: bookingRaw, error } = await supabase
       .from("coaching_booking")
       .select(
         `id, member_id, coach_id, status, scheduled_at, duration_minutes,
@@ -42,6 +52,7 @@ export async function GET(
       )
       .eq("id", bookingId)
       .single();
+    const booking = bookingRaw as BookingRow | null;
 
     if (error || !booking) {
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
