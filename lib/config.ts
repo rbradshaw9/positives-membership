@@ -83,12 +83,17 @@ export const config = {
     prices: {
       get level1Monthly() { return optional("STRIPE_PRICE_LEVEL_1_MONTHLY"); },
       get level2Monthly() { return optional("STRIPE_PRICE_LEVEL_2_MONTHLY"); },
+      /** Legacy — kept so existing L3 subscribers' webhooks don't break */
       get level3Monthly() { return optional("STRIPE_PRICE_LEVEL_3_MONTHLY"); },
       /** L4 3-pay plan: $1,500/month × 3. Pay-in-full uses invoice (no price ID). */
       get level4ThreePay() { return optional("STRIPE_PRICE_LEVEL_4_THREE_PAY"); },
       get level1Annual() { return optional("STRIPE_PRICE_LEVEL_1_ANNUAL"); },
       get level2Annual() { return optional("STRIPE_PRICE_LEVEL_2_ANNUAL"); },
+      /** Legacy — kept so existing L3 subscribers' webhooks don't break */
       get level3Annual() { return optional("STRIPE_PRICE_LEVEL_3_ANNUAL"); },
+      // ── Coaching (one-time purchases) ──────────────────────────────────
+      get coachingSingle() { return optional("STRIPE_PRICE_COACHING_SINGLE"); },
+      get coachingPunchPass() { return optional("STRIPE_PRICE_COACHING_PUNCH_PASS"); },
     },
 
     /**

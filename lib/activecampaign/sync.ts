@@ -32,6 +32,9 @@
  *   coaching_reminder_1h → 29
  *   coaching_replay_ready → 30
  *   affiliate_payout_failed → 32
+ *   coaching_client → 33
+ *   coaching_low_sessions → 34
+ *   coaching_pack_depleted → 35
  *
  * List IDs:
  *   Positives Audience → 3
@@ -76,6 +79,10 @@ const TAG = {
   coaching_reminder_1h: 29,
   coaching_replay_ready: 30,
   affiliate_payout_failed: 32,
+  // Coaching lifecycle tags
+  coaching_client:           33,   // has purchased at least one coaching pack
+  coaching_low_sessions:     34,   // ≤2 sessions remaining — triggers upsell email
+  coaching_pack_depleted:    35,   // 0 sessions remaining
 } as const;
 
 /** Custom field IDs (created 2026-04-07) */
@@ -846,5 +853,74 @@ export async function syncReminderContext(params: {
     console.log(`[AC] Reminder context synced — ${params.email}, tag: ${params.triggerTag}`);
   } catch (err) {
     console.error("[AC] syncReminderContext failed (non-fatal):", err);
+  }
+}
+
+/**
+ * Called on coaching pack purchase (checkout.session.completed, purchase_type=coaching_pack).
+ * Applies coaching_client tag (triggers welcome + onboarding automation).
+ * The coaching_low_sessions and coaching_pack_depleted tags are applied
+ * by the Calendly webhook handler when sessions_remaining drops.
+ */
+export async function syncCoachingClient(params: {
+  email: string;
+  packType: "single" | "punch_pass";
+  sessionsTotal: number;
+}): Promise<void> {
+  if (!acIsConfigured()) return;
+
+  try {
+    const contactId = await syncContact({ email: params.email });
+
+    // Remove any prior depletion/low-session tags so automations re-fire correctly
+    await removeTagIfConfigured(contactId, TAG.coaching_low_sessions);
+    await removeTagIfConfigured(contactId, TAG.coaching_pack_depleted);
+
+    await addTagIfConfigured(contactId, TAG.coaching_client, "coaching_client");
+
+    console.log(
+      `[AC] Coaching client synced — ${params.email}, pack: ${params.packType}, sessions: ${params.sessionsTotal}`
+    );
+  } catch (err) {
+    console.error("[AC] syncCoachingClient failed (non-fatal):", err);
+  }
+}
+
+/**
+ * Called by the Calendly webhook after each session booking or cancellation.
+ * Applies the appropriate lifecycle tag based on sessions_remaining:
+ *
+ *   > 2   → remove low_sessions + depleted tags (healthy)
+ *   1–2   → apply coaching_low_sessions (upsell trigger)
+ *   0     → apply coaching_pack_depleted (re-purchase trigger)
+ *
+ * Note: coaching_client tag is NOT removed here even if sessions hit 0 —
+ * the member is still a coaching client. Only remove it if their pack expires.
+ */
+export async function syncCoachingSessionStatus(params: {
+  email: string;
+  sessionsRemaining: number;
+}): Promise<void> {
+  if (!acIsConfigured()) return;
+
+  try {
+    const contactId = await syncContact({ email: params.email });
+
+    if (params.sessionsRemaining === 0) {
+      await removeTagIfConfigured(contactId, TAG.coaching_low_sessions);
+      await addTagIfConfigured(contactId, TAG.coaching_pack_depleted, "coaching_pack_depleted");
+      console.log(`[AC] coaching_pack_depleted applied — ${params.email}`);
+    } else if (params.sessionsRemaining <= 2) {
+      await removeTagIfConfigured(contactId, TAG.coaching_pack_depleted);
+      await addTagIfConfigured(contactId, TAG.coaching_low_sessions, "coaching_low_sessions");
+      console.log(`[AC] coaching_low_sessions applied — ${params.email} (${params.sessionsRemaining} remaining)`);
+    } else {
+      // Healthy count (e.g. after a cancellation restored a session)
+      await removeTagIfConfigured(contactId, TAG.coaching_low_sessions);
+      await removeTagIfConfigured(contactId, TAG.coaching_pack_depleted);
+      console.log(`[AC] Coaching tags cleared (healthy count) — ${params.email} (${params.sessionsRemaining} remaining)`);
+    }
+  } catch (err) {
+    console.error("[AC] syncCoachingSessionStatus failed (non-fatal):", err);
   }
 }

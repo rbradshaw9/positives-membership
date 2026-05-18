@@ -497,6 +497,29 @@ export default async function AccountPage({
               <TimezoneForm currentTimezone={timezone} />
             </section>
 
+            <section aria-labelledby="section-coaching">
+              <SectionLabel id="section-coaching">Coaching Sessions</SectionLabel>
+              <SurfaceCard elevated className="surface-card--editorial">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="member-detail-kicker">1:1 personal coaching</p>
+                    <h2 className="mt-2 text-lg font-semibold tracking-[-0.02em] text-foreground">
+                      Work directly with Dr. Paul
+                    </h2>
+                    <p className="mt-1.5 text-sm leading-body text-muted-foreground">
+                      Purchase sessions, check your balance, and view session history.
+                    </p>
+                  </div>
+                  <span className="text-3xl flex-shrink-0" aria-hidden="true">🧭</span>
+                </div>
+                <div className="mt-5">
+                  <Button href="/account/coaching" variant="secondary" size="sm">
+                    Coaching Sessions
+                  </Button>
+                </div>
+              </SurfaceCard>
+            </section>
+
             <section aria-labelledby="section-referral">
               <SectionLabel id="section-referral">Affiliate Program</SectionLabel>
               {member?.fp_promoter_id ? (

@@ -9,7 +9,7 @@ type JoinPageSearchParams = Promise<Record<string, string | string[] | undefined
 export const metadata = {
   title: "Join Positives — Start Your Practice",
   description:
-    "Start your Positives practice from $37/month. Daily guided audio, weekly principles, and monthly themes with Dr. Paul Jenkins.",
+    "Start your Positives practice from $27/month. Daily guided audio, weekly principles, and monthly themes with Dr. Paul Jenkins. Upgrade to Positives Plus for live Q&A calls and 50% off events.",
   alternates: {
     canonical: "/join",
   },
@@ -40,8 +40,6 @@ export default async function JoinPage({
         level1Annual={config.stripe.prices.level1Annual}
         level2Monthly={config.stripe.prices.level2Monthly}
         level2Annual={config.stripe.prices.level2Annual}
-        level3Monthly={config.stripe.prices.level3Monthly}
-        level3Annual={config.stripe.prices.level3Annual}
         initialStep={firstSearchParam(params.step)}
         initialEmail={firstSearchParam(params.email)}
         initialError={firstSearchParam(params.error)}

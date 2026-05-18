@@ -18,7 +18,7 @@ declare global {
 
 const ACTIVE_CAMPAIGN_FORM_ID = "6";
 const ACTIVE_CAMPAIGN_ENDPOINT = "https://positives.activehosted.com/proc.php";
-const ACTIVE_CAMPAIGN_ORIGIN_TOKEN = "11c7086a-b93a-4bc2-b8f3-2ec4793be323";
+const ACTIVE_CAMPAIGN_ORIGIN_TOKEN = "ebf2ecd6-8711-43c1-809e-c1748a5ad209";
 
 function stripHtml(value: string) {
   return value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();

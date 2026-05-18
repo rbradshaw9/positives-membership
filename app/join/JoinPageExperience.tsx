@@ -8,8 +8,6 @@ type JoinPageExperienceProps = {
   level1Annual: string;
   level2Monthly: string;
   level2Annual: string;
-  level3Monthly: string;
-  level3Annual: string;
   initialStep?: string;
   initialEmail?: string;
   initialError?: string;
@@ -20,8 +18,6 @@ export function JoinPageExperience({
   level1Annual,
   level2Monthly,
   level2Annual,
-  level3Monthly,
-  level3Annual,
   initialStep,
   initialEmail,
   initialError,
@@ -106,7 +102,7 @@ export function JoinPageExperience({
               lineHeight: "1.06",
               color: "#121417",
               textWrap: "balance",
-              maxWidth: "19ch",
+              maxWidth: "22ch",
               marginInline: "auto",
             }}
           >
@@ -123,8 +119,8 @@ export function JoinPageExperience({
               textWrap: "balance",
             }}
           >
-            Start with the daily practice, add live events, or step into deeper coaching support
-            with Dr. Paul.
+            Start with the daily practice. Upgrade to Plus for live Q&amp;A calls
+            with Dr. Paul and 50% off live events.
           </p>
           <p
             className="mb-0"
@@ -138,8 +134,7 @@ export function JoinPageExperience({
               textWrap: "balance",
             }}
           >
-            Membership, Membership + Events, and Coaching Circle are live now · Executive
-            Coaching starts with a Breakthrough Session
+            Both plans include a 30-day money-back guarantee · Cancel anytime
           </p>
         </div>
       </section>
@@ -164,8 +159,6 @@ export function JoinPageExperience({
             level1Annual={level1Annual}
             level2Monthly={level2Monthly}
             level2Annual={level2Annual}
-            level3Monthly={level3Monthly}
-            level3Annual={level3Annual}
           />
         </div>
       </section>
@@ -218,8 +211,8 @@ export function JoinPageExperience({
               { label: "Daily guided audio practice", sub: "Fresh every morning" },
               { label: "Weekly mindset principles", sub: "Backed by research" },
               { label: "Monthly theme from Dr. Paul", sub: "Guides the month" },
-              { label: "Growing member library", sub: "Daily, weekly, and monthly sessions as they release" },
-              { label: "Live events & coaching", sub: "With Membership + Events and Coaching Circle" },
+              { label: "Growing member library", sub: "All past sessions, growing every day" },
+              { label: "Live Q&A calls with Dr. Paul", sub: "Plus members only — weekly" },
             ].map(({ label, sub }) => (
               <div
                 key={label}
@@ -374,7 +367,7 @@ export function JoinPageExperience({
           </Link>
 
           <p className="mt-5 text-sm" style={{ color: "#68707A" }}>
-            From $37/month · Cancel anytime · 30-day guarantee
+            From $27/month · Cancel anytime · 30-day guarantee
           </p>
         </div>
       </section>

@@ -1,0 +1,7 @@
+first_name,last_name,email,phone,verification_status,verification_level,verification_provider,verification_score,suppressed,suppression_reason,verified_at,source_count
+Lisa,Edwards,lisae4522@gmal.com,2096228118,no_mx,basic,,95,1,no_mx,2026-05-12T14:03:44.535+00:00,1
+Stephanie,Segura,stephanie.msegurar@gmail.con,5098552485,invalid_domain,basic,,100,1,invalid_domain,2026-05-12T13:47:48.482+00:00,1
+Mary,Elswick,maryelswick@88email.com,8127055144,no_mx,basic,,95,1,no_mx,2026-05-12T14:03:39.76+00:00,1
+Don,Turner,dlt@donlturner.com,2146837031,no_mx,basic,,95,1,no_mx,2026-05-12T14:03:42.619+00:00,1
+Candi,Hart,candi.hart@my.strayer.edu,5132253266,invalid_domain,basic,,100,1,invalid_domain,2026-05-12T14:03:42.619+00:00,1
+Shirley,Hightower,shirleyhightower0@email.go,2105359667,invalid_domain,basic,,100,1,invalid_domain,2026-05-12T14:03:44.549+00:00,1
