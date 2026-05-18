@@ -20,6 +20,8 @@ import { requireMember } from "@/lib/auth/require-member";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import { createCoachingRoom, coachingRoomName } from "@/lib/livekit/client";
+import { sendPostmarkEmail } from "@/lib/email/postmark";
+import { renderCoachingConfirmationEmail } from "@/lib/email/templates/coaching-confirmation-email";
 
 type BookRequest = {
   coachId: string;
@@ -169,7 +171,45 @@ export async function POST(req: NextRequest) {
       console.error("[coaching/book] Livekit room creation failed:", livekitErr);
     }
 
-    // ── 6. Return success ─────────────────────────────────────────────────────
+    // ── 6. Send confirmation email (non-fatal) ────────────────────────────────
+    try {
+      const scheduledAtFormatted = new Date(scheduledAt).toLocaleString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        timeZone: timezone,
+      });
+      const joinUrl = `https://positives.life/account/coaching/session/${bookingId}`;
+      const cancelUrl = "https://positives.life/account/coaching";
+
+      const { subject, html, text } = renderCoachingConfirmationEmail({
+        recipientEmail: member.email,
+        memberName: member.name ?? null,
+        coachName: coach.display_name,
+        scheduledAt: scheduledAtFormatted,
+        durationMinutes: coach.session_duration_minutes,
+        joinUrl,
+        cancelUrl,
+      });
+
+      await sendPostmarkEmail({
+        to: member.email,
+        subject,
+        html,
+        text,
+        tag: "coaching-confirmation",
+        idempotencyKey: `confirm-${bookingId}`,
+      });
+    } catch (emailErr) {
+      console.error("[coaching/book] confirmation email failed:", emailErr);
+      // Non-fatal — booking is confirmed regardless
+    }
+
+
+    // ── 7. Return success ─────────────────────────────────────────────────────
     return NextResponse.json({
       bookingId,
       roomName,

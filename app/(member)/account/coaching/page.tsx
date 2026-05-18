@@ -7,6 +7,7 @@ import { SectionLabel } from "@/components/member/SectionLabel";
 import { Button } from "@/components/ui/Button";
 import { CoachingPurchaseButtons } from "./coaching-purchase-buttons";
 import { BookingFlow } from "@/components/coaching/BookingFlow";
+import { UpcomingSessionCard } from "@/components/coaching/UpcomingSessionCard";
 
 export const metadata = {
   title: "Coaching Sessions — Positives",
@@ -33,6 +34,14 @@ type LogRow = {
   event_type_name: string | null;
   invitee_name: string | null;
   created_at: string;
+};
+
+export type BookingRow = {
+  id: string;
+  status: string;
+  scheduled_at: string;
+  duration_minutes: number;
+  coach: { display_name: string; avatar_url: string | null } | null;
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -85,7 +94,7 @@ function statusLabel(status: string) {
 async function getCoachingData(memberId: string) {
   const supabase = asLooseSupabaseClient(await createClient());
 
-  const [{ data: rawPacks }, { data: rawLogs }] = await Promise.all([
+  const [{ data: rawPacks }, { data: rawLogs }, { data: rawBookings }] = await Promise.all([
     supabase
       .from("coaching_session_pack")
       .select(
@@ -99,13 +108,29 @@ async function getCoachingData(memberId: string) {
       .eq("member_id", memberId)
       .order("scheduled_at", { ascending: false })
       .limit(20),
+    supabase
+      .from("coaching_booking")
+      .select("id, status, scheduled_at, duration_minutes, coach:coach_profile(display_name, avatar_url)")
+      .eq("member_id", memberId)
+      .order("scheduled_at", { ascending: false })
+      .limit(30),
   ]);
 
   const packs = (rawPacks as PackRow[] | null) ?? [];
   const logs = (rawLogs as LogRow[] | null) ?? [];
+  const allBookings = (rawBookings as BookingRow[] | null) ?? [];
+
+  const now = new Date();
+
+  // Split native bookings into upcoming vs past
+  const upcomingBookings = allBookings.filter(
+    (b) => b.status === "confirmed" && new Date(b.scheduled_at) > now
+  );
+  const pastBookings = allBookings.filter(
+    (b) => b.status === "completed" || b.status === "canceled" || new Date(b.scheduled_at) <= now
+  );
 
   // Sum up all sessions remaining across non-expired active packs
-  const now = new Date();
   const activePacks = packs.filter(
     (p) =>
       p.sessions_remaining > 0 &&
@@ -113,7 +138,7 @@ async function getCoachingData(memberId: string) {
   );
   const totalRemaining = activePacks.reduce((sum, p) => sum + p.sessions_remaining, 0);
 
-  return { packs, logs, totalRemaining, activePacks };
+  return { packs, logs, totalRemaining, activePacks, upcomingBookings, pastBookings };
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -128,7 +153,8 @@ export default async function AccountCoachingPage({
     searchParams,
   ]);
 
-  const { packs, logs, totalRemaining, activePacks } = await getCoachingData(member.id);
+  const { packs, logs, totalRemaining, activePacks, upcomingBookings, pastBookings } =
+    await getCoachingData(member.id);
 
   const purchaseStatus = resolvedSearchParams.purchase as string | undefined;
   const purchasedPack = resolvedSearchParams.pack as string | undefined;
@@ -313,20 +339,93 @@ export default async function AccountCoachingPage({
           </section>
         )}
 
-        {/* ── Session history ────────────────────────────────────────────── */}
+        {/* ── Upcoming sessions ──────────────────────────────────────────── */}
+        {upcomingBookings.length > 0 && (
+          <section aria-labelledby="section-upcoming">
+            <SectionLabel id="section-upcoming">Upcoming Sessions</SectionLabel>
+            <div className="flex flex-col gap-3">
+              {upcomingBookings.map((booking) => {
+                const coachProfile = Array.isArray(booking.coach)
+                  ? booking.coach[0]
+                  : booking.coach;
+                return (
+                  <UpcomingSessionCard
+                    key={booking.id}
+                    bookingId={booking.id}
+                    coachName={coachProfile?.display_name ?? "Your Coach"}
+                    scheduledAt={booking.scheduled_at}
+                    durationMinutes={booking.duration_minutes}
+                    joinUrl={`/account/coaching/session/${booking.id}`}
+                  />
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* ── Session history ──────────────────────────────────────────── */}
         <section aria-labelledby="section-history">
           <SectionLabel id="section-history">Session History</SectionLabel>
           <SurfaceCard elevated className="surface-card--editorial">
             <p className="member-detail-kicker">Your sessions</p>
             <h2 className="mt-3 text-xl font-semibold tracking-[-0.02em] text-foreground">
-              Recent sessions
+              Past sessions
             </h2>
             <p className="mt-2 text-sm leading-body text-muted-foreground">
-              Your upcoming and past coaching sessions appear here.
+              Your completed and canceled coaching sessions appear here.
             </p>
 
-            {logs.length > 0 ? (
+            {(pastBookings.length > 0 || logs.length > 0) ? (
               <div className="mt-5 divide-y divide-border/70 overflow-hidden rounded-2xl border border-border">
+                {/* Native bookings (past) */}
+                {pastBookings.map((booking) => {
+                  const coachProfile = Array.isArray(booking.coach)
+                    ? booking.coach[0]
+                    : booking.coach;
+                  const isPast = new Date(booking.scheduled_at) <= new Date();
+                  const isCanceled = booking.status === "canceled";
+                  return (
+                    <div
+                      key={booking.id}
+                      className="grid gap-3 p-4 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`h-2 w-2 rounded-full flex-shrink-0 ${
+                              isCanceled
+                                ? "bg-muted-foreground/40"
+                                : isPast
+                                ? "bg-secondary"
+                                : "bg-primary"
+                            }`}
+                            aria-hidden="true"
+                          />
+                          <span className="font-medium text-foreground">
+                            Session with {coachProfile?.display_name ?? "Coach"}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-muted-foreground">
+                          {formatDateTime(booking.scheduled_at)} &middot;{" "}
+                          {isCanceled ? "Canceled" : isPast ? "Completed" : statusLabel(booking.status)}
+                        </p>
+                      </div>
+                      <span
+                        className="text-xs font-medium capitalize"
+                        style={{
+                          color: isCanceled
+                            ? "var(--color-muted-fg)"
+                            : isPast
+                            ? "var(--color-secondary)"
+                            : "var(--color-primary)",
+                        }}
+                      >
+                        {isCanceled ? "Canceled" : isPast ? "Completed" : statusLabel(booking.status)}
+                      </span>
+                    </div>
+                  );
+                })}
+                {/* Legacy Calendly sessions */}
                 {logs.map((log) => (
                   <div
                     key={log.id}
@@ -346,7 +445,7 @@ export default async function AccountCoachingPage({
                         {log.scheduled_at
                           ? formatDateTime(log.scheduled_at)
                           : formatDate(log.created_at)}{" "}
-                        · {statusLabel(log.status)}
+                        &middot; {statusLabel(log.status)}
                       </p>
                     </div>
                     <span

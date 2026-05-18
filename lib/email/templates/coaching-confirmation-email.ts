@@ -1,0 +1,167 @@
+import {
+  B,
+  ctaButton,
+  emailHeader,
+  emailWrapper,
+  infoCard,
+  transactionalEmailFooter,
+} from "@/lib/email/brand";
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+// ─── Confirmation email ───────────────────────────────────────────────────────
+
+export type CoachingConfirmationEmailInput = {
+  recipientEmail: string;
+  memberName: string | null;
+  coachName: string;
+  scheduledAt: string;       // human-readable, already in member's timezone
+  durationMinutes: number;
+  joinUrl: string;           // e.g. https://positives.life/account/coaching/session/[id]
+  cancelUrl: string;         // e.g. https://positives.life/account/coaching (cancel from there)
+};
+
+export function renderCoachingConfirmationEmail(
+  input: CoachingConfirmationEmailInput
+): { subject: string; html: string; text: string } {
+  const safeName = escapeHtml(input.memberName || "there");
+  const safeCoach = escapeHtml(input.coachName);
+  const safeDate = escapeHtml(input.scheduledAt);
+  const safeDuration = `${input.durationMinutes} minutes`;
+
+  const subject = `Your coaching session with ${input.coachName} is confirmed`;
+  const preheader = `${safeDate} · ${safeDuration} · Join right here on Positives.`;
+
+  const sessionCard = infoCard(`
+    <p style="margin:0 0 10px;font-family:${B.fontBody};font-size:13px;font-weight:700;color:${B.foreground};text-transform:uppercase;letter-spacing:0.12em;">Session details</p>
+    <p style="margin:0 0 8px;font-family:${B.fontHeading};font-size:18px;line-height:1.35;color:${B.foreground};font-weight:700;">Coaching Session with ${safeCoach}</p>
+    <p style="margin:0 0 6px;font-family:${B.fontBody};font-size:14px;line-height:1.65;color:${B.mutedFg};">${safeDate}</p>
+    <p style="margin:0;font-family:${B.fontBody};font-size:14px;line-height:1.65;color:${B.mutedFg};">Duration: ${safeDuration}</p>
+  `);
+
+  const html = emailWrapper(
+    `
+    ${emailHeader()}
+    <tr>
+      <td class="email-padding" style="background:${B.card};padding:38px 42px 18px;">
+        <p style="margin:0 0 12px;font-family:${B.fontBody};font-size:12px;font-weight:700;color:${B.primary};text-transform:uppercase;letter-spacing:0.16em;">Session confirmed</p>
+        <h1 class="email-h1" style="margin:0 0 16px;font-family:${B.fontHeading};font-size:24px;line-height:1.25;color:${B.foreground};letter-spacing:-0.02em;">You&rsquo;re booked, ${safeName}.</h1>
+        <p style="margin:0;font-family:${B.fontBody};font-size:15px;line-height:1.75;color:${B.mutedFg};">Your coaching session is confirmed. When it&rsquo;s time, click the button below to join right here on Positives &mdash; no app download needed.</p>
+      </td>
+    </tr>
+    <tr>
+      <td class="email-padding" style="background:${B.card};padding:12px 42px 18px;">${sessionCard}</td>
+    </tr>
+    <tr>
+      <td class="email-padding" style="background:${B.card};padding:8px 42px 30px;">
+        ${ctaButton("Join Session", input.joinUrl)}
+        <p style="margin:18px 0 0;font-family:${B.fontBody};font-size:12px;line-height:1.7;color:${B.mutedFg};">
+          Need to cancel? <a href="${input.cancelUrl}" style="color:${B.primary};font-weight:700;text-decoration:none;">Manage your session</a> from your coaching dashboard. Cancellations more than 24 hours in advance will restore your session credit.
+        </p>
+      </td>
+    </tr>
+    ${transactionalEmailFooter()}
+  `,
+    preheader,
+  );
+
+  const text = [
+    `You're booked, ${input.memberName || "there"}.`,
+    "",
+    `Coaching Session with ${input.coachName}`,
+    input.scheduledAt,
+    `Duration: ${safeDuration}`,
+    "",
+    `Join your session: ${input.joinUrl}`,
+    "",
+    `Need to cancel? Visit ${input.cancelUrl} — cancellations 24+ hours in advance restore your session credit.`,
+    "",
+    `This confirmation was sent to ${input.recipientEmail}.`,
+  ].join("\n");
+
+  return { subject, html, text };
+}
+
+// ─── Cancellation email ───────────────────────────────────────────────────────
+
+export type CoachingCancellationEmailInput = {
+  recipientEmail: string;
+  memberName: string | null;
+  coachName: string;
+  scheduledAt: string;
+  sessionRestored: boolean;   // was the session credit returned?
+};
+
+export function renderCoachingCancellationEmail(
+  input: CoachingCancellationEmailInput
+): { subject: string; html: string; text: string } {
+  const safeName = escapeHtml(input.memberName || "there");
+  const safeCoach = escapeHtml(input.coachName);
+  const safeDate = escapeHtml(input.scheduledAt);
+
+  const subject = `Your coaching session has been canceled`;
+  const preheader = input.sessionRestored
+    ? "Your session credit has been returned to your balance."
+    : "Your session has been canceled.";
+
+  const noteCard = infoCard(`
+    <p style="margin:0 0 10px;font-family:${B.fontBody};font-size:13px;font-weight:700;color:${B.foreground};text-transform:uppercase;letter-spacing:0.12em;">Canceled session</p>
+    <p style="margin:0 0 8px;font-family:${B.fontHeading};font-size:16px;line-height:1.35;color:${B.foreground};font-weight:700;">Coaching Session with ${safeCoach}</p>
+    <p style="margin:0 0 8px;font-family:${B.fontBody};font-size:14px;line-height:1.65;color:${B.mutedFg};">${safeDate}</p>
+    <p style="margin:0;font-family:${B.fontBody};font-size:14px;line-height:1.65;color:${input.sessionRestored ? B.primary : B.mutedFg};font-weight:${input.sessionRestored ? "700" : "400"};">
+      ${input.sessionRestored
+        ? "✓ Your session credit has been returned to your balance."
+        : "This session was within the 24-hour window — your credit was not restored."}
+    </p>
+  `);
+
+  const html = emailWrapper(
+    `
+    ${emailHeader()}
+    <tr>
+      <td class="email-padding" style="background:${B.card};padding:38px 42px 18px;">
+        <p style="margin:0 0 12px;font-family:${B.fontBody};font-size:12px;font-weight:700;color:${B.mutedFg};text-transform:uppercase;letter-spacing:0.16em;">Session canceled</p>
+        <h1 class="email-h1" style="margin:0 0 16px;font-family:${B.fontHeading};font-size:24px;line-height:1.25;color:${B.foreground};letter-spacing:-0.02em;">Session canceled, ${safeName}.</h1>
+        <p style="margin:0;font-family:${B.fontBody};font-size:15px;line-height:1.75;color:${B.mutedFg};">
+          ${input.sessionRestored
+            ? "Your session has been canceled and your session credit has been returned to your balance. Book again whenever you&rsquo;re ready."
+            : "Your session has been canceled. Cancellations within 24 hours of the session do not restore the session credit."}
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td class="email-padding" style="background:${B.card};padding:12px 42px 18px;">${noteCard}</td>
+    </tr>
+    <tr>
+      <td class="email-padding" style="background:${B.card};padding:8px 42px 30px;">
+        ${ctaButton("Book another session", "https://positives.life/account/coaching")}
+      </td>
+    </tr>
+    ${transactionalEmailFooter()}
+  `,
+    preheader,
+  );
+
+  const text = [
+    `Session canceled, ${input.memberName || "there"}.`,
+    "",
+    `Coaching Session with ${input.coachName}`,
+    input.scheduledAt,
+    "",
+    input.sessionRestored
+      ? "Your session credit has been returned to your balance."
+      : "This session was within the 24-hour window — your credit was not restored.",
+    "",
+    "Book another session: https://positives.life/account/coaching",
+    "",
+    `This notification was sent to ${input.recipientEmail}.`,
+  ].join("\n");
+
+  return { subject, html, text };
+}
