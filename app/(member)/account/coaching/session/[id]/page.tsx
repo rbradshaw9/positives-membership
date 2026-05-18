@@ -55,7 +55,7 @@ export default async function CoachingSessionPage({
   const member = await requireMember();
   const supabase = asLooseSupabaseClient(getAdminClient());
 
-  const { data: booking } = await supabase
+  const { data: bookingRaw } = await supabase
     .from("coaching_booking")
     .select(
       `id, member_id, coach_id, status, scheduled_at, duration_minutes,
@@ -63,7 +63,8 @@ export default async function CoachingSessionPage({
        coach:coach_profile(id, member_id, display_name, avatar_url)`
     )
     .eq("id", bookingId)
-    .single<BookingRow>();
+    .single();
+  const booking = bookingRaw as BookingRow | null;
 
   if (!booking) redirect("/account/coaching");
 
