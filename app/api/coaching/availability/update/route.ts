@@ -65,22 +65,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Strategy: delete all existing, re-insert.
-    // This keeps the logic simple and avoids complex upsert diffing.
-    const { error: deleteError } = await supabase
-      .from("coach_availability")
-      .delete()
-      .eq("coach_id", coachId);
 
-    if (deleteError) {
-      console.error("[availability/update] delete error:", deleteError);
-      return NextResponse.json({ error: "Failed to update availability" }, { status: 500 });
-    }
-
-    if (windows.filter((w) => w.is_active).length === 0) {
-      // No active windows — just cleared everything
-      return NextResponse.json({ windows: [] });
-    }
+    // Safe strategy: insert new windows FIRST, then delete old ones.
+    // If the insert fails, existing availability is preserved.
 
     const inserts = windows
       .filter((w) => w.is_active)
@@ -93,6 +80,20 @@ export async function POST(req: NextRequest) {
         is_active: true,
       }));
 
+    if (inserts.length === 0) {
+      // No active windows — safe to clear everything
+      await supabase.from("coach_availability").delete().eq("coach_id", coachId);
+      // Persist blackout dates
+      if (blockedDates !== undefined) {
+        await supabase
+          .from("coach_profile")
+          .update({ blocked_dates: blockedDates.length > 0 ? blockedDates : null })
+          .eq("id", coachId);
+      }
+      return NextResponse.json({ windows: [] });
+    }
+
+    // Insert new windows FIRST — if this fails, the old ones are preserved
     const { data: insertedRaw, error: insertError } = await supabase
       .from("coach_availability")
       .insert(inserts)
@@ -101,6 +102,19 @@ export async function POST(req: NextRequest) {
     if (insertError) {
       console.error("[availability/update] insert error:", insertError);
       return NextResponse.json({ error: "Failed to save availability windows" }, { status: 500 });
+    }
+
+    // Insert succeeded — now safe to delete the old rows
+    const { error: deleteError } = await supabase
+      .from("coach_availability")
+      .delete()
+      .eq("coach_id", coachId)
+      // Exclude the newly inserted rows so we don't self-delete
+      .not("id", "in", `(${(insertedRaw as Array<{ id: string }>).map((r) => `"${r.id}"`).join(",")})`);
+
+    if (deleteError) {
+      // Old rows linger alongside new ones — log but don't fail the request
+      console.error("[availability/update] delete-old error:", deleteError);
     }
 
     type AvWindow = {

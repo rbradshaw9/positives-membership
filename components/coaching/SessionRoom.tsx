@@ -168,10 +168,10 @@ export function SessionRoom({
   return (
     <div className="flex flex-col gap-0">
       {/* Session header bar */}
-      <div className="flex items-center justify-between rounded-t-2xl border border-b-0 border-border bg-foreground/95 px-4 py-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-2 w-2 rounded-full bg-green-400 animate-pulse" aria-hidden="true" />
-          <span className="text-sm font-medium text-white">
+      <div className="flex items-center justify-between gap-3 rounded-t-2xl border border-b-0 border-border bg-foreground/95 px-4 py-3">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="flex h-2 w-2 flex-shrink-0 rounded-full bg-green-400 animate-pulse" aria-hidden="true" />
+          <span className="truncate text-sm font-medium text-white">
             {role === "coach"
               ? `Session with ${memberName ?? "Member"}`
               : `Session with ${coachName}`}
@@ -181,7 +181,7 @@ export function SessionRoom({
       </div>
 
       {/* Livekit video room */}
-      <div className="overflow-hidden rounded-b-2xl border border-border" style={{ minHeight: "clamp(380px, 60dvh, 680px)" }}>
+      <div className="overflow-hidden rounded-b-2xl border border-border" style={{ minHeight: "clamp(340px, 60dvh, 680px)" }}>
         <LiveKitRoom
           serverUrl={serverUrl}
           token={token}
@@ -189,7 +189,7 @@ export function SessionRoom({
           audio={true}
           onConnected={() => setConnected(true)}
           onDisconnected={onEnd}
-          style={{ height: "clamp(380px, 60dvh, 680px)" }}
+          style={{ height: "clamp(340px, 60dvh, 680px)" }}
           data-lk-theme="default"
         >
           <VideoConference />

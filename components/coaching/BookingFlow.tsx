@@ -238,12 +238,12 @@ export function BookingFlow({ onBooked }: { onBooked?: (result: BookingResult) =
         {!selectedDate && (
           <div className="flex flex-col gap-3">
             <p className="text-sm font-medium text-foreground">Choose a date</p>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="grid grid-cols-3 gap-2">
               {sortedDates.map((date) => (
                 <button
                   key={date}
                   onClick={() => setSelectedDate(date)}
-                  className="rounded-xl border border-border bg-surface px-4 py-3 text-left text-sm transition-all hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  className="min-h-[44px] rounded-xl border border-border bg-surface px-3 py-3 text-left text-sm transition-all hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   <span className="font-medium text-foreground">
                     {new Date(date + "T12:00:00").toLocaleDateString("en-US", {
@@ -280,12 +280,12 @@ export function BookingFlow({ onBooked }: { onBooked?: (result: BookingResult) =
               </button>
               <p className="text-sm font-medium text-foreground">{formatDate(selectedDate)}</p>
             </div>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="grid grid-cols-3 gap-2">
               {(slots[selectedDate] ?? []).map((slot) => (
                 <button
                   key={`${slot.coachId}-${slot.startsAt}`}
                   onClick={() => { setSelectedSlot(slot); setStep("confirming"); }}
-                  className="rounded-xl border border-border bg-surface px-4 py-3 text-left text-sm transition-all hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  className="min-h-[44px] rounded-xl border border-border bg-surface px-3 py-3 text-left text-sm transition-all hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   <span className="font-medium text-foreground">
                     {formatSlotTime(slot.startsAt, timezone)}
@@ -353,6 +353,7 @@ export function BookingFlow({ onBooked }: { onBooked?: (result: BookingResult) =
             onChange={(e) => setIntake(e.target.value)}
             placeholder="Share any context or goals for this session…"
             rows={3}
+            maxLength={1000}
             className="rounded-lg border border-border bg-surface-tint/40 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
           />
         </div>

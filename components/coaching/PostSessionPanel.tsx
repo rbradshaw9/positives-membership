@@ -133,8 +133,8 @@ export function PostSessionPanel({
                 ? "Topics covered, next steps, follow-up items…"
                 : "What did you take away from this session?"
             }
-            rows={4}
-            className="w-full rounded-lg border border-border bg-surface-tint/40 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+            rows={3}
+            className="w-full rounded-lg border border-border bg-surface-tint/40 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary resize-none sm:rows-4"
           />
         </div>
 
@@ -154,18 +154,24 @@ export function PostSessionPanel({
           <button
             type="button"
             onClick={() => {
-              // Skip without saving — still mark complete
+              // Skip without saving — still mark complete (non-fatal)
               fetch(`/api/coaching/session/${bookingId}/complete`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({}),
-              }).then(() => {
-                setSaved(true);
-                onComplete?.();
-              }).catch(() => {
-                setSaved(true);
-                onComplete?.();
-              });
+              })
+                .then((res) => {
+                  if (!res.ok) {
+                    console.warn("[PostSessionPanel] Skip complete returned", res.status);
+                  }
+                  setSaved(true);
+                  onComplete?.();
+                })
+                .catch(() => {
+                  // Network failure — still dismiss; session notes are optional
+                  setSaved(true);
+                  onComplete?.();
+                });
             }}
             className="rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >

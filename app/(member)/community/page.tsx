@@ -63,8 +63,8 @@ export default async function CommunityPage({ searchParams }: PageProps) {
               Community is part of Membership + Events and above. That keeps the room smaller,
               warmer, and much easier for members and coaches to engage with care.
             </p>
-            <Button href="/account" className="mt-6">
-              View upgrade options
+            <Button href="/join" className="mt-6">
+              View membership options
             </Button>
           </SurfaceCard>
         </div>

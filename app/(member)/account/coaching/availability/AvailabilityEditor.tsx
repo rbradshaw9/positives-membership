@@ -301,7 +301,7 @@ export function AvailabilityEditor({ coachId, initialWindows, sessionDurationMin
             Block specific dates — no slots will be shown to members on these days.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <input
             type="date"
             value={newBlockDate}
@@ -318,11 +318,14 @@ export function AvailabilityEditor({ coachId, initialWindows, sessionDurationMin
                 setSaved(false);
               }
             }}
-            disabled={!newBlockDate}
+            disabled={!newBlockDate || blockedDates.includes(newBlockDate)}
             className="rounded-lg border border-primary/30 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/5 transition-colors disabled:opacity-50"
           >
             + Block date
           </button>
+          {newBlockDate && blockedDates.includes(newBlockDate) && (
+            <span className="text-xs text-amber-600">Already blocked</span>
+          )}
         </div>
         {blockedDates.length > 0 && (
           <div className="flex flex-wrap gap-2">

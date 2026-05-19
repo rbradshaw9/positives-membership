@@ -16,13 +16,35 @@ export const metadata: Metadata = {
     title: "Positives",
     statusBarStyle: "default",
   },
+  openGraph: {
+    type: "website",
+    siteName: "Positives",
+    title: "Positives — A Daily Practice from Dr. Paul Jenkins",
+    description:
+      "A practice-based membership for daily grounding, emotional resilience, and personal growth. A few minutes each day with Dr. Paul Jenkins.",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Positives — A daily practice from Dr. Paul Jenkins",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Positives — A Daily Practice from Dr. Paul Jenkins",
+    description:
+      "A practice-based membership for daily grounding and personal growth. A few minutes each day changes everything.",
+    images: ["/og-image.png"],
+  },
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
       { url: "/icon.png", type: "image/png", sizes: "512x512" },
     ],
     apple: [
-      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+      { url: "/apple-icon.png", sizes: "180x180", type: "image/png" },
     ],
   },
 };

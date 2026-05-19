@@ -24,7 +24,7 @@ type BookingRow = {
   timezone: string;
   admin_note: string | null;
   member: { email: string; name: string | null } | null;
-  coach: { display_name: string } | null;
+  coach: { display_name: string; member_id: string | null } | null;
 };
 
 function formatReminderTime(iso: string, timezone: string) {
@@ -131,7 +131,7 @@ export async function GET(req: Request) {
   ) {
     const { data: bookingsRaw } = await supabase
       .from("coaching_booking")
-      .select("id, scheduled_at, duration_minutes, timezone, admin_note, member:member(email, name), coach:coach_profile(display_name)")
+      .select("id, scheduled_at, duration_minutes, timezone, admin_note, member:member(email, name), coach:coach_profile(display_name, member_id)")
       .eq("status", "confirmed")
       .gte("scheduled_at", windowStart.toISOString())
       .lte("scheduled_at", windowEnd.toISOString());
@@ -139,7 +139,7 @@ export async function GET(req: Request) {
     const bookings = (bookingsRaw as BookingRow[] | null) ?? [];
 
     for (const b of bookings) {
-      const flagKey = `reminder_${flag}_sent`;
+      const flagKey = `__sys:reminder_${flag}_sent`;
       const alreadySent = b.admin_note?.includes(flagKey);
       if (alreadySent) continue;
 
@@ -180,6 +180,30 @@ export async function GET(req: Request) {
           .eq("id", b.id);
 
         sent.push(`${flag}:${b.id}:${member.email}`);
+
+        // Also send a reminder to the coach
+        if (coach?.member_id) {
+          const { data: coachMemberRaw } = await supabase
+            .from("member")
+            .select("email")
+            .eq("id", coach.member_id)
+            .single();
+          const coachMember = coachMemberRaw as { email: string } | null;
+          if (coachMember?.email) {
+            const coachSubject = flag === "1h"
+              ? `Reminder: session with ${member.name ?? "a member"} starts in 1 hour`
+              : `Reminder: session with ${member.name ?? "a member"} is tomorrow`;
+            await sendPostmarkEmail({
+              to: coachMember.email,
+              subject: coachSubject,
+              html,
+              text,
+              tag: `coaching-reminder-${flag}-coach`,
+              idempotencyKey: `reminder-coach-${b.id}-${flag}`,
+            });
+          }
+        }
+
       } catch (err) {
         const msg = err instanceof Error ? err.message : "unknown";
         errors.push(`${flag}:${b.id}: ${msg}`);

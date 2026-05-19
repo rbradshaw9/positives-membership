@@ -371,7 +371,7 @@ export default async function AccountCoachingPage({
         {/* ── Coach: upcoming sessions to deliver ───────────────────── */}
         {coachProfile && (
           <section aria-labelledby="section-coach-sessions" className="rounded-2xl border border-primary/20 bg-primary/5 p-5 flex flex-col gap-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-primary">Coach View</p>
                 <h2 id="section-coach-sessions" className="mt-1 text-base font-semibold text-foreground">
@@ -380,7 +380,7 @@ export default async function AccountCoachingPage({
               </div>
               <Link
                 href="/account/coaching/availability"
-                className="rounded-lg border border-primary/30 bg-white/50 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-white transition-colors"
+                className="flex-shrink-0 rounded-lg border border-primary/30 bg-white/50 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-white transition-colors"
               >
                 Edit availability →
               </Link>
@@ -394,6 +394,8 @@ export default async function AccountCoachingPage({
                   const sessionTime = new Intl.DateTimeFormat("en-US", {
                     weekday: "short", month: "short", day: "numeric",
                     hour: "numeric", minute: "2-digit",
+                    timeZone: "America/New_York",
+                    timeZoneName: "short",
                   }).format(new Date(s.scheduled_at));
                   return (
                     <Link
@@ -460,8 +462,23 @@ export default async function AccountCoachingPage({
                   const coachProfile = Array.isArray(booking.coach)
                     ? booking.coach[0]
                     : booking.coach;
-                  const isPast = new Date(booking.scheduled_at) <= new Date();
                   const isCanceled = booking.status === "canceled";
+                  const isCompleted = booking.status === "completed";
+                  const dotColor = isCanceled
+                    ? "bg-muted-foreground/40"
+                    : isCompleted
+                    ? "bg-secondary"
+                    : "bg-primary";
+                  const labelText = isCanceled
+                    ? "Canceled"
+                    : isCompleted
+                    ? "Completed"
+                    : statusLabel(booking.status);
+                  const labelColor = isCanceled
+                    ? "var(--color-muted-fg)"
+                    : isCompleted
+                    ? "var(--color-secondary)"
+                    : "var(--color-primary)";
                   return (
                     <div
                       key={booking.id}
@@ -470,13 +487,7 @@ export default async function AccountCoachingPage({
                       <div>
                         <div className="flex items-center gap-2">
                           <span
-                            className={`h-2 w-2 rounded-full flex-shrink-0 ${
-                              isCanceled
-                                ? "bg-muted-foreground/40"
-                                : isPast
-                                ? "bg-secondary"
-                                : "bg-primary"
-                            }`}
+                            className={`h-2 w-2 rounded-full flex-shrink-0 ${dotColor}`}
                             aria-hidden="true"
                           />
                           <span className="font-medium text-foreground">
@@ -485,20 +496,14 @@ export default async function AccountCoachingPage({
                         </div>
                         <p className="mt-1 text-muted-foreground">
                           {formatDateTime(booking.scheduled_at)} &middot;{" "}
-                          {isCanceled ? "Canceled" : isPast ? "Completed" : statusLabel(booking.status)}
+                          {labelText}
                         </p>
                       </div>
                       <span
                         className="text-xs font-medium capitalize"
-                        style={{
-                          color: isCanceled
-                            ? "var(--color-muted-fg)"
-                            : isPast
-                            ? "var(--color-secondary)"
-                            : "var(--color-primary)",
-                        }}
+                        style={{ color: labelColor }}
                       >
-                        {isCanceled ? "Canceled" : isPast ? "Completed" : statusLabel(booking.status)}
+                        {labelText}
                       </span>
                     </div>
                   );

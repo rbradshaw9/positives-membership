@@ -98,7 +98,9 @@ function RescheduleModal({
 
   // Load slots on mount — must be useEffect, NOT useState
   useEffect(() => {
-    fetch(`/api/coaching/availability?days=28&timezone=${encodeURIComponent(timezone)}`)
+    fetch(
+      `/api/coaching/availability?days=28&timezone=${encodeURIComponent(timezone)}&excludeBookingId=${encodeURIComponent(bookingId)}`
+    )
       .then((r) => r.json())
       .then((d) => { setSlots(d.slots ?? {}); setLoading(false); })
       .catch(() => { setError("Could not load available times."); setLoading(false); });
@@ -136,7 +138,7 @@ function RescheduleModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-label="Reschedule session"
@@ -148,13 +150,13 @@ function RescheduleModal({
         aria-label="Close"
       />
 
-      {/* Sheet */}
-      <div className="relative w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-xl flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
+      {/* Sheet — slides up from bottom on mobile, centered on desktop */}
+      <div className="relative w-full max-w-lg rounded-t-2xl sm:rounded-2xl border border-border bg-card p-6 shadow-xl flex flex-col gap-5 max-h-[90dvh] overflow-y-auto overscroll-contain">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-foreground">Reschedule Session</h2>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+            className="-mr-1 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground transition-colors"
             aria-label="Close"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -274,6 +276,7 @@ export function UpcomingSessionCard({
 
   const hoursUntil = (new Date(scheduledAt).getTime() - Date.now()) / (1000 * 60 * 60);
   const sessionRestored = hoursUntil > 24;
+  const canReschedule = hoursUntil >= 2; // min 2h notice required
 
   async function handleCancel() {
     setCanceling(true);
@@ -358,32 +361,41 @@ export function UpcomingSessionCard({
 
             {!confirmCancel ? (
               <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => setShowReschedule(true)}
-                  className="rounded-lg border border-border bg-transparent px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Reschedule
-                </button>
+                {canReschedule ? (
+                  <button
+                    onClick={() => setShowReschedule(true)}
+                    className="min-h-[44px] rounded-lg border border-border bg-transparent px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Reschedule
+                  </button>
+                ) : (
+                  <span
+                    title="Sessions can only be rescheduled more than 2 hours in advance"
+                    className="inline-flex min-h-[44px] items-center rounded-lg border border-border/50 bg-transparent px-3 py-2 text-sm font-medium text-muted-foreground/40 cursor-not-allowed select-none"
+                  >
+                    Reschedule
+                  </span>
+                )}
                 <button
                   onClick={() => setConfirmCancel(true)}
-                  className="rounded-lg border border-border bg-transparent px-3 py-2 text-sm font-medium text-muted-foreground hover:border-destructive/40 hover:text-destructive transition-colors"
+                  className="min-h-[44px] rounded-lg border border-border bg-transparent px-3 py-2 text-sm font-medium text-muted-foreground hover:border-destructive/40 hover:text-destructive transition-colors"
                 >
                   Cancel
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   onClick={handleCancel}
                   disabled={canceling}
-                  className="rounded-lg px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                  className="min-h-[44px] rounded-lg px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
                   style={{ background: "var(--color-destructive, #e53e3e)" }}
                 >
                   {canceling ? "Canceling…" : "Confirm cancel"}
                 </button>
                 <button
                   onClick={() => setConfirmCancel(false)}
-                  className="rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+                  className="min-h-[44px] rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
                 >
                   Keep
                 </button>

@@ -8,6 +8,7 @@ import { LoginClient } from "./login-client";
 export const metadata: Metadata = {
   title: "Sign In — Positives",
   description: "Sign in to your Positives membership.",
+  robots: { index: false, follow: false },
 };
 
 /**

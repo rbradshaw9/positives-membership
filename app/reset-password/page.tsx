@@ -7,6 +7,7 @@ import { Logo } from "@/components/marketing/Logo";
 export const metadata: Metadata = {
   title: "Choose New Password — Positives",
   description: "Create a new password for your Positives account.",
+  robots: { index: false, follow: false },
 };
 
 export default async function ResetPasswordPage() {

@@ -12,7 +12,7 @@ import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { MemberEventCard } from "@/components/events/MemberEventCard";
 
 export const metadata = {
-  title: "Events - Positives",
+  title: "Events — Positives",
   description: "Member events, live sessions, and replays available with your Positives membership.",
 };
 

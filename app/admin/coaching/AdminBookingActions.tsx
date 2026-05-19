@@ -27,7 +27,11 @@ export function AdminBookingActions({ bookingId, currentStatus }: Props) {
       const res = await fetch(`/api/admin/coaching/booking/${bookingId}/status`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({
+          status,
+          // Restore credit when admin cancels (coach issue, not member issue)
+          restoreCredit: status === "canceled",
+        }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));

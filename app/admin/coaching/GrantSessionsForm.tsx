@@ -96,6 +96,7 @@ export function GrantSessionsForm() {
               id="grant-email"
               type="email"
               required
+              maxLength={254}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="member@example.com"

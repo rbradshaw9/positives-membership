@@ -12,9 +12,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
   }> = [
     { path: "/", changeFrequency: "weekly", priority: 1 },
     { path: "/join", changeFrequency: "weekly", priority: 0.95 },
-    { path: "/about", changeFrequency: "monthly", priority: 0.8 },
+    { path: "/about", changeFrequency: "monthly", priority: 0.85 },
+    { path: "/try", changeFrequency: "monthly", priority: 0.80 },
     { path: "/faq", changeFrequency: "monthly", priority: 0.75 },
-    { path: "/support", changeFrequency: "monthly", priority: 0.7 },
+    { path: "/support", changeFrequency: "monthly", priority: 0.70 },
+    { path: "/contact", changeFrequency: "monthly", priority: 0.65 },
     { path: "/partners", changeFrequency: "monthly", priority: 0.65 },
     { path: "/partners/apply", changeFrequency: "monthly", priority: 0.45 },
     { path: "/affiliate-program", changeFrequency: "monthly", priority: 0.55 },

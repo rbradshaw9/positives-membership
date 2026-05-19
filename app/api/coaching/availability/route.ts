@@ -18,11 +18,13 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const days = Math.min(Number(searchParams.get("days") ?? "14"), 60);
     const timezone = searchParams.get("timezone") ?? "America/New_York";
+    const excludeBookingId = searchParams.get("excludeBookingId") ?? undefined;
 
     const slots = await getAvailableSlots({
       daysAhead: days,
       memberId: member.id,
       timezone,
+      excludeBookingId,
     });
 
     return NextResponse.json({ slots });

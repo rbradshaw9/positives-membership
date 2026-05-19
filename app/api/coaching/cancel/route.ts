@@ -72,6 +72,18 @@ export async function POST(req: NextRequest) {
     // Policy: restore if canceled > 24h before the session
     const sessionTime = new Date(booking.scheduled_at).getTime();
     const hoursUntilSession = (sessionTime - Date.now()) / (1000 * 60 * 60);
+
+    // Hard cutoff: cannot cancel within 2h of the session start
+    if (hoursUntilSession < 2) {
+      return NextResponse.json(
+        {
+          error:
+            "Sessions cannot be canceled less than 2 hours before the start time. Please contact support if you need assistance.",
+        },
+        { status: 400 }
+      );
+    }
+
     const sessionRestored = hoursUntilSession > 24;
 
     // Cancel the booking

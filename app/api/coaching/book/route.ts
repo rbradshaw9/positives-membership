@@ -46,6 +46,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (intake && intake.length > 1000) {
+      return NextResponse.json(
+        { error: "Pre-session notes must be 1000 characters or fewer" },
+        { status: 400 }
+      );
+    }
+
     // Validate scheduled time is in the future (min 30 min ahead)
     const sessionTime = new Date(scheduledAt);
     if (sessionTime.getTime() < Date.now() + 30 * 60 * 1000) {
@@ -90,6 +97,14 @@ export async function POST(req: NextRequest) {
 
     if (!coach) {
       return NextResponse.json({ error: "Coach not found" }, { status: 404 });
+    }
+
+    // Prevent a coach from booking their own session
+    if (coach.member_id && coach.member_id === member.id) {
+      return NextResponse.json(
+        { error: "You cannot book a session with yourself." },
+        { status: 400 }
+      );
     }
 
     const sessionEndMs =
