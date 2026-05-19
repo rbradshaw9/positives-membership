@@ -28,6 +28,7 @@ type AdminNavGroup = {
 
 type IconName =
   | "calendar"
+  | "coaching"
   | "community"
   | "content"
   | "home"
@@ -88,6 +89,14 @@ function Icon({ name }: { name: IconName }) {
     return (
       <svg {...common}>
         <path d="M4.5 1a.5.5 0 0 1 .5.5V2h5v-.5a.5.5 0 0 1 1 0V2h1a1.5 1.5 0 0 1 1.5 1.5v9A1.5 1.5 0 0 1 12 14H3a1.5 1.5 0 0 1-1.5-1.5v-9A1.5 1.5 0 0 1 3 2h1v-.5a.5.5 0 0 1 .5-.5ZM2.5 5.5v7a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5v-7h-10Zm1.75 2h2v2h-2v-2Z" fill="currentColor" />
+      </svg>
+    );
+  }
+
+  if (name === "coaching") {
+    return (
+      <svg {...common}>
+        <path d="M7.5 1a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm-3 4a3 3 0 1 1 6 0 3 3 0 0 1-6 0Zm-2 8a5 5 0 0 1 5-5h.5a.5.5 0 0 1 0 1H7.5a4 4 0 0 0-4 4 .5.5 0 0 1-1 0Zm8.5-1.5a.5.5 0 0 1 .5-.5h1v-1a.5.5 0 0 1 1 0v1h1a.5.5 0 0 1 0 1h-1v1a.5.5 0 0 1-1 0v-1h-1a.5.5 0 0 1-.5-.5Z" fill="currentColor" />
       </svg>
     );
   }
@@ -198,6 +207,7 @@ function buildNavGroups({
       label: "Management",
       items: [
         ...(canReadMembers ? [{ href: "/admin/members", label: "Members", icon: "members" as const }] : []),
+        ...(canReadMembers ? [{ href: "/admin/coaching", label: "Coaching", icon: "coaching" as const }] : []),
         ...(canReadMembers ? [{ href: "/admin/beta-feedback", label: "Feedback", icon: "message" as const }] : []),
         ...(canModerateCommunity ? [{ href: "/admin/community", label: "Community", icon: "community" as const }] : []),
         { href: "/admin/ingestion", label: "Ingestion", icon: "ingestion" },
