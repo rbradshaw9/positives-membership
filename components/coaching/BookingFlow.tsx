@@ -11,6 +11,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 
 type TimeSlot = {
@@ -18,6 +19,7 @@ type TimeSlot = {
   endsAt: string;
   coachId: string;
   coachName: string;
+  coachTitle: string | null;
   coachAvatarUrl: string | null;
 };
 
@@ -60,6 +62,7 @@ function getTimezone() {
 }
 
 export function BookingFlow({ onBooked }: { onBooked?: (result: BookingResult) => void }) {
+  const router = useRouter();
   const [step, setStep] = useState<Step>("idle");
   const [slots, setSlots] = useState<SlotsByDate>({});
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -111,6 +114,8 @@ export function BookingFlow({ onBooked }: { onBooked?: (result: BookingResult) =
       setResult(booked);
       setStep("booked");
       onBooked?.(booked);
+      // Refresh the server component so Upcoming Sessions updates
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Booking failed — please try again.");
       setStep("selecting");
@@ -154,6 +159,12 @@ export function BookingFlow({ onBooked }: { onBooked?: (result: BookingResult) =
 
   // ── Booked confirmation ───────────────────────────────────────────────────
   if (step === "booked" && result) {
+    // Build Google Calendar link
+    const sessionStartDate = new Date(result.scheduledAt);
+    const sessionEndDate = new Date(sessionStartDate.getTime() + 60 * 60 * 1000);
+    const gCalFmt = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(".000", "");
+    const gCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`Coaching Session with ${result.coachName}`)}&dates=${gCalFmt(sessionStartDate)}/${gCalFmt(sessionEndDate)}&details=${encodeURIComponent(`Join your session: https://positives.life/account/coaching/session/${result.bookingId}`)}`;
+
     return (
       <div
         className="rounded-2xl border border-primary/20 bg-primary/5 p-5 flex flex-col gap-3"
@@ -170,14 +181,29 @@ export function BookingFlow({ onBooked }: { onBooked?: (result: BookingResult) =
           With {result.coachName} on{" "}
           <strong>{formatSlotTime(result.scheduledAt, timezone)}</strong>
         </p>
-        <Button
-          href={`/account/coaching/session/${result.bookingId}`}
-          variant="primary"
-          size="sm"
-          className="self-start"
-        >
-          View session room
-        </Button>
+        <p className="text-xs text-muted-foreground">A confirmation email is on its way.</p>
+        <div className="flex flex-wrap items-center gap-2 mt-1">
+          <Button
+            href={`/account/coaching/session/${result.bookingId}`}
+            variant="primary"
+            size="sm"
+          >
+            View session room
+          </Button>
+          <a
+            href={gCalUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            Add to Google Calendar
+          </a>
+        </div>
       </div>
     );
   }
@@ -278,13 +304,36 @@ export function BookingFlow({ onBooked }: { onBooked?: (result: BookingResult) =
   if (step === "confirming" && selectedSlot) {
     return (
       <div className="flex flex-col gap-5 rounded-2xl border border-border bg-surface p-5">
+        {/* Coach info */}
+        <div className="flex items-center gap-3">
+          {selectedSlot.coachAvatarUrl ? (
+            <img
+              src={selectedSlot.coachAvatarUrl}
+              alt=""
+              className="h-10 w-10 rounded-full object-cover flex-shrink-0"
+            />
+          ) : (
+            <div
+              className="h-10 w-10 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white"
+              style={{ background: "var(--color-primary)" }}
+              aria-hidden="true"
+            >
+              {selectedSlot.coachName[0]}
+            </div>
+          )}
+          <div>
+            <p className="text-sm font-semibold text-foreground">{selectedSlot.coachName}</p>
+            {selectedSlot.coachTitle && (
+              <p className="text-xs text-muted-foreground">{selectedSlot.coachTitle}</p>
+            )}
+          </div>
+        </div>
+
         <div className="flex flex-col gap-1">
-          <p className="text-sm font-semibold text-foreground">Confirm your session</p>
-          <p className="text-sm text-muted-foreground">
-            {formatSlotTime(selectedSlot.startsAt, timezone)} with{" "}
-            {selectedSlot.coachName}
+          <p className="text-sm font-semibold text-foreground">
+            {formatSlotTime(selectedSlot.startsAt, timezone)}
           </p>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground">
             One session will be deducted from your balance.
           </p>
         </div>

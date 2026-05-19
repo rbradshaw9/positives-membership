@@ -1,10 +1,12 @@
 import { requireMember } from "@/lib/auth/require-member";
 import { createClient } from "@/lib/supabase/server";
+import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import { PageHeader } from "@/components/member/PageHeader";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { SectionLabel } from "@/components/member/SectionLabel";
 import { Button } from "@/components/ui/Button";
+import Link from "next/link";
 import { CoachingPurchaseButtons } from "./coaching-purchase-buttons";
 import { BookingFlow } from "@/components/coaching/BookingFlow";
 import { UpcomingSessionCard } from "@/components/coaching/UpcomingSessionCard";
@@ -41,7 +43,16 @@ export type BookingRow = {
   status: string;
   scheduled_at: string;
   duration_minutes: number;
-  coach: { display_name: string; avatar_url: string | null } | null;
+  coach_id: string;
+  coach: { id: string; display_name: string; avatar_url: string | null } | null;
+};
+
+type CoachSessionRow = {
+  id: string;
+  status: string;
+  scheduled_at: string;
+  duration_minutes: number;
+  member: { name: string | null; email: string } | null;
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -93,34 +104,42 @@ function statusLabel(status: string) {
 
 async function getCoachingData(memberId: string) {
   const supabase = asLooseSupabaseClient(await createClient());
+  const adminSupabase = asLooseSupabaseClient(getAdminClient());
 
-  const [{ data: rawPacks }, { data: rawLogs }, { data: rawBookings }] = await Promise.all([
-    supabase
-      .from("coaching_session_pack")
-      .select(
-        "id, pack_type, sessions_total, sessions_remaining, granted_by, expires_at, created_at"
-      )
-      .eq("member_id", memberId)
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("coaching_session_log")
-      .select("id, status, scheduled_at, event_type_name, invitee_name, created_at")
-      .eq("member_id", memberId)
-      .order("scheduled_at", { ascending: false })
-      .limit(20),
-    supabase
-      .from("coaching_booking")
-      .select("id, status, scheduled_at, duration_minutes, coach:coach_profile(display_name, avatar_url)")
-      .eq("member_id", memberId)
-      .order("scheduled_at", { ascending: false })
-      .limit(30),
-  ]);
+  const now = new Date();
+
+  const [{ data: rawPacks }, { data: rawLogs }, { data: rawBookings }, { data: coachProfileRaw }] =
+    await Promise.all([
+      supabase
+        .from("coaching_session_pack")
+        .select("id, pack_type, sessions_total, sessions_remaining, granted_by, expires_at, created_at")
+        .eq("member_id", memberId)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("coaching_session_log")
+        .select("id, status, scheduled_at, event_type_name, invitee_name, created_at")
+        .eq("member_id", memberId)
+        .order("scheduled_at", { ascending: false })
+        .limit(20),
+      supabase
+        .from("coaching_booking")
+        .select("id, status, scheduled_at, duration_minutes, coach_id, coach:coach_profile(id, display_name, avatar_url)")
+        .eq("member_id", memberId)
+        .order("scheduled_at", { ascending: false })
+        .limit(30),
+      // Check if this member is a coach
+      adminSupabase
+        .from("coach_profile")
+        .select("id, display_name")
+        .eq("member_id", memberId)
+        .eq("is_active", true)
+        .single(),
+    ]);
 
   const packs = (rawPacks as PackRow[] | null) ?? [];
   const logs = (rawLogs as LogRow[] | null) ?? [];
   const allBookings = (rawBookings as BookingRow[] | null) ?? [];
-
-  const now = new Date();
+  const coachProfile = coachProfileRaw as { id: string; display_name: string } | null;
 
   // Split native bookings into upcoming vs past
   const upcomingBookings = allBookings.filter(
@@ -138,7 +157,24 @@ async function getCoachingData(memberId: string) {
   );
   const totalRemaining = activePacks.reduce((sum, p) => sum + p.sessions_remaining, 0);
 
-  return { packs, logs, totalRemaining, activePacks, upcomingBookings, pastBookings };
+  // Load coach's upcoming sessions if this member is a coach
+  let coachUpcomingSessions: CoachSessionRow[] = [];
+  if (coachProfile) {
+    const { data: coachSessionsRaw } = await adminSupabase
+      .from("coaching_booking")
+      .select("id, status, scheduled_at, duration_minutes, member:member(name, email)")
+      .eq("coach_id", coachProfile.id)
+      .eq("status", "confirmed")
+      .gte("scheduled_at", now.toISOString())
+      .order("scheduled_at", { ascending: true })
+      .limit(10);
+    coachUpcomingSessions = (coachSessionsRaw as CoachSessionRow[] | null) ?? [];
+  }
+
+  return {
+    packs, logs, totalRemaining, activePacks, upcomingBookings, pastBookings,
+    coachProfile, coachUpcomingSessions,
+  };
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -153,7 +189,7 @@ export default async function AccountCoachingPage({
     searchParams,
   ]);
 
-  const { packs, logs, totalRemaining, activePacks, upcomingBookings, pastBookings } =
+  const { packs, logs, totalRemaining, activePacks, upcomingBookings, pastBookings, coachProfile, coachUpcomingSessions } =
     await getCoachingData(member.id);
 
   const purchaseStatus = resolvedSearchParams.purchase as string | undefined;
@@ -339,20 +375,69 @@ export default async function AccountCoachingPage({
           </section>
         )}
 
+        {/* ── Coach: upcoming sessions to deliver ───────────────────── */}
+        {coachProfile && (
+          <section aria-labelledby="section-coach-sessions" className="rounded-2xl border border-primary/20 bg-primary/5 p-5 flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-primary">Coach View</p>
+                <h2 id="section-coach-sessions" className="mt-1 text-base font-semibold text-foreground">
+                  Your upcoming sessions to deliver
+                </h2>
+              </div>
+              <Link
+                href="/account/coaching/availability"
+                className="rounded-lg border border-primary/30 bg-white/50 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-white transition-colors"
+              >
+                Edit availability →
+              </Link>
+            </div>
+            {coachUpcomingSessions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No upcoming sessions. Members will see your availability when they book.</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {coachUpcomingSessions.map((s) => {
+                  const memberInfo = Array.isArray(s.member) ? s.member[0] : s.member;
+                  const sessionTime = new Intl.DateTimeFormat("en-US", {
+                    weekday: "short", month: "short", day: "numeric",
+                    hour: "numeric", minute: "2-digit",
+                  }).format(new Date(s.scheduled_at));
+                  return (
+                    <Link
+                      key={s.id}
+                      href={`/account/coaching/session/${s.id}`}
+                      className="flex items-center justify-between rounded-xl border border-primary/15 bg-white/60 px-4 py-3 hover:bg-white transition-colors"
+                    >
+                      <div>
+                        <p className="text-sm font-medium text-foreground">
+                          {memberInfo?.name ?? "Member"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{sessionTime}</p>
+                      </div>
+                      <span className="text-xs font-medium text-primary">Join →</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
+
         {/* ── Upcoming sessions ──────────────────────────────────────────── */}
         {upcomingBookings.length > 0 && (
           <section aria-labelledby="section-upcoming">
             <SectionLabel id="section-upcoming">Upcoming Sessions</SectionLabel>
             <div className="flex flex-col gap-3">
               {upcomingBookings.map((booking) => {
-                const coachProfile = Array.isArray(booking.coach)
+                const bookingCoach = Array.isArray(booking.coach)
                   ? booking.coach[0]
                   : booking.coach;
                 return (
                   <UpcomingSessionCard
                     key={booking.id}
                     bookingId={booking.id}
-                    coachName={coachProfile?.display_name ?? "Your Coach"}
+                    coachId={booking.coach_id}
+                    coachName={bookingCoach?.display_name ?? "Your Coach"}
                     scheduledAt={booking.scheduled_at}
                     durationMinutes={booking.duration_minutes}
                     joinUrl={`/account/coaching/session/${booking.id}`}

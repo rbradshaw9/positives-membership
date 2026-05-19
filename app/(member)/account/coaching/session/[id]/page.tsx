@@ -28,6 +28,7 @@ type BookingRow = {
   livekit_room_name: string | null;
   zoom_join_url: string | null;
   member_intake: string | null;
+  member: { name: string | null; email: string } | null;
   coach: {
     id: string;
     member_id: string;
@@ -60,6 +61,7 @@ export default async function CoachingSessionPage({
     .select(
       `id, member_id, coach_id, status, scheduled_at, duration_minutes,
        livekit_room_name, zoom_join_url, member_intake,
+       member:member(name, email),
        coach:coach_profile(id, member_id, display_name, avatar_url)`
     )
     .eq("id", bookingId)
@@ -69,6 +71,7 @@ export default async function CoachingSessionPage({
   if (!booking) redirect("/account/coaching");
 
   const coachProfile = Array.isArray(booking.coach) ? booking.coach[0] : booking.coach;
+  const memberProfile = Array.isArray(booking.member) ? booking.member[0] : booking.member;
 
   // Access check: only the member or the assigned coach can view this
   const isMember = booking.member_id === member.id;
@@ -95,7 +98,7 @@ export default async function CoachingSessionPage({
       <PageHeader
         title={
           role === "coach"
-            ? `Session with Member`
+            ? `Session with ${memberProfile?.name ?? "Member"}`
             : `Session with ${coachProfile?.display_name ?? "your coach"}`
         }
         subtitle={formatSessionTime(booking.scheduled_at)}

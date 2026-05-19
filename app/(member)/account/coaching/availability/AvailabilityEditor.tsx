@@ -56,6 +56,24 @@ export function AvailabilityEditor({ coachId, initialWindows, sessionDurationMin
   // Which days have at least one window
   const activeDays = new Set(windows.filter((w) => w.is_active).map((w) => w.day_of_week));
 
+  function copyToWeekdays(sourceDay: number) {
+    setWindows((prev) => {
+      const sourceWins = prev.filter((w) => w.day_of_week === sourceDay && w.is_active);
+      if (sourceWins.length === 0) return prev;
+      // Remove existing weekday windows
+      const weekdays = [1, 2, 3, 4, 5];
+      const filtered = prev.filter((w) => !weekdays.includes(w.day_of_week) || w.day_of_week === sourceDay);
+      // Add source windows for all other weekdays
+      const newWins = weekdays
+        .filter((d) => d !== sourceDay)
+        .flatMap((d) =>
+          sourceWins.map((w) => ({ ...w, id: null, day_of_week: d }))
+        );
+      return [...filtered, ...newWins];
+    });
+    setSaved(false);
+  }
+
   function toggleDay(day: number) {
     setWindows((prev) => {
       const dayWindows = prev.filter((w) => w.day_of_week === day);
@@ -200,13 +218,25 @@ export function AvailabilityEditor({ coachId, initialWindows, sessionDurationMin
                 )}
 
                 {isOn && (
-                  <button
-                    type="button"
-                    onClick={() => addWindow(dayNum)}
-                    className="ml-auto text-xs font-medium text-primary hover:underline"
-                  >
-                    + Add window
-                  </button>
+                  <div className="ml-auto flex items-center gap-2">
+                    {dayNum >= 1 && dayNum <= 5 && isOn && dayWins.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => copyToWeekdays(dayNum)}
+                        className="text-xs text-muted-foreground/70 hover:text-muted-foreground transition-colors"
+                        title="Copy this day's schedule to all weekdays"
+                      >
+                        Copy to Mon–Fri
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => addWindow(dayNum)}
+                      className="text-xs font-medium text-primary hover:underline"
+                    >
+                      + Add window
+                    </button>
+                  </div>
                 )}
               </div>
 

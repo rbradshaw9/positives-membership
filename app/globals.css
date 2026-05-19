@@ -2539,3 +2539,43 @@ select.admin-select:focus,
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* ─── Livekit room — Positives brand overrides ──────────────────────────── */
+/* Overrides the default Livekit purple theme to match the Positives design system. */
+
+[data-lk-theme="default"] {
+  --lk-color-primary: var(--color-primary);
+  --lk-color-primary-hover: color-mix(in srgb, var(--color-primary) 85%, black);
+  --lk-color-bg1: var(--color-surface);
+  --lk-color-bg2: var(--color-card);
+  --lk-color-fg1: var(--color-foreground);
+  --lk-color-fg2: var(--color-muted-fg);
+  --lk-color-bg3: var(--color-border);
+  --lk-border-radius: 12px;
+  --lk-font-family: var(--font-body, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+}
+
+/* Remove harsh Livekit background, blend with page */
+.lk-room-container {
+  background: var(--color-surface) !important;
+  border-radius: 0 0 16px 16px;
+}
+
+/* Softer controls bar */
+.lk-control-bar {
+  background: var(--color-card) !important;
+  border-top: 1px solid var(--color-border) !important;
+  border-radius: 0 0 16px 16px !important;
+}
+
+/* Primary button accent */
+.lk-button[aria-pressed="true"],
+.lk-button[data-lk-active] {
+  background-color: var(--color-primary) !important;
+}
+
+/* Participant tile background */
+.lk-participant-tile {
+  border-radius: 12px !important;
+  overflow: hidden;
+}

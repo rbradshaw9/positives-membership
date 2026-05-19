@@ -8,6 +8,7 @@ import { requireAdmin } from "@/lib/auth/require-admin";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import Link from "next/link";
+import { AdminBookingActions } from "./AdminBookingActions";
 
 export const metadata = {
   title: "Coaching — Admin",
@@ -295,12 +296,15 @@ export default async function AdminCoachingPage() {
                         {b.member_intake ?? <span className="text-muted-foreground/50">None</span>}
                       </td>
                       <td>
-                        <Link
-                          href={`/account/coaching/session/${b.id}`}
-                          className="text-sm text-primary hover:underline"
-                        >
-                          Session room ↗
-                        </Link>
+                        <div className="flex flex-col gap-1">
+                          <Link
+                            href={`/account/coaching/session/${b.id}`}
+                            className="text-xs text-primary hover:underline"
+                          >
+                            Session room ↗
+                          </Link>
+                          <AdminBookingActions bookingId={b.id} currentStatus={b.status} />
+                        </div>
                       </td>
                     </tr>
                   );

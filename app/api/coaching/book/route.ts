@@ -21,7 +21,10 @@ import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import { createCoachingRoom, coachingRoomName } from "@/lib/livekit/client";
 import { sendPostmarkEmail } from "@/lib/email/postmark";
-import { renderCoachingConfirmationEmail } from "@/lib/email/templates/coaching-confirmation-email";
+import {
+  renderCoachingConfirmationEmail,
+  renderCoachBookingNotificationEmail,
+} from "@/lib/email/templates/coaching-confirmation-email";
 
 type BookRequest = {
   coachId: string;
@@ -80,10 +83,10 @@ export async function POST(req: NextRequest) {
     // Check for conflicting bookings for this coach (within session duration)
     const { data: coachRaw } = await supabase
       .from("coach_profile")
-      .select("session_duration_minutes, buffer_minutes_after, display_name")
+      .select("session_duration_minutes, buffer_minutes_after, display_name, member_id")
       .eq("id", coachId)
       .single();
-    const coach = coachRaw as { session_duration_minutes: number; buffer_minutes_after: number; display_name: string } | null;
+    const coach = coachRaw as { session_duration_minutes: number; buffer_minutes_after: number; display_name: string; member_id: string | null } | null;
 
     if (!coach) {
       return NextResponse.json({ error: "Coach not found" }, { status: 404 });
@@ -185,7 +188,8 @@ export async function POST(req: NextRequest) {
       const joinUrl = `https://positives.life/account/coaching/session/${bookingId}`;
       const cancelUrl = "https://positives.life/account/coaching";
 
-      const { subject, html, text } = renderCoachingConfirmationEmail({
+      // Member confirmation
+      const memberEmail = renderCoachingConfirmationEmail({
         recipientEmail: member.email,
         memberName: member.name ?? null,
         coachName: coach.display_name,
@@ -197,17 +201,48 @@ export async function POST(req: NextRequest) {
 
       await sendPostmarkEmail({
         to: member.email,
-        subject,
-        html,
-        text,
+        subject: memberEmail.subject,
+        html: memberEmail.html,
+        text: memberEmail.text,
         tag: "coaching-confirmation",
         idempotencyKey: `confirm-${bookingId}`,
       });
+
+      // Coach notification — look up coach's email
+      if (coach.member_id) {
+        const { data: coachMemberRaw } = await supabase
+          .from("member")
+          .select("email")
+          .eq("id", coach.member_id)
+          .single();
+        const coachMember = coachMemberRaw as { email: string } | null;
+
+        if (coachMember?.email) {
+          const coachNotif = renderCoachBookingNotificationEmail({
+            recipientEmail: coachMember.email,
+            coachName: coach.display_name,
+            memberName: member.name ?? null,
+            memberEmail: member.email,
+            scheduledAt: scheduledAtFormatted,
+            durationMinutes: coach.session_duration_minutes,
+            memberIntake: intake ?? null,
+            sessionUrl: joinUrl,
+          });
+
+          await sendPostmarkEmail({
+            to: coachMember.email,
+            subject: coachNotif.subject,
+            html: coachNotif.html,
+            text: coachNotif.text,
+            tag: "coaching-coach-notification",
+            idempotencyKey: `coach-notify-${bookingId}`,
+          });
+        }
+      }
     } catch (emailErr) {
-      console.error("[coaching/book] confirmation email failed:", emailErr);
+      console.error("[coaching/book] email failed:", emailErr);
       // Non-fatal — booking is confirmed regardless
     }
-
 
     // ── 7. Return success ─────────────────────────────────────────────────────
     return NextResponse.json({

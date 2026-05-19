@@ -165,3 +165,78 @@ export function renderCoachingCancellationEmail(
 
   return { subject, html, text };
 }
+
+// ─── Coach new booking notification ──────────────────────────────────────────
+
+export type CoachBookingNotificationInput = {
+  recipientEmail: string;  // coach's email
+  coachName: string;
+  memberName: string | null;
+  memberEmail: string;
+  scheduledAt: string;
+  durationMinutes: number;
+  memberIntake: string | null;
+  sessionUrl: string;      // session room URL
+};
+
+export function renderCoachBookingNotificationEmail(
+  input: CoachBookingNotificationInput
+): { subject: string; html: string; text: string } {
+  const safeMember = escapeHtml(input.memberName ?? "A member");
+  const safeDate = escapeHtml(input.scheduledAt);
+  const safeDuration = `${input.durationMinutes} minutes`;
+
+  const subject = `New session booked — ${safeMember}, ${input.scheduledAt}`;
+  const preheader = `${safeMember} has booked a coaching session with you.`;
+
+  const detailsCard = infoCard(`
+    <p style="margin:0 0 10px;font-family:${B.fontBody};font-size:13px;font-weight:700;color:${B.foreground};text-transform:uppercase;letter-spacing:0.12em;">Session details</p>
+    <p style="margin:0 0 8px;font-family:${B.fontHeading};font-size:18px;line-height:1.35;color:${B.foreground};font-weight:700;">${safeMember}</p>
+    <p style="margin:0 0 6px;font-family:${B.fontBody};font-size:14px;line-height:1.65;color:${B.mutedFg};">${safeDate}</p>
+    <p style="margin:0 0 6px;font-family:${B.fontBody};font-size:14px;line-height:1.65;color:${B.mutedFg};">Duration: ${safeDuration}</p>
+    <p style="margin:0;font-family:${B.fontBody};font-size:14px;line-height:1.65;color:${B.mutedFg};">Member email: ${escapeHtml(input.memberEmail)}</p>
+  `);
+
+  const intakeCard = input.memberIntake ? infoCard(`
+    <p style="margin:0 0 10px;font-family:${B.fontBody};font-size:13px;font-weight:700;color:${B.foreground};text-transform:uppercase;letter-spacing:0.12em;">Pre-session notes from member</p>
+    <p style="margin:0;font-family:${B.fontBody};font-size:14px;line-height:1.75;color:${B.mutedFg};">${escapeHtml(input.memberIntake)}</p>
+  `) : "";
+
+  const html = emailWrapper(
+    `
+    ${emailHeader()}
+    <tr>
+      <td class="email-padding" style="background:${B.card};padding:38px 42px 18px;">
+        <p style="margin:0 0 12px;font-family:${B.fontBody};font-size:12px;font-weight:700;color:${B.primary};text-transform:uppercase;letter-spacing:0.16em;">New booking</p>
+        <h1 class="email-h1" style="margin:0 0 16px;font-family:${B.fontHeading};font-size:24px;line-height:1.25;color:${B.foreground};letter-spacing:-0.02em;">You have a new session, ${escapeHtml(input.coachName.split(" ")[0])}.</h1>
+        <p style="margin:0;font-family:${B.fontBody};font-size:15px;line-height:1.75;color:${B.mutedFg};">${safeMember} has booked a session with you. Check the details below and be ready to join at the scheduled time.</p>
+      </td>
+    </tr>
+    <tr>
+      <td class="email-padding" style="background:${B.card};padding:12px 42px 18px;">${detailsCard}</td>
+    </tr>
+    ${intakeCard ? `<tr><td class="email-padding" style="background:${B.card};padding:0 42px 18px;">${intakeCard}</td></tr>` : ""}
+    <tr>
+      <td class="email-padding" style="background:${B.card};padding:8px 42px 30px;">
+        ${ctaButton("View Session Room", input.sessionUrl)}
+      </td>
+    </tr>
+    ${transactionalEmailFooter()}
+  `,
+    preheader,
+  );
+
+  const text = [
+    `You have a new session, ${input.coachName}.`,
+    "",
+    `Member: ${input.memberName ?? "A member"} (${input.memberEmail})`,
+    `When: ${input.scheduledAt}`,
+    `Duration: ${safeDuration}`,
+    "",
+    input.memberIntake ? `Pre-session notes:\n${input.memberIntake}` : "No pre-session notes.",
+    "",
+    `Session room: ${input.sessionUrl}`,
+  ].join("\n");
+
+  return { subject, html, text };
+}

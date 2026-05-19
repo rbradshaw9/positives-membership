@@ -26,13 +26,16 @@ export type TimeSlot = {
   endsAt: string;     // ISO UTC
   coachId: string;
   coachName: string;
+  coachTitle: string | null;
   coachAvatarUrl: string | null;
 };
 
 export type CoachProfileRow = {
   id: string;
   display_name: string;
+  title: string | null;
   avatar_url: string | null;
+  bio_short: string | null;
   session_duration_minutes: number;
   buffer_minutes_after: number;
 };
@@ -42,11 +45,12 @@ export type CoachProfileRow = {
  * Returns slots grouped by date (YYYY-MM-DD in member's local timezone).
  */
 export async function getAvailableSlots(params: {
-  daysAhead?: number;   // how many days to look ahead (default 14)
-  memberId?: string;    // if provided, uses preferred coach routing
-  timezone?: string;    // member's timezone for date grouping
+  daysAhead?: number;         // how many days to look ahead (default 14)
+  memberId?: string;          // if provided, uses preferred coach routing
+  timezone?: string;          // member's timezone for date grouping
+  excludeBookingId?: string;  // exclude this booking from blocked slots (reschedule)
 }): Promise<Record<string, TimeSlot[]>> {
-  const { daysAhead = 14, timezone = "America/New_York" } = params;
+  const { daysAhead = 14, timezone = "America/New_York", excludeBookingId } = params;
   const supabase = asLooseSupabaseClient(getAdminClient());
 
   const now = new Date();
@@ -57,7 +61,7 @@ export async function getAvailableSlots(params: {
   const { data: coachesRaw } = await supabase
     .from("coach_profile")
     .select(
-      "id, display_name, avatar_url, session_duration_minutes, buffer_minutes_after"
+      "id, display_name, title, avatar_url, bio_short, session_duration_minutes, buffer_minutes_after"
     )
     .eq("is_active", true);
   const coaches = coachesRaw as CoachProfileRow[] | null;
@@ -74,15 +78,20 @@ export async function getAvailableSlots(params: {
     .eq("is_active", true);
   const windows = windowsRaw as Array<AvailabilityWindow & { coach_id: string }> | null;
 
-  // Load existing confirmed bookings in range (to block those slots)
-  const { data: existingBookingsRaw } = await supabase
+  let bookingsQuery = supabase
     .from("coaching_booking")
-    .select("coach_id, scheduled_at, duration_minutes")
+    .select("id, coach_id, scheduled_at, duration_minutes")
     .in("coach_id", coachIds)
     .in("status", ["confirmed", "pending"])
     .gte("scheduled_at", rangeStart.toISOString())
     .lte("scheduled_at", rangeEnd.toISOString());
-  const existingBookings = existingBookingsRaw as Array<{ coach_id: string; scheduled_at: string; duration_minutes: number }> | null;
+
+  if (excludeBookingId) {
+    bookingsQuery = bookingsQuery.neq("id", excludeBookingId);
+  }
+
+  const { data: existingBookingsRaw } = await bookingsQuery;
+  const existingBookings = existingBookingsRaw as Array<{ id: string; coach_id: string; scheduled_at: string; duration_minutes: number }> | null;
 
   const slots: TimeSlot[] = [];
 
@@ -175,6 +184,7 @@ function generateSlotsForCoach(params: {
             endsAt: new Date(slotEnd).toISOString(),
             coachId: coach.id,
             coachName: coach.display_name,
+            coachTitle: coach.title ?? null,
             coachAvatarUrl: coach.avatar_url,
           });
         }

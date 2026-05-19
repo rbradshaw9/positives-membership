@@ -39,23 +39,40 @@ function SessionTimer({
   scheduledAt: string;
   durationMinutes: number;
 }) {
-  const [elapsed, setElapsed] = useState(0);
-  const start = new Date(scheduledAt).getTime();
-  const total = durationMinutes * 60 * 1000;
+  // Timer shows time remaining in the session.
+  // Count from actual join time, capped so it never shows negative before session starts.
+  const [joinedAt] = useState(() => Date.now());
+  const sessionStart = new Date(scheduledAt).getTime();
+  // Effective start: whichever is later — scheduled time or actual join time
+  const effectiveStart = Math.max(joinedAt, sessionStart);
+  const sessionEnd = sessionStart + durationMinutes * 60 * 1000;
+  const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      const now = Date.now();
-      const diff = Math.max(0, now - start);
-      setElapsed(Math.min(diff, total));
-    }, 1000);
+    const interval = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(interval);
-  }, [start, total]);
+  }, []);
 
-  const remaining = total - elapsed;
+  const remaining = Math.max(0, sessionEnd - now);
+  const elapsed = Math.max(0, now - effectiveStart);
+  const total = durationMinutes * 60 * 1000;
+  const isLow = remaining < 10 * 60 * 1000; // < 10 min
+  const isNotStarted = now < sessionStart;
+
   const minutes = Math.floor(remaining / 60000);
   const seconds = Math.floor((remaining % 60000) / 1000);
-  const isLow = remaining < 10 * 60 * 1000; // < 10 min
+
+  // Before session starts: show countdown to start
+  if (isNotStarted) {
+    const untilStart = Math.ceil((sessionStart - now) / 60000);
+    return (
+      <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium bg-white/10 text-white/70">
+        Starts in {untilStart}m
+      </div>
+    );
+  }
+
+  void elapsed; void total; // unused but kept for potential progress bar
 
   return (
     <div
@@ -79,7 +96,7 @@ function SessionTimer({
         <circle cx="12" cy="12" r="10" />
         <polyline points="12 6 12 12 16 14" />
       </svg>
-      {minutes}:{String(seconds).padStart(2, "0")} left
+      {remaining === 0 ? "Time's up" : `${minutes}:${String(seconds).padStart(2, "0")} left`}
     </div>
   );
 }
