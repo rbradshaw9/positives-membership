@@ -24,18 +24,29 @@ export default function manifest(): MetadataRoute.Manifest {
         type: "image/x-icon",
       },
       {
+        src: "/icon-192.png",
+        sizes: "192x192",
+        type: "image/png",
+      },
+      {
         src: "/icon.png",
         sizes: "512x512",
         type: "image/png",
       },
       {
-        src: "/apple-touch-icon.png",
+        src: "/apple-icon.png",
         sizes: "180x180",
         type: "image/png",
       },
       {
         src: "/icon.png",
         sizes: "512x512",
+        type: "image/png",
+        purpose: "maskable",
+      },
+      {
+        src: "/icon-192.png",
+        sizes: "192x192",
         type: "image/png",
         purpose: "maskable",
       },
