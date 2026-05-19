@@ -27,9 +27,10 @@ type WindowInput = {
 export async function POST(req: NextRequest) {
   try {
     const member = await requireMember();
-    const { coachId, windows } = (await req.json()) as {
+    const { coachId, windows, blockedDates } = (await req.json()) as {
       coachId: string;
       windows: WindowInput[];
+      blockedDates?: string[];
     };
 
     if (!coachId || !Array.isArray(windows)) {
@@ -111,6 +112,14 @@ export async function POST(req: NextRequest) {
       is_active: boolean;
     };
     const inserted = (insertedRaw as AvWindow[] | null) ?? [];
+
+    // Persist blackout dates to coach_profile.blocked_dates
+    if (blockedDates !== undefined) {
+      await supabase
+        .from("coach_profile")
+        .update({ blocked_dates: blockedDates.length > 0 ? blockedDates : null })
+        .eq("id", coachId);
+    }
 
     return NextResponse.json({ windows: inserted });
   } catch (err) {

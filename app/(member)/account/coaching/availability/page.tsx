@@ -22,6 +22,7 @@ type CoachProfile = {
   display_name: string;
   session_duration_minutes: number;
   buffer_minutes_after: number;
+  blocked_dates: string[] | null;
 };
 
 type AvailabilityWindow = {
@@ -41,7 +42,7 @@ async function getCoachData(memberId: string): Promise<{
 
   const { data: coachRaw } = await supabase
     .from("coach_profile")
-    .select("id, display_name, session_duration_minutes, buffer_minutes_after")
+    .select("id, display_name, session_duration_minutes, buffer_minutes_after, blocked_dates")
     .eq("member_id", memberId)
     .eq("is_active", true)
     .single();
@@ -92,6 +93,7 @@ export default async function CoachAvailabilityPage() {
               coachId={coach.id}
               initialWindows={windows}
               sessionDurationMinutes={coach.session_duration_minutes}
+              initialBlockedDates={coach.blocked_dates ?? []}
             />
           </div>
         </SurfaceCard>

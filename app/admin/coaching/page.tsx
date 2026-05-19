@@ -9,6 +9,7 @@ import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import Link from "next/link";
 import { AdminBookingActions } from "./AdminBookingActions";
+import { GrantSessionsForm } from "./GrantSessionsForm";
 
 export const metadata = {
   title: "Coaching — Admin",
@@ -131,12 +132,15 @@ export default async function AdminCoachingPage() {
             Coach roster, upcoming sessions, and session pack overview.
           </p>
         </div>
-        <Link
-          href="/admin/coaching/coaches/new"
-          className="admin-btn admin-btn--primary"
-        >
-          + Add Coach
-        </Link>
+        <div className="flex items-center gap-3 flex-wrap">
+          <GrantSessionsForm />
+          <Link
+            href="/admin/coaching/coaches/new"
+            className="admin-btn admin-btn--primary"
+          >
+            + Add Coach
+          </Link>
+        </div>
       </div>
 
       {/* ── Stat row ──────────────────────────────────────────────────────── */}

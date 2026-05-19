@@ -39,13 +39,14 @@ export async function POST(req: NextRequest) {
       status: string;
       scheduled_at: string;
       duration_minutes: number;
+      timezone: string | null;
       coach: { display_name: string } | Array<{ display_name: string }>;
     };
 
     const { data: bookingRaw, error: fetchError } = await supabase
       .from("coaching_booking")
       .select(
-        "id, member_id, pack_id, status, scheduled_at, duration_minutes, coach:coach_profile(display_name)"
+        "id, member_id, pack_id, status, scheduled_at, duration_minutes, timezone, coach:coach_profile(display_name)"
       )
       .eq("id", bookingId)
       .single();
@@ -112,6 +113,7 @@ export async function POST(req: NextRequest) {
     try {
       const coachProfile = Array.isArray(booking.coach) ? booking.coach[0] : booking.coach;
       const coachName = coachProfile?.display_name ?? "your coach";
+      const tz = booking.timezone ?? "America/New_York";
       const scheduledAt = new Date(booking.scheduled_at).toLocaleString("en-US", {
         weekday: "long",
         month: "long",
@@ -119,8 +121,9 @@ export async function POST(req: NextRequest) {
         year: "numeric",
         hour: "numeric",
         minute: "2-digit",
-        timeZone: "America/New_York",
-      }) + " ET";
+        timeZone: tz,
+        timeZoneName: "short",
+      });
 
       const { subject, html, text } = renderCoachingCancellationEmail({
         recipientEmail: member.email,

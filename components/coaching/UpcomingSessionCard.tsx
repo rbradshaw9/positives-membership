@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -27,6 +27,7 @@ type SlotsByDate = Record<string, TimeSlot[]>;
 function formatSessionTime(iso: string) {
   const date = new Date(iso);
   const now = new Date();
+  const timezone = getTimezone();
   const diffMs = date.getTime() - now.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
   const diffHours = diffMs / (1000 * 60 * 60);
@@ -37,6 +38,7 @@ function formatSessionTime(iso: string) {
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
+    timeZone: timezone,
     timeZoneName: "short",
   });
 
@@ -94,13 +96,13 @@ function RescheduleModal({
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load slots on mount
-  useState(() => {
+  // Load slots on mount — must be useEffect, NOT useState
+  useEffect(() => {
     fetch(`/api/coaching/availability?days=28&timezone=${encodeURIComponent(timezone)}`)
       .then((r) => r.json())
       .then((d) => { setSlots(d.slots ?? {}); setLoading(false); })
       .catch(() => { setError("Could not load available times."); setLoading(false); });
-  });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleConfirm() {
     if (!selectedSlot) return;

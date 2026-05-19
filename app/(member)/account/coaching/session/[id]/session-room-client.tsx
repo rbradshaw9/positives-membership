@@ -5,16 +5,20 @@
  *
  * Client boundary for the SessionRoom component.
  * Wraps the Livekit components (which require browser APIs).
+ * Shows PostSessionPanel after disconnection.
  */
 
-import { SessionRoom } from "@/components/coaching/SessionRoom";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { SessionRoom } from "@/components/coaching/SessionRoom";
+import { PostSessionPanel } from "@/components/coaching/PostSessionPanel";
 
 type Props = {
   bookingId: string;
   scheduledAt: string;
   durationMinutes: number;
   coachName: string;
+  memberName: string | null;
   role: "member" | "coach";
 };
 
@@ -23,9 +27,26 @@ export function SessionRoomClient({
   scheduledAt,
   durationMinutes,
   coachName,
+  memberName,
   role,
 }: Props) {
   const router = useRouter();
+  const [showPostSession, setShowPostSession] = useState(false);
+
+  if (showPostSession) {
+    return (
+      <PostSessionPanel
+        bookingId={bookingId}
+        role={role}
+        coachName={coachName}
+        memberName={memberName}
+        onComplete={() => {
+          // Give Supabase a moment then refresh so status shows "completed"
+          setTimeout(() => router.refresh(), 500);
+        }}
+      />
+    );
+  }
 
   return (
     <SessionRoom
@@ -33,10 +54,10 @@ export function SessionRoomClient({
       scheduledAt={scheduledAt}
       durationMinutes={durationMinutes}
       coachName={coachName}
+      memberName={memberName}
       role={role}
       onEnd={() => {
-        // Refresh the page when session ends so status updates
-        router.refresh();
+        setShowPostSession(true);
       }}
     />
   );

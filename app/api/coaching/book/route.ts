@@ -250,6 +250,7 @@ export async function POST(req: NextRequest) {
       roomName,
       scheduledAt,
       coachName: coach.display_name,
+      durationMinutes: coach.session_duration_minutes,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

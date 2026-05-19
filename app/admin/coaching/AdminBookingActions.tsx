@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 type Props = {
   bookingId: string;
@@ -14,6 +15,7 @@ const STATUS_OPTIONS = [
 ] as const;
 
 export function AdminBookingActions({ bookingId, currentStatus }: Props) {
+  const router = useRouter();
   const [updating, setUpdating] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,8 +36,8 @@ export function AdminBookingActions({ bookingId, currentStatus }: Props) {
         return;
       }
       setDone(true);
-      // Refresh page data
-      window.location.reload();
+      // Refresh without full page reload
+      router.refresh();
     } catch {
       setError("Failed");
       setUpdating(false);

@@ -28,6 +28,7 @@ type SessionRoomProps = {
   scheduledAt: string;
   durationMinutes: number;
   coachName: string;
+  memberName: string | null;
   role: "member" | "coach";
   onEnd?: () => void;
 };
@@ -106,6 +107,7 @@ export function SessionRoom({
   scheduledAt,
   durationMinutes,
   coachName,
+  memberName,
   role,
   onEnd,
 }: SessionRoomProps) {
@@ -170,14 +172,16 @@ export function SessionRoom({
         <div className="flex items-center gap-3">
           <div className="flex h-2 w-2 rounded-full bg-green-400 animate-pulse" aria-hidden="true" />
           <span className="text-sm font-medium text-white">
-            {role === "coach" ? "Coaching session" : `Session with ${coachName}`}
+            {role === "coach"
+              ? `Session with ${memberName ?? "Member"}`
+              : `Session with ${coachName}`}
           </span>
         </div>
         <SessionTimer scheduledAt={scheduledAt} durationMinutes={durationMinutes} />
       </div>
 
       {/* Livekit video room */}
-      <div className="min-h-[520px] overflow-hidden rounded-b-2xl border border-border">
+      <div className="overflow-hidden rounded-b-2xl border border-border" style={{ minHeight: "clamp(380px, 60dvh, 680px)" }}>
         <LiveKitRoom
           serverUrl={serverUrl}
           token={token}
@@ -185,7 +189,7 @@ export function SessionRoom({
           audio={true}
           onConnected={() => setConnected(true)}
           onDisconnected={onEnd}
-          style={{ height: "520px" }}
+          style={{ height: "clamp(380px, 60dvh, 680px)" }}
           data-lk-theme="default"
         >
           <VideoConference />

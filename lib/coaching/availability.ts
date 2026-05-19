@@ -38,6 +38,7 @@ export type CoachProfileRow = {
   bio_short: string | null;
   session_duration_minutes: number;
   buffer_minutes_after: number;
+  blocked_dates: string[] | null; // YYYY-MM-DD strings in coach's local timezone
 };
 
 /**
@@ -61,7 +62,7 @@ export async function getAvailableSlots(params: {
   const { data: coachesRaw } = await supabase
     .from("coach_profile")
     .select(
-      "id, display_name, title, avatar_url, bio_short, session_duration_minutes, buffer_minutes_after"
+      "id, display_name, title, avatar_url, bio_short, session_duration_minutes, buffer_minutes_after, blocked_dates"
     )
     .eq("is_active", true);
   const coaches = coachesRaw as CoachProfileRow[] | null;
@@ -110,6 +111,7 @@ export async function getAvailableSlots(params: {
       existingBookings: coachBookings,
       rangeStart,
       rangeEnd,
+      blockedDates: coach.blocked_dates ?? [],
     });
 
     slots.push(...coachSlots);
@@ -139,8 +141,9 @@ function generateSlotsForCoach(params: {
   existingBookings: Array<{ scheduled_at: string; duration_minutes: number }>;
   rangeStart: Date;
   rangeEnd: Date;
+  blockedDates?: string[]; // YYYY-MM-DD
 }): TimeSlot[] {
-  const { coach, windows, existingBookings, rangeStart, rangeEnd } = params;
+  const { coach, windows, existingBookings, rangeStart, rangeEnd, blockedDates = [] } = params;
   const slots: TimeSlot[] = [];
   const durationMs = coach.session_duration_minutes * 60 * 1000;
   const bufferMs = coach.buffer_minutes_after * 60 * 1000;
@@ -157,10 +160,19 @@ function generateSlotsForCoach(params: {
   const current = new Date(rangeStart);
   current.setUTCHours(0, 0, 0, 0);
 
+  const blockedSet = new Set(blockedDates);
+
   while (current <= rangeEnd) {
     const dayOfWeek = current.getUTCDay(); // This is UTC day — close enough for availability
 
     const dayWindows = windows.filter((w) => w.day_of_week === dayOfWeek);
+
+    // Skip days the coach has blocked
+    const dateKey = current.toISOString().slice(0, 10); // YYYY-MM-DD UTC
+    if (blockedSet.has(dateKey)) {
+      current.setUTCDate(current.getUTCDate() + 1);
+      continue;
+    }
 
     for (const window of dayWindows) {
       const tz = window.timezone;

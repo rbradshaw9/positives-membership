@@ -130,7 +130,8 @@ export async function POST(req: NextRequest) {
         timeZone: timezone,
       });
 
-      const { subject, html, text } = renderCoachingConfirmationEmail({
+      // Member updated confirmation with clearer reschedule subject
+      const memberEmail = renderCoachingConfirmationEmail({
         recipientEmail: member.email,
         memberName: member.name ?? null,
         coachName: coachProfile?.display_name ?? "Your Coach",
@@ -142,9 +143,9 @@ export async function POST(req: NextRequest) {
 
       await sendPostmarkEmail({
         to: member.email,
-        subject: `Rescheduled: ${subject}`,
-        html,
-        text,
+        subject: `Your session has been moved to ${scheduledAtFormatted}`,
+        html: memberEmail.html,
+        text: memberEmail.text,
         tag: "coaching-reschedule",
         idempotencyKey: `reschedule-${bookingId}-${newScheduledAt}`,
       });

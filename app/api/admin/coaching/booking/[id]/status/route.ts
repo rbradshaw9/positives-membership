@@ -5,12 +5,16 @@
  *
  * Admin-only: update a booking's status (complete, noshow, cancel).
  * Body: { status: 'completed' | 'noshow' | 'canceled', adminNote?: string }
+ *
+ * Sends a member notification email when status is canceled or noshow.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
+import { sendPostmarkEmail } from "@/lib/email/postmark";
+import { renderCoachingCancellationEmail } from "@/lib/email/templates/coaching-confirmation-email";
 
 const ALLOWED_STATUSES = ["completed", "noshow", "canceled"] as const;
 type AllowedStatus = (typeof ALLOWED_STATUSES)[number];
@@ -32,6 +36,24 @@ export async function POST(
     }
 
     const supabase = asLooseSupabaseClient(getAdminClient());
+
+    // Load booking for email notification
+    type BookingRow = {
+      id: string;
+      scheduled_at: string;
+      duration_minutes: number;
+      timezone: string | null;
+      member: { email: string; name: string | null } | null;
+      coach: { display_name: string } | null;
+    };
+
+    const { data: bookingRaw } = await supabase
+      .from("coaching_booking")
+      .select("id, scheduled_at, duration_minutes, timezone, member:member(email, name), coach:coach_profile(display_name)")
+      .eq("id", bookingId)
+      .single();
+
+    const booking = bookingRaw as BookingRow | null;
 
     const updatePayload: Record<string, unknown> = {
       status,
@@ -55,6 +77,45 @@ export async function POST(
     if (error) {
       console.error("[admin/coaching/status] update error:", error);
       return NextResponse.json({ error: "Failed to update status" }, { status: 500 });
+    }
+
+    // Send member notification for cancelation or no-show (non-fatal)
+    if (booking && (status === "canceled" || status === "noshow") ) {
+      try {
+        const memberInfo = Array.isArray(booking.member) ? booking.member[0] : booking.member;
+        const coachInfo = Array.isArray(booking.coach) ? booking.coach[0] : booking.coach;
+        if (memberInfo?.email) {
+          const tz = booking.timezone ?? "America/New_York";
+          const scheduledAt = new Date(booking.scheduled_at).toLocaleString("en-US", {
+            weekday: "long", month: "long", day: "numeric",
+            hour: "numeric", minute: "2-digit",
+            timeZone: tz, timeZoneName: "short",
+          });
+
+          const { subject, html, text } = renderCoachingCancellationEmail({
+            recipientEmail: memberInfo.email,
+            memberName: memberInfo.name ?? null,
+            coachName: coachInfo?.display_name ?? "your coach",
+            scheduledAt,
+            // No-show: credit not restored. Canceled: admin decision, no credit restore.
+            sessionRestored: false,
+          });
+
+          await sendPostmarkEmail({
+            to: memberInfo.email,
+            subject: status === "noshow"
+              ? `Your coaching session was marked as a no-show`
+              : subject,
+            html,
+            text,
+            tag: `coaching-admin-${status}`,
+            idempotencyKey: `admin-${status}-${bookingId}`,
+          });
+        }
+      } catch (emailErr) {
+        console.error("[admin/coaching/status] email error:", emailErr);
+        // Non-fatal
+      }
     }
 
     return NextResponse.json({ success: true, status });

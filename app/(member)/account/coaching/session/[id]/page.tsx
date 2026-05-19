@@ -13,6 +13,7 @@ import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import { PageHeader } from "@/components/member/PageHeader";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { SessionRoomClient } from "./session-room-client";
+import { PostSessionPanel } from "@/components/coaching/PostSessionPanel";
 
 export const metadata = {
   title: "Coaching Session — Positives",
@@ -178,14 +179,18 @@ export default async function CoachingSessionPage({
                 scheduledAt={booking.scheduled_at}
                 durationMinutes={booking.duration_minutes}
                 coachName={coachProfile?.display_name ?? "Your coach"}
+                memberName={memberProfile?.name ?? null}
                 role={role}
               />
             ) : sessionPast ? (
-              <SurfaceCard padding="md" className="border border-border">
-                <p className="text-sm text-muted-foreground">
-                  This session&apos;s video room has closed.
-                </p>
-              </SurfaceCard>
+              // Session time has passed — show post-session panel for notes
+              // This is a server component so we render the client panel
+              <PostSessionPanel
+                bookingId={bookingId}
+                role={role}
+                coachName={coachProfile?.display_name}
+                memberName={memberProfile?.name ?? null}
+              />
             ) : (
               <SurfaceCard padding="md" className="border border-border">
                 <div className="flex flex-col gap-2">

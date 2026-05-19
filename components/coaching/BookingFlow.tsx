@@ -29,6 +29,7 @@ type BookingResult = {
   bookingId: string;
   coachName: string;
   scheduledAt: string;
+  durationMinutes: number;
 };
 
 type Step = "idle" | "loading" | "selecting" | "confirming" | "booked" | "error";
@@ -110,6 +111,7 @@ export function BookingFlow({ onBooked }: { onBooked?: (result: BookingResult) =
         bookingId: data.bookingId,
         coachName: data.coachName,
         scheduledAt: data.scheduledAt,
+        durationMinutes: data.durationMinutes ?? 60,
       };
       setResult(booked);
       setStep("booked");
@@ -159,9 +161,9 @@ export function BookingFlow({ onBooked }: { onBooked?: (result: BookingResult) =
 
   // ── Booked confirmation ───────────────────────────────────────────────────
   if (step === "booked" && result) {
-    // Build Google Calendar link
+    // Build Google Calendar link using actual session duration
     const sessionStartDate = new Date(result.scheduledAt);
-    const sessionEndDate = new Date(sessionStartDate.getTime() + 60 * 60 * 1000);
+    const sessionEndDate = new Date(sessionStartDate.getTime() + result.durationMinutes * 60 * 1000);
     const gCalFmt = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(".000", "");
     const gCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`Coaching Session with ${result.coachName}`)}&dates=${gCalFmt(sessionStartDate)}/${gCalFmt(sessionEndDate)}&details=${encodeURIComponent(`Join your session: https://positives.life/account/coaching/session/${result.bookingId}`)}`;
 

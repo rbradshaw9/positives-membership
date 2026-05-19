@@ -203,13 +203,6 @@ export default async function AccountCoachingPage({
         title="Coaching Sessions"
         subtitle="Work directly with Dr. Paul Jenkins. Track your session balance and book when you're ready."
         hero
-        right={
-          hasSessions ? (
-            <div className="hidden md:block">
-              <BookingFlow />
-            </div>
-          ) : undefined
-        }
       />
 
       <div className="member-container py-8 md:py-10 flex flex-col gap-8">

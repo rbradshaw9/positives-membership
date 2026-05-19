@@ -29,6 +29,7 @@ type Props = {
   coachId: string;
   initialWindows: Window[];
   sessionDurationMinutes: number;
+  initialBlockedDates?: string[]; // YYYY-MM-DD
 };
 
 function getTimezone() {
@@ -44,11 +45,12 @@ function minutesToLabel(minutes: number): string {
   return opt ? opt.label : `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, "0")}`;
 }
 
-export function AvailabilityEditor({ coachId, initialWindows, sessionDurationMinutes }: Props) {
+export function AvailabilityEditor({ coachId, initialWindows, sessionDurationMinutes, initialBlockedDates = [] }: Props) {
   const timezone = getTimezone();
 
-  // Group windows by day
   const [windows, setWindows] = useState<Window[]>(initialWindows);
+  const [blockedDates, setBlockedDates] = useState<string[]>(initialBlockedDates);
+  const [newBlockDate, setNewBlockDate] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -134,7 +136,7 @@ export function AvailabilityEditor({ coachId, initialWindows, sessionDurationMin
       const res = await fetch("/api/coaching/availability/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ coachId, windows }),
+        body: JSON.stringify({ coachId, windows, blockedDates }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -289,6 +291,59 @@ export function AvailabilityEditor({ coachId, initialWindows, sessionDurationMin
             </div>
           );
         })}
+      </div>
+
+      {/* Blackout dates */}
+      <div className="flex flex-col gap-3 rounded-xl border border-border p-4">
+        <div>
+          <p className="text-sm font-semibold text-foreground">Blackout dates</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Block specific dates — no slots will be shown to members on these days.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={newBlockDate}
+            onChange={(e) => setNewBlockDate(e.target.value)}
+            min={new Date().toISOString().slice(0, 10)}
+            className="rounded-lg border border-border bg-surface-tint/40 px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              if (newBlockDate && !blockedDates.includes(newBlockDate)) {
+                setBlockedDates((prev) => [...prev, newBlockDate].sort());
+                setNewBlockDate("");
+                setSaved(false);
+              }
+            }}
+            disabled={!newBlockDate}
+            className="rounded-lg border border-primary/30 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/5 transition-colors disabled:opacity-50"
+          >
+            + Block date
+          </button>
+        </div>
+        {blockedDates.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {blockedDates.map((d) => (
+              <span
+                key={d}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-xs font-medium text-muted-foreground"
+              >
+                {new Date(d + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                <button
+                  type="button"
+                  onClick={() => { setBlockedDates((prev) => prev.filter((x) => x !== d)); setSaved(false); }}
+                  className="text-muted-foreground/60 hover:text-destructive transition-colors"
+                  aria-label={`Remove blackout ${d}`}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Error */}
