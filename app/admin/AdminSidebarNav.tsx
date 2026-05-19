@@ -37,7 +37,8 @@ type IconName =
   | "members"
   | "message"
   | "ops"
-  | "roles";
+  | "roles"
+  | "team";
 
 function isActivePath(pathname: string, item: AdminNavItem) {
   if (item.exact) return pathname === item.href;
@@ -109,7 +110,7 @@ function Icon({ name }: { name: IconName }) {
     );
   }
 
-  if (name === "members" || name === "roles") {
+  if (name === "members" || name === "roles" || name === "team") {
     return (
       <svg {...common}>
         <path d="M7.5 1.25a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm-2 3a2 2 0 1 1 4 0 2 2 0 0 1-4 0Zm-2.25 8.5a4 4 0 0 1 4-4h.5a4 4 0 0 1 4 4 .5.5 0 0 1-1 0 3 3 0 0 0-3-3h-.5a3 3 0 0 0-3 3 .5.5 0 0 1-1 0Z" fill="currentColor" />
@@ -212,6 +213,7 @@ function buildNavGroups({
         ...(canModerateCommunity ? [{ href: "/admin/community", label: "Community", icon: "community" as const }] : []),
         { href: "/admin/ingestion", label: "Ingestion", icon: "ingestion" },
         { href: "/admin/integrations", label: "Integrations", icon: "integrations" },
+        ...(canManageRoles ? [{ href: "/admin/team", label: "Team", icon: "team" as const }] : []),
         ...(canManageRoles ? [{ href: "/admin/roles", label: "Roles", icon: "roles" as const }] : []),
       ],
     },
