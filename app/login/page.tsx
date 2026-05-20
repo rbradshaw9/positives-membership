@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { isBootstrapAdminEmail, memberHasAnyAdminRole } from "@/lib/auth/require-admin";
+import { resolvePostLoginDestination } from "@/lib/auth/resolve-post-login-destination";
 import { LoginClient } from "./login-client";
 
 export const metadata: Metadata = {
@@ -37,10 +37,7 @@ export default async function LoginPage({
   } = await supabase.auth.getUser();
 
   if (user) {
-    if (isBootstrapAdminEmail(user.email) || (await memberHasAnyAdminRole(user.id))) {
-      redirect("/admin");
-    }
-    redirect(next);
+    redirect(await resolvePostLoginDestination(supabase, next));
   }
 
   return <LoginClient />;

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { isBootstrapAdminEmail, memberHasAnyAdminRole } from "@/lib/auth/require-admin";
+import { resolvePostLoginDestination } from "@/lib/auth/resolve-post-login-destination";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -18,14 +18,10 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user && (isBootstrapAdminEmail(user.email) || await memberHasAnyAdminRole(user.id))) {
-        return NextResponse.redirect(`${origin}/admin`);
-      }
-      return NextResponse.redirect(`${origin}${next}`);
+      const destination = await resolvePostLoginDestination(supabase, next);
+      return NextResponse.redirect(`${origin}${destination}`);
     }
   }
 
-  // Auth failed — redirect to login with error context
   return NextResponse.redirect(`${origin}/login?error=auth_failed`);
 }

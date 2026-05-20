@@ -8,13 +8,49 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+type StatusConfig = {
+  heading: string;
+  body: string;
+  primaryLabel: string;
+  primaryHref: string;
+  secondaryLabel?: string;
+  secondaryHref?: string;
+};
+
+function getStatusConfig(status: string | null): StatusConfig {
+  switch (status) {
+    case "canceled":
+      return {
+        heading: "Your membership was canceled",
+        body: "You no longer have access to Positives. Rejoin any time to pick up where you left off.",
+        primaryLabel: "Rejoin Positives",
+        primaryHref: "/join",
+        secondaryLabel: "View billing history",
+        secondaryHref: "/account/billing",
+      };
+    case "past_due":
+      return {
+        heading: "There's an issue with your payment",
+        body: "Your last payment didn't go through. Update your payment method to restore access.",
+        primaryLabel: "Fix payment method",
+        primaryHref: "/account/billing",
+      };
+    case "inactive":
+    default:
+      return {
+        heading: "Your membership is inactive",
+        body: "Your account exists but your membership isn't active. Start a membership to access Positives.",
+        primaryLabel: "Start membership",
+        primaryHref: "/join",
+        secondaryLabel: "Manage billing",
+        secondaryHref: "/account/billing",
+      };
+  }
+}
+
 export default async function InactivePage() {
   const member = await requireMember();
-
-  const statusLabel =
-    member.subscription_status === "canceled"
-      ? "Your membership has been canceled."
-      : "Your membership is currently inactive.";
+  const cfg = getStatusConfig(member.subscription_status ?? null);
 
   return (
     <div className="min-h-dvh flex flex-col" style={{ background: "#F6F3EE" }}>
@@ -65,19 +101,20 @@ export default async function InactivePage() {
                 className="font-heading font-bold text-xl text-foreground"
                 style={{ letterSpacing: "-0.02em" }}
               >
-                Membership inactive
+                {cfg.heading}
               </h1>
               <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-                {statusLabel}
+                {cfg.body}
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Signed in as <span className="font-medium text-foreground">{member.email}</span>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Signed in as{" "}
+                <span className="font-medium text-foreground">{member.email}</span>
               </p>
             </div>
 
             <div className="flex flex-col gap-3">
               <Link
-                href="/join"
+                href={cfg.primaryHref}
                 className="w-full text-center px-6 py-3.5 rounded-full text-white font-medium text-sm transition-all"
                 style={{
                   background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
@@ -85,14 +122,16 @@ export default async function InactivePage() {
                   letterSpacing: "-0.01em",
                 }}
               >
-                Renew membership
+                {cfg.primaryLabel}
               </Link>
-              <Link
-                href="/account/billing"
-                className="w-full text-center px-6 py-3 rounded-full text-sm font-medium border border-border bg-background text-foreground hover:bg-muted transition-colors"
-              >
-                Manage billing
-              </Link>
+              {cfg.secondaryLabel && cfg.secondaryHref && (
+                <Link
+                  href={cfg.secondaryHref}
+                  className="w-full text-center px-6 py-3 rounded-full text-sm font-medium border border-border bg-background text-foreground hover:bg-muted transition-colors"
+                >
+                  {cfg.secondaryLabel}
+                </Link>
+              )}
             </div>
           </div>
 
@@ -110,10 +149,17 @@ export default async function InactivePage() {
         className="w-full py-6 text-center"
         style={{ borderTop: "1px solid rgba(221,215,207,0.5)" }}
       >
-        <div className="flex items-center justify-center gap-4 text-xs" style={{ color: "#9AA0A8" }}>
-          <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
+        <div
+          className="flex items-center justify-center gap-4 text-xs"
+          style={{ color: "#9AA0A8" }}
+        >
+          <Link href="/privacy" className="hover:text-foreground transition-colors">
+            Privacy
+          </Link>
           <span aria-hidden="true">·</span>
-          <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
+          <Link href="/terms" className="hover:text-foreground transition-colors">
+            Terms
+          </Link>
           <span aria-hidden="true">·</span>
           <span>© {new Date().getFullYear()} Positives</span>
         </div>
