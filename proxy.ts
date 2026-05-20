@@ -29,28 +29,32 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/account");
 
   const isAdminRoute = pathname.startsWith("/admin");
-  const isAuthRoute = pathname.startsWith("/auth");
   const requiresAuth = isMemberRoute || isAdminRoute;
-  const needsSessionRefresh = requiresAuth || isAuthRoute;
 
   const hasSupabaseCookie = request.cookies
     .getAll()
     .some(({ name }) => name.startsWith("sb-"));
 
-  if (!needsSessionRefresh) {
+  // Anonymous on a protected route → straight to login, no Supabase call.
+  if (requiresAuth && !hasSupabaseCookie) {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    loginUrl.searchParams.set("next", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // Anonymous on a public route → nothing to refresh.
+  if (!hasSupabaseCookie) {
     const publicResponse = NextResponse.next({ request });
     publicResponse.headers.set("x-pathname", pathname);
     return publicResponse;
   }
 
-  if (requiresAuth && !hasSupabaseCookie) {
-    const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = "/login";
-    // Preserve the intended destination for post-login redirect
-    loginUrl.searchParams.set("next", pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-
+  // A session cookie is present — ALWAYS refresh + persist it, on every route.
+  // @supabase/ssr sessions decay if the middleware doesn't refresh them: a
+  // page server-component can rotate the refresh token but cannot persist the
+  // new cookie (read-only context). Skipping refresh on routes like /inactive
+  // silently logs the user out on their next request. So refresh everywhere.
   const { supabaseResponse, user } = await updateSession(request);
 
   if ((isMemberRoute || isAdminRoute) && !user) {
