@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { formatSupabaseAuthError } from "@/lib/auth/client-error";
-import { resolvePostLoginDestination } from "@/lib/auth/post-login-destination";
+import { serverResolvePostLoginDestination } from "@/lib/auth/post-login-destination-server";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import Link from "next/link";
@@ -49,7 +49,7 @@ function LoginForm() {
       return;
     }
 
-    const destination = await resolvePostLoginDestination(supabase, next);
+    const destination = await serverResolvePostLoginDestination(next);
     window.location.assign(destination);
   }
 

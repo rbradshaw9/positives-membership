@@ -44,7 +44,7 @@ export const requireAdmin = cache(async function requireAdmin() {
   return user;
 });
 
-const memberHasAnyAdminRole = cache(async function memberHasAnyAdminRole(
+export const memberHasAnyAdminRole = cache(async function memberHasAnyAdminRole(
   memberId: string
 ): Promise<boolean> {
   const supabase = asLooseSupabaseClient(getAdminClient());
