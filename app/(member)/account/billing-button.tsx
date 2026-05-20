@@ -1,9 +1,10 @@
-"use client";
-
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { track } from "@/lib/analytics/ga";
+
+/**
+ * app/(member)/account/billing-button.tsx
+ * Links to the in-app billing hub (/account/billing) — payment method,
+ * invoices, plan. Cancellation lives at /account/cancel.
+ */
 
 type BillingButtonProps = {
   label?: string;
@@ -12,46 +13,21 @@ type BillingButtonProps = {
 };
 
 export function BillingButton({
-  label = "Open billing center",
-  description = "Update payment method and view invoices",
+  label = "Manage billing",
+  description = "Payment method, plan, and invoice history",
   showCancelLink = true,
 }: BillingButtonProps) {
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
-
-  async function handleClick() {
-    setLoading(true);
-    const res = await fetch("/api/stripe/billing-portal", { method: "POST" });
-    const data = await res.json();
-    if (data?.url) {
-      track("billing_portal_opened", {
-        source_path: "/account",
-      });
-      window.location.href = data.url;
-    } else if (data?.code === "billing_unavailable") {
-      router.replace("/account?error=billing_unavailable");
-    } else {
-      setLoading(false);
-    }
-  }
-
   return (
     <div className="flex flex-col gap-2">
-      <button
-        type="button"
-        onClick={handleClick}
-        disabled={loading}
-        className="w-full text-left bg-card rounded-2xl border border-border px-6 py-5 flex items-center justify-between gap-4 hover:bg-muted/30 transition-colors group disabled:opacity-50"
+      <Link
+        href="/account/billing"
+        className="w-full text-left bg-card rounded-2xl border border-border px-6 py-5 flex items-center justify-between gap-4 hover:bg-muted/30 transition-colors group"
         style={{ boxShadow: "var(--shadow-medium)" }}
         aria-label={label}
       >
         <div>
-          <p className="text-sm font-semibold text-foreground">
-            {loading ? "Loading..." : label}
-          </p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {description}
-          </p>
+          <p className="text-sm font-semibold text-foreground">{label}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
         </div>
         <svg
           width="16"
@@ -67,7 +43,7 @@ export function BillingButton({
         >
           <path d="M5 12h14M12 5l7 7-7 7" />
         </svg>
-      </button>
+      </Link>
       {showCancelLink && (
         <p className="text-xs text-muted-foreground text-right pr-1">
           Want to cancel?{" "}

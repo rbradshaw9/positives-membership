@@ -7,10 +7,8 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { config } from "@/lib/config";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
-import { createBillingPortalSessionUrl } from "@/server/services/stripe/create-billing-portal-session";
 
 type ActionResult = { error?: string; success?: true };
 const MEMBER_AVATAR_BUCKET = "member-avatars";
@@ -213,50 +211,6 @@ export async function updateTimezone(
 
   revalidatePath("/account");
   return { success: true };
-}
-
-/**
- * redirectToBillingPortal — creates a Stripe Customer Portal session for the
- * member's stripe_customer_id and redirects them there.
- *
- * Fails gracefully: returns error string rather than throwing.
- */
-export async function redirectToBillingPortal(): Promise<void> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
-
-  const { data: member } = await supabase
-    .from("member")
-    .select("stripe_customer_id")
-    .eq("id", user.id)
-    .single();
-
-  if (!member?.stripe_customer_id) {
-    // No Stripe customer yet — should not normally happen for active members
-    console.error("[Account] No stripe_customer_id for member:", user.id);
-    redirect("/account?error=billing_unavailable");
-  }
-
-  const portal = await createBillingPortalSessionUrl(
-    member.stripe_customer_id,
-    `${config.app.url}/account`
-  );
-
-  if (portal.ok) {
-    redirect(portal.url);
-  }
-
-  if (portal.reason === "customer_missing") {
-    console.warn("[Account] Stripe customer is missing for member:", user.id);
-    redirect("/account?error=billing_unavailable");
-  }
-
-  console.error("[Account] Failed to create billing portal session:", portal.message);
-  redirect("/account?error=billing_unavailable");
 }
 
 /**
