@@ -176,7 +176,10 @@ export const requireAdminPermission = cache(async function requireAdminPermissio
   const allowed = await hasAdminPermission(user.id, permission, user.email);
 
   if (!allowed) {
-    redirect("/admin/members?error=permission_denied");
+    // Redirect to /admin (not /admin/members) — /admin/members requires
+    // members.read itself, so denying members.read there would loop forever.
+    // /admin's own guard routes coaches onward to /admin/coaching.
+    redirect("/admin?error=permission_denied");
   }
 
   return user;
