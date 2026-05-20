@@ -13,7 +13,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireMember } from "@/lib/auth/require-member";
+import { getSession } from "@/lib/auth/get-session";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import {
@@ -27,7 +27,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const member = await requireMember();
+    // Use raw session — coaches don't need a member subscription to join sessions
+    const user = await getSession();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const { id: bookingId } = await params;
 
     const supabase = asLooseSupabaseClient(getAdminClient());
@@ -59,9 +63,9 @@ export async function GET(
     }
 
     // Determine if the requester is the member or the coach
-    const isMember = booking.member_id === member.id;
+    const isMember = booking.member_id === user.id;
     const coachProfile = Array.isArray(booking.coach) ? booking.coach[0] : booking.coach;
-    const isCoach = coachProfile?.member_id === member.id;
+    const isCoach = coachProfile?.member_id === user.id;
 
     if (!isMember && !isCoach) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
@@ -118,11 +122,11 @@ export async function GET(
     const role = isCoach ? "host" : "guest";
     const participantName = isCoach
       ? coachProfile?.display_name ?? "Coach"
-      : member.email ?? "Member";
+      : user.email ?? "Member";
 
     const token = await generateJoinToken({
       roomName,
-      participantIdentity: `${role}-${member.id}`,
+      participantIdentity: `${role}-${user.id}`,
       participantName,
       role,
       metadata: JSON.stringify({ bookingId, role }),

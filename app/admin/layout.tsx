@@ -117,9 +117,11 @@ export default async function AdminLayout({
             Positives
           </span>
           <div className="admin-mobile-header__actions">
-            <Link href="/today" className="admin-mobile-return-link">
-              View Platform
-            </Link>
+            {!isCoachOnly && (
+              <Link href="/today" className="admin-mobile-return-link">
+                View Platform
+              </Link>
+            )}
             <span className="admin-sidebar__badge">Admin</span>
           </div>
         </header>
