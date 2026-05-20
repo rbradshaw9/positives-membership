@@ -40,26 +40,14 @@ export async function resolveAudioUrl(
   //    AWS_SECRET_ACCESS_KEY + S3_BUCKET_NAME env vars.
   //    Implement signed URL generation in Milestone 06 when S3 creds are available.
   if (s3Key) {
-    const hasS3Credentials =
-      process.env.AWS_ACCESS_KEY_ID &&
-      process.env.AWS_SECRET_ACCESS_KEY &&
-      process.env.AWS_REGION &&
-      process.env.S3_BUCKET_NAME;
-
-    if (hasS3Credentials) {
-      // TODO (Milestone 06): generate a presigned URL using @aws-sdk/s3-request-presigner
-      // const { S3Client, GetObjectCommand } = await import("@aws-sdk/client-s3");
-      // const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");
-      // const client = new S3Client({ region: process.env.AWS_REGION });
-      // return await getSignedUrl(client, new GetObjectCommand({
-      //   Bucket: process.env.S3_BUCKET_NAME,
-      //   Key: s3Key,
-      // }), { expiresIn: 3600 });
-      console.info(
-        `[resolveAudioUrl] S3 key present (${s3Key}) but signed URL generation not yet implemented. Add implementation in Milestone 06.`
-      );
+    const bucket = process.env.S3_BUCKET_NAME;
+    const region = process.env.AWS_REGION;
+    if (bucket && region) {
+      // Bucket is public-read — construct a direct URL (no signing needed).
+      // When member-only protection is required, swap this for a presigned URL
+      // using @aws-sdk/s3-request-presigner (expiresIn: 3600).
+      return `https://${bucket}.s3.${region}.amazonaws.com/${s3Key}`;
     }
-    // S3 key exists but can't resolve — fall through to null.
   }
 
   return null;

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { AffiliateCTA } from "@/components/affiliate/AffiliateCTA";
 import { UpgradeCard } from "./upgrade-card";
+import { PodcastFeedSection } from "./podcast-feed-section";
 import { signOut } from "./actions";
 import { getPositivesPlanName } from "@/lib/plans";
 import { requireMember } from "@/lib/auth/require-member";
@@ -152,6 +153,14 @@ export default async function AccountPage({
   const status = member.subscription_status;
   const memberName = member.name?.trim() || "Member";
   const initials = memberName.charAt(0).toUpperCase();
+  const supabaseForToken = asLooseSupabaseClient(await createClient());
+  const { data: podcastData } = await supabaseForToken
+    .from("member")
+    .select<{ podcast_token: string }>("podcast_token")
+    .eq("id", member.id)
+    .single();
+  const podcastToken = podcastData?.podcast_token ?? null;
+
   const [billingSummary, activeCourseEntitlementCount] = await Promise.all([
     getAccountBillingSummary(member.stripe_customer_id),
     getActiveCourseEntitlementCount(member.id),
@@ -539,6 +548,15 @@ export default async function AccountPage({
                 </div>
               </SurfaceCard>
             </section>
+
+            {podcastToken && hasSubscriptionAccess && (
+              <section aria-labelledby="section-podcast">
+                <SectionLabel id="section-podcast">Daily Practice Podcast</SectionLabel>
+                <PodcastFeedSection
+                  feedUrl={`${process.env.NEXT_PUBLIC_APP_URL}/api/podcast/${podcastToken}`}
+                />
+              </section>
+            )}
 
             <section aria-labelledby="section-referral">
               <SectionLabel id="section-referral">Affiliate Program</SectionLabel>
