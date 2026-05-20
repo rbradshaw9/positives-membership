@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { loadStripe } from "@stripe/stripe-js";
 import {
   Elements,
-  PaymentElement,
+  CardElement,
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
@@ -13,14 +13,18 @@ import {
 /**
  * app/account/billing/billing-client.tsx
  *
- * Card-on-file display + in-page card update via Stripe Payment Element.
+ * Card-on-file display + in-page card update.
+ *
+ * Uses Stripe's Card Element — a single, card-only input (number, expiry,
+ * CVC, ZIP). No accordion, no Link, no bank options — the right tool for
+ * a "update your card" flow. 3DS is handled inline by confirmCardSetup.
  *
  * Flow:
  *   1. Show current card (or "no card on file")
  *   2. "Update card" → POST /api/stripe/setup-intent → clientSecret
- *   3. Render <PaymentElement> inside <Elements>
- *   4. confirmSetup (handles 3DS) → POST /api/stripe/set-default-payment-method
- *   5. router.refresh() to show the new card
+ *   3. CardElement → confirmCardSetup (handles 3DS inline)
+ *   4. POST /api/stripe/set-default-payment-method
+ *   5. router.refresh()
  */
 
 const stripePromise = loadStripe(
@@ -50,75 +54,10 @@ const BRAND_LABEL: Record<string, string> = {
 };
 
 export function BillingClient({ currentCard, token }: Props) {
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
-
-  // Handle return from a 3DS redirect: Stripe appends ?setup_intent=...
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const si = params.get("setup_intent");
-    const status = params.get("redirect_status");
-    if (si && status === "succeeded") {
-      // Finalise: set the just-confirmed card as default
-      void finalizeCard(si, token).then((ok) => {
-        if (ok) {
-          // Strip the Stripe params and refresh
-          const clean = new URL(window.location.href);
-          ["setup_intent", "setup_intent_client_secret", "redirect_status"].forEach((k) =>
-            clean.searchParams.delete(k)
-          );
-          window.history.replaceState({}, "", clean.toString());
-          router.refresh();
-        }
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  async function startUpdate() {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/stripe/setup-intent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Could not start card update");
-      setClientSecret(data.clientSecret);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  if (clientSecret) {
-    return (
-      <Elements
-        stripe={stripePromise}
-        options={{
-          clientSecret,
-          appearance: {
-            theme: "stripe",
-            variables: {
-              colorPrimary: "#2F6FED",
-              borderRadius: "10px",
-              fontFamily: "system-ui, sans-serif",
-            },
-          },
-        }}
-      >
-        <CardForm token={token} onCancel={() => setClientSecret(null)} />
-      </Elements>
-    );
-  }
+  const [editing, setEditing] = useState(false);
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
       {currentCard ? (
         <div className="flex items-center gap-3">
           <div className="flex-shrink-0 w-11 h-7 rounded-md border border-border bg-surface-tint/50 flex items-center justify-center">
@@ -140,29 +79,38 @@ export function BillingClient({ currentCard, token }: Props) {
         <p className="text-sm text-muted-foreground">No card on file.</p>
       )}
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
-
-      <button
-        type="button"
-        onClick={startUpdate}
-        disabled={loading}
-        className="self-start rounded-full px-5 py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-60"
-        style={{
-          background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
-          boxShadow: "0 4px 14px rgba(47,111,237,0.22)",
-        }}
-      >
-        {loading ? "Loading…" : currentCard ? "Update card" : "Add a card"}
-      </button>
+      {editing ? (
+        <Elements stripe={stripePromise}>
+          <CardForm
+            token={token}
+            onDone={() => setEditing(false)}
+            onCancel={() => setEditing(false)}
+          />
+        </Elements>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          className="self-start rounded-full px-5 py-2.5 text-sm font-semibold text-white transition-all"
+          style={{
+            background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
+            boxShadow: "0 4px 14px rgba(47,111,237,0.22)",
+          }}
+        >
+          {currentCard ? "Update card" : "Add a card"}
+        </button>
+      )}
     </div>
   );
 }
 
 function CardForm({
   token,
+  onDone,
   onCancel,
 }: {
   token: string | null;
+  onDone: () => void;
   onCancel: () => void;
 }) {
   const stripe = useStripe();
@@ -175,44 +123,73 @@ function CardForm({
     e.preventDefault();
     if (!stripe || !elements) return;
 
+    const cardElement = elements.getElement(CardElement);
+    if (!cardElement) return;
+
     setSubmitting(true);
     setError(null);
 
-    const returnUrl = new URL(window.location.href);
-    if (token) returnUrl.searchParams.set("token", token);
+    try {
+      // 1. Create the SetupIntent
+      const siRes = await fetch("/api/stripe/setup-intent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+      const siData = await siRes.json();
+      if (!siRes.ok) throw new Error(siData.error ?? "Could not start card update");
 
-    const { error: confirmError, setupIntent } = await stripe.confirmSetup({
-      elements,
-      confirmParams: { return_url: returnUrl.toString() },
-      redirect: "if_required",
-    });
-
-    if (confirmError) {
-      setError(confirmError.message ?? "Your card could not be saved.");
-      setSubmitting(false);
-      return;
-    }
-
-    // No 3DS redirect needed — finalise inline
-    if (setupIntent?.status === "succeeded") {
-      const ok = await finalizeCard(setupIntent.id, token);
-      if (!ok) {
-        setError("Card saved but could not be set as default. Contact support.");
-        setSubmitting(false);
-        return;
+      // 2. Confirm the card (handles 3DS inline)
+      const { error: confirmError, setupIntent } = await stripe.confirmCardSetup(
+        siData.clientSecret,
+        { payment_method: { card: cardElement } }
+      );
+      if (confirmError) {
+        throw new Error(confirmError.message ?? "Your card could not be saved.");
       }
-      router.refresh();
-      return;
-    }
+      if (setupIntent?.status !== "succeeded") {
+        throw new Error("Card confirmation didn't complete. Please try again.");
+      }
 
-    setError("Card confirmation didn't complete. Please try again.");
-    setSubmitting(false);
+      // 3. Set it as the default for the customer + subscription
+      const setRes = await fetch("/api/stripe/set-default-payment-method", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, setupIntentId: setupIntent.id }),
+      });
+      if (!setRes.ok) {
+        throw new Error("Card saved but could not be set as default. Contact support.");
+      }
+
+      onDone();
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setSubmitting(false);
+    }
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <PaymentElement />
+      <div className="rounded-xl border border-border bg-background px-4 py-3.5">
+        <CardElement
+          options={{
+            hidePostalCode: false,
+            style: {
+              base: {
+                fontSize: "15px",
+                color: "#121417",
+                fontFamily: "system-ui, sans-serif",
+                "::placeholder": { color: "#9AA0A8" },
+              },
+              invalid: { color: "#dc2626" },
+            },
+          }}
+        />
+      </div>
+
       {error && <p className="text-sm text-destructive">{error}</p>}
+
       <div className="flex gap-2">
         <button
           type="submit"
@@ -236,17 +213,4 @@ function CardForm({
       </div>
     </form>
   );
-}
-
-async function finalizeCard(setupIntentId: string, token: string | null): Promise<boolean> {
-  try {
-    const res = await fetch("/api/stripe/set-default-payment-method", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, setupIntentId }),
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
 }
