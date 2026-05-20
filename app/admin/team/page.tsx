@@ -7,6 +7,7 @@ import {
   removeAdminRole,
   setPermissionOverride,
   removePermissionOverride,
+  setPlatformAccess,
 } from "./actions";
 
 export const metadata = {
@@ -20,6 +21,8 @@ const SUCCESS_COPY: Record<string, string> = {
   role_removed: "Role removed.",
   override_set: "Permission override saved.",
   override_removed: "Override removed — member is back to role defaults.",
+  platform_access_granted: "Platform access granted — they can now access the member app.",
+  platform_access_revoked: "Platform access revoked.",
 };
 
 const ERROR_COPY: Record<string, string> = {
@@ -181,6 +184,29 @@ export default async function AdminTeamPage({ searchParams }: { searchParams: Se
                         </div>
                       ))}
                     </div>
+                  </div>
+
+                  {/* Platform access */}
+                  <div className="admin-team-section">
+                    <p className="admin-team-section__label">Member platform access</p>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Allow this staff member to access /today and the full member platform without a paid subscription. Off by default.
+                    </p>
+                    <form action={setPlatformAccess} className="admin-team-inline-form">
+                      <input type="hidden" name="memberId" value={member.memberId} />
+                      <input type="hidden" name="grant" value={member.platformAccess ? "false" : "true"} />
+                      <button
+                        type="submit"
+                        className={`admin-btn admin-btn--sm ${member.platformAccess ? "admin-btn--ghost" : "admin-btn--primary"}`}
+                      >
+                        {member.platformAccess ? "Revoke platform access" : "Grant platform access"}
+                      </button>
+                      {member.platformAccess && (
+                        <span className="admin-team-override-kind admin-team-override-kind--grant">
+                          Platform access active
+                        </span>
+                      )}
+                    </form>
                   </div>
 
                   {/* Permission overrides */}

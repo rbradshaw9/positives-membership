@@ -4,7 +4,7 @@
  * Admin coaching overview — coaches, upcoming bookings, session pack usage.
  */
 
-import { requireAdmin } from "@/lib/auth/require-admin";
+import { requireAdminPermission } from "@/lib/auth/require-admin";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import Link from "next/link";
@@ -117,7 +117,7 @@ async function getCoachingAdminData() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function AdminCoachingPage() {
-  await requireAdmin();
+  await requireAdminPermission("coaching.manage");
   const { coaches, upcomingBookings, recentBookings, membersWithSessions, totalSessionsRemaining } =
     await getCoachingAdminData();
 

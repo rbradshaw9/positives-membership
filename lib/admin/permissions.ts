@@ -11,7 +11,8 @@ export type AdminPermissionKey =
   | "notes.write"
   | "documents.write"
   | "roles.manage"
-  | "audit.read";
+  | "audit.read"
+  | "coaching.manage";
 
 export const ADMIN_PERMISSION_OPTIONS: Array<{
   key: AdminPermissionKey;
@@ -82,6 +83,11 @@ export const ADMIN_PERMISSION_OPTIONS: Array<{
     key: "audit.read",
     label: "Read audit log",
     description: "View admin mutation history.",
+  },
+  {
+    key: "coaching.manage",
+    label: "Manage coaching",
+    description: "View and manage coaching sessions, bookings, and coach profiles.",
   },
 ];
 

@@ -10,6 +10,7 @@ export type AdminTeamMemberRow = {
   roles: Array<{ id: string; key: string; name: string }>;
   overrides: Array<{ permission: AdminPermissionKey; allowed: boolean }>;
   lastSeenAt: string | null;
+  platformAccess: boolean;
 };
 
 export async function getAdminTeamMembers(): Promise<AdminTeamMemberRow[]> {
@@ -20,10 +21,11 @@ export async function getAdminTeamMembers(): Promise<AdminTeamMemberRow[]> {
     .select<
       {
         member_id: string;
+        platform_access: boolean;
         member: { email: string; name: string | null; avatar_url: string | null; last_seen_at: string | null } | null;
         admin_role: { id: string; key: string; name: string } | null;
       }[]
-    >("member_id, member(email, name, avatar_url, last_seen_at), admin_role(id, key, name)")
+    >("member_id, platform_access, member(email, name, avatar_url, last_seen_at), admin_role(id, key, name)")
     .order("member_id");
 
   if (error) {
@@ -38,6 +40,8 @@ export async function getAdminTeamMembers(): Promise<AdminTeamMemberRow[]> {
     const existing = byMember.get(row.member_id);
     if (existing) {
       existing.roles.push(row.admin_role);
+      // platformAccess is true if ANY role assignment has it enabled
+      if (row.platform_access) existing.platformAccess = true;
     } else {
       byMember.set(row.member_id, {
         memberId: row.member_id,
@@ -47,6 +51,7 @@ export async function getAdminTeamMembers(): Promise<AdminTeamMemberRow[]> {
         roles: [row.admin_role],
         overrides: [],
         lastSeenAt: row.member.last_seen_at,
+        platformAccess: Boolean(row.platform_access),
       });
     }
   }

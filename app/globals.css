@@ -1471,12 +1471,31 @@ select.member-input { cursor: pointer; }
   flex-shrink: 0;
 }
 
+.admin-sidebar__footer-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  overflow: hidden;
+  min-width: 0;
+}
+
 .admin-sidebar__user-email {
   font-size: 0.6875rem;
   color: rgba(255, 255, 255, 0.38);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.admin-sidebar__sign-out {
+  font-size: 0.625rem;
+  color: rgba(255, 255, 255, 0.28);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.admin-sidebar__sign-out:hover {
+  color: rgba(255, 255, 255, 0.6);
 }
 
 /* ── Main content area ────────────────────────────────────────────────────── */

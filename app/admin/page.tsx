@@ -5,7 +5,8 @@
  */
 
 import Link from "next/link";
-import { requireAdminPermission } from "@/lib/auth/require-admin";
+import { redirect } from "next/navigation";
+import { isBootstrapAdminEmail, memberHasAdminRoleKey, requireAdmin, requireAdminPermission } from "@/lib/auth/require-admin";
 import { getContentReadiness } from "@/lib/queries/get-content-readiness";
 import { getAdminMemberOpsSnapshot } from "@/lib/queries/get-admin-members";
 import type { ReadinessAlert } from "@/lib/queries/get-content-readiness";
@@ -92,6 +93,15 @@ const tiles = [
 ];
 
 export default async function AdminPage() {
+  // Coaches don't have members.read — send them straight to their workspace.
+  // requireAdmin is cached via React cache() so this is a no-op if layout ran first.
+  const adminUser = await requireAdmin();
+  if (
+    !isBootstrapAdminEmail(adminUser.email) &&
+    (await memberHasAdminRoleKey(adminUser.id, "coach"))
+  ) {
+    redirect("/admin/coaching");
+  }
   await requireAdminPermission("members.read");
 
   const [alerts, memberOps] = await Promise.all([

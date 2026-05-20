@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getAdminPermissionSet, requireAdmin } from "@/lib/auth/require-admin";
+import { getAdminPermissionSet, isBootstrapAdminEmail, memberHasAdminRoleKey, requireAdmin } from "@/lib/auth/require-admin";
 import { config } from "@/lib/config";
 import { BetaFeedbackWidget } from "@/components/member/BetaFeedbackWidget";
 import { getAdminClient } from "@/lib/supabase/admin";
@@ -34,6 +34,12 @@ export default async function AdminLayout({
   const canReadMembers = permissionSet.has("members.read");
   const canManageRoles = permissionSet.has("roles.manage");
   const canModerateCommunity = permissionSet.has("community.moderate");
+  const canManageCoaching = permissionSet.has("coaching.manage");
+  const isCoachOnly =
+    canManageCoaching &&
+    !canReadMembers &&
+    !isBootstrapAdminEmail(user.email) &&
+    (await memberHasAdminRoleKey(user.id, "coach"));
 
   const showBetaFeedback =
     config.app.betaFeedbackEnabled &&
@@ -65,34 +71,43 @@ export default async function AdminLayout({
           canReadMembers={canReadMembers}
           canManageRoles={canManageRoles}
           canModerateCommunity={canModerateCommunity}
+          canManageCoaching={canManageCoaching}
+          isCoachOnly={isCoachOnly}
         />
 
-        <div className="admin-sidebar__return">
-          <Link href="/today" className="admin-member-return-link">
-            <svg
-              width="15"
-              height="15"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M3 12h14" />
-              <path d="m10 5 7 7-7 7" />
-              <path d="M21 5v14" />
-            </svg>
-            <span>View Member Platform</span>
-          </Link>
-        </div>
+        {!isCoachOnly && (
+          <div className="admin-sidebar__return">
+            <Link href="/today" className="admin-member-return-link">
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M3 12h14" />
+                <path d="m10 5 7 7-7 7" />
+                <path d="M21 5v14" />
+              </svg>
+              <span>View Member Platform</span>
+            </Link>
+          </div>
+        )}
 
         <div className="admin-sidebar__footer">
           <div className="admin-sidebar__avatar">
             {user.email?.charAt(0).toUpperCase()}
           </div>
-          <span className="admin-sidebar__user-email">{user.email}</span>
+          <div className="admin-sidebar__footer-identity">
+            <span className="admin-sidebar__user-email">{user.email}</span>
+            <Link href="/auth/sign-out" className="admin-sidebar__sign-out">
+              Sign out
+            </Link>
+          </div>
         </div>
       </aside>
 

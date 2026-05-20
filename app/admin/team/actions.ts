@@ -154,3 +154,37 @@ export async function removePermissionOverride(formData: FormData) {
   revalidatePath("/admin/team");
   redirect(`/admin/team?success=override_removed`);
 }
+
+/** Grant or revoke member platform access for a staff account. */
+export async function setPlatformAccess(formData: FormData) {
+  const actor = await requireAdminPermission("roles.manage");
+  const memberId = clean(formData.get("memberId"));
+  const grant = formData.get("grant") === "true";
+
+  if (!memberId) redirect("/admin/team?error=missing_fields");
+
+  const supabase = asLooseSupabaseClient(getAdminClient());
+
+  // Update all role assignments for this member
+  const { error } = await supabase
+    .from("admin_user_role")
+    .update({ platform_access: grant })
+    .eq("member_id", memberId!);
+
+  if (error) {
+    console.error("[admin/team] platform_access update failed:", error.message);
+    redirect("/admin/team?error=assign_failed");
+  }
+
+  await supabase.from("member_audit_log").insert({
+    actor_member_id: actor.id,
+    target_member_id: memberId!,
+    action: grant ? "admin_user_role.platform_access_granted" : "admin_user_role.platform_access_revoked",
+    target_type: "admin_user_role",
+    target_id: memberId!,
+    metadata: { grant },
+  });
+
+  revalidatePath("/admin/team");
+  redirect(`/admin/team?success=${grant ? "platform_access_granted" : "platform_access_revoked"}`);
+}

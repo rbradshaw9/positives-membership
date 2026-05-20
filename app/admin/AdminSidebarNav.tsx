@@ -8,6 +8,8 @@ type AdminSidebarNavProps = {
   canReadMembers: boolean;
   canManageRoles: boolean;
   canModerateCommunity: boolean;
+  canManageCoaching: boolean;
+  isCoachOnly: boolean;
 };
 
 type AdminNavItem = {
@@ -162,7 +164,23 @@ function buildNavGroups({
   canReadMembers,
   canManageRoles,
   canModerateCommunity,
+  canManageCoaching,
+  isCoachOnly,
 }: AdminSidebarNavProps): AdminNavGroup[] {
+  // Coaches get a focused view — just what they need
+  if (isCoachOnly) {
+    return [
+      {
+        id: "workspace",
+        label: "Workspace",
+        items: [
+          { href: "/admin", label: "Overview", icon: "home", exact: true },
+          { href: "/admin/coaching", label: "Coaching", icon: "coaching" },
+        ],
+      },
+    ];
+  }
+
   return [
     {
       id: "workspace",
@@ -176,16 +194,8 @@ function buildNavGroups({
       id: "content",
       label: "Content",
       items: [
-        {
-          href: "/admin/months",
-          label: "Practice Content",
-          icon: "calendar",
-        },
-        {
-          href: "/admin/courses",
-          label: "Courses",
-          icon: "content",
-        },
+        { href: "/admin/months", label: "Practice Content", icon: "calendar" },
+        { href: "/admin/courses", label: "Courses", icon: "content" },
         {
           href: "/admin/events",
           label: "Events",
@@ -208,7 +218,7 @@ function buildNavGroups({
       label: "Management",
       items: [
         ...(canReadMembers ? [{ href: "/admin/members", label: "Members", icon: "members" as const }] : []),
-        ...(canReadMembers ? [{ href: "/admin/coaching", label: "Coaching", icon: "coaching" as const }] : []),
+        ...(canManageCoaching ? [{ href: "/admin/coaching", label: "Coaching", icon: "coaching" as const }] : []),
         ...(canReadMembers ? [{ href: "/admin/beta-feedback", label: "Feedback", icon: "message" as const }] : []),
         ...(canModerateCommunity ? [{ href: "/admin/community", label: "Community", icon: "community" as const }] : []),
         { href: "/admin/ingestion", label: "Ingestion", icon: "ingestion" },
