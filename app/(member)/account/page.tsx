@@ -7,6 +7,7 @@ import { SectionLabel } from "@/components/member/SectionLabel";
 import { Button } from "@/components/ui/Button";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { AffiliateCTA } from "@/components/affiliate/AffiliateCTA";
+import { UpgradeCard } from "./upgrade-card";
 import { signOut } from "./actions";
 import { getPositivesPlanName } from "@/lib/plans";
 import { requireMember } from "@/lib/auth/require-member";
@@ -163,12 +164,15 @@ export default async function AccountPage({
   const invoiceLoadFailed = billingSummary.invoiceLoadFailed === true;
   const hasBillingPortal = billingPortalAvailable;
   const billingUnavailable = resolvedSearchParams.error === "billing_unavailable";
+  const retentionAccepted = resolvedSearchParams.retention === "accepted";
+  const justUpgraded = resolvedSearchParams.upgraded === "true";
   const joinedLabel = member.created_at
     ? new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(
         new Date(member.created_at)
       )
     : "Recently";
   const hasSubscriptionAccess = hasActiveMemberAccess(status);
+  const showUpgradeCard = tier === "level_1" && hasSubscriptionAccess;
   const hasCourseOnlyAccess = !hasSubscriptionAccess && activeCourseEntitlementCount > 0;
   const membershipState = getMembershipStateCopy({
     status,
@@ -298,6 +302,22 @@ export default async function AccountPage({
             </div>
           </div>
         </SurfaceCard>
+
+        {retentionAccepted && (
+          <SurfaceCard padding="md" className="border border-secondary/20 bg-secondary/5">
+            <p className="text-sm font-semibold text-foreground">Discount applied — thank you for staying.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Your discount is active and will appear on your next invoice.</p>
+          </SurfaceCard>
+        )}
+
+        {justUpgraded && (
+          <SurfaceCard padding="md" className="border border-secondary/20 bg-secondary/5">
+            <p className="text-sm font-semibold text-foreground">Welcome to Positives Plus!</p>
+            <p className="mt-1 text-sm text-muted-foreground">Your upgrade is live. The prorated charge will appear on your next invoice.</p>
+          </SurfaceCard>
+        )}
+
+        {showUpgradeCard && <UpgradeCard />}
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
           <div className="flex flex-col gap-6">

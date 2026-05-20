@@ -28,7 +28,7 @@ export async function POST() {
   // 2. Look up their Stripe customer ID
   const { data: member, error: memberError } = await supabase
     .from("member")
-    .select("stripe_customer_id")
+    .select("stripe_customer_id, subscription_tier")
     .eq("id", user.id)
     .single();
 
@@ -43,8 +43,12 @@ export async function POST() {
     );
   }
 
-  // 3. Create the portal session
-  const result = await createBillingPortalSessionUrl(member.stripe_customer_id);
+  // 3. Create the portal session with tier-appropriate config
+  const result = await createBillingPortalSessionUrl(
+    member.stripe_customer_id,
+    undefined,
+    member.subscription_tier
+  );
 
   if (result.ok) {
     return NextResponse.json({ url: result.url });
