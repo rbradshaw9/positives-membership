@@ -12,6 +12,7 @@ import {
   quickCreateDaily,
 } from "../actions";
 import { DailyAudioGrid } from "./DailyAudioGrid";
+import { BulkAudioUploader } from "@/components/admin/BulkAudioUploader";
 import { MonthlyMasterclassEditor } from "./MonthlyMasterclassEditor";
 import { WeeklyReflectionSection } from "./WeeklyReflectionSection";
 import type { WeekSlot } from "./WeeklyReflectionSection";
@@ -310,13 +311,28 @@ export default async function MonthWorkspacePage({
       </div>
 
       {/* ─── Daily Audio Calendar Grid ─── */}
-      <DailyAudioGrid
-        monthId={month.id}
-        monthYear={month.month_year}
-        dailySlots={month.dailySlots}
-        unassigned={unassigned}
-        quickCreateAction={quickCreateDaily}
-      />
+      <div className="admin-section">
+        <div className="admin-section__header">
+          <span className="admin-section__title">🎵 Daily Audio</span>
+          <span className="admin-stat-card__delta" style={{ fontWeight: 400 }}>
+            {filledSlots}/{totalSlots} days filled
+          </span>
+        </div>
+        <div className="admin-section__body">
+          <BulkAudioUploader
+            monthId={month.id}
+            monthYear={month.month_year}
+            openDaysRemaining={totalSlots - filledSlots}
+          />
+          <DailyAudioGrid
+            monthId={month.id}
+            monthYear={month.month_year}
+            dailySlots={month.dailySlots}
+            unassigned={unassigned}
+            quickCreateAction={quickCreateDaily}
+          />
+        </div>
+      </div>
     </div>
   );
 }
