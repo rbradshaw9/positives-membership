@@ -30,13 +30,14 @@ function datesInMonth(monthYear: string): string[] {
 export async function POST(request: NextRequest) {
   await requireAdminPermission("members.update_profile");
 
-  const { monthId, monthYear, title, s3Key, durationSeconds } =
+  const { monthId, monthYear, title, s3Key, durationSeconds, publishDate } =
     await request.json().catch(() => ({})) as {
       monthId?: string;
       monthYear?: string;
       title?: string;
       s3Key?: string;
       durationSeconds?: number | null;
+      publishDate?: string; // optional explicit date; falls back to next open
     };
 
   if (!monthId || !monthYear || !title || !s3Key) {
@@ -58,9 +59,12 @@ export async function POST(request: NextRequest) {
 
   const occupied = new Set((existing ?? []).map((r) => r.publish_date));
 
-  // Find the first open date
+  // Use the explicit date if it's valid and open; otherwise next open day.
   const allDates = datesInMonth(monthYear);
-  const nextDate = allDates.find((d) => !occupied.has(d));
+  const nextDate =
+    publishDate && allDates.includes(publishDate) && !occupied.has(publishDate)
+      ? publishDate
+      : allDates.find((d) => !occupied.has(d));
 
   if (!nextDate) {
     return NextResponse.json(

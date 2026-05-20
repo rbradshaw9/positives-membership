@@ -322,7 +322,9 @@ export default async function MonthWorkspacePage({
           <BulkAudioUploader
             monthId={month.id}
             monthYear={month.month_year}
-            openDaysRemaining={totalSlots - filledSlots}
+            openDates={month.dailySlots
+              .filter((s) => s.content === null)
+              .map((s) => s.date)}
           />
           <DailyAudioGrid
             monthId={month.id}
