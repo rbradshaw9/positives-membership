@@ -59,9 +59,14 @@ export function BetaWelcomeBanner({ memberName }: Props) {
                 What to try
               </p>
               <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
-                <li>Use Today and My Practice</li>
-                <li>Open the Library and a course</li>
-                <li>Touch account and billing flows</li>
+                <li>
+                  <strong className="font-semibold text-slate-900">Today</strong> — your daily audio practice (start here)
+                </li>
+                <li>
+                  <strong className="font-semibold text-slate-900">Practice</strong> — browse past months
+                </li>
+                <li>Open the Library and any course in My Courses</li>
+                <li>Check Account for billing and settings</li>
               </ul>
             </div>
 

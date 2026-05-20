@@ -37,7 +37,13 @@ export default async function LoginPage({
   } = await supabase.auth.getUser();
 
   if (user) {
-    redirect(await resolvePostLoginDestination(supabase, next));
+    const destination = await resolvePostLoginDestination(supabase, next);
+    // Only auto-skip the login form when the user is actively subscribed.
+    // Users with canceled/no-subscription still see the form so they can
+    // sign in with a different account or re-subscribe after logging in.
+    if (destination !== "/join") {
+      redirect(destination);
+    }
   }
 
   return <LoginClient />;

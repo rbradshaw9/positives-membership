@@ -47,7 +47,7 @@ function SessionTimer({
   // Effective start: whichever is later — scheduled time or actual join time
   const effectiveStart = Math.max(joinedAt, sessionStart);
   const sessionEnd = sessionStart + durationMinutes * 60 * 1000;
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000);

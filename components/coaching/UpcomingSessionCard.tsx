@@ -274,7 +274,19 @@ export function UpcomingSessionCard({
   const { timeStr, badge } = formatSessionTime(scheduledAt);
   const canJoin = isJoinable(scheduledAt, durationMinutes);
 
-  const hoursUntil = (new Date(scheduledAt).getTime() - Date.now()) / (1000 * 60 * 60);
+  const [hoursUntil, setHoursUntil] = useState(() =>
+    (new Date(scheduledAt).getTime() - Date.now()) / (1000 * 60 * 60)
+  );
+
+  useEffect(() => {
+    const tick = () => {
+      setHoursUntil((new Date(scheduledAt).getTime() - Date.now()) / (1000 * 60 * 60));
+    };
+    tick();
+    const interval = window.setInterval(tick, 60_000);
+    return () => window.clearInterval(interval);
+  }, [scheduledAt]);
+
   const sessionRestored = hoursUntil > 24;
   const canReschedule = hoursUntil >= 2; // min 2h notice required
 

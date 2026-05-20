@@ -1,7 +1,7 @@
 # CURRENT_IMPLEMENTATION_TRUTH.md
 
 *Reality-sync baseline for Positives.*  
-*Last verified: 2026-04-09 against the current workspace, linked Supabase project, and current docs.*
+*Last verified: 2026-05-19 against the current workspace, linked Supabase project, and current docs.*
 
 ---
 
@@ -48,34 +48,18 @@ Do not treat `decided next` items as shipped behavior.
   - `Share Kit`
   - `Earnings`
 
-### Affiliate workspace changes currently in progress
+### Affiliate workspace state
 
-The local workspace includes unfinished affiliate/legal changes that are **not yet a completed truth state**:
+- Public affiliate rules page exists at `/affiliate-program`
+- Member affiliate portal remains at `/account/affiliate` with FirstPromoter underneath
+- Enrollment may require explicit terms agreement via `getReferralLinkAction(agreedToTerms)` — verify live deploy before calling it enforced
 
-- `components/affiliate/AffiliatePortal.tsx` now:
-  - simplifies `My Links`
-  - removes the old legacy redirect management UI from the main portal experience
-  - refocuses `Share Kit` around choosing a tracked link, optionally adding a `sub_id`, and copying share-ready messaging
-  - adds links to a planned `/affiliate-program` page
-  - adds an agreement checkbox on affiliate enrollment
-- `components/affiliate/AffiliateCTA.tsx` now:
-  - removes the old `?auto_enroll=1` shortcut
-  - links to the planned affiliate terms page
-- `app/account/affiliate/actions.ts` now:
-  - requires `agreedToTerms: boolean` before `getReferralLinkAction()` will create the affiliate account
-- `app/(member)/account/affiliate/page.tsx` still passes `autoEnroll`, so the workspace is currently inconsistent
+### Current workspace validation state (2026-05-19)
 
-### Current workspace validation state
-
-The current workspace is **not green**:
-
-- `npm run lint` fails
-  - unused `useRef` import in `components/affiliate/AffiliatePortal.tsx`
-  - `react-hooks/set-state-in-effect` error in `ShareTab`
-- `npm run build` fails
-  - `app/(member)/account/affiliate/page.tsx` still passes `autoEnroll` to `AffiliatePortal`, but that prop was removed from the component
-
-That means the agreement-flow and share-kit refinements are correctly classified as **in-progress workspace changes**, not finished implementation truth.
+- `npm run lint` — passes with warnings only (no errors)
+- `npm run build` — passes after course-lesson legacy DB fallback fixes
+- Beta launch scope doc: `BETA_LAUNCH_GATE.md`
+- Production **Face Your Giants** course set to `tier_min: level_1`, `is_standalone_purchasable: false` for L1 beta access
 
 ---
 

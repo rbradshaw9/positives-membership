@@ -97,7 +97,7 @@ export async function GET(
     }
 
     // Ensure Livekit room exists (create if not yet provisioned)
-    let roomName = booking.livekit_room_name ?? coachingRoomName(bookingId);
+    const roomName = booking.livekit_room_name ?? coachingRoomName(bookingId);
     if (!booking.livekit_room_name) {
       try {
         await createCoachingRoom({ roomName });

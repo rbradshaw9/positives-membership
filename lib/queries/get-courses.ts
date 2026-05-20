@@ -283,13 +283,24 @@ function courseDescription<T extends { short_description?: string | null; descri
 
 async function getLessonCounts(courseIds: string[]) {
   const supabase = asLooseSupabaseClient(await createClient());
-  const { data } = await supabase
+  const published = await supabase
     .from("course_lesson")
     .select<{ id: string; course_module: { course_id: string } }[]>(
       "id, course_module!inner(course_id)"
     )
     .in("course_module.course_id", courseIds)
     .eq("status", "published");
+
+  let data = published.data;
+  if (published.error?.code === "42703") {
+    const fallback = await supabase
+      .from("course_lesson")
+      .select<{ id: string; course_module: { course_id: string } }[]>(
+        "id, course_module!inner(course_id)"
+      )
+      .in("course_module.course_id", courseIds);
+    data = fallback.data;
+  }
 
   const counts = new Map<string, number>();
   for (const lesson of data ?? []) {
@@ -668,34 +679,45 @@ export async function getCourseLesson(
       lessonIdOrSlug
     );
 
+  const lessonSelectFull =
+    "id, slug, title, description, body, video_url, audio_url, duration_seconds, resources, sort_order, status, is_preview, module_id, course_module!inner(id, title, course_id, course!inner(id, title, slug, tier_min, access_type, is_standalone_purchasable, stripe_price_id, price_cents))";
+  const lessonSelectLegacy =
+    "id, title, description, body, video_url, duration_seconds, resources, sort_order, module_id, course_module!inner(id, title, course_id, course!inner(id, title, slug, tier_min, is_standalone_purchasable, stripe_price_id, price_cents))";
+
+  type LessonRow = CourseLesson & {
+    module_id: string;
+    course_module: {
+      id: string;
+      title: string;
+      course_id: string;
+      course: {
+        id: string;
+        title: string;
+        slug: string | null;
+        tier_min: string | null;
+        access_type?: string | null;
+        is_standalone_purchasable?: boolean | null;
+        stripe_price_id?: string | null;
+        price_cents?: number | null;
+      };
+    };
+  };
+
   let lessonQuery = supabase
     .from("course_lesson")
-    .select<
-      CourseLesson & {
-        module_id: string;
-        course_module: {
-          id: string;
-          title: string;
-          course_id: string;
-          course: {
-            id: string;
-            title: string;
-            slug: string | null;
-            tier_min: string | null;
-            access_type?: string | null;
-            is_standalone_purchasable?: boolean | null;
-            stripe_price_id?: string | null;
-            price_cents?: number | null;
-          };
-        };
-      }
-    >(
-      "id, slug, title, description, body, video_url, audio_url, duration_seconds, resources, sort_order, status, is_preview, module_id, course_module!inner(id, title, course_id, course!inner(id, title, slug, tier_min, access_type, is_standalone_purchasable, stripe_price_id, price_cents))"
-    )
+    .select<LessonRow>(lessonSelectFull)
     .neq("status", "archived");
 
   lessonQuery = isUuid ? lessonQuery.eq("id", lessonIdOrSlug) : lessonQuery.eq("slug", lessonIdOrSlug);
-  const { data: lesson, error } = await lessonQuery.maybeSingle();
+  let { data: lesson, error } = await lessonQuery.maybeSingle();
+
+  if (error?.code === "42703") {
+    let legacyQuery = supabase.from("course_lesson").select<LessonRow>(lessonSelectLegacy);
+    legacyQuery = isUuid ? legacyQuery.eq("id", lessonIdOrSlug) : legacyQuery.eq("slug", lessonIdOrSlug);
+    const legacy = await legacyQuery.maybeSingle();
+    lesson = legacy.data;
+    error = legacy.error;
+  }
 
   if (error || !lesson) return null;
 
@@ -703,16 +725,44 @@ export async function getCourseLesson(
   const course = courseModule.course;
   const courseId = course.id;
 
-  const { data: allLessons } = await supabase
+  type OrderedLessonRow = {
+    id: string;
+    slug: string | null;
+    module_id: string;
+    sort_order: number;
+  };
+
+  const allLessonsPublished = await supabase
     .from("course_lesson")
-    .select<{ id: string; slug: string | null; module_id: string; sort_order: number; course_module: { course_id: string } }[]>(
+    .select<{ id: string; slug: string | null; module_id: string; sort_order: number }[]>(
       "id, slug, module_id, sort_order, course_module!inner(course_id)"
     )
     .eq("course_module.course_id", courseId)
     .eq("status", "published")
     .order("sort_order", { ascending: true });
 
-  const orderedLessons = allLessons ?? [];
+  let orderedLessons: OrderedLessonRow[] = (allLessonsPublished.data ?? []).map((row) => ({
+    id: row.id,
+    slug: row.slug,
+    module_id: row.module_id,
+    sort_order: row.sort_order,
+  }));
+
+  if (allLessonsPublished.error?.code === "42703") {
+    const allLessonsLegacy = await supabase
+      .from("course_lesson")
+      .select<{ id: string; module_id: string; sort_order: number }[]>(
+        "id, module_id, sort_order, course_module!inner(course_id)"
+      )
+      .eq("course_module.course_id", courseId)
+      .order("sort_order", { ascending: true });
+    orderedLessons = (allLessonsLegacy.data ?? []).map((row) => ({
+      id: row.id,
+      slug: null,
+      module_id: row.module_id,
+      sort_order: row.sort_order,
+    }));
+  }
   const idx = orderedLessons.findIndex((row) => row.id === lesson.id);
   const prev = idx > 0 ? orderedLessons[idx - 1] : null;
   const next = idx >= 0 && idx < orderedLessons.length - 1 ? orderedLessons[idx + 1] : null;

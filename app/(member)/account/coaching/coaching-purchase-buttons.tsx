@@ -95,7 +95,7 @@ export function CoachingPurchaseButtons() {
       }
 
       // Redirect to Stripe Checkout
-      window.location.href = data.url;
+      window.location.assign(data.url);
     } catch {
       setError("Could not connect to the checkout server. Please try again.");
       setLoading(null);
