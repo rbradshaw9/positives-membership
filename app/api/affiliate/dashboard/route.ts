@@ -1,4 +1,4 @@
-import { requireActiveMember } from "@/lib/auth/require-active-member";
+import { requireMember } from "@/lib/auth/require-member";
 import { getAffiliateDashboardData } from "@/lib/affiliate/get-affiliate-dashboard-data";
 import {
   buildAffiliatePortalViewModel,
@@ -21,7 +21,7 @@ function emptyAffiliateDashboard(paypalEmail: string): AffiliatePortalDashboardD
 }
 
 export async function GET() {
-  const member = await requireActiveMember();
+  const member = await requireMember();
   const promoterId = member.fp_promoter_id ?? null;
   const token = member.fp_ref_id ?? null;
   const paypalEmail = member.paypal_email ?? "";

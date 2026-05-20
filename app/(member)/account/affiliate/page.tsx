@@ -1,4 +1,4 @@
-import { requireActiveMember } from "@/lib/auth/require-active-member";
+import { requireMember } from "@/lib/auth/require-member";
 import { AffiliatePortal } from "@/components/affiliate/AffiliatePortal";
 import { type AffiliateTrackedLink } from "@/lib/affiliate/portal";
 import { getPromoterTrackedLinks } from "@/lib/firstpromoter/client";
@@ -9,7 +9,7 @@ export const metadata = {
 };
 
 export default async function AffiliatePage() {
-  const member = await requireActiveMember();
+  const member = await requireMember();
   const promoterId = member.fp_promoter_id ?? null;
   const token = member.fp_ref_id ?? null;
   const paypalEmail = member.paypal_email ?? "";
