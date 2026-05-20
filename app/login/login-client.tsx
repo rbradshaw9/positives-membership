@@ -19,7 +19,6 @@ type Mode = "password" | "magic";
 function LoginForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/today";
-  const reason = searchParams.get("reason");
   const signedOut = searchParams.get("signed_out") === "1";
 
   const [mode, setMode] = useState<Mode>("password");
@@ -142,10 +141,8 @@ function LoginForm() {
           className="mt-3 text-sm"
           style={{ color: "#68707A", lineHeight: "1.6" }}
         >
-          {reason === "subscription_inactive"
-            ? "Your membership is inactive. Sign in to manage your account."
-            : signedOut
-              ? "You’re signed out. Sign in when you’re ready."
+          {signedOut
+            ? "You’re signed out. Sign in when you’re ready."
             : "Welcome back to your practice."}
         </p>
       </div>

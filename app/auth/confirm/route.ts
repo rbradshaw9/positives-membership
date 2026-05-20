@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { resolvePostLoginDestination } from "@/lib/auth/resolve-post-login-destination";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -89,5 +90,14 @@ export async function GET(request: NextRequest) {
     return errorRedirect(request, type);
   }
 
-  return NextResponse.redirect(`${origin}${redirectTarget}`);
+  // For password recovery, use the sanitized target as-is (leads to /reset-password).
+  // For all other types (email confirm, invite, email_change), run the same
+  // post-login routing as the login page and magic-link callback so admins,
+  // inactive members, etc. all land in the right place.
+  if (type === "recovery") {
+    return NextResponse.redirect(`${origin}${redirectTarget}`);
+  }
+
+  const destination = await resolvePostLoginDestination(supabase, redirectTarget);
+  return NextResponse.redirect(`${origin}${destination}`);
 }

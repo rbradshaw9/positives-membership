@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireMember } from "@/lib/auth/require-member";
+import { hasActiveMemberAccess } from "@/lib/subscription/access";
+import { isBootstrapAdminEmail, memberHasAnyAdminRole } from "@/lib/auth/require-admin";
+import { getSession } from "@/lib/auth/get-session";
 import { Logo } from "@/components/marketing/Logo";
 
 export const metadata: Metadata = {
@@ -49,7 +53,20 @@ function getStatusConfig(status: string | null): StatusConfig {
 }
 
 export default async function InactivePage() {
+  // Admin/staff with no member row: requireMember would bounce them to /join.
+  // Catch that case first and send them to /admin.
+  const user = await getSession();
+  if (user && (isBootstrapAdminEmail(user.email) || (await memberHasAnyAdminRole(user.id)))) {
+    redirect("/admin");
+  }
+
   const member = await requireMember();
+
+  // Active/trialing members who navigate here directly: send them to /today.
+  if (hasActiveMemberAccess(member.subscription_status)) {
+    redirect("/today");
+  }
+
   const cfg = getStatusConfig(member.subscription_status ?? null);
 
   return (
