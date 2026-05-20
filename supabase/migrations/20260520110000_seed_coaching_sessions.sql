@@ -82,9 +82,9 @@ BEGIN
 
   IF v_pack_id IS NULL THEN
     INSERT INTO public.coaching_session_pack (
-      member_id, sessions_total, sessions_remaining, status, source
+      member_id, pack_type, sessions_total, sessions_remaining, grant_reason
     ) VALUES (
-      v_member_id, 3, 3, 'active', 'admin_grant'
+      v_member_id, 'earned', 3, 3, 'admin_seed'
     )
     RETURNING id INTO v_pack_id;
 
