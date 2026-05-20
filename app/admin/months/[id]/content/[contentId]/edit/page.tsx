@@ -5,6 +5,7 @@ import { updateContent } from "@/app/admin/content/actions";
 import { ContentForm } from "@/app/admin/content/new/page";
 import { getEffectiveDate } from "@/lib/dates/effective-date";
 import { VideoUploadPanel } from "@/components/admin/VideoUploadPanel";
+import { AudioUploadPanel } from "@/components/admin/AudioUploadPanel";
 
 export const metadata = {
   title: "Edit Practice Content — Positives Admin",
@@ -113,7 +114,16 @@ export default async function MonthContentEditPage({ params, searchParams }: Pro
         }}
       />
 
-      {row.type !== "daily_audio" && (
+      {row.type === "daily_audio" ? (
+        <div className="admin-form-card" style={{ marginTop: "1rem" }}>
+          <AudioUploadPanel
+            contentId={row.id}
+            currentS3Key={row.s3_audio_key ?? null}
+            currentCastosUrl={row.castos_episode_url ?? null}
+            publishDate={row.publish_date ?? null}
+          />
+        </div>
+      ) : (
         <div className="admin-form-card" style={{ marginTop: "1rem" }}>
           <VideoUploadPanel
             contentId={row.id}
