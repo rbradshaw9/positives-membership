@@ -27,6 +27,7 @@ interface BillingTokenPayload {
   stripeCustomerId: string;
   email: string;
   exp: number; // Unix timestamp (seconds)
+  subscriptionTier?: string | null;
 }
 
 function getSecret(): string {
@@ -59,6 +60,7 @@ function sign(payload: string, secret: string): string {
 export function generateBillingToken(params: {
   stripeCustomerId: string;
   email: string;
+  subscriptionTier?: string | null;
 }): string {
   const secret = getSecret();
   const exp =
@@ -68,6 +70,7 @@ export function generateBillingToken(params: {
     stripeCustomerId: params.stripeCustomerId,
     email: params.email,
     exp,
+    ...(params.subscriptionTier ? { subscriptionTier: params.subscriptionTier } : {}),
   };
 
   const payloadB64 = b64url(JSON.stringify(payload));

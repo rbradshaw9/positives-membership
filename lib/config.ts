@@ -103,6 +103,17 @@ export const config = {
     products: {
       get level4() { return optional("STRIPE_PRODUCT_LEVEL_4"); },
     },
+
+    /**
+     * Billing portal configurations — one per subscription tier group.
+     * L1 uses the default config with 1-month-free retention offer.
+     * L2+ uses a separate config with 50%-off retention offer.
+     * Set in Stripe Dashboard retention section after deploy.
+     */
+    portal: {
+      get configL1() { return optional("STRIPE_PORTAL_CONFIG_L1"); },
+      get configL2Plus() { return optional("STRIPE_PORTAL_CONFIG_L2PLUS"); },
+    },
   },
 
   analytics: {

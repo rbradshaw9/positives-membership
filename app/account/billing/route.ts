@@ -36,7 +36,8 @@ export async function GET(req: NextRequest) {
     if (result.ok) {
       const portal = await createBillingPortalSessionUrl(
         result.payload.stripeCustomerId,
-        RETURN_URL
+        RETURN_URL,
+        result.payload.subscriptionTier as Parameters<typeof createBillingPortalSessionUrl>[2]
       );
 
       if (portal.ok) {
@@ -76,7 +77,7 @@ export async function GET(req: NextRequest) {
 
   const { data: member } = await supabase
     .from("member")
-    .select("stripe_customer_id")
+    .select("stripe_customer_id, subscription_tier")
     .eq("id", user.id)
     .single();
 
@@ -85,7 +86,11 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const portal = await createBillingPortalSessionUrl(member.stripe_customer_id, RETURN_URL);
+    const portal = await createBillingPortalSessionUrl(
+      member.stripe_customer_id,
+      RETURN_URL,
+      member.subscription_tier,
+    );
 
     if (portal.ok) {
       return NextResponse.redirect(portal.url);
