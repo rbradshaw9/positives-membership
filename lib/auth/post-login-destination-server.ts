@@ -1,17 +1,20 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { resolvePostLoginDestination } from "@/lib/auth/post-login-destination";
 import { isBootstrapAdminEmail, memberHasAnyAdminRole } from "@/lib/auth/require-admin";
 
+function safePath(path: string | null | undefined): string {
+  if (!path || !path.startsWith("/") || path.startsWith("//")) return "/today";
+  return path;
+}
+
 /**
- * Server-action wrapper around resolvePostLoginDestination.
- * Called from LoginClient after a successful sign-in so we can run
- * server-only checks (ADMIN_EMAILS env var, admin_user_role table) before
- * falling back to the subscription-based routing.
+ * Determines where to send a user after a successful sign-in.
+ * Called from LoginClient (client component) as a server action.
  *
- * Without this, users with admin/coach roles but no member subscription
- * would be redirected to /join after login.
+ * Rule: login just authenticates — it does not subscription-gate.
+ * Page-level guards (requireMember, requireActiveMember) handle access.
+ * The only routing decision made here is staff vs. member landing page.
  */
 export async function serverResolvePostLoginDestination(
   next: string | null | undefined
@@ -23,8 +26,6 @@ export async function serverResolvePostLoginDestination(
 
   if (!user) return "/login";
 
-  // Staff accounts (bootstrap admin email or any admin_user_role row) bypass
-  // the subscription gate and land on /admin instead of /join.
   if (
     isBootstrapAdminEmail(user.email) ||
     (await memberHasAnyAdminRole(user.id))
@@ -32,5 +33,5 @@ export async function serverResolvePostLoginDestination(
     return "/admin";
   }
 
-  return resolvePostLoginDestination(supabase, next);
+  return safePath(next);
 }

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { resolvePostLoginDestination } from "@/lib/auth/post-login-destination";
+import { isBootstrapAdminEmail, memberHasAnyAdminRole } from "@/lib/auth/require-admin";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -18,8 +18,11 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      const destination = await resolvePostLoginDestination(supabase, next);
-      return NextResponse.redirect(`${origin}${destination}`);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && (isBootstrapAdminEmail(user.email) || await memberHasAnyAdminRole(user.id))) {
+        return NextResponse.redirect(`${origin}/admin`);
+      }
+      return NextResponse.redirect(`${origin}${next}`);
     }
   }
 

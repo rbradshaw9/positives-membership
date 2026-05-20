@@ -3,7 +3,6 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isBootstrapAdminEmail, memberHasAnyAdminRole } from "@/lib/auth/require-admin";
-import { resolvePostLoginDestination } from "@/lib/auth/post-login-destination";
 import { LoginClient } from "./login-client";
 
 export const metadata: Metadata = {
@@ -38,18 +37,10 @@ export default async function LoginPage({
   } = await supabase.auth.getUser();
 
   if (user) {
-    // Staff bypass: admin/coach users with no subscription should go to /admin.
     if (isBootstrapAdminEmail(user.email) || (await memberHasAnyAdminRole(user.id))) {
       redirect("/admin");
     }
-
-    const destination = await resolvePostLoginDestination(supabase, next);
-    // Only auto-skip the login form when the user is actively subscribed.
-    // Users with canceled/no-subscription still see the form so they can
-    // sign in with a different account or re-subscribe after logging in.
-    if (destination !== "/join") {
-      redirect(destination);
-    }
+    redirect(next);
   }
 
   return <LoginClient />;
