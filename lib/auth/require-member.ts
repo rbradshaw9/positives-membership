@@ -3,6 +3,7 @@ import {
   getCurrentMemberProfile,
   type MemberProfile,
 } from "@/lib/auth/member-profile";
+import { isBootstrapAdminEmail, memberHasAnyAdminRole } from "@/lib/auth/require-admin";
 
 /**
  * Authenticated member guard without requiring an active subscription.
@@ -19,7 +20,11 @@ export async function requireMember(): Promise<MemberProfile> {
   }
 
   if (memberError || !member) {
-    redirect("/join");
+    // Staff accounts (admins, coaches) don't have member rows. Send them to
+    // /admin rather than the new-user join page.
+    const isStaff =
+      isBootstrapAdminEmail(user.email) || (await memberHasAnyAdminRole(user.id));
+    redirect(isStaff ? "/admin" : "/join");
   }
 
   return member;
