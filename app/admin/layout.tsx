@@ -6,6 +6,7 @@ import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import { getMemberBetaFeedbackThreads } from "@/lib/beta-feedback/data";
 import { AdminSidebarNav } from "./AdminSidebarNav";
+import { AdminMobileNav } from "./AdminMobileNav";
 
 /**
  * app/admin/layout.tsx
@@ -113,6 +114,14 @@ export default async function AdminLayout({
 
       <div className="admin-main">
         <header className="admin-mobile-header sm:hidden">
+          <AdminMobileNav
+            canReadMembers={canReadMembers}
+            canManageRoles={canManageRoles}
+            canModerateCommunity={canModerateCommunity}
+            canManageCoaching={canManageCoaching}
+            isCoachOnly={isCoachOnly}
+            userEmail={user.email ?? null}
+          />
           <span className="font-heading font-bold text-sm text-foreground">
             Positives
           </span>

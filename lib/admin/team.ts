@@ -25,7 +25,9 @@ export async function getAdminTeamMembers(): Promise<AdminTeamMemberRow[]> {
         member: { email: string; name: string | null; avatar_url: string | null; last_seen_at: string | null } | null;
         admin_role: { id: string; key: string; name: string } | null;
       }[]
-    >("member_id, platform_access, member(email, name, avatar_url, last_seen_at), admin_role(id, key, name)")
+    >(
+      "member_id, platform_access, member!admin_user_role_member_id_fkey(email, name, avatar_url, last_seen_at), admin_role(id, key, name)"
+    )
     .order("member_id");
 
   if (error) {

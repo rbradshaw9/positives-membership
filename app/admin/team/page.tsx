@@ -2,6 +2,7 @@ import { requireAdminPermission } from "@/lib/auth/require-admin";
 import { getAdminRoleManagementRows } from "@/lib/admin/roles";
 import { getAdminTeamMembers } from "@/lib/admin/team";
 import { ADMIN_PERMISSION_OPTIONS } from "@/lib/admin/permissions";
+import { ConfirmSubmitButton } from "../ConfirmSubmitButton";
 import {
   assignAdminRole,
   removeAdminRole,
@@ -169,17 +170,11 @@ export default async function AdminTeamPage({ searchParams }: { searchParams: Se
                           <form action={removeAdminRole} className="admin-team-inline-form">
                             <input type="hidden" name="memberId" value={member.memberId} />
                             <input type="hidden" name="roleId" value={role.id} />
-                            <button
-                              type="submit"
+                            <ConfirmSubmitButton
                               className="admin-btn admin-btn--ghost admin-btn--sm"
-                              onClick={(e) => {
-                                if (!confirm(`Remove ${role.name} role from ${member.email}?`)) {
-                                  e.preventDefault();
-                                }
-                              }}
-                            >
-                              Remove
-                            </button>
+                              message={`Remove ${role.name} role from ${member.email}?`}
+                              label="Remove"
+                            />
                           </form>
                         </div>
                       ))}

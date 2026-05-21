@@ -42,7 +42,7 @@ const STATUS_BADGE: Record<string, string> = {
 export default async function AdminCoursesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ success?: string; error?: string }>;
+  searchParams: Promise<{ success?: string; error?: string; q?: string; status?: string }>;
 }) {
   const sp = await searchParams;
   const supabase = adminClient();
@@ -56,7 +56,26 @@ export default async function AdminCoursesPage({
     )
     .order("sort_order", { ascending: true });
 
-  const rows = (courses ?? []) as unknown as CourseRow[];
+  const allRows = (courses ?? []) as unknown as CourseRow[];
+  const query = (sp.q ?? "").trim().toLowerCase();
+  const statusFilter = sp.status ?? "all";
+  const rows = allRows.filter((course) => {
+    if (statusFilter !== "all" && course.status !== statusFilter) return false;
+    if (
+      query &&
+      !course.title.toLowerCase().includes(query) &&
+      !(course.description ?? "").toLowerCase().includes(query)
+    ) {
+      return false;
+    }
+    return true;
+  });
+  const statusCounts = {
+    all: allRows.length,
+    published: allRows.filter((c) => c.status === "published").length,
+    draft: allRows.filter((c) => c.status === "draft").length,
+    archived: allRows.filter((c) => c.status === "archived").length,
+  };
 
   return (
     <div style={{ maxWidth: "60rem" }}>
@@ -84,6 +103,46 @@ export default async function AdminCoursesPage({
             ? "Title is required."
             : "Something went wrong."}
         </div>
+      )}
+
+      {/* ── Filters ── */}
+      {allRows.length > 0 && (
+        <form
+          method="get"
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "0.5rem",
+            marginBottom: "1rem",
+            alignItems: "center",
+          }}
+        >
+          <input
+            type="search"
+            name="q"
+            defaultValue={sp.q ?? ""}
+            placeholder="Search courses…"
+            className="admin-input"
+            style={{ flex: "1 1 14rem", minWidth: "10rem" }}
+          />
+          <select name="status" defaultValue={statusFilter} className="admin-select" style={{ width: "auto" }}>
+            <option value="all">All statuses ({statusCounts.all})</option>
+            <option value="published">Published ({statusCounts.published})</option>
+            <option value="draft">Draft ({statusCounts.draft})</option>
+            <option value="archived">Archived ({statusCounts.archived})</option>
+          </select>
+          <button type="submit" className="admin-btn admin-btn--outline">
+            Filter
+          </button>
+          {(query || statusFilter !== "all") && (
+            <Link href="/admin/courses" className="admin-btn admin-btn--ghost">
+              Clear
+            </Link>
+          )}
+          <span style={{ fontSize: "0.75rem", color: "var(--color-muted-fg)", marginLeft: "auto" }}>
+            {rows.length} of {allRows.length} course{allRows.length !== 1 ? "s" : ""}
+          </span>
+        </form>
       )}
 
       {/* ── Course List ── */}
@@ -240,7 +299,7 @@ export default async function AdminCoursesPage({
               color: "var(--color-foreground)",
             }}
           >
-            No courses yet
+            {allRows.length > 0 ? "No courses match these filters" : "No courses yet"}
           </p>
           <p
             style={{
@@ -249,7 +308,9 @@ export default async function AdminCoursesPage({
               marginTop: "0.375rem",
             }}
           >
-            Create one below or import from LearnDash.
+            {allRows.length > 0
+              ? "Try a different search or status filter."
+              : "Create one below or import from LearnDash."}
           </p>
         </div>
       )}

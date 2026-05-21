@@ -149,7 +149,7 @@ export default async function CourseEditorPage({
         id, title, description, sort_order,
         course_lesson(
           id, slug, title, description, body, video_url, audio_url, duration_seconds, resources, sort_order, status, is_preview,
-          course_session(id, title, description, body, video_url, duration_seconds, resources, sort_order)
+          course_session!course_session_lesson_id_fkey(id, title, description, body, video_url, duration_seconds, resources, sort_order)
         )
       )
     `)
