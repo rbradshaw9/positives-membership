@@ -97,6 +97,40 @@ async function createReplayAsset(params: {
   return data.id;
 }
 
+async function startAutoRecordingIfNeeded(params: {
+  eventId: string;
+  roomName: string;
+  recordingPolicy: string;
+  egressId: string | null;
+}) {
+  if (params.recordingPolicy !== "auto" || params.egressId) return;
+  const supabase = asLooseSupabaseClient(getAdminClient());
+
+  try {
+    const egress = await startLiveKitEventRecording({
+      eventId: params.eventId,
+      roomName: params.roomName,
+    });
+    await supabase
+      .from("event_livekit_room")
+      .update({
+        egress_id: egress.egressId,
+        egress_status: "starting",
+        egress_started_at: new Date().toISOString(),
+        last_error: null,
+      })
+      .eq("event_id", params.eventId);
+  } catch (error) {
+    await supabase
+      .from("event_livekit_room")
+      .update({
+        egress_status: "failed",
+        last_error: error instanceof Error ? error.message : String(error),
+      })
+      .eq("event_id", params.eventId);
+  }
+}
+
 export async function POST(request: Request) {
   const body = await request.text();
   const authHeader = request.headers.get("authorization") ?? request.headers.get("Authorize") ?? undefined;
@@ -180,34 +214,21 @@ export async function POST(request: Request) {
     if (eventName === "room_started") {
       await supabase
         .from("event_livekit_room")
+        .update({ last_error: null })
+        .eq("event_id", livekitRoom.event_id);
+    }
+
+    if (eventName === "participant_joined" && typeof participant?.identity === "string" && participant.identity.startsWith("host-")) {
+      await supabase
+        .from("event_livekit_room")
         .update({ room_status: "started", room_started_at: new Date().toISOString(), last_error: null })
         .eq("event_id", livekitRoom.event_id);
-
-      if (livekitRoom.recording_policy === "auto" && !livekitRoom.egress_id) {
-        try {
-          const egress = await startLiveKitEventRecording({
-            eventId: livekitRoom.event_id,
-            roomName,
-          });
-          await supabase
-            .from("event_livekit_room")
-            .update({
-              egress_id: egress.egressId,
-              egress_status: "starting",
-              egress_started_at: new Date().toISOString(),
-              last_error: null,
-            })
-            .eq("event_id", livekitRoom.event_id);
-        } catch (error) {
-          await supabase
-            .from("event_livekit_room")
-            .update({
-              egress_status: "failed",
-              last_error: error instanceof Error ? error.message : String(error),
-            })
-            .eq("event_id", livekitRoom.event_id);
-        }
-      }
+      await startAutoRecordingIfNeeded({
+        eventId: livekitRoom.event_id,
+        roomName,
+        recordingPolicy: livekitRoom.recording_policy,
+        egressId: livekitRoom.egress_id,
+      });
     }
 
     if (eventName === "room_finished") {
