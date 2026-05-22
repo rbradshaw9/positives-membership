@@ -82,6 +82,25 @@ export default async function AdminEventStudioPage({ params }: { params: Params 
         }}
       />
 
+      <section className="admin-form-card mb-5">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.45fr)] lg:items-start">
+          <div>
+            <p className="admin-page-header__eyebrow">Before you go live</p>
+            <h2 className="mt-1 font-heading text-xl font-semibold text-foreground" style={{ textWrap: "balance" }}>
+              Keep the member experience simple and steady.
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              Use this studio for camera, mic, and screen share. Members join the branded event room as viewers only.
+            </p>
+          </div>
+          <ul className="grid gap-2 text-sm text-muted-foreground">
+            <li className="rounded-xl border border-border bg-muted/30 px-3 py-2">Check camera and microphone before the start time.</li>
+            <li className="rounded-xl border border-border bg-muted/30 px-3 py-2">Open the member view in another tab to confirm the audience room.</li>
+            <li className="rounded-xl border border-border bg-muted/30 px-3 py-2">Keep the Zoom fallback available until replay recording is verified.</li>
+          </ul>
+        </div>
+      </section>
+
       <LiveKitEventRoom
         eventId={event.id}
         title={event.title}

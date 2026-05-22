@@ -61,6 +61,10 @@ function buildEventsHref(
   });
 }
 
+function statusFilter(params: Awaited<SearchParams>) {
+  return params.status ?? "active";
+}
+
 function accessLabels(event: EventRow | null | undefined) {
   const labels = (event?.member_event_access_level ?? []).map((row) => accessLevelLabel(row.subscription_tier));
   return labels.length > 0 ? labels.join(", ") : "No access selected";
@@ -121,6 +125,20 @@ function formatMonthLabel(month: string) {
   );
 }
 
+function formatTimezoneLabel(timezone: string) {
+  const common: Record<string, string> = {
+    "America/New_York": "Eastern Time",
+    "America/Chicago": "Central Time",
+    "America/Denver": "Mountain Time",
+    "America/Phoenix": "Arizona Time",
+    "America/Los_Angeles": "Pacific Time",
+    "America/Anchorage": "Alaska Time",
+    "Pacific/Honolulu": "Hawaii Time",
+    UTC: "UTC",
+  };
+  return common[timezone] ?? timezone.replaceAll("_", " ");
+}
+
 export default async function AdminEventsPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const view: EventView = params.view === "calendar" || params.view === "month" ? "calendar" : "list";
@@ -128,7 +146,7 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
     getEventAdminOptions(),
     getAdminEvents({
       month: params.month,
-      status: params.status ?? "all",
+      status: statusFilter(params),
       typeId: params.type ?? "all",
       accessLevel: params.access ?? "all",
       query: params.q,
@@ -136,10 +154,11 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
   ]);
   const month = data.month;
   const monthLabel = formatMonthLabel(month);
-  const publishedCount = data.events.filter((event) => event.status === "published").length;
-  const draftCount = data.events.filter((event) => event.status === "draft").length;
-  const needsLinkCount = data.events.filter(missingJoinLink).length;
-  const ticketedCount = data.events.filter((event) => event.ticketing_mode === "ticket_required").length;
+  const visibleEvents = data.events.filter((event) => event.status !== "archived");
+  const publishedCount = visibleEvents.filter((event) => event.status === "published").length;
+  const draftCount = visibleEvents.filter((event) => event.status === "draft").length;
+  const needsLinkCount = visibleEvents.filter(missingJoinLink).length;
+  const ticketedCount = visibleEvents.filter((event) => event.ticketing_mode === "ticket_required").length;
 
   return (
     <div style={{ maxWidth: "92rem" }}>
@@ -195,8 +214,9 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
         </div>
         <div>
           <label className="admin-label" htmlFor="status">Status</label>
-          <select id="status" name="status" defaultValue={params.status ?? "all"} className="admin-select">
-            <option value="all">All statuses</option>
+          <select id="status" name="status" defaultValue={statusFilter(params)} className="admin-select">
+            <option value="active">Active statuses</option>
+            <option value="all">All statuses, including archived</option>
             <option value="published">Published</option>
             <option value="draft">Draft</option>
             <option value="ready_for_review">Ready</option>
@@ -315,7 +335,7 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
                     </td>
                     <td>
                       <div className="font-medium text-foreground">{formatEventDateRange(event.starts_at, event.ends_at, event.timezone, event.all_day)}</div>
-                      <div className="mt-1 text-xs text-muted-foreground">{event.timezone}</div>
+                      <div className="mt-1 text-xs text-muted-foreground">{formatTimezoneLabel(event.timezone)}</div>
                     </td>
                     <td>
                       <div>{event.event_type?.name ?? "Event"}</div>
@@ -327,7 +347,7 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
                     <td>
                       <div className="flex flex-wrap gap-1.5">
                         <Link href={`/admin/events/${event.id}/edit`} className="admin-btn admin-btn--outline">Edit</Link>
-                        {event.virtual_mode === "livekit" ? (
+                        {event.virtual_mode === "livekit" && event.status !== "archived" && event.event_livekit_room?.room_name ? (
                           <Link href={`/admin/events/${event.id}/studio`} className="admin-btn admin-btn--primary">Studio</Link>
                         ) : null}
                         <Link href={`/admin/events/attendees?event_id=${event.id}`} className="admin-btn admin-btn--ghost">Attendees</Link>

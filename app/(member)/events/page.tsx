@@ -171,7 +171,7 @@ function BrowseToolbar({
         </label>
 
         <Button type="submit" className="justify-center">
-          Find Events
+          Find events
         </Button>
         <Button href={href({ month, view })} variant="ghost" className="justify-center">
           Reset
@@ -428,7 +428,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Searc
   const hasFilters = Boolean(query || type || venue);
 
   return (
-    <div className="member-container py-8 md:py-12">
+    <div className="member-container py-8 pb-28 md:py-12">
       <section className="mb-7 grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
         <div>
           <p className="ui-section-eyebrow mb-3">Membership + Events</p>
@@ -502,14 +502,14 @@ export default async function EventsPage({ searchParams }: { searchParams: Searc
         <div className="mt-8 flex flex-col gap-3 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap gap-2">
             <Button href={href({ month: shiftMonth(data.month, -1), view, q: query, type, venue })} variant="outline" size="sm">
-              Previous Events
+              Previous events
             </Button>
             <Button href={href({ month: shiftMonth(data.month, 1), view, q: query, type, venue })} variant="outline" size="sm">
-              Next Events
+              Next events
             </Button>
           </div>
           <Button href={href({ month: data.month, view: "list", q: query, type, venue })} variant="ghost" size="sm">
-            List View
+            List view
           </Button>
         </div>
       ) : null}

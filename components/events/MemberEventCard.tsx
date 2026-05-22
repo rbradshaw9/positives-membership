@@ -55,7 +55,7 @@ export function eventHostNames(event: MemberEvent) {
 }
 
 export function eventLocationLabel(event: MemberEvent) {
-  if (event.virtual_mode === "zoom" || event.virtual_mode === "manual") {
+  if (event.virtual_mode === "zoom" || event.virtual_mode === "manual" || event.virtual_mode === "livekit") {
     return event.event_venue ? `${event.event_venue.name} + online` : "Online event";
   }
   if (!event.event_venue) return "Location to be announced";
@@ -127,23 +127,24 @@ export function getEventCta(event: MemberEvent, nowMs: number): EventCta {
   if (joinUrl && !isPast) {
     if (!eventCanJoin(event, nowMs)) {
       return {
-        label: "Join Event",
+        label: "Join event",
         variant: "outline",
       };
     }
 
+    const isExternal = /^https?:\/\//.test(joinUrl);
     return {
-      label: "Join Event",
+      label: "Join event",
       href: joinUrl,
       variant: "primary",
-      target: "_blank",
-      rel: "noopener noreferrer",
+      target: isExternal ? "_blank" : undefined,
+      rel: isExternal ? "noopener noreferrer" : undefined,
     };
   }
 
   if (!isPast && event.ticketing_mode === "ticket_required" && !event.member_ticket_access) {
     return {
-      label: "Get Tickets",
+      label: "Get tickets",
       href: `/events/${event.id}#event-registration`,
       variant: "primary",
     };
@@ -158,7 +159,7 @@ export function getEventCta(event: MemberEvent, nowMs: number): EventCta {
   }
 
   return {
-    label: "View Event",
+    label: "View event",
     href: `/events/${event.id}`,
     variant: "outline",
   };

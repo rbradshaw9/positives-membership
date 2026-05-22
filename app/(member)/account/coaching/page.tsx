@@ -204,7 +204,7 @@ export default async function AccountCoachingPage({
         hero
       />
 
-      <div className="member-container py-8 md:py-10 flex flex-col gap-8">
+      <div className="member-container flex flex-col gap-8 py-8 pb-28 md:py-10">
         {/* ── Purchase success banner ─────────────────────────────────────── */}
         {purchaseStatus === "success" && (
           <SurfaceCard

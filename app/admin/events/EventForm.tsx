@@ -366,7 +366,7 @@ function EventImagePicker({ defaultValue = "" }: { defaultValue?: string | null 
   }
 
   return (
-    <div className="grid gap-3">
+    <div className="grid max-w-3xl gap-3">
       <input type="hidden" name="image_url" value={selectedUrl} readOnly />
       <div className="overflow-hidden rounded-xl border border-border bg-muted/20">
         {selectedUrl ? (
@@ -409,7 +409,7 @@ function EventImagePicker({ defaultValue = "" }: { defaultValue?: string | null 
             <div className="event-image-modal__header">
               <div>
                 <h2 id="event-hero-image-title" className="event-image-modal__title">
-                  Event Image
+                  Event image
                 </h2>
                 <p className="event-image-modal__subtitle">
                   Upload a new S3 image or choose one from the event image library.
@@ -1085,7 +1085,7 @@ export function EventForm({
 
   return (
     <>
-      <form action={saveEvent} className="admin-form-card pb-28" data-event-form-ready={hydrated ? "true" : "false"}>
+      <form action={saveEvent} className="admin-form-card pb-6" data-event-form-ready={hydrated ? "true" : "false"}>
         {event?.id ? <input type="hidden" name="id" value={event.id} /> : null}
         <input type="hidden" name="current_status" value={currentStatus} />
         <input type="hidden" name="ticket_config" value={ticketConfig} />
@@ -2147,8 +2147,8 @@ export function EventForm({
           </div>
         </FieldSection>
 
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 px-4 py-3 shadow-[0_-10px_30px_rgba(15,23,42,0.08)] backdrop-blur">
-          <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-8 border-t border-border bg-card pt-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs leading-relaxed text-muted-foreground">
               {published
                 ? "Published events are visible to the selected membership levels."

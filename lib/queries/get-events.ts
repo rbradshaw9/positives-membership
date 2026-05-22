@@ -466,7 +466,11 @@ export async function getAdminEvents(params: {
       .lte("starts_at", `${rangeEnd}T23:59:59.999Z`)
       .order("starts_at", { ascending: true });
 
-    if (params.status && params.status !== "all") query = query.eq("status", params.status);
+    if (params.status === "active") {
+      query = query.neq("status", "archived");
+    } else if (params.status && params.status !== "all") {
+      query = query.eq("status", params.status);
+    }
     if (params.typeId && params.typeId !== "all") query = query.eq("type_id", params.typeId);
     return query;
   };

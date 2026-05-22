@@ -50,9 +50,25 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 function venueAddress(event: MemberEvent) {
   const venue = event.event_venue;
   if (!venue) return null;
-  return [venue.address_line1, venue.address_line2, venue.city, venue.region, venue.postal_code, venue.country]
+  const parts = [venue.address_line1, venue.address_line2, venue.city, venue.region, venue.postal_code]
     .filter(Boolean)
     .join(", ");
+  if (parts) return parts;
+  return null;
+}
+
+function formatTimezoneLabel(timezone: string) {
+  const common: Record<string, string> = {
+    "America/New_York": "Eastern Time",
+    "America/Chicago": "Central Time",
+    "America/Denver": "Mountain Time",
+    "America/Phoenix": "Arizona Time",
+    "America/Los_Angeles": "Pacific Time",
+    "America/Anchorage": "Alaska Time",
+    "Pacific/Honolulu": "Hawaii Time",
+    UTC: "UTC",
+  };
+  return common[timezone] ?? timezone.replaceAll("_", " ");
 }
 
 function eventHosts(event: MemberEvent) {
@@ -75,6 +91,10 @@ function hostRoleLabel(role: string) {
   if (role === "instructor") return "Instructor";
   if (role === "partner") return "Partner";
   return "Host";
+}
+
+function isVirtualVenueName(name?: string | null) {
+  return ["zoom", "online", "livekit"].includes((name ?? "").trim().toLowerCase());
 }
 
 function statusLabel(status: string) {
@@ -300,6 +320,21 @@ export default async function EventDetailPage({
   });
   const address = venueAddress(event);
   const location = eventLocationLabel(event);
+  const hasVenueNotes = Boolean(
+    event.venue_room_name ||
+      event.venue_notes ||
+      event.event_venue?.parking_notes ||
+      event.event_venue?.accessibility_notes ||
+      event.event_venue?.map_url ||
+      event.event_venue?.website_url
+  );
+  const showVenueCard = Boolean(
+    event.event_venue &&
+      (!isOnlineEvent ||
+        address ||
+        hasVenueNotes ||
+        (!event.event_venue.is_virtual && !isVirtualVenueName(event.event_venue.name)))
+  );
   const hostNames = eventHostNames(event);
   const registrationPlacement = event.registration_placement ?? "after_description";
   const registrationModule = (
@@ -322,7 +357,7 @@ export default async function EventDetailPage({
   );
 
   return (
-    <div className="member-container py-8 md:py-12">
+    <div className="member-container py-8 pb-28 md:py-12">
       <Link href="/events" className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
           <polyline points="15 18 9 12 15 6" />
@@ -367,16 +402,6 @@ export default async function EventDetailPage({
 
             {registrationPlacement === "after_description" ? registrationModule : null}
 
-            <SurfaceCard padding="lg" className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="ui-section-eyebrow mb-2">Calendar</p>
-                <p className="text-sm text-muted-foreground">Save this event to your personal calendar.</p>
-              </div>
-              <Button href={`/events/${event.id}/calendar`} variant="primary" className="w-full justify-center sm:w-auto">
-                Add to Calendar
-              </Button>
-            </SurfaceCard>
-
             {relatedEvents.length > 0 ? (
               <section className="space-y-3">
                 <h2 className="heading-balance font-heading text-2xl font-semibold tracking-normal text-foreground">
@@ -398,7 +423,7 @@ export default async function EventDetailPage({
               <p className="ui-section-eyebrow mb-3">Event Details</p>
               <dl>
                 <DetailRow label="Date & Time" value={formatEventDateRange(event.starts_at, event.ends_at, event.timezone, event.all_day)} />
-                <DetailRow label="Timezone" value={event.timezone} />
+                <DetailRow label="Timezone" value={formatTimezoneLabel(event.timezone)} />
                 <DetailRow label="Cost" value={eventCostLabel(event)} />
                 <DetailRow label="Event Type" value={event.event_type?.name ?? "Event"} />
                 <DetailRow label="Location" value={location} />
@@ -417,12 +442,12 @@ export default async function EventDetailPage({
                   </p>
                 ) : null}
                 <Button href={`/events/${event.id}/calendar`} variant="outline" className="w-full justify-center">
-                  Add to Calendar
+                  Add to calendar
                 </Button>
               </div>
             </SurfaceCard>
 
-            {event.event_venue ? (
+            {showVenueCard && event.event_venue ? (
               <SurfaceCard padding="lg">
                 <p className="ui-section-eyebrow mb-3">Venue</p>
                 <Link href={`/events/venues/${event.event_venue.slug}`} className="font-heading text-lg font-semibold text-foreground hover:text-primary">
@@ -436,12 +461,12 @@ export default async function EventDetailPage({
                 <div className="mt-4 flex flex-col gap-2 sm:flex-row lg:flex-col">
                   {event.event_venue.show_map_link && event.event_venue.map_url ? (
                     <Button href={event.event_venue.map_url} target="_blank" rel="noopener noreferrer" variant="outline" size="sm" className="justify-center">
-                      View Map
+                      View map
                     </Button>
                   ) : null}
                   {event.event_venue.website_url ? (
                     <Button href={event.event_venue.website_url} target="_blank" rel="noopener noreferrer" variant="ghost" size="sm" className="justify-center">
-                      Venue Website
+                      Venue website
                     </Button>
                   ) : null}
                 </div>
@@ -460,7 +485,7 @@ export default async function EventDetailPage({
                 <p className="ui-section-eyebrow mb-3">{hosts.length === 1 ? "Host" : "Hosts"}</p>
                 <div className="grid gap-4">
                   {hosts.map((host) => (
-                    <div key={host.id} className="flex gap-3">
+                    <div key={host.id} className="flex items-start gap-3 text-left">
                       {host.image_url ? (
                         <SafeImage
                           src={host.image_url}
@@ -471,7 +496,7 @@ export default async function EventDetailPage({
                           className="h-14 w-14 rounded-full object-cover"
                         />
                       ) : (
-                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary/10 font-heading font-semibold text-primary">
+                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-primary/25 bg-primary font-heading font-semibold text-primary-foreground shadow-sm">
                           {host.name.slice(0, 1)}
                         </div>
                       )}
