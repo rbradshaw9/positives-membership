@@ -263,7 +263,7 @@ export function CoachForm({ initial }: { initial?: Partial<CoachFormData> }) {
         <button
           type="button"
           onClick={() => router.push("/admin/coaching")}
-          className="admin-btn admin-btn--secondary"
+          className="admin-btn admin-btn--outline"
         >
           Cancel
         </button>

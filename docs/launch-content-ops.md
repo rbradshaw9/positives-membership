@@ -24,6 +24,7 @@ This is the recommended operator path for the April 7, 2026 launch hardening wor
 - Example plan: [launch-content-plan.example.json](/Users/ryanbradshaw/AntiGravity/positives-membership/scripts/launch-content-plan.example.json)
 - Launch-window template: [launch-content-plan.l1-window.template.json](/Users/ryanbradshaw/AntiGravity/positives-membership/scripts/launch-content-plan.l1-window.template.json)
 - Weekly audio-fix template: [launch-content-plan.weekly-audio-fixes.template.json](/Users/ryanbradshaw/AntiGravity/positives-membership/scripts/launch-content-plan.weekly-audio-fixes.template.json)
+- Beta-window scaffold through July 15, 2026: [launch-content-plan.beta-window-through-2026-07-15.json](/Users/ryanbradshaw/AntiGravity/positives-membership/scripts/launch-content-plan.beta-window-through-2026-07-15.json)
 
 Package script:
 
@@ -48,7 +49,10 @@ For the actual launch hardening work, you can start from:
 ```bash
 cp scripts/launch-content-plan.l1-window.template.json /tmp/launch-runway.json
 cp scripts/launch-content-plan.weekly-audio-fixes.template.json /tmp/weekly-audio-fixes.json
+cp scripts/launch-content-plan.beta-window-through-2026-07-15.json /tmp/beta-window-through-2026-07-15.json
 ```
+
+The beta-window scaffold exists to satisfy coverage audits while final content is prepared. Do not treat its SoundHelix audio as approved user-facing launch media.
 
 ### Step 2: dry-run first
 

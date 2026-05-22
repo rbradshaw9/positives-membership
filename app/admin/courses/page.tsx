@@ -1,25 +1,11 @@
 import Link from "next/link";
-import { createClient } from "@supabase/supabase-js";
+import { getAdminClient } from "@/lib/supabase/admin";
 import { createCourse } from "./actions";
 import { LearnDashImportPanel } from "./LearnDashImportPanel";
-
-/**
- * app/admin/courses/page.tsx
- * Course catalog — list all courses with module/session counts.
- * Includes inline Create Course form and LearnDash import panel.
- */
 
 export const metadata = {
   title: "Courses — Positives Admin",
 };
-
-function adminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } }
-  );
-}
 
 type CourseRow = {
   id: string;
@@ -45,7 +31,7 @@ export default async function AdminCoursesPage({
   searchParams: Promise<{ success?: string; error?: string; q?: string; status?: string }>;
 }) {
   const sp = await searchParams;
-  const supabase = adminClient();
+  const supabase = getAdminClient();
 
   const { data: courses } = await supabase
     .from("course")

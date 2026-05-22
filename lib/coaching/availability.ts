@@ -146,7 +146,6 @@ function generateSlotsForCoach(params: {
   const { coach, windows, existingBookings, rangeStart, rangeEnd, blockedDates = [] } = params;
   const slots: TimeSlot[] = [];
   const durationMs = coach.session_duration_minutes * 60 * 1000;
-  const bufferMs = coach.buffer_minutes_after * 60 * 1000;
 
   // Blocked intervals (start → end+buffer)
   const blocked = existingBookings.map((b) => ({

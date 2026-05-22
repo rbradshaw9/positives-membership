@@ -344,7 +344,7 @@ export default async function AdminOpsPage() {
         >
           <div className="grid gap-3 sm:grid-cols-2">
             <Metric label="Open triage tasks" value={snapshot.asana.openTasks} />
-            <Metric label="Section" value={snapshot.asana.sectionGid} />
+            <Metric label="Status" value={snapshot.asana.error ? "Check" : snapshot.asana.openTasks === 0 ? "Clear" : "Active"} />
           </div>
           {snapshot.asana.error ? (
             <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -366,6 +366,32 @@ export default async function AdminOpsPage() {
               ))}
             </div>
           ) : null}
+        </HealthCard>
+
+        <HealthCard
+          eyebrow="Video"
+          title="LiveKit"
+          tone={snapshot.livekit.tone}
+          href="/admin/coaching"
+          cta="Open Coaching"
+        >
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Metric label="Server SDK" value={snapshot.livekit.configured ? "Configured" : "Missing"} />
+            <Metric label="Browser URL" value={snapshot.livekit.publicUrlConfigured ? "Configured" : "Missing"} />
+          </div>
+          {!snapshot.livekit.configured ? (
+            <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Set LIVEKIT_URL, LIVEKIT_API_KEY, and LIVEKIT_API_SECRET to enable coaching video sessions.
+            </p>
+          ) : !snapshot.livekit.publicUrlConfigured ? (
+            <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Set NEXT_PUBLIC_LIVEKIT_URL so the browser client can connect. Server credentials are ready.
+            </p>
+          ) : (
+            <p className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-600">
+              {snapshot.livekit.serverUrl}
+            </p>
+          )}
         </HealthCard>
       </div>
     </section>

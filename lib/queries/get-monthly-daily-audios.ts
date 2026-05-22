@@ -23,7 +23,9 @@ export type MonthlyDailyAudio = Pick<
   | "duration_seconds"
   | "castos_episode_url"
   | "s3_audio_key"
->;
+> & {
+  audio_url?: string | null;
+};
 
 export interface MonthGroup {
   monthYear: string;   // "2026-04"

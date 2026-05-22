@@ -6,6 +6,7 @@ import {
   getBetaFeedbackAsanaProjectUrl,
   getOpenBetaFeedbackAsanaTasks,
 } from "@/lib/integrations/asana";
+import { livekitConfigured } from "@/lib/livekit/client";
 
 type HealthTone = "good" | "watch" | "risk" | "neutral";
 
@@ -147,6 +148,12 @@ async function fetchOpsHealthSnapshot() {
       tasks: asanaResult.tasks.slice(0, 5),
       error: asanaResult.error,
       tone: asanaResult.error ? "watch" as HealthTone : "good" as HealthTone,
+    },
+    livekit: {
+      configured: livekitConfigured(),
+      serverUrl: process.env.LIVEKIT_URL ?? null,
+      publicUrlConfigured: Boolean(process.env.NEXT_PUBLIC_LIVEKIT_URL),
+      tone: (livekitConfigured() && Boolean(process.env.NEXT_PUBLIC_LIVEKIT_URL) ? "good" : livekitConfigured() ? "watch" : "neutral") as HealthTone,
     },
   };
 }

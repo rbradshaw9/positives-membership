@@ -20,7 +20,7 @@ const APPS = [
     name: "Overcast",
     icon: "🌤",
     getUrl: (feedUrl: string) =>
-      `https://overcast.fm/itpc/${encodeURIComponent(feedUrl)}`,
+      `overcast://x-callback-url/add?url=${encodeURIComponent(feedUrl)}`,
   },
   {
     id: "pocketcasts",
@@ -96,6 +96,7 @@ export function PodcastFeedSection({ feedUrl }: Props) {
             <a
               key={app.id}
               href={app.getUrl(feedUrl)}
+              target="_blank"
               className="flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
               rel="noreferrer"
             >
@@ -110,6 +111,14 @@ export function PodcastFeedSection({ feedUrl }: Props) {
         Keep this URL private — it gives access to your feed without a password.
         If you need a new URL, contact support.
       </p>
+      <div className="mt-4 rounded-xl border border-border bg-surface-tint/40 p-4">
+        <p className="text-xs font-semibold text-foreground">About streaks</p>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          Podcast apps do not send Positives a reliable “listened” signal. For now,
+          use the Today player inside Positives when you want a practice to count
+          toward your streak.
+        </p>
+      </div>
     </SurfaceCard>
   );
 }

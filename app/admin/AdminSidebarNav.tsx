@@ -17,6 +17,7 @@ type AdminNavItem = {
   label: string;
   icon: IconName;
   exact?: boolean;
+  badge?: string;
   subLinks?: Array<{ href: string; label: string }>;
 };
 
@@ -44,7 +45,10 @@ type IconName =
 
 function isActivePath(pathname: string, item: AdminNavItem) {
   if (item.exact) return pathname === item.href;
-  return pathname === item.href || pathname.startsWith(`${item.href}/`);
+  if (pathname === item.href || pathname.startsWith(`${item.href}/`)) return true;
+  // Also mark active when on a sub-link that lives outside this item's path prefix
+  if (item.subLinks?.some((sub) => pathname === sub.href.split("?")[0])) return true;
+  return false;
 }
 
 function hasActiveItem(pathname: string, items: AdminNavItem[]) {
@@ -194,7 +198,15 @@ function buildNavGroups({
       id: "content",
       label: "Content",
       items: [
-        { href: "/admin/months", label: "Practice Content", icon: "calendar" },
+        {
+          href: "/admin/months",
+          label: "Practice Content",
+          icon: "calendar",
+          subLinks: [
+            { href: "/admin/months", label: "Monthly workspaces" },
+            { href: "/admin/content/calendar", label: "Coverage calendar" },
+          ],
+        },
         { href: "/admin/courses", label: "Courses", icon: "content" },
         {
           href: "/admin/events",
@@ -221,7 +233,7 @@ function buildNavGroups({
         ...(canManageCoaching ? [{ href: "/admin/coaching", label: "Coaching", icon: "coaching" as const }] : []),
         ...(canReadMembers ? [{ href: "/admin/beta-feedback", label: "Feedback", icon: "message" as const }] : []),
         ...(canModerateCommunity ? [{ href: "/admin/community", label: "Community", icon: "community" as const }] : []),
-        { href: "/admin/ingestion", label: "Ingestion", icon: "ingestion" },
+        { href: "/admin/ingestion", label: "Ingestion", icon: "ingestion", badge: "Planned" },
         { href: "/admin/integrations", label: "Integrations", icon: "integrations" },
         ...(canManageRoles ? [{ href: "/admin/team", label: "Team", icon: "team" as const }] : []),
         ...(canManageRoles ? [{ href: "/admin/roles", label: "Roles", icon: "roles" as const }] : []),
@@ -277,6 +289,11 @@ export function AdminSidebarNav(props: AdminSidebarNavProps) {
                         >
                           <span className="admin-nav-link__icon"><Icon name={item.icon} /></span>
                           <span>{item.label}</span>
+                          {item.badge ? (
+                            <span className="ml-auto rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                              {item.badge}
+                            </span>
+                          ) : null}
                         </Link>
                         {hasChildren ? (
                           <button

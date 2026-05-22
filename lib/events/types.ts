@@ -7,7 +7,7 @@ export const EVENT_ACCESS_LEVELS = [
 
 export type EventAccessLevel = (typeof EVENT_ACCESS_LEVELS)[number]["value"];
 export type EventStatus = "draft" | "ready_for_review" | "published" | "canceled" | "postponed" | "archived";
-export type EventVirtualMode = "none" | "manual" | "zoom";
+export type EventVirtualMode = "none" | "manual" | "zoom" | "livekit";
 export type EventTicketingMode = "included" | "ticket_required";
 export type EventRegistrationPlacement = "below_hero" | "after_description" | "sidebar";
 export type RecurrenceFrequency = "daily" | "weekly" | "monthly";

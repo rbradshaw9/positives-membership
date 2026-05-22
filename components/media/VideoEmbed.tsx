@@ -385,7 +385,6 @@ export function VideoEmbed({
             src={vimeoSrc}
             title={title}
             allow="autoplay; fullscreen; picture-in-picture"
-            allowFullScreen
             className="absolute inset-0 w-full h-full border-0"
           />
         )}
@@ -469,7 +468,6 @@ export function VideoEmbed({
           src={youtubeSrc}
           title={title}
           allow="autoplay; fullscreen; picture-in-picture"
-          allowFullScreen
           className="absolute inset-0 w-full h-full border-0"
           loading="lazy"
         />

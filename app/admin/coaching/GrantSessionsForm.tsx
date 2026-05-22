@@ -55,7 +55,7 @@ export function GrantSessionsForm() {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="admin-btn admin-btn--secondary"
+        className="admin-btn admin-btn--outline"
       >
         Grant Sessions
       </button>
@@ -164,7 +164,7 @@ export function GrantSessionsForm() {
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="admin-btn admin-btn--secondary"
+              className="admin-btn admin-btn--outline"
             >
               Cancel
             </button>

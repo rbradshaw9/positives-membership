@@ -97,6 +97,11 @@ export default async function EventTypesPage({ searchParams }: { searchParams: S
                   <td>{type.sort_order}</td>
                 </tr>
               ))}
+              {types.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="text-center text-sm text-muted-foreground">No event types match these filters.</td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>

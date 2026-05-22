@@ -64,13 +64,13 @@ Operational launch settings:
 
 ## 3. Content runway
 
-Before the rehearsal, fill the launch window through June 4, 2026.
+Before the rehearsal, fill the launch window through July 15, 2026.
 
 Expected runway:
 
-- one published `daily_audio` for every day from `2026-04-07` through `2026-06-04`
+- one published `daily_audio` for every day from `2026-04-07` through `2026-07-15`
 - one published `weekly_principle` for every Monday in that window
-- published `monthly_theme` rows for `2026-05` and `2026-06`
+- published `monthly_theme` rows for `2026-05`, `2026-06`, and `2026-07`
 - no published daily or weekly rows missing both `castos_episode_url` and `s3_audio_key`
 
 Use the structured content workflow in [docs/launch-content-ops.md](/Users/ryanbradshaw/AntiGravity/positives-membership/docs/launch-content-ops.md).
@@ -79,6 +79,7 @@ Operator note:
 
 - `scripts/launch-content-plan.l1-window.template.json` is the base runway plan
 - `scripts/launch-content-plan.june-window-extension.json` extends the seeded daily coverage through `2026-06-04`
+- `scripts/launch-content-plan.beta-window-through-2026-07-15.json` extends audit coverage through `2026-07-15`; it is scaffold content and must be replaced with final approved Dr. Paul/Castos audio before broad launch
 
 Quick verification queries:
 

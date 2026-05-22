@@ -11,6 +11,7 @@ import { requireAdminPermission, getAdminPermissionSet, isBootstrapAdminEmail } 
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import Link from "next/link";
+import { SafeImage } from "@/components/media/SafeImage";
 import { AdminBookingActions } from "./AdminBookingActions";
 import { GrantSessionsForm } from "./GrantSessionsForm";
 
@@ -267,12 +268,13 @@ export default async function AdminCoachingPage() {
 
   // ── Coach-only view ─────────────────────────────────────────────────────────
   if (isCoachOnly) {
+    const now = new Date().getTime();
     const todaySessions = myUpcoming.filter(b => {
-      const diff = new Date(b.scheduled_at).getTime() - Date.now();
+      const diff = new Date(b.scheduled_at).getTime() - now;
       return diff <= 24 * 3600 * 1000;
     });
     const futureSessions = myUpcoming.filter(b => {
-      const diff = new Date(b.scheduled_at).getTime() - Date.now();
+      const diff = new Date(b.scheduled_at).getTime() - now;
       return diff > 24 * 3600 * 1000;
     });
 
@@ -280,10 +282,10 @@ export default async function AdminCoachingPage() {
       <div className="admin-page-content">
         <div className="admin-page-header">
           <div>
-            <h1 className="admin-page-title">
+            <h1 className="admin-page-header__title">
               {myProfile ? `${myProfile.display_name}'s Sessions` : "My Sessions"}
             </h1>
-            <p className="admin-page-subtitle">
+            <p className="admin-page-header__subtitle">
               {myUpcoming.length === 0
                 ? "No upcoming sessions scheduled."
                 : `${myUpcoming.length} upcoming session${myUpcoming.length !== 1 ? "s" : ""}`}
@@ -325,7 +327,7 @@ export default async function AdminCoachingPage() {
             <div className="admin-section__header">
               <h2 className="admin-section__title">Recent Sessions</h2>
             </div>
-            <div className="admin-table-container">
+            <div className="admin-table-wrap">
               <table className="admin-table">
                 <thead>
                   <tr>
@@ -374,8 +376,8 @@ export default async function AdminCoachingPage() {
     <div className="admin-page-content">
       <div className="admin-page-header">
         <div>
-          <h1 className="admin-page-title">Coaching</h1>
-          <p className="admin-page-subtitle">Coach roster, upcoming sessions, and session packs.</p>
+          <h1 className="admin-page-header__title">Coaching</h1>
+          <p className="admin-page-header__subtitle">Coach roster, upcoming sessions, and session packs.</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           <GrantSessionsForm />
@@ -386,7 +388,7 @@ export default async function AdminCoachingPage() {
       </div>
 
       {/* Stats */}
-      <div className="admin-stat-grid">
+      <div className="admin-stats-ribbon">
         <div className="admin-stat-card">
           <p className="admin-stat-card__label">Active Coaches</p>
           <p className="admin-stat-card__value">{activeCoaches.length}</p>
@@ -407,7 +409,9 @@ export default async function AdminCoachingPage() {
 
       {/* Upcoming sessions — cards for joinable ones, table for the rest */}
       <section className="admin-section">
-        <h2 className="admin-section__title">Upcoming Sessions</h2>
+        <div className="admin-section__header">
+          <h2 className="admin-section__title">Upcoming Sessions</h2>
+        </div>
         {allUpcoming.length === 0 ? (
           <div className="admin-empty-state"><p>No upcoming sessions.</p></div>
         ) : (
@@ -429,7 +433,7 @@ export default async function AdminCoachingPage() {
             })()}
 
             {/* All upcoming as table */}
-            <div className="admin-table-container">
+            <div className="admin-table-wrap">
               <table className="admin-table">
                 <thead>
                   <tr>
@@ -500,16 +504,18 @@ export default async function AdminCoachingPage() {
 
       {/* Coach roster */}
       <section className="admin-section">
-        <h2 className="admin-section__title">Coach Roster</h2>
+        <div className="admin-section__header">
+          <h2 className="admin-section__title">Coach Roster</h2>
+        </div>
         {coaches.length === 0 ? (
           <div className="admin-empty-state">
             <p>No coaches configured yet.</p>
-            <Link href="/admin/coaching/coaches/new" className="admin-btn admin-btn--secondary mt-3">
+            <Link href="/admin/coaching/coaches/new" className="admin-btn admin-btn--outline mt-3">
               Add first coach
             </Link>
           </div>
         ) : (
-          <div className="admin-table-container">
+          <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
                 <tr>
@@ -526,7 +532,7 @@ export default async function AdminCoachingPage() {
                     <td>
                       <div className="flex items-center gap-2.5">
                         {coach.avatar_url ? (
-                          <img src={coach.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover flex-shrink-0" />
+                          <SafeImage src={coach.avatar_url} alt="" width={32} height={32} className="h-8 w-8 rounded-full object-cover flex-shrink-0" />
                         ) : (
                           <div className="h-8 w-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white" style={{ background: "var(--color-primary)" }}>
                             {coach.display_name[0]}
@@ -565,8 +571,10 @@ export default async function AdminCoachingPage() {
       {/* Recent */}
       {myRecent.length > 0 && (
         <section className="admin-section">
-          <h2 className="admin-section__title">Recent Sessions</h2>
-          <div className="admin-table-container">
+          <div className="admin-section__header">
+            <h2 className="admin-section__title">Recent Sessions</h2>
+          </div>
+          <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
                 <tr><th>Member</th><th>Coach</th><th>Date</th><th>Status</th></tr>

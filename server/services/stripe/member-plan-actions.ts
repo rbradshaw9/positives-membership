@@ -1,9 +1,15 @@
+import type Stripe from "stripe";
 import { config } from "@/lib/config";
+import { getSubscriptionAnalyticsFromPriceId } from "@/lib/analytics/subscription";
 import { getStripe } from "@/lib/stripe/config";
 import { isStripeResourceMissingError } from "@/lib/stripe/errors";
 import type { Enums } from "@/types/supabase";
 
-type FailResult = { ok: false; reason: "no_subscription" | "customer_missing" | "stripe_error"; message: string };
+type FailResult = {
+  ok: false;
+  reason: "no_subscription" | "customer_missing" | "same_plan" | "stripe_error";
+  message: string;
+};
 type ActionResult<T extends object = object> = ({ ok: true } & T) | FailResult;
 
 function formatPeriodEnd(timestamp: number): string {
@@ -20,6 +26,7 @@ async function getActiveSubscription(stripeCustomerId: string) {
     customer: stripeCustomerId,
     status: "all",
     limit: 10,
+    expand: ["data.schedule"],
   });
   return (
     list.data.find((s) =>
@@ -28,10 +35,63 @@ async function getActiveSubscription(stripeCustomerId: string) {
   );
 }
 
+function getPrimarySubscriptionItem(subscription: Stripe.Subscription) {
+  return subscription.items.data[0] ?? null;
+}
+
+function getLevel1TargetPriceId(currentPriceId: string | null | undefined) {
+  const current = getSubscriptionAnalyticsFromPriceId(currentPriceId);
+  if (current.billing_interval === "annual" && config.stripe.prices.level1Annual) {
+    return config.stripe.prices.level1Annual;
+  }
+
+  return config.stripe.prices.level1Monthly;
+}
+
 function retentionCouponId(tier: Enums<"subscription_tier"> | null | undefined): string {
   return tier && tier !== "level_1"
     ? "RETENTION_50PCT_L2PLUS"
     : "RETENTION_1MO_FREE";
+}
+
+const WINBACK_COUPON_ID = "WINBACK_50PCT_ONCE";
+const WINBACK_PROMOTION_CODE = "COMEBACK50";
+
+async function ensureWinbackPromotionCode(): Promise<string> {
+  const stripe = getStripe();
+
+  try {
+    await stripe.coupons.retrieve(WINBACK_COUPON_ID);
+  } catch (error) {
+    if (!isStripeResourceMissingError(error)) throw error;
+    await stripe.coupons.create({
+      id: WINBACK_COUPON_ID,
+      name: "Come back to Positives - 50% off",
+      percent_off: 50,
+      duration: "once",
+    });
+  }
+
+  const existing = await stripe.promotionCodes.list({
+    code: WINBACK_PROMOTION_CODE,
+    active: true,
+    limit: 1,
+  });
+
+  if (existing.data[0]) {
+    return existing.data[0].code ?? WINBACK_PROMOTION_CODE;
+  }
+
+  const promotionCode = await stripe.promotionCodes.create({
+    promotion: { type: "coupon", coupon: WINBACK_COUPON_ID },
+    code: WINBACK_PROMOTION_CODE,
+    active: true,
+    metadata: {
+      source: "member_cancellation_winback",
+    },
+  });
+
+  return promotionCode.code ?? WINBACK_PROMOTION_CODE;
 }
 
 /**
@@ -42,7 +102,7 @@ function retentionCouponId(tier: Enums<"subscription_tier"> | null | undefined):
 export async function applyRetentionCoupon(
   stripeCustomerId: string,
   subscriptionTier: Enums<"subscription_tier"> | null | undefined
-): Promise<{ ok: true } | FailResult> {
+): Promise<ActionResult<{ couponId: string }>> {
   const stripe = getStripe();
 
   try {
@@ -56,7 +116,113 @@ export async function applyRetentionCoupon(
       discounts: [{ coupon }],
     });
 
-    return { ok: true };
+    return { ok: true, couponId: coupon };
+  } catch (error) {
+    if (isStripeResourceMissingError(error)) {
+      return { ok: false, reason: "customer_missing", message: "Stripe customer not found." };
+    }
+    const message = error instanceof Error ? error.message : "Stripe error";
+    return { ok: false, reason: "stripe_error", message };
+  }
+}
+
+/**
+ * Schedules a Plus member down to Positives at the next renewal. Downgrades are
+ * never immediate so members keep paid Plus access through the period they
+ * already bought.
+ */
+export async function applyMemberDowngradeToLevel1(
+  stripeCustomerId: string,
+  options: { includeFreeMonth?: boolean } = {}
+): Promise<ActionResult<{ effectiveLabel: string; targetPriceId: string; offerApplied: boolean }>> {
+  const stripe = getStripe();
+
+  try {
+    const subscription = await getActiveSubscription(stripeCustomerId);
+    if (!subscription) {
+      return { ok: false, reason: "no_subscription", message: "No active subscription found." };
+    }
+
+    if (subscription.schedule) {
+      return {
+        ok: false,
+        reason: "stripe_error",
+        message: "This subscription already has a scheduled change. Review billing before adding another change.",
+      };
+    }
+
+    const item = getPrimarySubscriptionItem(subscription);
+    if (!item?.price?.id) {
+      return {
+        ok: false,
+        reason: "stripe_error",
+        message: "Subscription has no supported plan item.",
+      };
+    }
+
+    const current = getSubscriptionAnalyticsFromPriceId(item.price.id);
+    if (current.plan_level === "level_1") {
+      return {
+        ok: false,
+        reason: "same_plan",
+        message: "This membership is already on Positives.",
+      };
+    }
+
+    const targetPriceId = getLevel1TargetPriceId(item.price.id);
+    if (!targetPriceId) {
+      return {
+        ok: false,
+        reason: "stripe_error",
+        message: "The Positives plan price is not configured.",
+      };
+    }
+
+    const metadata = {
+      member_self_service_change: "downgrade",
+      target_price_id: targetPriceId,
+      retention_offer: options.includeFreeMonth ? "level_1_free_month" : "none",
+    };
+    const schedule = await stripe.subscriptionSchedules.create({
+      from_subscription: subscription.id,
+    });
+    const nextPhase: Stripe.SubscriptionScheduleUpdateParams.Phase = {
+      start_date: item.current_period_end,
+      items: [{
+        price: targetPriceId,
+        quantity: item.quantity ?? 1,
+      }],
+      proration_behavior: "none",
+      metadata,
+    };
+
+    if (options.includeFreeMonth) {
+      nextPhase.discounts = [{ coupon: "RETENTION_1MO_FREE" }];
+    }
+
+    await stripe.subscriptionSchedules.update(schedule.id, {
+      metadata,
+      end_behavior: "release",
+      proration_behavior: "none",
+      phases: [
+        {
+          start_date: item.current_period_start,
+          end_date: item.current_period_end,
+          items: [{
+            price: item.price.id,
+            quantity: item.quantity ?? 1,
+          }],
+        },
+        nextPhase,
+      ],
+    });
+
+    return {
+      ok: true,
+      effectiveLabel: formatPeriodEnd(item.current_period_end),
+      targetPriceId,
+      offerApplied: options.includeFreeMonth === true,
+    };
   } catch (error) {
     if (isStripeResourceMissingError(error)) {
       return { ok: false, reason: "customer_missing", message: "Stripe customer not found." };
@@ -73,7 +239,7 @@ export async function applyRetentionCoupon(
  */
 export async function cancelSubscriptionAtPeriodEnd(
   stripeCustomerId: string
-): Promise<ActionResult<{ periodEndLabel: string }>> {
+): Promise<ActionResult<{ periodEndLabel: string; winbackCode: string }>> {
   const stripe = getStripe();
 
   try {
@@ -88,7 +254,13 @@ export async function cancelSubscriptionAtPeriodEnd(
 
     // current_period_end lives on the subscription item in Stripe API v21+
     const periodEnd = subscription.items.data[0]?.current_period_end ?? 0;
-    return { ok: true, periodEndLabel: formatPeriodEnd(periodEnd) };
+    let winbackCode = WINBACK_PROMOTION_CODE;
+    try {
+      winbackCode = await ensureWinbackPromotionCode();
+    } catch (error) {
+      console.error("[Stripe] Failed to ensure winback promotion code:", error);
+    }
+    return { ok: true, periodEndLabel: formatPeriodEnd(periodEnd), winbackCode };
   } catch (error) {
     if (isStripeResourceMissingError(error)) {
       return { ok: false, reason: "customer_missing", message: "Stripe customer not found." };

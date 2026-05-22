@@ -19,7 +19,6 @@ import {
   LiveKitRoom,
   VideoConference,
   RoomAudioRenderer,
-  useRoomContext,
 } from "@livekit/components-react";
 import "@livekit/components-styles";
 
@@ -146,7 +145,18 @@ export function SessionRoom({
     );
   }
 
-  if (error || !token || !serverUrl || !roomName) {
+  if (!serverUrl) {
+    return (
+      <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-6 text-center">
+        <p className="text-sm font-medium text-destructive">Video room is not configured.</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Set <code className="rounded bg-muted px-1 py-0.5 text-xs">NEXT_PUBLIC_LIVEKIT_URL</code> in Vercel to enable video sessions.
+        </p>
+      </div>
+    );
+  }
+
+  if (error || !token || !roomName) {
     return (
       <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-6 text-center">
         <p className="text-sm font-medium text-destructive">

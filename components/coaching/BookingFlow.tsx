@@ -10,9 +10,10 @@
  *   idle → selecting_date → selecting_slot → confirming → booked | error
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { SafeImage } from "@/components/media/SafeImage";
 
 type TimeSlot = {
   startsAt: string;
@@ -84,7 +85,7 @@ export function BookingFlow({ onBooked }: { onBooked?: (result: BookingResult) =
       const data = await res.json();
       setSlots(data.slots ?? {});
       setStep("selecting");
-    } catch (err) {
+    } catch {
       setError("Could not load available times. Please try again.");
       setStep("error");
     }
@@ -309,9 +310,11 @@ export function BookingFlow({ onBooked }: { onBooked?: (result: BookingResult) =
         {/* Coach info */}
         <div className="flex items-center gap-3">
           {selectedSlot.coachAvatarUrl ? (
-            <img
+            <SafeImage
               src={selectedSlot.coachAvatarUrl}
               alt=""
+              width={40}
+              height={40}
               className="h-10 w-10 rounded-full object-cover flex-shrink-0"
             />
           ) : (

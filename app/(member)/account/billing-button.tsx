@@ -3,7 +3,8 @@ import Link from "next/link";
 /**
  * app/(member)/account/billing-button.tsx
  * Links to the in-app billing hub (/account/billing) — payment method,
- * invoices, plan. Cancellation lives at /account/cancel.
+ * invoices, and plan details. Cancellation is intentionally a separate,
+ * subdued path from the billing hub.
  */
 
 type BillingButtonProps = {
@@ -14,8 +15,8 @@ type BillingButtonProps = {
 
 export function BillingButton({
   label = "Manage billing",
-  description = "Payment method, plan, and invoice history",
-  showCancelLink = true,
+  description = "Payment information, invoices, and plan details",
+  showCancelLink = false,
 }: BillingButtonProps) {
   return (
     <div className="flex flex-col gap-2">

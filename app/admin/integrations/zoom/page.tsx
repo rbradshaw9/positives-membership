@@ -26,13 +26,18 @@ export default async function ZoomIntegrationsPage({ searchParams }: { searchPar
           </p>
         </div>
         <div className="admin-page-header__actions">
-          <Link
-            href="/api/admin/integrations/zoom/connect?returnTo=/admin/integrations/zoom"
-            className="admin-btn admin-btn--primary"
-            aria-disabled={!configured}
-          >
-            Connect Zoom
-          </Link>
+          {configured ? (
+            <Link
+              href="/api/admin/integrations/zoom/connect?returnTo=/admin/integrations/zoom"
+              className="admin-btn admin-btn--primary"
+            >
+              Connect Zoom
+            </Link>
+          ) : (
+            <span className="admin-btn admin-btn--primary opacity-40 cursor-not-allowed" aria-disabled="true" title="Configure Zoom env vars first">
+              Connect Zoom
+            </span>
+          )}
         </div>
       </div>
 

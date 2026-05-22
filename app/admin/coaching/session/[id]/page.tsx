@@ -63,27 +63,25 @@ export default async function AdminCoachingSessionPage({
   const coachProfile = Array.isArray(booking.coach) ? booking.coach[0] : booking.coach;
   const memberProfile = Array.isArray(booking.member) ? booking.member[0] : booking.member;
 
-  // Only the assigned coach (or a super admin) can enter this room
   const isAssignedCoach = coachProfile?.member_id === user.id;
-  const isAdmin = !isAssignedCoach; // admins can observe but not join the room
 
   const tz = booking.timezone ?? "America/New_York";
   const sessionStart = new Date(booking.scheduled_at).getTime();
-  const now = Date.now();
+  const now = new Date().getTime();
   const minutesUntil = Math.floor((sessionStart - now) / 60000);
   const sessionPast = now > sessionStart + (booking.duration_minutes + 15) * 60000;
   const sessionOpen = minutesUntil <= 30 && !sessionPast;
 
-  const role = isAssignedCoach ? "coach" : "member";
+  const role = "coach";
 
   return (
     <div className="admin-page-content">
       <div className="admin-page-header">
         <div>
-          <h1 className="admin-page-title">
+          <h1 className="admin-page-header__title">
             Session with {memberProfile?.name ?? memberProfile?.email ?? "Member"}
           </h1>
-          <p className="admin-page-subtitle">{formatTime(booking.scheduled_at, tz)}</p>
+          <p className="admin-page-header__subtitle">{formatTime(booking.scheduled_at, tz)}</p>
         </div>
         <a href="/admin/coaching" className="admin-btn admin-btn--ghost">
           ← Back to Coaching
@@ -116,7 +114,14 @@ export default async function AdminCoachingSessionPage({
 
         {booking.status === "confirmed" && (
           <section aria-label="Video session">
-            {sessionOpen ? (
+            {!isAssignedCoach ? (
+              <SurfaceCard padding="md" className="border border-border">
+                <p className="text-sm font-medium text-foreground">Admin view — read only</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Only the assigned coach ({coachProfile?.display_name ?? "the coach"}) can join this session room.
+                </p>
+              </SurfaceCard>
+            ) : sessionOpen ? (
               <SessionRoomClient
                 bookingId={bookingId}
                 scheduledAt={booking.scheduled_at}

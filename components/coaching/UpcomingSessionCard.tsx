@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 
 type Props = {
   bookingId: string;
-  coachId: string;
   coachName: string;
   scheduledAt: string; // ISO UTC
   durationMinutes: number;
@@ -79,12 +78,10 @@ function formatDateLabel(dateStr: string) {
 
 function RescheduleModal({
   bookingId,
-  coachId,
   onClose,
   onRescheduled,
 }: {
   bookingId: string;
-  coachId: string;
   onClose: () => void;
   onRescheduled: () => void;
 }) {
@@ -259,7 +256,6 @@ function RescheduleModal({
 
 export function UpcomingSessionCard({
   bookingId,
-  coachId,
   coachName,
   scheduledAt,
   durationMinutes,
@@ -317,7 +313,6 @@ export function UpcomingSessionCard({
       {showReschedule && (
         <RescheduleModal
           bookingId={bookingId}
-          coachId={coachId}
           onClose={() => setShowReschedule(false)}
           onRescheduled={() => { setShowReschedule(false); router.refresh(); }}
         />

@@ -65,8 +65,10 @@ test("course-only members keep owned course access and get calm resubscribe prom
   await expect(page.locator(`a[href="/courses/${courseSlug}"]`).first()).toBeVisible();
 
   await page.goto("/today");
-  await expect(page).toHaveURL(/\/join$/);
+  await expect(page).toHaveURL(/\/inactive$/);
+  await expect(page.getByRole("heading", { name: "Your membership was canceled" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Rejoin Positives" })).toBeVisible();
 
-  await page.goto("/library?upgrade=true");
-  await expect(page.getByRole("heading", { name: "That area is part of the full Positives membership." })).toBeVisible();
+  await page.getByRole("link", { name: "Rejoin Positives" }).click();
+  await expect(page).toHaveURL(/\/join$/);
 });

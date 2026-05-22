@@ -68,6 +68,7 @@ type CheckoutContext = {
 export function SuccessClient({ sessionId, nextPath = "/today" }: SuccessClientProps) {
   const router = useRouter();
   const supabase = createClient();
+  const isCoursePurchase = nextPath.startsWith("/my-courses");
 
   const [phase, setPhase] = useState<Phase>("setting-up");
   const [magicLinkEmail, setMagicLinkEmail] = useState<string | null>(null);
@@ -331,6 +332,8 @@ export function SuccessClient({ sessionId, nextPath = "/today" }: SuccessClientP
               ? "Sending your access link…"
               : isTrialFlow
               ? "Starting your free trial"
+              : isCoursePurchase
+              ? "Setting up your course"
               : "Setting up your account"}
           </p>
 
@@ -362,6 +365,8 @@ export function SuccessClient({ sessionId, nextPath = "/today" }: SuccessClientP
               ? "Preparing your sign-in link — check your inbox in a moment."
               : isTrialFlow
               ? `Your card is saved and your ${checkoutContext.planName ?? "Positives"} trial is being prepared now.`
+              : isCoursePurchase
+              ? "Payment confirmed. We're adding the course to your account now."
               : "Payment confirmed. We're preparing your membership now."}
           </p>
         </div>
@@ -396,7 +401,11 @@ export function SuccessClient({ sessionId, nextPath = "/today" }: SuccessClientP
             className="text-xs font-semibold uppercase mb-5"
             style={{ color: "#4E8C78", letterSpacing: "0.14em" }}
           >
-            {isTrialFlow ? `${checkoutContext.planName ?? "Trial"} active` : "Membership Active"}
+            {isTrialFlow
+              ? `${checkoutContext.planName ?? "Trial"} active`
+              : isCoursePurchase
+              ? "Course Access Ready"
+              : "Membership Active"}
           </p>
 
           <h1
@@ -408,7 +417,11 @@ export function SuccessClient({ sessionId, nextPath = "/today" }: SuccessClientP
               color: "#121417",
             }}
           >
-            {isTrialFlow ? `${checkoutContext.planName ?? "Trial"} started.` : "You're in."}
+            {isTrialFlow
+              ? `${checkoutContext.planName ?? "Trial"} started.`
+              : isCoursePurchase
+              ? "Your course is ready."
+              : "You're in."}
           </h1>
 
           <p
@@ -423,6 +436,8 @@ export function SuccessClient({ sessionId, nextPath = "/today" }: SuccessClientP
           >
             {isTrialFlow && checkoutContext.trialEndDate
               ? `Your ${checkoutContext.planName ?? "trial"} access runs through ${checkoutContext.trialEndDate}. Taking you to your first practice now…`
+              : isCoursePurchase
+              ? "Taking you to My Courses now…"
               : "Taking you to your first practice now…"}
           </p>
         </div>
@@ -559,7 +574,11 @@ export function SuccessClient({ sessionId, nextPath = "/today" }: SuccessClientP
             className="text-xs font-semibold uppercase mb-5"
             style={{ color: "#9AA0A8", letterSpacing: "0.14em" }}
           >
-            {isTrialFlow ? `${checkoutContext.planName ?? "Trial"} ready` : "Payment Received"}
+            {isTrialFlow
+              ? `${checkoutContext.planName ?? "Trial"} ready`
+              : isCoursePurchase
+              ? "Course Access Ready"
+              : "Payment Received"}
           </p>
 
           <h1
@@ -576,6 +595,12 @@ export function SuccessClient({ sessionId, nextPath = "/today" }: SuccessClientP
                 Your {checkoutContext.planName ?? "trial"}
                 <br />
                 is active.
+              </>
+            ) : isCoursePurchase ? (
+              <>
+                Your course
+                <br />
+                is ready.
               </>
             ) : (
               <>
@@ -600,6 +625,8 @@ export function SuccessClient({ sessionId, nextPath = "/today" }: SuccessClientP
               ? checkoutContext.trialEndDate
                 ? `Your ${checkoutContext.planName ?? "7-day trial"} is active through ${checkoutContext.trialEndDate}. Use the email you provided at checkout to sign in.`
                 : `Your ${checkoutContext.planName ?? "7-day trial"} is active. Use the email you provided at checkout to sign in.`
+              : isCoursePurchase
+              ? "Your payment was received and your course access is ready. Use the email you provided at checkout to sign in and open My Courses."
               : "Your payment was received and your Positives membership is now active. Use the email you provided at checkout to sign in."}
           </p>
 

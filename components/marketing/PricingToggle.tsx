@@ -8,7 +8,7 @@ import { getStoredFirstPromoterRefId } from "@/lib/firstpromoter/referral";
 /**
  * components/marketing/PricingToggle.tsx
  *
- * Two-tier layout: Positives ($27/mo) and Positives Plus ($97/mo).
+ * Two-tier layout: Positives ($37/mo) and Positives Plus ($97/mo).
  * Plus card is the conversion hero — visually elevated, outcome-first copy,
  * "Most Popular" badge, teal glow border.
  */
@@ -72,12 +72,9 @@ function PlanCard({
   const [isPending, startTransition] = useTransition();
   const isPlus = tier === 2;
 
-  const monthly = isPlus ? 97 : 27;
-  const annual = isPlus ? 970 : 270;
-  const annualPerMonth = isPlus ? 80.83 : 22.5;
-  const annualSavings = isPlus ? 194 : 54;
-
-  const displayPrice = billing === "annual" ? annualPerMonth : monthly;
+  const monthly = isPlus ? 97 : 37;
+  const annual = isPlus ? 970 : 370;
+  const annualPerMonth = Math.round(annual / 12);
 
   const handleCheckout = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -169,17 +166,19 @@ function PlanCard({
             className="font-heading font-bold"
             style={{ fontSize: "3rem", letterSpacing: "-0.05em", color: "#121417", lineHeight: 1 }}
           >
-            ${billing === "annual" ? Math.round(annualPerMonth) : monthly}
+            ${billing === "annual" ? annual : monthly}
           </span>
-          <span style={{ fontSize: "0.875rem", color: "#9AA0A8", marginBottom: "0.45rem" }}>/mo</span>
+          <span style={{ fontSize: "0.875rem", color: "#9AA0A8", marginBottom: "0.45rem" }}>
+            {billing === "annual" ? "/yr" : "/mo"}
+          </span>
         </div>
         {billing === "annual" ? (
           <p className="mt-1 text-xs font-semibold" style={{ color: "#4E8C78" }}>
-            Billed ${annual}/year — save ${annualSavings}
+            About ${annualPerMonth}/mo — get two months free
           </p>
         ) : (
           <p className="mt-1 text-xs" style={{ color: "#9AA0A8" }}>
-            or ${annualPerMonth.toFixed(0)}/mo billed annually
+            or ${annual}/year — get two months free
           </p>
         )}
       </div>
@@ -298,7 +297,7 @@ export function PricingToggle({
                   className="ml-2 text-xs font-bold px-2 py-0.5 rounded-full"
                   style={{ background: "rgba(78,140,120,0.15)", color: "#4E8C78", fontSize: "0.65rem", letterSpacing: "0.03em" }}
                 >
-                  SAVE UP TO $194
+                  2 MONTHS FREE
                 </span>
               )}
             </button>
@@ -307,7 +306,7 @@ export function PricingToggle({
       </div>
 
       <p className="text-center text-xs mb-10" style={{ color: "#B0A89E" }}>
-        Annual billing locks in your rate and saves you two months.
+        Annual billing locks in your rate and gives you two months free.
       </p>
 
       {/* Two-tier grid — Plus is wider/taller via scale */}

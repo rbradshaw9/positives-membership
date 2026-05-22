@@ -20,7 +20,7 @@ test.afterAll(async () => {
 });
 
 test.describe("member billing portal", () => {
-  test("member can launch the Stripe billing center from /account", async ({ page }) => {
+  test("member can open the in-app billing center from /account", async ({ page }) => {
     await ensureMemberStripeCustomer(MEMBER_EMAIL);
 
     await loginWithPassword(page, {
@@ -34,20 +34,22 @@ test.describe("member billing portal", () => {
     await expect(page.getByText("Full membership")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Recent invoices" }).last()).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "Open billing center" })
+      page.getByRole("link", { name: "Manage billing" })
     ).toBeVisible();
 
-    await Promise.all([
-      page.waitForURL(/billing\.stripe\.com/, { timeout: 20_000, waitUntil: "commit" }),
-      page.getByRole("button", { name: "Open billing center" }).click(),
-    ]);
+    await page.getByRole("link", { name: "Manage billing" }).click();
 
-    await expect(
-      page.getByText("Manage your Positives membership in one calm place.")
-    ).toBeVisible();
+    await expect(page).toHaveURL(/\/account\/billing$/);
+    await expect(page.getByRole("heading", { name: "Billing", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Current Plan" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Payment Method" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Invoice History" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Plan Details" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Cancel membership" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Change or cancel" })).toHaveCount(0);
   });
 
-  test("past-due member is sent to billing repair and sees account warning", async ({ page }) => {
+  test("past-due member is sent to billing repair", async ({ page }) => {
     originalMemberState = await getAdminMemberSupportSnapshot(MEMBER_EMAIL);
     await ensureMemberStripeCustomer(MEMBER_EMAIL);
     await updateAdminMemberSupportFields(MEMBER_EMAIL, {
@@ -59,16 +61,16 @@ test.describe("member billing portal", () => {
       email: MEMBER_EMAIL,
       password: MEMBER_PASSWORD,
       next: "/account",
-      expectedPath: "/account",
+      expectedPath: "/account/billing",
       normalizeAccess: false,
     });
 
-    await expect(page.getByRole("heading", { name: "Update billing to continue your membership" })).toBeVisible();
-    await expect(page.getByText("Payment attention needed")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Update billing" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Billing", exact: true })).toBeVisible();
+    await expect(page.getByText("Payment method")).toBeVisible();
 
     await page.goto("/today");
-    await expect(page).toHaveURL(/billing\.stripe\.com/, { timeout: 20_000 });
+    await expect(page).toHaveURL(/\/account\/billing$/, { timeout: 20_000 });
+    await expect(page.getByRole("heading", { name: "Billing", exact: true })).toBeVisible();
 
     await updateAdminMemberSupportFields(MEMBER_EMAIL, originalMemberState);
     originalMemberState = null;
@@ -144,9 +146,7 @@ test.describe("member billing portal", () => {
     });
 
     await page.goto("/upgrade");
-    await expect(page).toHaveURL(/billing\.stripe\.com/, { timeout: 20_000 });
-    await expect(
-      page.getByText("Manage your Positives membership in one calm place.")
-    ).toBeVisible();
+    await expect(page).toHaveURL(/\/account\/billing$/, { timeout: 20_000 });
+    await expect(page.getByRole("heading", { name: "Billing", exact: true })).toBeVisible();
   });
 });

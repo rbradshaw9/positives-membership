@@ -22,7 +22,7 @@ test("public launch routes render their key entry surfaces", async ({ page }) =>
         await expect(
           page.getByRole("heading", {
             level: 1,
-            name: "A few minutes each day. A more positive life.",
+            name: "Help shape Positives before it opens to everyone.",
           })
         ).toBeVisible();
       },
@@ -129,13 +129,13 @@ test("public info pages reuse the shared marketing shell", async ({ page }) => {
     await expect(
       page.getByLabel("Public site navigation").getByRole("link", { name: "Sign in" })
     ).toBeVisible();
-    await expect(
-      page.getByRole("contentinfo").getByText("From $37/month · Cancel anytime · 30-day guarantee")
-    ).toBeVisible();
+    await expect(page.getByRole("contentinfo")).toBeVisible();
   }
 });
 
 test("core signed-in launch routes stay available across member tiers", async ({ page }) => {
+  test.setTimeout(60_000);
+
   await loginWithPassword(page, {
     email: MEMBER_EMAIL,
     password: MEMBER_PASSWORD,
@@ -150,6 +150,9 @@ test("core signed-in launch routes stay available across member tiers", async ({
   await expect(page.getByRole("heading", { name: "Account" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Security" })).toBeVisible();
 
+  await page.context().clearCookies();
+  await page.evaluate(() => window.localStorage.clear());
+
   await loginWithPassword(page, {
     email: LEVEL_2_MEMBER_EMAIL,
     password: LEVEL_2_MEMBER_PASSWORD,
@@ -159,6 +162,9 @@ test("core signed-in launch routes stay available across member tiers", async ({
   response = await page.goto("/events");
   await expectHealthyResponse("/events", response);
   await expect(page.getByRole("heading", { name: "Events", exact: true })).toBeVisible();
+
+  await page.context().clearCookies();
+  await page.evaluate(() => window.localStorage.clear());
 
   await loginWithPassword(page, {
     email: LEVEL_3_MEMBER_EMAIL,

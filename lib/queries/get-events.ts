@@ -1,4 +1,5 @@
 import { unstable_cache } from "next/cache";
+import { formatInTimeZone } from "date-fns-tz";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import { addDays, formatDateOnly, parseDateOnly } from "@/lib/dates/admin-calendar";
@@ -15,6 +16,12 @@ import type {
   ZoomConnectionOption,
 } from "@/lib/events/types";
 
+const EVENT_DEFAULT_TIMEZONE = "America/New_York";
+
+function currentEventMonthKey() {
+  return formatInTimeZone(new Date(), EVENT_DEFAULT_TIMEZONE, "yyyy-MM");
+}
+
 export type EventAccessRow = {
   subscription_tier: EventAccessLevel;
 };
@@ -28,6 +35,23 @@ export type EventZoomRow = {
   host_email: string | null;
   provider_status: string | null;
   zoom_connection?: ZoomConnectionOption | null;
+};
+
+export type EventLiveKitRoomRow = {
+  id: string;
+  event_id: string;
+  room_name: string;
+  mode: "webinar";
+  recording_policy: "auto" | "manual" | "none";
+  room_status: "provisioned" | "started" | "finished" | "failed";
+  egress_id: string | null;
+  egress_status: "pending" | "starting" | "active" | "complete" | "failed" | "aborted" | "limit_reached" | null;
+  replay_asset_id: string | null;
+  last_error: string | null;
+  room_started_at: string | null;
+  room_finished_at: string | null;
+  egress_started_at: string | null;
+  egress_ended_at: string | null;
 };
 
 export type EventHostAssignmentRow = {
@@ -110,13 +134,14 @@ export type EventRow = {
   timezone: string;
   all_day: boolean;
   visibility: "member" | "hidden";
-  virtual_mode: "none" | "manual" | "zoom";
+  virtual_mode: "none" | "manual" | "zoom" | "livekit";
   ticketing_mode: EventTicketingMode;
   event_capacity: number | null;
   registration_placement: EventRegistrationPlacement;
   manual_join_url: string | null;
   replay_url: string | null;
   replay_content_id: string | null;
+  replay_asset_id: string | null;
   image_url: string | null;
   is_featured: boolean;
   event_type?: EventTypeOption | null;
@@ -125,6 +150,7 @@ export type EventRow = {
   event_host_assignment?: EventHostAssignmentRow[];
   member_event_access_level?: EventAccessRow[];
   event_zoom_meeting?: EventZoomRow | null;
+  event_livekit_room?: EventLiveKitRoomRow | null;
   event_ticket_type?: EventTicketTypeRow[];
   event_rsvp_type?: EventRsvpTypeRow[];
   member_rsvp_attendee?: EventAttendeeRow | null;
@@ -202,7 +228,7 @@ const EVENT_VENUE_SELECT =
 const EVENT_SELECT = `
   id, series_id, type_id, host_id, venue_id, venue_room_name, venue_notes, title, excerpt, description, body, status,
   starts_at, ends_at, timezone, all_day, visibility, virtual_mode, ticketing_mode, event_capacity, registration_placement, manual_join_url, replay_url,
-  replay_content_id, image_url, is_featured,
+  replay_content_id, replay_asset_id, image_url, is_featured,
   event_type:event_type(id, slug, name, description, color),
   event_host:event_host(id, slug, name, type, bio, image_url, email, phone, website_url, social_links, contact_visibility, status, brand_logo_url, support_email),
   event_venue:event_venue(id, slug, name, description, featured_image_url, address_line1, address_line2, city, region, postal_code, country, email, phone, website_url, map_url, show_map, show_map_link, accessibility_notes, parking_notes, is_virtual, status),
@@ -219,12 +245,22 @@ const EVENT_SELECT = `
   event_zoom_meeting(
     id, zoom_connection_id, zoom_object_type, zoom_object_id, join_url, host_email, provider_status,
     zoom_connection:zoom_connection_id(id, label, owner_kind, zoom_user_email, status)
+  ),
+  event_livekit_room(
+    id, event_id, room_name, mode, recording_policy, room_status, egress_id, egress_status, replay_asset_id,
+    last_error, room_started_at, room_finished_at, egress_started_at, egress_ended_at
   )
 `;
 
 const EVENT_SELECT_COMPAT = EVENT_SELECT
   .replace(", event_capacity, registration_placement", "")
-  .replace(", registration_fields", "");
+  .replace(", registration_fields", "")
+  .replace(", replay_asset_id", "")
+  .replace(`,
+  event_livekit_room(
+    id, event_id, room_name, mode, recording_policy, room_status, egress_id, egress_status, replay_asset_id,
+    last_error, room_started_at, room_finished_at, egress_started_at, egress_ended_at
+  )`, "");
 
 function normalizeEventRows(rows: EventRow[]) {
   return rows.map((event) => ({
@@ -238,9 +274,11 @@ function normalizeEventRows(rows: EventRow[]) {
 
 function eventSelectNeedsCompat(message?: string) {
   return Boolean(
-    message?.includes("registration_fields") ||
+      message?.includes("registration_fields") ||
       message?.includes("event_capacity") ||
-      message?.includes("registration_placement")
+      message?.includes("registration_placement") ||
+      message?.includes("replay_asset_id") ||
+      message?.includes("event_livekit_room")
   );
 }
 
@@ -416,7 +454,7 @@ export async function getAdminEvents(params: {
   query?: string;
 }) {
   const supabase = asLooseSupabaseClient(getAdminClient());
-  const month = params.month ?? new Date().toISOString().slice(0, 7);
+  const month = params.month ?? currentEventMonthKey();
   const { start, end } = monthRange(month);
   const rangeStart = formatDateOnly(addDays(parseDateOnly(start), -2));
   const rangeEnd = formatDateOnly(addDays(parseDateOnly(end), 2));
@@ -808,7 +846,7 @@ function buildMemberCalendarDays(month: string, events: EventRow[]): EventCalend
 }
 
 function emptyMemberEvents(month?: string) {
-  const resolvedMonth = month ?? new Date().toISOString().slice(0, 7);
+  const resolvedMonth = month ?? currentEventMonthKey();
   return {
     month: resolvedMonth,
     events: [] as EventRow[],

@@ -12,11 +12,12 @@ test("guest can launch Stripe Checkout from the live join page", async ({ page }
   await expectHealthyResponse("/join", response);
 
   await expect(
-    page.getByRole("heading", { level: 3, name: "Membership", exact: true })
+    page.getByRole("heading", { level: 3, name: "Positives", exact: true })
   ).toBeVisible();
+  await expect(page.getByText("$37/mo").first()).toBeVisible();
 
   const membershipCheckoutButton = page
-    .getByRole("button", { name: "Start your practice →" })
+    .getByRole("button", { name: "Start my practice →" })
     .first();
 
   await expect(membershipCheckoutButton).toBeVisible();
@@ -28,4 +29,43 @@ test("guest can launch Stripe Checkout from the live join page", async ({ page }
 
   await expect(page.getByText("Positives").first()).toBeVisible();
   await expect(page.getByText(/Membership|Join Positives/i).first()).toBeVisible();
+});
+
+test("join pricing toggle shows annual prices and two-month savings clearly", async ({ page }) => {
+  const response = await page.goto("/join");
+  await expectHealthyResponse("/join", response);
+
+  await expect(page.getByText("$37").first()).toBeVisible();
+  await expect(page.getByText("/mo").first()).toBeVisible();
+  await expect(page.getByText("or $370/year — get two months free")).toBeVisible();
+
+  await page.getByRole("button", { name: /Annual/i }).click();
+
+  await expect(page.getByText("$370").first()).toBeVisible();
+  await expect(page.getByText("$970").first()).toBeVisible();
+  await expect(page.getByText("/yr").first()).toBeVisible();
+  await expect(page.getByText("About $31/mo — get two months free")).toBeVisible();
+  await expect(page.getByText("About $81/mo — get two months free")).toBeVisible();
+});
+
+test("guest can launch annual Positives checkout from the join page", async ({ page }) => {
+  test.setTimeout(90_000);
+
+  const response = await page.goto("/join");
+  await expectHealthyResponse("/join", response);
+
+  await page.getByRole("button", { name: /Annual/i }).click();
+  await expect(page.getByText("$370").first()).toBeVisible();
+
+  const annualCheckoutButton = page
+    .getByRole("button", { name: "Start my practice →" })
+    .first();
+
+  await Promise.all([
+    page.waitForURL(/checkout\.stripe\.com|buy\.stripe\.com/, { timeout: 20_000 }),
+    annualCheckoutButton.click(),
+  ]);
+
+  await expect(page.getByText("Positives").first()).toBeVisible();
+  await expect(page.getByText(/\$370|370\\.00|per year|year/i).first()).toBeVisible();
 });

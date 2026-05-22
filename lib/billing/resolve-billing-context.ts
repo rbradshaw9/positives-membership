@@ -19,6 +19,11 @@ export type BillingContext = {
   customerId: string | null;
   email: string;
   mode: "token" | "session";
+  memberId?: string;
+  memberName?: string | null;
+  memberAvatarUrl?: string | null;
+  subscriptionTier?: string | null;
+  launchCohort?: string | null;
 };
 
 /**
@@ -52,8 +57,16 @@ export async function resolveBillingContext(
   const admin = asLooseSupabaseClient(getAdminClient());
   const { data: member } = await admin
     .from("member")
-    .select<{ stripe_customer_id: string | null; email: string }>(
-      "stripe_customer_id, email"
+    .select<{
+      id: string;
+      stripe_customer_id: string | null;
+      email: string;
+      name: string | null;
+      avatar_url: string | null;
+      subscription_tier: string | null;
+      launch_cohort: string | null;
+    }>(
+      "id, stripe_customer_id, email, name, avatar_url, subscription_tier, launch_cohort"
     )
     .eq("id", user.id)
     .maybeSingle();
@@ -64,5 +77,10 @@ export async function resolveBillingContext(
     customerId: member?.stripe_customer_id ?? null,
     email: member?.email ?? user.email ?? "",
     mode: "session",
+    memberId: member?.id ?? user.id,
+    memberName: member?.name ?? null,
+    memberAvatarUrl: member?.avatar_url ?? null,
+    subscriptionTier: member?.subscription_tier ?? null,
+    launchCohort: member?.launch_cohort ?? null,
   };
 }

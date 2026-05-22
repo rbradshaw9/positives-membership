@@ -58,7 +58,6 @@ export function generatePodcastFeed(
   const items = episodes
     .map((ep) => {
       const title = escapeXml(ep.title);
-      const desc = escapeXml(ep.description ?? ep.title);
       const guid = `${appUrl}/practice/${ep.publishDate}/${ep.id}`;
       const pubDate = rfc2822Date(ep.publishDate);
       const duration = formatDuration(ep.durationSeconds);

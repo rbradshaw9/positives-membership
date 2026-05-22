@@ -212,9 +212,26 @@ async function findPriceByLookupKey(lookupKey) {
   return prices.data[0] ?? null;
 }
 
+function priceMatchesSpec(price, priceSpec) {
+  return (
+    price.unit_amount === priceSpec.amount &&
+    price.currency === "usd" &&
+    price.recurring?.interval === priceSpec.interval
+  );
+}
+
+function replacementLookupKey(priceSpec) {
+  return `${priceSpec.lookupKey}_${priceSpec.amount}_${priceSpec.interval}`;
+}
+
 async function ensurePrice(product, entry, priceSpec) {
   const existing = await findPriceByLookupKey(priceSpec.lookupKey);
-  if (existing) return existing;
+  if (existing && priceMatchesSpec(existing, priceSpec)) return existing;
+
+  if (existing) {
+    const replacement = await findPriceByLookupKey(replacementLookupKey(priceSpec));
+    if (replacement && priceMatchesSpec(replacement, priceSpec)) return replacement;
+  }
 
   return stripe.prices.create({
     product: product.id,
@@ -224,11 +241,12 @@ async function ensurePrice(product, entry, priceSpec) {
       interval: priceSpec.interval,
       usage_type: "licensed",
     },
-    lookup_key: priceSpec.lookupKey,
+    lookup_key: existing ? replacementLookupKey(priceSpec) : priceSpec.lookupKey,
     nickname: `${entry.productName} ${priceSpec.label}`,
     metadata: {
       positives_tier: entry.tier,
       billing_interval: priceSpec.label,
+      replaces_price_id: existing?.id ?? "",
       managed_by: "positives_setup_script",
     },
   });

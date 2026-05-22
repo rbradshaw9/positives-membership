@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
+import { getEffectiveDate } from "@/lib/dates/effective-date";
+import { formatInTimeZone } from "date-fns-tz";
 
 type HeatmapState = "none" | "on_time" | "catch_up";
 
@@ -6,6 +8,8 @@ type PracticeHeatmapCell = {
   date: string;
   state: HeatmapState;
 };
+
+const PRACTICE_TIMEZONE = "America/New_York";
 
 export type MemberPracticeSummary = {
   practiceStreak: number;
@@ -30,9 +34,8 @@ export async function getMemberPracticeSummary(
 ): Promise<MemberPracticeSummary> {
   const supabase = await createClient();
 
-  const today = new Date();
-  const todayUtc = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
-  const start = addDays(todayUtc, -69);
+  const today = new Date(`${getEffectiveDate()}T12:00:00Z`);
+  const start = addDays(today, -69);
   const startDateStr = formatDateOnly(start);
 
   const [memberResult, progressCountResult, journalCountResult, activityRows] =
@@ -70,7 +73,7 @@ export async function getMemberPracticeSummary(
 
   for (const row of activityRows.data ?? []) {
     if (!row.occurred_at) continue;
-    const listenedDate = row.occurred_at.slice(0, 10);
+    const listenedDate = formatInTimeZone(new Date(row.occurred_at), PRACTICE_TIMEZONE, "yyyy-MM-dd");
     const publishDate = (row.content as { publish_date: string | null } | null)?.publish_date ?? null;
     const isOnTime = publishDate ? listenedDate === publishDate : false;
     const newState: HeatmapState = isOnTime ? "on_time" : "catch_up";
