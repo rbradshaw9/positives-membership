@@ -63,10 +63,11 @@ export function CommunityComposerCard() {
         <div>
           <p className="ui-section-eyebrow mb-2">Start Here</p>
           <h2 className="heading-balance text-[1.55rem] font-semibold tracking-[-0.035em] text-foreground">
-            Start a post when something feels worth sharing.
+            Start a new conversation when something feels worth sharing.
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-[1.75] text-muted-foreground">
-            Wins, support, and thoughtful questions all belong here.
+            Choose the lane that fits best: Wins for momentum, Support for what feels tender,
+            or Questions when you want thoughtful perspective.
           </p>
         </div>
 
@@ -75,7 +76,7 @@ export function CommunityComposerCard() {
           onClick={() => setIsOpen((value) => !value)}
           className="rounded-full bg-[linear-gradient(135deg,#2ec4b6,#3db6e7)] px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_48px_rgba(46,196,182,0.24)] transition-transform hover:translate-y-[-1px]"
         >
-          {isOpen ? "Close composer" : "Start a post"}
+          {isOpen ? "Close composer" : "Start a new conversation"}
         </button>
       </div>
 

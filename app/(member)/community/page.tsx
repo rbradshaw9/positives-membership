@@ -280,7 +280,8 @@ export default async function CommunityPage({ searchParams }: PageProps) {
             </div>
 
             <p className="text-xs leading-6 text-muted-foreground">
-              Follow updates keeps a conversation on your radar. Save for later keeps a private bookmark for your own return.
+              Lanes act as simple topic sections for now. Follow keeps a conversation on your
+              radar; Save keeps a private bookmark for your own return.
             </p>
 
             {selectedLane ? (
