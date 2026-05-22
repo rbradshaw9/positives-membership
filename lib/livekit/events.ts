@@ -1,5 +1,12 @@
-import { AccessToken, EgressClient, RoomServiceClient, WebhookReceiver } from "livekit-server-sdk";
-import { EncodedFileType } from "@livekit/protocol";
+import {
+  AccessToken,
+  EgressClient,
+  EncodedFileOutput,
+  EncodedFileType,
+  RoomServiceClient,
+  S3Upload,
+  WebhookReceiver,
+} from "livekit-server-sdk";
 import { getS3MediaConfig, mediaObjectKey } from "@/lib/media/s3";
 
 type LiveKitConfig = {
@@ -145,19 +152,19 @@ export async function startLiveKitEventRecording(params: {
   const { bucket, region } = getS3MediaConfig();
   const key = liveKitReplayObjectKey(params.eventId);
   const output = {
-    file: {
+    file: new EncodedFileOutput({
       fileType: EncodedFileType.MP4,
       filepath: key,
       output: {
         case: "s3" as const,
-        value: {
+        value: new S3Upload({
           accessKey: process.env.AWS_ACCESS_KEY_ID ?? "",
           secret: process.env.AWS_SECRET_ACCESS_KEY ?? "",
           region,
           bucket,
-        },
+        }),
       },
-    },
+    }),
   };
 
   return egressClient().startRoomCompositeEgress(params.roomName, output, {

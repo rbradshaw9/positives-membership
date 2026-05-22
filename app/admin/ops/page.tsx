@@ -378,6 +378,8 @@ export default async function AdminOpsPage() {
           <div className="grid gap-3 sm:grid-cols-2">
             <Metric label="Server SDK" value={snapshot.livekit.configured ? "Configured" : "Missing"} />
             <Metric label="Browser URL" value={snapshot.livekit.publicUrlConfigured ? "Configured" : "Missing"} />
+            <Metric label="Room service" value={snapshot.livekit.roomService} />
+            <Metric label="Egress service" value={snapshot.livekit.egressService} />
           </div>
           {!snapshot.livekit.configured ? (
             <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -392,6 +394,11 @@ export default async function AdminOpsPage() {
               {snapshot.livekit.serverUrl}
             </p>
           )}
+          {snapshot.livekit.egressError ? (
+            <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Egress check: {snapshot.livekit.egressError}
+            </p>
+          ) : null}
         </HealthCard>
       </div>
     </section>

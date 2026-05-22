@@ -209,7 +209,7 @@ export function SessionRoom({
 
       {connected && (
         <p className="mt-3 text-center text-xs text-muted-foreground">
-          Session is encrypted end-to-end · Powered by Positives
+          Secure video session · Powered by Positives
         </p>
       )}
     </div>

@@ -1,4 +1,4 @@
-import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 let cachedClient: S3Client | null = null;
 
@@ -61,11 +61,27 @@ export async function putMediaObject(params: {
 export async function getMediaObject(params: {
   bucket?: string;
   key: string;
+  range?: string;
 }) {
   const { bucket } = getS3MediaConfig();
 
   return getS3Client().send(
     new GetObjectCommand({
+      Bucket: params.bucket || bucket,
+      Key: params.key,
+      Range: params.range,
+    })
+  );
+}
+
+export async function headMediaObject(params: {
+  bucket?: string;
+  key: string;
+}) {
+  const { bucket } = getS3MediaConfig();
+
+  return getS3Client().send(
+    new HeadObjectCommand({
       Bucket: params.bucket || bucket,
       Key: params.key,
     })

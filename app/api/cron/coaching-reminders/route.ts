@@ -216,9 +216,23 @@ export async function GET(req: Request) {
   await processReminders(h24Start, h24End, "24h");
   await processReminders(h1Start, h1End, "1h");
 
+  const completionCutoff = new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString();
+  const { count: completedCount, error: completeError } = await supabase
+    .from("coaching_booking")
+    .update({ status: "completed", updated_at: new Date().toISOString() })
+    .eq("status", "confirmed")
+    .lt("scheduled_at", completionCutoff)
+    .select("id", { count: "exact", head: true });
+
+  if (completeError) {
+    errors.push(`completion:${completeError.message}`);
+    console.error("[coaching-reminders] completion cleanup", completeError);
+  }
+
   return NextResponse.json({
     ok: true,
     sent: sent.length,
+    completed: completedCount ?? 0,
     errors: errors.length,
     detail: { sent, errors },
   });

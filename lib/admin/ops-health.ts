@@ -7,6 +7,7 @@ import {
   getOpenBetaFeedbackAsanaTasks,
 } from "@/lib/integrations/asana";
 import { livekitConfigured } from "@/lib/livekit/client";
+import { getLiveKitEventHealth } from "@/lib/livekit/events";
 
 type HealthTone = "good" | "watch" | "risk" | "neutral";
 
@@ -108,6 +109,7 @@ async function fetchOpsHealthSnapshot() {
     asanaResult,
     sentryResult,
     stripeResult,
+    livekitEventHealth,
   ] = await Promise.all([
     getFeedbackSnapshot(supabase),
     getEarlyMemberCount(supabase),
@@ -115,6 +117,7 @@ async function fetchOpsHealthSnapshot() {
     getOpenBetaFeedbackAsanaTasks(),
     getSentrySnapshot(),
     getStripeSnapshot(expectedStripeWebhookUrl),
+    getLiveKitEventHealth(),
   ]);
 
   const latestCommit = process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.SENTRY_RELEASE ?? null;
@@ -153,7 +156,15 @@ async function fetchOpsHealthSnapshot() {
       configured: livekitConfigured(),
       serverUrl: process.env.LIVEKIT_URL ?? null,
       publicUrlConfigured: Boolean(process.env.NEXT_PUBLIC_LIVEKIT_URL),
-      tone: (livekitConfigured() && Boolean(process.env.NEXT_PUBLIC_LIVEKIT_URL) ? "good" : livekitConfigured() ? "watch" : "neutral") as HealthTone,
+      roomService: livekitEventHealth.roomService,
+      egressService: livekitEventHealth.egressService,
+      roomError: livekitEventHealth.roomError,
+      egressError: livekitEventHealth.egressError,
+      tone: (livekitEventHealth.roomService === "ok" && livekitEventHealth.egressService === "ok"
+        ? "good"
+        : livekitConfigured()
+          ? "watch"
+          : "neutral") as HealthTone,
     },
   };
 }
