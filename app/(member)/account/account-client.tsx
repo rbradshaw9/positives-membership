@@ -39,9 +39,14 @@ export function AccountClient({ mode = "create" }: AccountClientProps) {
   const passwordInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (window.location.hash !== "#password") return;
+    const params = new URLSearchParams(window.location.search);
+    const shouldFocusPassword =
+      window.location.hash === "#password" || params.get("focus") === "password";
+
+    if (!shouldFocusPassword) return;
 
     const focusTimer = window.setTimeout(() => {
+      passwordInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       passwordInputRef.current?.focus({ preventScroll: true });
     }, 250);
 

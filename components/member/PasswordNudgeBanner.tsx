@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
-const PASSWORD_SETUP_HREF = "/account#password";
+const PASSWORD_SETUP_HREF = "/account?focus=password#password";
 
 /**
  * components/member/PasswordNudgeBanner.tsx

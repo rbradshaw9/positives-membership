@@ -5,7 +5,7 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
-const PASSWORD_SETUP_HREF = "/account#password";
+const PASSWORD_SETUP_HREF = "/account?focus=password#password";
 
 /**
  * components/member/WelcomeModal.tsx

@@ -390,7 +390,7 @@ export default async function AccountPage({
                       {passwordSet ? (
                         "Password set"
                       ) : (
-                        <a href="#password" className="text-primary hover:underline">
+                        <a href="/account?focus=password#password" className="text-primary hover:underline">
                           Set a password anytime
                         </a>
                       )}
