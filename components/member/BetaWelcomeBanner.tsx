@@ -1,22 +1,42 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 
 type Props = {
   memberName?: string | null;
 };
 
 const STORAGE_KEY = "positives-beta-welcome-dismissed";
+const STORAGE_EVENT = "positives:beta-welcome-storage";
+
+function subscribeToDismissal(onStoreChange: () => void) {
+  window.addEventListener("storage", onStoreChange);
+  window.addEventListener(STORAGE_EVENT, onStoreChange);
+
+  return () => {
+    window.removeEventListener("storage", onStoreChange);
+    window.removeEventListener(STORAGE_EVENT, onStoreChange);
+  };
+}
+
+function getDismissalSnapshot() {
+  try {
+    return window.localStorage.getItem(STORAGE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function getServerDismissalSnapshot() {
+  return false;
+}
 
 export function BetaWelcomeBanner({ memberName }: Props) {
-  const [dismissed, setDismissed] = useState(() => {
-    if (typeof window === "undefined") return true;
-    try {
-      return window.localStorage.getItem(STORAGE_KEY) === "1";
-    } catch {
-      return false;
-    }
-  });
+  const dismissed = useSyncExternalStore(
+    subscribeToDismissal,
+    getDismissalSnapshot,
+    getServerDismissalSnapshot,
+  );
 
   const greeting = useMemo(() => {
     if (!memberName) return "You’re in the Positives beta.";
@@ -28,7 +48,7 @@ export function BetaWelcomeBanner({ memberName }: Props) {
     try {
       window.localStorage.setItem(STORAGE_KEY, "1");
     } catch {}
-    setDismissed(true);
+    window.dispatchEvent(new Event(STORAGE_EVENT));
   }
 
   function openFeedback() {
