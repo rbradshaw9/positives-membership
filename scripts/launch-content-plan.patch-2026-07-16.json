@@ -1,0 +1,20 @@
+{
+  "metadata": {
+    "name": "L1 beta runway single-day patch",
+    "created_at": "2026-05-22",
+    "reason": "Fill the final day in the rolling 8-week launch audit window."
+  },
+  "daily_audios": [
+    {
+      "publish_date": "2026-07-16",
+      "month_year": "2026-07",
+      "title": "Choosing the Next Small Step",
+      "status": "published",
+      "excerpt": "A steady next step keeps the practice close enough to use.",
+      "reflection_prompt": "Where could you practice this today: choosing the next small step? Name one specific moment where it would change your response.",
+      "duration_seconds": 420,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+      "admin_notes": "Beta runway scaffold patch generated 2026-05-22. Placeholder audio/copy; replace with final approved Dr. Paul/Castos content before broad launch."
+    }
+  ]
+}
