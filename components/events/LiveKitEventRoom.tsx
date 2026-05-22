@@ -39,8 +39,7 @@ function eventState(startsAt: string, endsAt: string) {
   return "live";
 }
 
-function WebinarStage({ role }: { role: "audience" | "host" }) {
-  const layoutContext = useCreateLayoutContext();
+function WebinarStageContent({ role }: { role: "audience" | "host" }) {
   const tracks = useTracks(
     [
       { source: Track.Source.ScreenShare, withPlaceholder: false },
@@ -50,35 +49,43 @@ function WebinarStage({ role }: { role: "audience" | "host" }) {
   );
 
   return (
-    <LayoutContextProvider value={layoutContext}>
-      <div className="flex h-full min-h-[360px] flex-col bg-[#10131b]">
-        <div className="min-h-0 flex-1 p-3 md:p-4">
-          {tracks.length > 0 ? (
-            <GridLayout tracks={tracks} className="h-full">
-              <ParticipantTile />
-            </GridLayout>
-          ) : (
-            <div className="flex h-full min-h-[360px] items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] px-6 text-center">
-              <div>
-                <p className="font-heading text-2xl font-semibold text-white">
-                  {role === "host" ? "Your studio is ready." : "Waiting for the host."}
-                </p>
-                <p className="mt-2 max-w-md text-sm leading-relaxed text-white/65">
-                  {role === "host"
-                    ? "Turn on your camera or share your screen when you are ready to begin."
-                    : "The event will appear here as soon as the host starts video or screen share."}
-                </p>
-              </div>
+    <div className="flex h-full min-h-[360px] flex-col bg-[#10131b]">
+      <div className="min-h-0 flex-1 p-3 md:p-4">
+        {tracks.length > 0 ? (
+          <GridLayout tracks={tracks} className="h-full">
+            <ParticipantTile />
+          </GridLayout>
+        ) : (
+          <div className="flex h-full min-h-[360px] items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] px-6 text-center">
+            <div>
+              <p className="font-heading text-2xl font-semibold text-white">
+                {role === "host" ? "Your studio is ready." : "Waiting for the host."}
+              </p>
+              <p className="mt-2 max-w-md text-sm leading-relaxed text-white/65">
+                {role === "host"
+                  ? "Turn on your camera or share your screen when you are ready to begin."
+                  : "The event will appear here as soon as the host starts video or screen share."}
+              </p>
             </div>
-          )}
-        </div>
-        {role === "host" ? (
-          <div className="border-t border-white/10 bg-black/25 px-3 py-3">
-            <ControlBar controls={{ chat: false, settings: true }} />
           </div>
-        ) : null}
-        <RoomAudioRenderer />
+        )}
       </div>
+      {role === "host" ? (
+        <div className="border-t border-white/10 bg-black/25 px-3 py-3">
+          <ControlBar controls={{ chat: false, settings: true }} />
+        </div>
+      ) : null}
+      <RoomAudioRenderer />
+    </div>
+  );
+}
+
+function WebinarStage({ role }: { role: "audience" | "host" }) {
+  const layoutContext = useCreateLayoutContext();
+
+  return (
+    <LayoutContextProvider value={layoutContext}>
+      <WebinarStageContent role={role} />
     </LayoutContextProvider>
   );
 }
