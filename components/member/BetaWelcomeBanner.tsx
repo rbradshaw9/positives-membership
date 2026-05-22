@@ -80,13 +80,13 @@ export function BetaWelcomeBanner({ memberName }: Props) {
               </p>
               <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
                 <li>
-                  <strong className="font-semibold text-slate-900">Today</strong> — your daily audio practice (start here)
+                  <strong className="font-semibold text-slate-900">Start with Today</strong> — play the daily audio and mark it listened
                 </li>
                 <li>
-                  <strong className="font-semibold text-slate-900">Practice</strong> — browse past months
+                  <strong className="font-semibold text-slate-900">Open My Practice</strong> — check your history and past months
                 </li>
-                <li>Open the Library and any course in My Courses</li>
-                <li>Check Account for billing and settings</li>
+                <li>Open Library, then try Face Your Giants or another course</li>
+                <li>Visit Account and Billing to check your plan and payment settings</li>
               </ul>
             </div>
 
