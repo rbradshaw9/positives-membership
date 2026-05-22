@@ -32,7 +32,8 @@ Fixed on May 22, 2026:
 - Redis added to the Hetzner LiveKit host and configured in `livekit.yaml`.
 - `livekit/egress` added to `/opt/livekit/docker-compose.yml` with `SYS_ADMIN`, host networking, and `/opt/livekit/egress.yaml`.
 - Egress service: healthy via LiveKit SDK `ListEgress`.
-- Known capacity note: the Hetzner box currently reports 3 CPUs, while LiveKit Egress recommends 4 CPUs for RoomComposite recording.
+- Hetzner server resized from `cpx21` to `cpx31` so Egress has 4 vCPU / 8 GB RAM.
+- Docker Compose v2 installed and LiveKit UDP socket buffers raised to 5 MB via `/etc/sysctl.d/99-livekit.conf`.
 
 ## First Migrated Event Checklist
 
@@ -105,6 +106,5 @@ If LiveKit room or Egress health fails before a live event:
 ## Known Follow-Ups
 
 - Run one real LiveKit event recording smoke test before the first member-facing webinar cutover.
-- Consider moving LiveKit to a 4+ vCPU Hetzner instance before relying on RoomComposite recording for larger events.
 - LiveKit Ingress/OBS is not in v1; hosts use browser camera, mic, and screen share.
 - True LiveKit E2EE is not implemented; member-facing copy should say secure video session, not end-to-end encrypted.
