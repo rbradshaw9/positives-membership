@@ -4,21 +4,15 @@ import { requireAdmin } from "@/lib/auth/require-admin";
 import { getAdminEvent } from "@/lib/queries/get-events";
 import { formatEventDateRange } from "@/lib/events/dates";
 import { generateLiveKitEventToken, liveKitPublicUrl } from "@/lib/livekit/events";
+import { createLiveKitStudioToken } from "@/lib/livekit/studio-auth";
 import { LiveKitEventRoom } from "@/components/events/LiveKitEventRoom";
+import { LiveKitEventStatusCards } from "@/components/events/LiveKitEventStatusCards";
 
 type Params = Promise<{ id: string }>;
 
 export const metadata = {
   title: "Event Studio - Positives Admin",
 };
-
-function statusText(status?: string | null) {
-  if (!status) return "Pending";
-  if (status === "complete") return "Replay ready";
-  if (status === "failed") return "Recording failed";
-  if (status === "active" || status === "starting") return "Recording";
-  return status;
-}
 
 export default async function AdminEventStudioPage({ params }: { params: Params }) {
   const admin = await requireAdmin();
@@ -30,6 +24,10 @@ export default async function AdminEventStudioPage({ params }: { params: Params 
   }
 
   const room = event.event_livekit_room;
+  const studioAuthToken = createLiveKitStudioToken({
+    eventId: event.id,
+    userId: admin.id,
+  });
   const serverUrl = liveKitPublicUrl();
   const initialTokenResponse = serverUrl
     ? {
@@ -65,30 +63,24 @@ export default async function AdminEventStudioPage({ params }: { params: Params 
         </div>
       </div>
 
-      <div className="mb-5 grid gap-3 md:grid-cols-4">
-        <div className="admin-events-summary-card">
-          <span>Room</span>
-          <strong>{room.room_status}</strong>
-        </div>
-        <div className="admin-events-summary-card">
-          <span>Recording</span>
-          <strong>{statusText(room.egress_status)}</strong>
-        </div>
-        <div className="admin-events-summary-card">
-          <span>Replay</span>
-          <strong>{event.replay_asset_id ? "Attached" : "Waiting"}</strong>
-        </div>
-        <div className="admin-events-summary-card">
-          <span>Room name</span>
-          <strong className="break-all text-base">{room.room_name}</strong>
-        </div>
-      </div>
-
-      {room.last_error ? (
-        <div className="admin-banner admin-banner--error mb-5">
-          {room.last_error}
-        </div>
-      ) : null}
+      <LiveKitEventStatusCards
+        eventId={event.id}
+        authToken={studioAuthToken}
+        initialStatus={{
+          roomName: room.room_name,
+          roomStatus: room.room_status,
+          recordingPolicy: room.recording_policy,
+          egressId: room.egress_id,
+          egressStatus: room.egress_status,
+          replayAttached: Boolean(event.replay_asset_id || room.replay_asset_id),
+          replayAssetId: event.replay_asset_id ?? room.replay_asset_id ?? null,
+          lastError: room.last_error,
+          roomStartedAt: room.room_started_at,
+          roomFinishedAt: room.room_finished_at,
+          egressStartedAt: room.egress_started_at,
+          egressEndedAt: room.egress_ended_at,
+        }}
+      />
 
       <LiveKitEventRoom
         eventId={event.id}
@@ -97,6 +89,7 @@ export default async function AdminEventStudioPage({ params }: { params: Params 
         startsAt={event.starts_at}
         endsAt={event.ends_at}
         initialTokenResponse={initialTokenResponse}
+        authToken={studioAuthToken}
       />
     </div>
   );

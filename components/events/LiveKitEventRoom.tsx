@@ -21,6 +21,7 @@ type LiveKitEventRoomProps = {
   startsAt: string;
   endsAt: string;
   initialTokenResponse?: TokenResponse | null;
+  authToken?: string | null;
 };
 
 type TokenResponse = {
@@ -89,6 +90,7 @@ export function LiveKitEventRoom({
   startsAt,
   endsAt,
   initialTokenResponse = null,
+  authToken = null,
 }: LiveKitEventRoomProps) {
   const [tokenResponse, setTokenResponse] = useState<TokenResponse | null>(initialTokenResponse);
   const [loading, setLoading] = useState(!initialTokenResponse);
@@ -104,7 +106,12 @@ export function LiveKitEventRoom({
         role === "host"
           ? `/api/admin/events/${eventId}/livekit-token`
           : `/api/events/${eventId}/livekit-token`;
-      const response = await fetch(endpoint);
+      const response = await fetch(endpoint, {
+        headers:
+          role === "host" && authToken
+            ? { "x-livekit-studio-token": authToken }
+            : undefined,
+      });
       const data = (await response.json().catch(() => ({}))) as Partial<TokenResponse> & {
         error?: string;
       };
@@ -121,7 +128,7 @@ export function LiveKitEventRoom({
     } finally {
       setLoading(false);
     }
-  }, [eventId, role]);
+  }, [authToken, eventId, role]);
 
   useEffect(() => {
     if (!tokenResponse) fetchToken();
