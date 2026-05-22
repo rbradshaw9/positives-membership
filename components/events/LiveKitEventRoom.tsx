@@ -30,7 +30,9 @@ type TokenResponse = {
   roomName: string;
 };
 
-function eventState(startsAt: string, endsAt: string) {
+type EventRoomState = "checking" | "starts soon" | "live" | "ended";
+
+function eventState(startsAt: string, endsAt: string): EventRoomState {
   const now = Date.now();
   const starts = new Date(startsAt).getTime();
   const ends = new Date(endsAt).getTime();
@@ -72,7 +74,7 @@ function WebinarStageContent({ role }: { role: "audience" | "host" }) {
       </div>
       {role === "host" ? (
         <div className="border-t border-white/10 bg-black/25 px-3 py-3">
-          <ControlBar controls={{ chat: false, settings: true }} />
+          <ControlBar controls={{ chat: false, settings: false }} saveUserChoices={false} />
         </div>
       ) : null}
       <RoomAudioRenderer />
@@ -103,7 +105,7 @@ export function LiveKitEventRoom({
   const [loading, setLoading] = useState(!initialTokenResponse);
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
-  const state = eventState(startsAt, endsAt);
+  const [state, setState] = useState<EventRoomState>("checking");
 
   const fetchToken = useCallback(async () => {
     setLoading(true);
@@ -140,6 +142,16 @@ export function LiveKitEventRoom({
   useEffect(() => {
     if (!tokenResponse) fetchToken();
   }, [fetchToken, tokenResponse]);
+
+  useEffect(() => {
+    function refreshState() {
+      setState(eventState(startsAt, endsAt));
+    }
+
+    refreshState();
+    const interval = window.setInterval(refreshState, 30_000);
+    return () => window.clearInterval(interval);
+  }, [endsAt, startsAt]);
 
   if (loading) {
     return (
