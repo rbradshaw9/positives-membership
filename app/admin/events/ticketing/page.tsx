@@ -130,7 +130,7 @@ export default async function EventTicketingPage({ searchParams }: { searchParam
         </div>
         <div className="admin-page-header__actions">
           <Link href="/admin/events/settings" className="admin-btn admin-btn--outline">Settings</Link>
-          <Link href="/admin/events/attendees/check-in" className="admin-btn admin-btn--outline">Check-In</Link>
+          <Link href="/admin/events/attendees/check-in" className="admin-btn admin-btn--outline">Check-in</Link>
           <Link href="/admin/events/new" className="admin-btn admin-btn--primary">New ticketed event</Link>
         </div>
       </div>

@@ -168,7 +168,7 @@ export function AttendeeManagement({
         </div>
         <div className="admin-page-header__actions">
           <Link href="/admin/events" className="admin-btn admin-btn--outline">Events</Link>
-          <Link href="/admin/events/attendees/check-in" className="admin-btn admin-btn--outline">Check-In</Link>
+          <Link href="/admin/events/attendees/check-in" className="admin-btn admin-btn--outline">Check-in</Link>
           <Link href={exportHref} className="admin-btn admin-btn--outline">Export CSV</Link>
         </div>
       </div>
@@ -243,7 +243,7 @@ export function AttendeeManagement({
 
       <section className="admin-form-card mb-5">
         <div className="mb-4">
-          <h2 className="font-heading text-xl font-semibold text-foreground" style={{ textWrap: "balance" }}>Add Attendee</h2>
+          <h2 className="font-heading text-xl font-semibold text-foreground" style={{ textWrap: "balance" }}>Add attendee</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Add a manual, comp, or RSVP attendee without changing Zoom, ticket inventory, or Stripe state.
           </p>

@@ -224,7 +224,7 @@ export default async function EventSettingsPage({ searchParams }: { searchParams
               <Link href="/admin/events/types" className="admin-btn admin-btn--outline">Manage types</Link>
               <Link href="/admin/events/hosts" className="admin-btn admin-btn--outline">Manage hosts</Link>
               <Link href="/admin/events/venues" className="admin-btn admin-btn--outline">Manage venues</Link>
-              <Link href="/admin/events/attendees/check-in" className="admin-btn admin-btn--outline">Check-In</Link>
+              <Link href="/admin/events/attendees/check-in" className="admin-btn admin-btn--outline">Check-in</Link>
               <Link href="/admin/events/ticketing" className="admin-btn admin-btn--outline">Ticketing</Link>
               <Link href="/admin/integrations/zoom" className="admin-btn admin-btn--outline">Zoom integrations</Link>
             </div>

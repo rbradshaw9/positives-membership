@@ -30,7 +30,7 @@ export default async function EventHostPage({ params }: { params: Params }) {
   const contactVisible = showContact(host);
 
   return (
-    <div className="member-container py-8 md:py-12">
+    <div className="member-container py-8 pb-28 md:py-12">
       <Link href="/events" className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
           <polyline points="15 18 9 12 15 6" />
@@ -50,13 +50,16 @@ export default async function EventHostPage({ params }: { params: Params }) {
             preload
           />
         ) : (
-          <div className="flex h-28 w-28 items-center justify-center rounded-full bg-primary/10 font-heading text-4xl font-semibold text-primary md:h-32 md:w-32">
+          <div
+            className="flex h-28 w-28 items-center justify-center rounded-full border border-primary/25 font-heading text-4xl font-semibold shadow-sm md:h-32 md:w-32"
+            style={{ background: "var(--color-primary)", color: "#fff" }}
+          >
             {host.name.slice(0, 1)}
           </div>
         )}
 
         <div>
-          <p className="ui-section-eyebrow mb-3">Event Host</p>
+          <p className="ui-section-eyebrow mb-3">Event host</p>
           <h1 className="heading-balance font-heading text-4xl font-bold leading-heading tracking-normal text-foreground md:text-5xl">
             {host.name}
           </h1>
@@ -75,7 +78,7 @@ export default async function EventHostPage({ params }: { params: Params }) {
             </Button>
           ) : null}
           <Button href="/events" variant="outline" className="justify-center">
-            Browse Events
+            Browse events
           </Button>
         </div>
       </section>
@@ -85,7 +88,7 @@ export default async function EventHostPage({ params }: { params: Params }) {
           <div>
             <p className="ui-section-eyebrow mb-2">Upcoming</p>
             <h2 className="heading-balance font-heading text-2xl font-semibold tracking-normal text-foreground">
-              Events Hosted by {host.name}
+              Events hosted by {host.name}
             </h2>
           </div>
           {events.length > 0 ? (
@@ -103,7 +106,7 @@ export default async function EventHostPage({ params }: { params: Params }) {
                 When a member event from this host is available, it will appear here.
               </p>
               <Button href="/events" className="mt-4 w-full justify-center sm:w-auto">
-                Browse All Events
+                Browse all events
               </Button>
             </SurfaceCard>
           )}
@@ -146,7 +149,7 @@ export default async function EventHostPage({ params }: { params: Params }) {
 
           {socialLinks.length > 0 ? (
             <SurfaceCard padding="lg">
-              <p className="ui-section-eyebrow mb-3">Social Links</p>
+              <p className="ui-section-eyebrow mb-3">Social links</p>
               <div className="flex flex-wrap gap-2">
                 {socialLinks.map(([label, url]) => (
                   <Button key={label} href={url} target="_blank" rel="noopener noreferrer" variant="outline" size="sm">

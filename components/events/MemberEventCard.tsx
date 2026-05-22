@@ -35,9 +35,14 @@ function badgeClasses(tone: BadgeTone) {
   return "bg-primary/10 text-primary";
 }
 
+function isOnlineOnlyVenue(event: MemberEvent) {
+  const venueName = event.event_venue?.name.trim().toLowerCase();
+  return Boolean(event.event_venue?.is_virtual || venueName === "zoom" || venueName === "online" || venueName === "livekit");
+}
+
 function eventModeLabel(event: MemberEvent) {
   if (event.virtual_mode === "zoom" || event.virtual_mode === "manual" || event.virtual_mode === "livekit") {
-    return event.event_venue ? "Hybrid" : "Online";
+    return event.event_venue && !isOnlineOnlyVenue(event) ? "Hybrid" : "Online";
   }
   return event.event_venue?.is_virtual ? "Online" : "In person";
 }
@@ -56,7 +61,7 @@ export function eventHostNames(event: MemberEvent) {
 
 export function eventLocationLabel(event: MemberEvent) {
   if (event.virtual_mode === "zoom" || event.virtual_mode === "manual" || event.virtual_mode === "livekit") {
-    return event.event_venue ? `${event.event_venue.name} + online` : "Online event";
+    return event.event_venue && !isOnlineOnlyVenue(event) ? `${event.event_venue.name} + online` : "Online event";
   }
   if (!event.event_venue) return "Location to be announced";
   return [event.event_venue.name, event.event_venue.city, event.event_venue.region]

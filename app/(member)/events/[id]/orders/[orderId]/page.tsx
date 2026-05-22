@@ -139,9 +139,9 @@ export default async function EventOrderConfirmationPage({
   );
 
   return (
-    <div className="member-container py-8 md:py-12">
+    <div className="member-container py-8 pb-28 md:py-12">
       <Link href={`/events/${event.id}`} className="mb-6 inline-flex text-sm font-semibold text-primary hover:underline">
-        Back to Event
+        Back to event
       </Link>
 
       <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
@@ -149,7 +149,7 @@ export default async function EventOrderConfirmationPage({
           <SurfaceCard padding="lg" elevated>
             <p className="ui-section-eyebrow mb-3">Order {order.id.slice(0, 8).toUpperCase()}</p>
             <h1 className="heading-balance font-heading text-4xl font-bold leading-heading tracking-normal text-foreground md:text-5xl">
-              {confirmed ? "Tickets Confirmed" : "Ticket Order"}
+              {confirmed ? "Tickets confirmed" : "Ticket order"}
             </h1>
             <p className="mt-4 text-base leading-relaxed text-muted-foreground">
               {query.ticket === "success" ? "Payment succeeded. " : ""}
@@ -157,13 +157,13 @@ export default async function EventOrderConfirmationPage({
             </p>
             <div className="mt-5 flex flex-col gap-3 sm:flex-row">
               <Button href={`/events/${event.id}/calendar`} className="justify-center">
-                Add to Calendar
+                Add to calendar
               </Button>
               <Button href={`/events/${event.id}`} variant="secondary" className="justify-center">
-                View Event
+                View event
               </Button>
               <Button href="/events" variant="outline" className="justify-center">
-                Browse More Events
+                Browse more events
               </Button>
             </div>
           </SurfaceCard>
@@ -198,15 +198,15 @@ export default async function EventOrderConfirmationPage({
                         </div>
                         <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
                           <div>
-                            <dt className="font-semibold text-foreground">Attendee No.</dt>
+                            <dt className="font-semibold text-foreground">Attendee no.</dt>
                             <dd className="mt-1 text-muted-foreground">{attendee?.attendee_number ?? "Pending"}</dd>
                           </div>
                           <div>
-                            <dt className="font-semibold text-foreground">Security Code</dt>
+                            <dt className="font-semibold text-foreground">Security code</dt>
                             <dd className="mt-1 text-muted-foreground">{attendee?.security_code ?? ticket.ticket_code}</dd>
                           </div>
                           <div>
-                            <dt className="font-semibold text-foreground">Ticket Code</dt>
+                            <dt className="font-semibold text-foreground">Ticket code</dt>
                             <dd className="mt-1 break-all text-muted-foreground">{ticket.ticket_code}</dd>
                           </div>
                         </dl>
@@ -221,7 +221,7 @@ export default async function EventOrderConfirmationPage({
                           className="h-auto w-full"
                         />
                         <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                          Check-in QR
+                          Check-in code
                         </p>
                       </div>
                     </div>
@@ -233,7 +233,7 @@ export default async function EventOrderConfirmationPage({
 
           <SurfaceCard padding="lg">
             <h2 className="heading-balance font-heading text-2xl font-semibold tracking-normal text-foreground">
-              Order Summary
+              Order summary
             </h2>
             <div className="mt-4 divide-y divide-border">
               {items.map((item) => (

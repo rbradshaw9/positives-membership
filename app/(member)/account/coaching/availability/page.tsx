@@ -77,7 +77,7 @@ export default async function CoachAvailabilityPage() {
         subtitle={`Set your weekly coaching schedule. Members will only see slots during your active hours.`}
         hero
       />
-      <div className="member-container py-8 md:py-10 flex flex-col gap-8">
+      <div className="member-container flex flex-col gap-8 py-8 pb-28 md:py-10">
         <SurfaceCard elevated className="surface-card--editorial">
           <p className="member-detail-kicker">Weekly schedule</p>
           <h2 className="mt-3 text-xl font-semibold tracking-[-0.02em] text-foreground">

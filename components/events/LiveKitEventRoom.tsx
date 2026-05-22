@@ -164,7 +164,7 @@ export function LiveKitEventRoom({
       <div className="flex flex-col gap-2 border-b border-white/10 bg-black/30 px-4 py-3 text-white md:flex-row md:items-center md:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-normal text-primary">
-            {role === "host" ? "Host Studio" : "Live Event"} - {state}
+            {role === "host" ? "Host studio" : "Live event"} · {state}
           </p>
           <h1 className="truncate font-heading text-xl font-semibold tracking-normal">{title}</h1>
         </div>

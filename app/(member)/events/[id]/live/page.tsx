@@ -10,7 +10,7 @@ import { LiveKitEventRoom } from "@/components/events/LiveKitEventRoom";
 type Params = Promise<{ id: string }>;
 
 export const metadata = {
-  title: "Live Event - Positives",
+  title: "Live event — Positives",
 };
 
 export default async function MemberLiveEventPage({ params }: { params: Params }) {
@@ -43,13 +43,13 @@ export default async function MemberLiveEventPage({ params }: { params: Params }
     : null;
 
   return (
-    <div className="member-container py-8 md:py-12">
+    <div className="member-container py-8 pb-28 md:py-12">
       <Link href={`/events/${event.id}`} className="mb-6 inline-flex text-sm font-semibold text-muted-foreground hover:text-foreground">
         Back to event
       </Link>
 
       <div className="mb-5">
-        <p className="ui-section-eyebrow mb-2">Live Event</p>
+        <p className="ui-section-eyebrow mb-2">Live event</p>
         <h1 className="heading-balance font-heading text-4xl font-bold tracking-normal text-foreground">
           {event.title}
         </h1>

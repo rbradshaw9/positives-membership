@@ -496,7 +496,10 @@ export default async function EventDetailPage({
                           className="h-14 w-14 rounded-full object-cover"
                         />
                       ) : (
-                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-primary/25 bg-primary font-heading font-semibold text-primary-foreground shadow-sm">
+                        <div
+                          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-primary/25 font-heading font-semibold shadow-sm"
+                          style={{ background: "var(--color-primary)", color: "#fff" }}
+                        >
                           {host.name.slice(0, 1)}
                         </div>
                       )}

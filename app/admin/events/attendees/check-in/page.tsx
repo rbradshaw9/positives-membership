@@ -8,7 +8,7 @@ import { getAttendeeAdminData, type AttendeeAdminRow, type AttendeeEventOption }
 import { formatEventDateRange } from "@/lib/events/dates";
 
 export const metadata = {
-  title: "Event Check-In - Positives Admin",
+  title: "Event Check-in — Positives Admin",
 };
 
 type SearchParams = Promise<{
@@ -111,7 +111,7 @@ export default async function EventCheckInPage({ searchParams }: { searchParams:
         <div>
           <p className="admin-page-header__eyebrow">Events</p>
           <h1 className="admin-page-header__title" style={{ textWrap: "balance" }}>
-            Check-In
+            Check-in
           </h1>
           <p className="admin-page-header__subtitle">
             Search by security code, ticket code, attendee number, name, or email. This screen is built for phones at the door.

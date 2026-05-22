@@ -131,6 +131,19 @@ function statusLabel(status?: string | null) {
   return "Draft";
 }
 
+function formatLocalDraftDate(value: string) {
+  if (!value) return "No start time selected";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
 function successMessage(success?: string) {
   if (success === "published") return "Event published. Eligible members can now see it.";
   if (success === "unpublished") return "Event unpublished. Members can no longer see it.";
@@ -1105,7 +1118,7 @@ export function EventForm({
             </div>
             <div className="grid gap-1 text-sm text-muted-foreground md:text-right">
               <span>{selectedAccessText}</span>
-              <span>{startsAt || "No start time selected"}</span>
+              <span>{formatLocalDraftDate(startsAt)}</span>
               <span>{virtualStateLabel(virtualMode, event)}</span>
             </div>
           </div>

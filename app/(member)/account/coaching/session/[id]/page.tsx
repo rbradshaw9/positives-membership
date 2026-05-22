@@ -112,7 +112,7 @@ export default async function CoachingSessionPage({
         hero
       />
 
-      <div className="member-container py-8 md:py-10 flex flex-col gap-6">
+      <div className="member-container flex flex-col gap-6 py-8 pb-28 md:py-10">
         {/* ── Status banner ─────────────────────────────────────────────── */}
         {booking.status === "canceled" && (
           <SurfaceCard padding="md" className="border border-border">
