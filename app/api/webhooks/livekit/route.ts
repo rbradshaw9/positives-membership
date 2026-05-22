@@ -223,6 +223,13 @@ export async function POST(request: Request) {
         .from("event_livekit_room")
         .update({ room_status: "started", room_started_at: new Date().toISOString(), last_error: null })
         .eq("event_id", livekitRoom.event_id);
+    }
+
+    if (eventName === "track_published" && typeof participant?.identity === "string" && participant.identity.startsWith("host-")) {
+      await supabase
+        .from("event_livekit_room")
+        .update({ room_status: "started", room_started_at: new Date().toISOString(), last_error: null })
+        .eq("event_id", livekitRoom.event_id);
       await startAutoRecordingIfNeeded({
         eventId: livekitRoom.event_id,
         roomName,
