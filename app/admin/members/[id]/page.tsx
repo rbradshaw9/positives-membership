@@ -1625,6 +1625,7 @@ export default async function AdminMemberDetailPage({
                 <Select name="next" defaultValue="/today">
                   <option value="/today">Today</option>
                   <option value="/account">Account</option>
+                  <option value="/account?focus=password#password">Account password setup</option>
                   <option value="/practice">My Practice</option>
                   <option value="/events">Events</option>
                 </Select>
@@ -2644,6 +2645,29 @@ export default async function AdminMemberDetailPage({
           </dl>
 
           <div className="member-crm-grid-2" style={{ marginTop: "1.25rem" }}>
+            <div className="member-crm-card">
+              <p className="member-crm-card-title">Password support policy</p>
+              <p className="member-crm-muted" style={{ marginTop: "0.75rem" }}>
+                Admins cannot view member passwords. If a member is locked out, send a magic
+                login link, direct them to the password setup section, or have them use the
+                forgot-password flow from the sign-in page.
+              </p>
+              <div className="member-crm-quick-links" style={{ marginTop: "0.85rem" }}>
+                <Link
+                  className="admin-btn admin-btn--outline"
+                  href={supportTabHref("communication", "support-actions")}
+                >
+                  Send login link
+                </Link>
+                <a
+                  className="admin-btn admin-btn--outline"
+                  href={`mailto:${member.email}?subject=Set%20your%20Positives%20password&body=Hi%20${encodeURIComponent(member.name ?? "there")}%2C%0A%0AUse%20this%20page%20while%20signed%20in%20to%20set%20your%20Positives%20password%3A%20https%3A%2F%2Fpositives.life%2Faccount%3Ffocus%3Dpassword%23password%0A%0AIf%20you%20are%20signed%20out%2C%20use%20Forgot%20Password%20on%20the%20sign-in%20page%20and%20we%27ll%20send%20you%20a%20secure%20reset%20link.`}
+                >
+                  Draft guidance email
+                </a>
+              </div>
+            </div>
+
             <MemberCrmInlineForm
               action={updateMemberLaunchCohortInline}
               className="member-crm-card"
