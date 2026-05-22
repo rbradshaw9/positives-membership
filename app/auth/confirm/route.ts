@@ -24,17 +24,26 @@ function sanitizeRedirectTarget(
 ): string {
   if (!rawTarget) return fallbackPathForType(type);
 
+  function safePath(path: string | null | undefined) {
+    if (!path || !path.startsWith("/") || path.startsWith("//")) return fallbackPathForType(type);
+    if (path.startsWith("/api/")) return fallbackPathForType(type);
+    if (path.startsWith("/auth/") && !path.startsWith("/auth/callback")) {
+      return fallbackPathForType(type);
+    }
+    return path;
+  }
+
   if (rawTarget.startsWith("/")) {
     if (rawTarget.startsWith("/auth/callback")) {
       try {
         const legacy = new URL(rawTarget, new URL(request.url).origin);
         const nextParam = legacy.searchParams.get("next");
-        if (nextParam?.startsWith("/")) return nextParam;
+        return safePath(nextParam);
       } catch {
         return fallbackPathForType(type);
       }
     }
-    return rawTarget;
+    return safePath(rawTarget);
   }
 
   try {
@@ -47,10 +56,10 @@ function sanitizeRedirectTarget(
 
     if (targetUrl.pathname === "/auth/callback") {
       const nextParam = targetUrl.searchParams.get("next");
-      if (nextParam?.startsWith("/")) return nextParam;
+      return safePath(nextParam);
     }
 
-    return `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`;
+    return safePath(`${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`);
   } catch {
     return fallbackPathForType(type);
   }

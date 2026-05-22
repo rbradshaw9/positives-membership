@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { VideoEmbed } from "@/components/media/VideoEmbed";
 import { markLessonComplete, markLessonIncomplete } from "@/app/(member)/library/courses/actions";
 import type { LessonWithContext } from "@/lib/queries/get-courses";
+import { sanitizeEventHtml } from "@/lib/content/sanitize-event-html";
 import Link from "next/link";
 
 /**
@@ -35,6 +36,18 @@ type CourseResource = {
   type?: string;
 };
 
+function safeExternalUrl(rawUrl?: string | null) {
+  const value = String(rawUrl ?? "").trim();
+  if (!value) return null;
+
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "https:" || parsed.protocol === "http:" ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 function parseResources(raw?: string | null): CourseResource[] {
   if (!raw) return [];
   try {
@@ -44,12 +57,13 @@ function parseResources(raw?: string | null): CourseResource[] {
       .map((item): CourseResource | null => {
         if (!item || typeof item !== "object") return null;
         const resource = item as Record<string, unknown>;
-        if (typeof resource.url !== "string") return null;
+        const url = typeof resource.url === "string" ? safeExternalUrl(resource.url) : null;
+        if (!url) return null;
         return {
           label: typeof resource.label === "string" && resource.label.trim()
             ? resource.label
             : "Resource",
-          url: resource.url,
+          url,
           type: typeof resource.type === "string" ? resource.type : undefined,
         };
       })
@@ -86,7 +100,7 @@ function getVideoSource(videoUrl?: string | null) {
     return { vimeoId: null as string | null, youtubeId: youtubeMatch[1], directVideoUrl: null as string | null };
   }
 
-  if (/^https?:\/\//i.test(videoUrl) && /\.(mp4|mov|m4v|webm)(?:\?|#|$)/i.test(videoUrl)) {
+  if (safeExternalUrl(videoUrl) && /\.(mp4|mov|m4v|webm)(?:\?|#|$)/i.test(videoUrl)) {
     return { vimeoId: null as string | null, youtubeId: null as string | null, directVideoUrl: videoUrl };
   }
 
@@ -158,6 +172,8 @@ export function LessonViewer({ lesson, memberId }: LessonViewerProps) {
   const [completed, setCompleted] = useState(lesson.completed ?? false);
   const [isPending, startTransition] = useTransition();
   const lessonResources = mergeLessonResources(lesson);
+  const lessonBody = sanitizeEventHtml((lesson as LessonWithContext & { body?: string | null }).body);
+  const safeAudioUrl = safeExternalUrl(lesson.audio_url);
 
   function handleToggleComplete() {
     startTransition(async () => {
@@ -234,14 +250,14 @@ export function LessonViewer({ lesson, memberId }: LessonViewerProps) {
         </div>
       )}
 
-      {lesson.audio_url && (
+      {safeAudioUrl && (
         <div className="rounded-2xl border border-border bg-surface-tint/40 p-4">
           <h2 className="mb-3 font-heading text-sm font-semibold text-foreground">
             Audio
           </h2>
           <audio controls preload="metadata" className="w-full">
-            <source src={lesson.audio_url} />
-            <a href={lesson.audio_url} target="_blank" rel="noopener noreferrer">
+            <source src={safeAudioUrl} />
+            <a href={safeAudioUrl} target="_blank" rel="noopener noreferrer">
               Open audio
             </a>
           </audio>
@@ -290,15 +306,13 @@ export function LessonViewer({ lesson, memberId }: LessonViewerProps) {
       </button>
 
       {/* ── Body content ──────────────────────────────────────────────────── */}
-      {(lesson as LessonWithContext & { body?: string | null }).body && (
+      {lessonBody && (
         <div
           className="prose prose-sm max-w-none text-foreground/80 leading-relaxed"
-          dangerouslySetInnerHTML={{
-            __html: (lesson as LessonWithContext & { body?: string | null }).body!,
-          }}
+          dangerouslySetInnerHTML={{ __html: lessonBody }}
         />
       )}
-      {!(lesson as LessonWithContext & { body?: string | null }).body && lesson.description && (
+      {!lessonBody && lesson.description && (
         <p className="text-foreground/70 leading-relaxed">{lesson.description}</p>
       )}
 
@@ -315,6 +329,7 @@ export function LessonViewer({ lesson, memberId }: LessonViewerProps) {
               const sessionVideo = getVideoSource(session.video_url);
               const sessionResources = parseResources(session.resources);
               const hasSessionVideo = !!sessionVideo.vimeoId || !!sessionVideo.youtubeId || !!sessionVideo.directVideoUrl;
+              const sessionBody = sanitizeEventHtml(session.body);
 
               return (
                 <details
@@ -340,7 +355,7 @@ export function LessonViewer({ lesson, memberId }: LessonViewerProps) {
                       <span className="text-xs text-muted-foreground">{formatDuration(session.duration_seconds)}</span>
                     )}
                   </summary>
-                  {(hasSessionVideo || session.body || session.description || sessionResources.length > 0) && (
+                  {(hasSessionVideo || sessionBody || session.description || sessionResources.length > 0) && (
                     <div className="flex flex-col gap-4 border-t border-border p-4">
                       {hasSessionVideo && (
                         <div className="overflow-hidden rounded-xl border border-border">
@@ -355,10 +370,10 @@ export function LessonViewer({ lesson, memberId }: LessonViewerProps) {
                           )}
                         </div>
                       )}
-                      {session.body ? (
+                      {sessionBody ? (
                         <div
                           className="prose prose-sm max-w-none text-foreground/80 leading-relaxed"
-                          dangerouslySetInnerHTML={{ __html: session.body }}
+                          dangerouslySetInnerHTML={{ __html: sessionBody }}
                         />
                       ) : session.description ? (
                         <p className="text-sm leading-relaxed text-foreground/70">{session.description}</p>

@@ -15,7 +15,7 @@ function base64UrlDecode(value: string) {
 }
 
 function signingSecret() {
-  const secret = process.env.LIVEKIT_API_SECRET ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const secret = process.env.LIVEKIT_STUDIO_TOKEN_SECRET ?? process.env.LIVEKIT_API_SECRET;
   if (!secret) throw new Error("LiveKit studio token signing secret is not configured.");
   return secret;
 }

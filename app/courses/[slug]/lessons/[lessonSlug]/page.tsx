@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { sanitizeEventHtml } from "@/lib/content/sanitize-event-html";
 import { getPublicCourseLesson } from "@/lib/queries/get-courses";
 
 type Props = {
@@ -14,6 +15,7 @@ export default async function PublicCourseLessonPage({ params }: Props) {
   const { slug, lessonSlug } = await params;
   const lesson = await getPublicCourseLesson(slug, lessonSlug);
   if (!lesson) notFound();
+  const lessonBody = sanitizeEventHtml(lesson.body);
 
   return (
     <main className="min-h-dvh bg-[#FAFAF8]">
@@ -48,10 +50,10 @@ export default async function PublicCourseLessonPage({ params }: Props) {
             </div>
           ) : (
             <div className="mt-6">
-              {lesson.body ? (
+              {lessonBody ? (
                 <div
                   className="prose prose-sm max-w-none text-foreground/80"
-                  dangerouslySetInnerHTML={{ __html: lesson.body }}
+                  dangerouslySetInnerHTML={{ __html: lessonBody }}
                 />
               ) : lesson.description ? (
                 <p className="text-sm leading-relaxed text-muted-foreground">{lesson.description}</p>
