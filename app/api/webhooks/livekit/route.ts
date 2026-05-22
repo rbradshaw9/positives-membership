@@ -56,10 +56,35 @@ function liveKitEventIdFromRoom(room: Record<string, unknown> | undefined) {
   }
 }
 
+function firstFileInfo(egressInfo: Record<string, unknown> | undefined) {
+  const fileResults = egressInfo?.fileResults;
+  if (Array.isArray(fileResults)) {
+    const file = fileResults.find((item): item is Record<string, unknown> => {
+      return Boolean(item && typeof item === "object" && "filename" in item);
+    });
+    if (file) return file;
+  }
+
+  const file = egressInfo?.file;
+  return file && typeof file === "object" ? file as Record<string, unknown> : null;
+}
+
+function fileSizeBytes(file: Record<string, unknown> | null) {
+  const size = file?.size;
+  if (typeof size === "bigint") return Number(size);
+  if (typeof size === "number" && Number.isFinite(size)) return Math.max(0, Math.floor(size));
+  if (typeof size === "string" && size.trim()) {
+    const parsed = Number(size);
+    if (Number.isFinite(parsed)) return Math.max(0, Math.floor(parsed));
+  }
+  return 0;
+}
+
 async function createReplayAsset(params: {
   eventId: string;
   eventTitle: string;
   objectKey?: string;
+  sizeBytes?: number;
 }) {
   const supabase = asLooseSupabaseClient(getAdminClient());
   const { bucket } = getS3MediaConfig();
@@ -75,12 +100,13 @@ async function createReplayAsset(params: {
         title: `${params.eventTitle} replay`,
         original_filename: "recording.mp4",
         content_type: "video/mp4",
-        size_bytes: 0,
+        size_bytes: params.sizeBytes ?? 0,
         status: "active",
         visibility: "member",
         metadata: {
           source: "livekit_egress",
           event_id: params.eventId,
+          size_bytes: params.sizeBytes ?? 0,
         },
       },
       { onConflict: "object_key" }
@@ -261,12 +287,13 @@ export async function POST(request: Request) {
         const eventTitle = Array.isArray(livekitRoom.member_event)
           ? livekitRoom.member_event[0]?.title
           : livekitRoom.member_event?.title;
-        const file = egressInfo?.file as Record<string, unknown> | undefined;
+        const file = firstFileInfo(egressInfo);
         const objectKey = typeof file?.filename === "string" ? file.filename : undefined;
         await createReplayAsset({
           eventId: livekitRoom.event_id,
           eventTitle: eventTitle ?? "Event",
           objectKey,
+          sizeBytes: fileSizeBytes(file),
         });
       } else {
         await supabase
