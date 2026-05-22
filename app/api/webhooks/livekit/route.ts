@@ -20,10 +20,11 @@ function liveKitWebhookId(payload: Record<string, unknown>) {
   const room = payload.room as Record<string, unknown> | undefined;
   const participant = payload.participant as Record<string, unknown> | undefined;
   const egressInfo = payload.egressInfo as Record<string, unknown> | undefined;
+  const roomComposite = egressInfo?.roomComposite as Record<string, unknown> | undefined;
   return [
     payload.id,
     eventName,
-    room?.sid ?? room?.name,
+    room?.sid ?? room?.name ?? egressInfo?.roomName ?? roomComposite?.roomName,
     participant?.sid ?? participant?.identity,
     egressInfo?.egressId,
     payload.createdAt,
@@ -43,13 +44,26 @@ function egressStatus(value: unknown) {
   return "active";
 }
 
+function liveKitEventIdFromRoom(room: Record<string, unknown> | undefined) {
+  const metadata = typeof room?.metadata === "string" ? room.metadata : null;
+  if (!metadata) return null;
+
+  try {
+    const parsed = JSON.parse(metadata) as { eventId?: unknown };
+    return typeof parsed.eventId === "string" ? parsed.eventId : null;
+  } catch {
+    return null;
+  }
+}
+
 async function createReplayAsset(params: {
   eventId: string;
   eventTitle: string;
+  objectKey?: string;
 }) {
   const supabase = asLooseSupabaseClient(getAdminClient());
   const { bucket } = getS3MediaConfig();
-  const objectKey = liveKitReplayObjectKey(params.eventId);
+  const objectKey = params.objectKey ?? liveKitReplayObjectKey(params.eventId);
   const { data, error } = await supabase
     .from("media_asset")
     .upsert(
@@ -94,7 +108,11 @@ export async function POST(request: Request) {
     const room = payload.room as Record<string, unknown> | undefined;
     const participant = payload.participant as Record<string, unknown> | undefined;
     const egressInfo = payload.egressInfo as Record<string, unknown> | undefined;
-    const roomName = typeof room?.name === "string" ? room.name : null;
+    const roomComposite = egressInfo?.roomComposite as Record<string, unknown> | undefined;
+    const roomName =
+      (typeof room?.name === "string" ? room.name : null) ??
+      (typeof egressInfo?.roomName === "string" ? egressInfo.roomName : null) ??
+      (typeof roomComposite?.roomName === "string" ? roomComposite.roomName : null);
     const egressId = typeof egressInfo?.egressId === "string" ? egressInfo.egressId : null;
     const dedupeId = liveKitWebhookId(payload) || `${eventName}:${roomName ?? "no-room"}:${Date.now()}`;
 
@@ -115,13 +133,47 @@ export async function POST(request: Request) {
 
     if (!roomName) return NextResponse.json({ ok: true });
 
-    const { data: livekitRoom } = await supabase
+    let { data: livekitRoom } = await supabase
       .from("event_livekit_room")
       .select<{ event_id: string; room_name: string; recording_policy: string; egress_id: string | null; member_event?: { title: string } | null }>(
         "event_id, room_name, recording_policy, egress_id, member_event:event_id(title)"
       )
       .eq("room_name", roomName)
       .maybeSingle();
+
+    if (!livekitRoom && eventName === "room_started") {
+      const eventId = liveKitEventIdFromRoom(room);
+      if (eventId) {
+        const { data: memberEvent } = await supabase
+          .from("member_event")
+          .select<{ id: string; title: string }>("id, title")
+          .eq("id", eventId)
+          .maybeSingle();
+
+        if (memberEvent) {
+          await supabase.from("event_livekit_room").upsert(
+            {
+              event_id: memberEvent.id,
+              room_name: roomName,
+              mode: "webinar",
+              recording_policy: "auto",
+              room_status: "provisioned",
+              egress_status: "pending",
+              last_error: null,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "event_id" }
+          );
+          livekitRoom = {
+            event_id: memberEvent.id,
+            room_name: roomName,
+            recording_policy: "auto",
+            egress_id: null,
+            member_event: { title: memberEvent.title },
+          };
+        }
+      }
+    }
 
     if (!livekitRoom) return NextResponse.json({ ok: true, ignored: true });
 
@@ -181,9 +233,12 @@ export async function POST(request: Request) {
         const eventTitle = Array.isArray(livekitRoom.member_event)
           ? livekitRoom.member_event[0]?.title
           : livekitRoom.member_event?.title;
+        const file = egressInfo?.file as Record<string, unknown> | undefined;
+        const objectKey = typeof file?.filename === "string" ? file.filename : undefined;
         await createReplayAsset({
           eventId: livekitRoom.event_id,
           eventTitle: eventTitle ?? "Event",
+          objectKey,
         });
       } else {
         await supabase

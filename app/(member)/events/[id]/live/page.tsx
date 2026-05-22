@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireActiveMember } from "@/lib/auth/require-active-member";
 import { getMemberEvent } from "@/lib/queries/get-events";
 import { currentTimestampMs, formatEventDateRange } from "@/lib/events/dates";
+import { generateLiveKitEventToken, liveKitPublicUrl } from "@/lib/livekit/events";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { LiveKitEventRoom } from "@/components/events/LiveKitEventRoom";
 
@@ -26,6 +27,20 @@ export default async function MemberLiveEventPage({ params }: { params: Params }
   const startsAt = new Date(event.starts_at).getTime();
   const endsAt = new Date(event.ends_at).getTime();
   const roomOpen = now >= startsAt - 60 * 60 * 1000 && now <= endsAt + 30 * 60 * 1000;
+  const serverUrl = roomOpen ? liveKitPublicUrl() : null;
+  const initialTokenResponse = serverUrl
+    ? {
+        token: await generateLiveKitEventToken({
+          roomName: event.event_livekit_room.room_name,
+          identity: `audience-${member.id}`,
+          name: member.name ?? member.email ?? "Member",
+          role: "audience",
+          eventId: event.id,
+        }),
+        serverUrl,
+        roomName: event.event_livekit_room.room_name,
+      }
+    : null;
 
   return (
     <div className="member-container py-8 md:py-12">
@@ -50,6 +65,7 @@ export default async function MemberLiveEventPage({ params }: { params: Params }
           role="audience"
           startsAt={event.starts_at}
           endsAt={event.ends_at}
+          initialTokenResponse={initialTokenResponse}
         />
       ) : (
         <SurfaceCard padding="lg">

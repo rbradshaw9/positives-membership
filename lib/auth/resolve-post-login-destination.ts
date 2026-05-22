@@ -40,7 +40,8 @@ export async function resolvePostLoginDestination(
   if (!user) return "/login";
 
   if (isBootstrapAdminEmail(user.email) || (await memberHasAnyAdminRole(user.id))) {
-    return "/admin";
+    const destination = safePath(next);
+    return destination.startsWith("/admin") ? destination : "/admin";
   }
 
   const supabase = asLooseSupabaseClient(supabaseClient);

@@ -4,9 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ControlBar,
   GridLayout,
+  LayoutContextProvider,
   LiveKitRoom,
   ParticipantTile,
   RoomAudioRenderer,
+  useCreateLayoutContext,
   useTracks,
 } from "@livekit/components-react";
 import "@livekit/components-styles";
@@ -18,6 +20,7 @@ type LiveKitEventRoomProps = {
   role: "audience" | "host";
   startsAt: string;
   endsAt: string;
+  initialTokenResponse?: TokenResponse | null;
 };
 
 type TokenResponse = {
@@ -36,6 +39,7 @@ function eventState(startsAt: string, endsAt: string) {
 }
 
 function WebinarStage({ role }: { role: "audience" | "host" }) {
+  const layoutContext = useCreateLayoutContext();
   const tracks = useTracks(
     [
       { source: Track.Source.ScreenShare, withPlaceholder: false },
@@ -45,34 +49,36 @@ function WebinarStage({ role }: { role: "audience" | "host" }) {
   );
 
   return (
-    <div className="flex h-full min-h-[360px] flex-col bg-[#10131b]">
-      <div className="min-h-0 flex-1 p-3 md:p-4">
-        {tracks.length > 0 ? (
-          <GridLayout tracks={tracks} className="h-full">
-            <ParticipantTile />
-          </GridLayout>
-        ) : (
-          <div className="flex h-full min-h-[360px] items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] px-6 text-center">
-            <div>
-              <p className="font-heading text-2xl font-semibold text-white">
-                {role === "host" ? "Your studio is ready." : "Waiting for the host."}
-              </p>
-              <p className="mt-2 max-w-md text-sm leading-relaxed text-white/65">
-                {role === "host"
-                  ? "Turn on your camera or share your screen when you are ready to begin."
-                  : "The event will appear here as soon as the host starts video or screen share."}
-              </p>
+    <LayoutContextProvider value={layoutContext}>
+      <div className="flex h-full min-h-[360px] flex-col bg-[#10131b]">
+        <div className="min-h-0 flex-1 p-3 md:p-4">
+          {tracks.length > 0 ? (
+            <GridLayout tracks={tracks} className="h-full">
+              <ParticipantTile />
+            </GridLayout>
+          ) : (
+            <div className="flex h-full min-h-[360px] items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] px-6 text-center">
+              <div>
+                <p className="font-heading text-2xl font-semibold text-white">
+                  {role === "host" ? "Your studio is ready." : "Waiting for the host."}
+                </p>
+                <p className="mt-2 max-w-md text-sm leading-relaxed text-white/65">
+                  {role === "host"
+                    ? "Turn on your camera or share your screen when you are ready to begin."
+                    : "The event will appear here as soon as the host starts video or screen share."}
+                </p>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
-      {role === "host" ? (
-        <div className="border-t border-white/10 bg-black/25 px-3 py-3">
-          <ControlBar controls={{ chat: false, settings: true }} />
+          )}
         </div>
-      ) : null}
-      <RoomAudioRenderer />
-    </div>
+        {role === "host" ? (
+          <div className="border-t border-white/10 bg-black/25 px-3 py-3">
+            <ControlBar controls={{ chat: false, settings: true }} />
+          </div>
+        ) : null}
+        <RoomAudioRenderer />
+      </div>
+    </LayoutContextProvider>
   );
 }
 
@@ -82,9 +88,10 @@ export function LiveKitEventRoom({
   role,
   startsAt,
   endsAt,
+  initialTokenResponse = null,
 }: LiveKitEventRoomProps) {
-  const [tokenResponse, setTokenResponse] = useState<TokenResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [tokenResponse, setTokenResponse] = useState<TokenResponse | null>(initialTokenResponse);
+  const [loading, setLoading] = useState(!initialTokenResponse);
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const state = eventState(startsAt, endsAt);
@@ -117,8 +124,8 @@ export function LiveKitEventRoom({
   }, [eventId, role]);
 
   useEffect(() => {
-    fetchToken();
-  }, [fetchToken]);
+    if (!tokenResponse) fetchToken();
+  }, [fetchToken, tokenResponse]);
 
   if (loading) {
     return (

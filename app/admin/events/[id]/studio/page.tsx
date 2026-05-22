@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { getAdminEvent } from "@/lib/queries/get-events";
 import { formatEventDateRange } from "@/lib/events/dates";
+import { generateLiveKitEventToken, liveKitPublicUrl } from "@/lib/livekit/events";
 import { LiveKitEventRoom } from "@/components/events/LiveKitEventRoom";
 
 type Params = Promise<{ id: string }>;
@@ -20,7 +21,7 @@ function statusText(status?: string | null) {
 }
 
 export default async function AdminEventStudioPage({ params }: { params: Params }) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const { id } = await params;
   const event = await getAdminEvent(id);
   if (!event) notFound();
@@ -29,6 +30,20 @@ export default async function AdminEventStudioPage({ params }: { params: Params 
   }
 
   const room = event.event_livekit_room;
+  const serverUrl = liveKitPublicUrl();
+  const initialTokenResponse = serverUrl
+    ? {
+        token: await generateLiveKitEventToken({
+          roomName: room.room_name,
+          identity: `host-${admin.id}`,
+          name: admin.email ?? "Host",
+          role: "host",
+          eventId: event.id,
+        }),
+        serverUrl,
+        roomName: room.room_name,
+      }
+    : null;
 
   return (
     <div className="admin-page-content" style={{ maxWidth: "86rem" }}>
@@ -81,6 +96,7 @@ export default async function AdminEventStudioPage({ params }: { params: Params 
         role="host"
         startsAt={event.starts_at}
         endsAt={event.ends_at}
+        initialTokenResponse={initialTokenResponse}
       />
     </div>
   );
