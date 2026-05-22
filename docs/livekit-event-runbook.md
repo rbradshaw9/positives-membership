@@ -26,11 +26,13 @@ The admin ops page checks both. A LiveKit event with automatic recording should 
 
 For self-hosted LiveKit, Egress must be deployed with Redis access to the same LiveKit Redis. If ops shows `egress not connected (redis required)`, room joins may work but automatic replay recording will not.
 
-Verified on May 22, 2026:
+Fixed on May 22, 2026:
 
 - Room service: healthy.
-- Egress service: failing with `twirp error unknown: egress not connected (redis required)`.
-- App code now blocks publishing auto-recorded LiveKit events until Egress is healthy.
+- Redis added to the Hetzner LiveKit host and configured in `livekit.yaml`.
+- `livekit/egress` added to `/opt/livekit/docker-compose.yml` with `SYS_ADMIN`, host networking, and `/opt/livekit/egress.yaml`.
+- Egress service: healthy via LiveKit SDK `ListEgress`.
+- Known capacity note: the Hetzner box currently reports 3 CPUs, while LiveKit Egress recommends 4 CPUs for RoomComposite recording.
 
 ## First Migrated Event Checklist
 
@@ -102,6 +104,7 @@ If LiveKit room or Egress health fails before a live event:
 
 ## Known Follow-Ups
 
-- Repair/deploy the self-hosted Egress service with Redis access before the first LiveKit webinar cutover.
+- Run one real LiveKit event recording smoke test before the first member-facing webinar cutover.
+- Consider moving LiveKit to a 4+ vCPU Hetzner instance before relying on RoomComposite recording for larger events.
 - LiveKit Ingress/OBS is not in v1; hosts use browser camera, mic, and screen share.
 - True LiveKit E2EE is not implemented; member-facing copy should say secure video session, not end-to-end encrypted.
