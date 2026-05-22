@@ -26,6 +26,12 @@ The admin ops page checks both. A LiveKit event with automatic recording should 
 
 For self-hosted LiveKit, Egress must be deployed with Redis access to the same LiveKit Redis. If ops shows `egress not connected (redis required)`, room joins may work but automatic replay recording will not.
 
+Verified on May 22, 2026:
+
+- Room service: healthy.
+- Egress service: failing with `twirp error unknown: egress not connected (redis required)`.
+- App code now blocks publishing auto-recorded LiveKit events until Egress is healthy.
+
 ## First Migrated Event Checklist
 
 1. Confirm LiveKit env vars are present in Vercel production:
@@ -96,6 +102,6 @@ If LiveKit room or Egress health fails before a live event:
 
 ## Known Follow-Ups
 
-- Event reminders still need to move fully from legacy `content.type = 'coaching_call'` records to `member_event`.
+- Repair/deploy the self-hosted Egress service with Redis access before the first LiveKit webinar cutover.
 - LiveKit Ingress/OBS is not in v1; hosts use browser camera, mic, and screen share.
 - True LiveKit E2EE is not implemented; member-facing copy should say secure video session, not end-to-end encrypted.

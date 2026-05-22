@@ -62,28 +62,30 @@ The cleanest launch model is:
 
 1. `Events` are a Level 2+ member benefit.
 2. `Coaching` is a Level 3+ member benefit.
-3. Both are scheduled as real content records with dates, join URLs, and optional replay media.
-4. The app, not ActiveCampaign, owns reminder timing and eligibility.
+3. Events are scheduled in `member_event`, with join/replay surfaced through the event page.
+4. Coaching may keep using scheduled content/coaching records until that workflow is retired.
+5. The app, not ActiveCampaign, owns reminder timing and eligibility.
 
 This matches what is already being built:
 
 - `/events` for Level 2+
 - `/coaching` for Level 3+
-- `content` records with `starts_at`, `join_url`, `send_reminders`, and `send_replay_email`
+- `member_event` records with `starts_at`, virtual mode, access levels, RSVP/ticketing, and replay fields
+- legacy coaching reminder content with `starts_at`, `join_url`, `send_reminders`, and `send_replay_email`
 - reminder dispatch via the app and Vercel cron
 
 ## Admin / Operator Workflow
 
 Launch workflow should stay simple:
 
-1. Admin creates a scheduled content record.
-2. Admin chooses the effective tier floor:
+1. Admin creates a scheduled event record in the Events admin.
+2. Admin chooses the effective event access levels:
    - `level_2` for member events
-   - `level_3` or `level_4` for coaching
+   - `level_3` or `level_4` only when the event is intended for coaching-level members
 3. Admin enters:
    - title
    - starts_at
-   - join_url
+   - virtual mode
    - excerpt / description
    - replay media later if available
 4. Admin leaves reminder cadence on the default launch model:
@@ -148,6 +150,8 @@ The current architecture should stay:
 - app writes the reminder context into ActiveCampaign fields
 - app applies the trigger tag
 - AC sends the email
+
+As of May 22, 2026, member event reminders come from `member_event`; legacy `content.type = 'coaching_call'` reminders are only used for coaching reminders until that older path is retired.
 
 ## What To Avoid At Launch
 
