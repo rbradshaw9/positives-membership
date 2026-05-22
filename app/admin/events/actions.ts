@@ -756,6 +756,19 @@ async function saveLiveKitRooms(eventIds: string[], input: EventInput) {
   for (const eventId of eventIds) {
     const roomName = liveKitEventRoomName(eventId);
     try {
+      await supabase.from("event_livekit_room").upsert(
+        {
+          event_id: eventId,
+          room_name: roomName,
+          mode: "webinar",
+          recording_policy: "auto",
+          room_status: "provisioned",
+          egress_status: "pending",
+          last_error: null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "event_id" }
+      );
       await ensureLiveKitEventRoom({
         eventId,
         title: input.title,
