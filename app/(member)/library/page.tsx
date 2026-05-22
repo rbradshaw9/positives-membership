@@ -141,6 +141,31 @@ export default async function LibraryPage({
           )}
         </section>
 
+        {hasSubscriptionAccess ? (
+          <section aria-labelledby="event-replays-heading">
+            <div className="rounded-2xl border border-border bg-card p-5 md:p-6">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--color-primary)" }}>
+                    Event Replays
+                  </p>
+                  <h2 id="event-replays-heading" className="heading-balance font-heading font-bold text-xl text-foreground">
+                    Live sessions live on Events.
+                  </h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                    Past Practice keeps the daily, weekly, and monthly rhythm. Ask Dr. Paul and
+                    other live-event recordings stay with the event they came from, so you can
+                    find the details, replay, and related context together.
+                  </p>
+                </div>
+                <Link href="/events?view=list" className="btn-secondary inline-flex items-center justify-center text-sm">
+                  Open Events
+                </Link>
+              </div>
+            </div>
+          </section>
+        ) : null}
+
         {/* ── MONTHLY ARCHIVE ──────────────────────────────────────────────── */}
         {hasSubscriptionAccess ? (
         <section aria-labelledby="archive-heading">
