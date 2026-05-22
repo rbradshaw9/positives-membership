@@ -38,8 +38,8 @@ export default async function EditCoachPage({
     <div className="admin-page-content">
       <div className="admin-page-header">
         <div>
-          <h1 className="admin-page-title">Edit Coach</h1>
-          <p className="admin-page-subtitle">{coach.display_name}</p>
+          <h1 className="admin-page-header__title">Edit Coach</h1>
+          <p className="admin-page-header__subtitle">{coach.display_name}</p>
         </div>
       </div>
       <CoachForm initial={coach} />

@@ -2,7 +2,6 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { formatSupabaseAuthError } from "@/lib/auth/client-error";
-import { serverResolvePostLoginDestination } from "@/lib/auth/post-login-destination-server";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import Link from "next/link";
@@ -48,8 +47,9 @@ function LoginForm() {
       return;
     }
 
-    const destination = await serverResolvePostLoginDestination(next);
-    window.location.assign(destination);
+    const postLoginUrl = new URL("/auth/post-login", window.location.origin);
+    postLoginUrl.searchParams.set("next", next);
+    window.location.assign(postLoginUrl.toString());
   }
 
   async function handleMagicLink(e: React.FormEvent<HTMLFormElement>) {

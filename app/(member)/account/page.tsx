@@ -169,12 +169,14 @@ export default async function AccountPage({
   const nextRenewalDate = billingSummary.nextRenewalDate ?? null;
   const billingPortalAvailable = billingSummary.billingPortalAvailable === true;
   const currentSubscription = billingSummary.currentSubscription ?? null;
+  const activeDiscountLabel = currentSubscription?.discountLabel ?? null;
   const recentInvoices = billingSummary.recentInvoices ?? [];
   const invoiceLoadFailed = billingSummary.invoiceLoadFailed === true;
   const hasBillingPortal = billingPortalAvailable;
   const billingUnavailable = resolvedSearchParams.error === "billing_unavailable";
   const retentionAccepted = resolvedSearchParams.retention === "accepted";
   const justUpgraded = resolvedSearchParams.upgraded === "true";
+  const justDowngraded = resolvedSearchParams.plan_change === "downgrade";
   const joinedLabel = member.created_at
     ? new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(
         new Date(member.created_at)
@@ -204,7 +206,7 @@ export default async function AccountPage({
         subtitle="Membership details, billing, timezone, security, and session controls."
         hero
         right={
-          <Button href="/practice" variant="secondary" size="sm" className="hidden md:inline-flex">
+          <Button href="/practice" variant="outline" size="sm" className="hidden md:inline-flex">
             Open My Practice
           </Button>
         }
@@ -315,7 +317,22 @@ export default async function AccountPage({
         {retentionAccepted && (
           <SurfaceCard padding="md" className="border border-secondary/20 bg-secondary/5">
             <p className="text-sm font-semibold text-foreground">Discount applied — thank you for staying.</p>
-            <p className="mt-1 text-sm text-muted-foreground">Your discount is active and will appear on your next invoice.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {activeDiscountLabel
+                ? `Stripe shows ${activeDiscountLabel} on your subscription. It will be reflected on the next invoice.`
+                : "Your discount was accepted. If Stripe is still syncing, it will appear in billing shortly."}
+            </p>
+          </SurfaceCard>
+        )}
+
+        {justDowngraded && (
+          <SurfaceCard padding="md" className="border border-secondary/20 bg-secondary/5">
+            <p className="text-sm font-semibold text-foreground">Plan change scheduled.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {scheduledBillingChange
+                ? `You keep ${scheduledBillingChange.currentPlanName} through ${scheduledBillingChange.effectiveLabel}. Your plan changes to ${scheduledBillingChange.nextPlanName} automatically.`
+                : "Your downgrade was accepted. If Stripe is still syncing, the scheduled change will appear here shortly."}
+            </p>
           </SurfaceCard>
         )}
 
@@ -370,7 +387,13 @@ export default async function AccountPage({
                   <div>
                     <dt className="text-muted-foreground">Password</dt>
                     <dd className="mt-1 font-medium text-foreground">
-                      {passwordSet ? "Password set" : "Set a password anytime"}
+                      {passwordSet ? (
+                        "Password set"
+                      ) : (
+                        <a href="#password" className="text-primary hover:underline">
+                          Set a password anytime
+                        </a>
+                      )}
                     </dd>
                   </div>
                   <div>
@@ -429,6 +452,15 @@ export default async function AccountPage({
                       ) : null}
                       .
                     </p>
+                  ) : null}
+
+                  {activeDiscountLabel ? (
+                    <SurfaceCard padding="sm" className="border border-secondary/12 bg-secondary/5">
+                      <p className="text-sm font-medium text-foreground">Active discount</p>
+                      <p className="mt-1 text-sm leading-body text-muted-foreground">
+                        Stripe shows {activeDiscountLabel} on this subscription.
+                      </p>
+                    </SurfaceCard>
                   ) : null}
 
                   {hasBillingPortal ? (
@@ -533,17 +565,17 @@ export default async function AccountPage({
                   <div>
                     <p className="member-detail-kicker">1:1 personal coaching</p>
                     <h2 className="mt-2 text-lg font-semibold tracking-[-0.02em] text-foreground">
-                      Work directly with Dr. Paul
+                      Work with a Positives Certified coach
                     </h2>
                     <p className="mt-1.5 text-sm leading-body text-muted-foreground">
-                      Purchase sessions, check your balance, and view session history.
+                      Purchase sessions, book time, check your balance, and view session history.
                     </p>
                   </div>
                   <span className="text-3xl flex-shrink-0" aria-hidden="true">🧭</span>
                 </div>
                 <div className="mt-5">
                   <Button href="/account/coaching" variant="secondary" size="sm">
-                    Coaching Sessions
+                    Purchase or book sessions
                   </Button>
                 </div>
               </SurfaceCard>

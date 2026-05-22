@@ -334,6 +334,22 @@ select.admin-input {
   cursor: pointer;
 }
 
+.btn-primary.hidden,
+.btn-secondary.hidden,
+.btn-outline.hidden,
+.btn-ghost.hidden {
+  display: none;
+}
+
+@media (min-width: 48rem) {
+  .btn-primary.md\:inline-flex,
+  .btn-secondary.md\:inline-flex,
+  .btn-outline.md\:inline-flex,
+  .btn-ghost.md\:inline-flex {
+    display: inline-flex;
+  }
+}
+
 .btn-primary {
   background: var(--brand-gradient);
   color: #fff;
@@ -2453,6 +2469,12 @@ select.admin-select:focus,
   background: rgba(34, 197, 94, 0.06);
   border: 1px solid rgba(34, 197, 94, 0.2);
   color: #16a34a;
+}
+
+.admin-banner--info {
+  background: rgba(68, 168, 216, 0.06);
+  border: 1px solid rgba(68, 168, 216, 0.2);
+  color: #0369a1;
 }
 
 /* Form action row — submit + cancel */

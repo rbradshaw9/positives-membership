@@ -48,13 +48,25 @@ function loadEnv(path) {
 
 loadEnv(envPath);
 
+function requiredEnv(key, fallback) {
+  const value = process.env[key] || fallback;
+  if (!value) {
+    console.error(`[seed] Missing ${key}. Set it in .env.local before seeding test users.`);
+    process.exit(1);
+  }
+  return value;
+}
+
+const memberPassword = requiredEnv("E2E_MEMBER_PASSWORD");
+const adminPassword = requiredEnv("E2E_ADMIN_PASSWORD");
+
 // ---------------------------------------------------------------------------
 // Config — users to create
 // ---------------------------------------------------------------------------
 const USERS = [
   {
     email: "lopcadmin@gmail.com",
-    password: "PiR43Tx2-",
+    password: adminPassword,
     // Admin access is email-allowlist (ADMIN_EMAILS env var) — no DB column.
     // The member row still needs to be active so /today etc. work.
     memberPatch: {
@@ -67,7 +79,7 @@ const USERS = [
   },
   {
     email: "rbradshaw+l1@gmail.com",
-    password: "PiR43Tx2-",
+    password: memberPassword,
     memberPatch: {
       name: "Ryan (L1 Test)",
       subscription_status: "active",
@@ -78,7 +90,7 @@ const USERS = [
   },
   {
     email: "rbradshaw+l2@gmail.com",
-    password: "PiR43Tx2-",
+    password: requiredEnv("E2E_LEVEL_2_MEMBER_PASSWORD", memberPassword),
     memberPatch: {
       name: "Ryan (L2 Test)",
       subscription_status: "active",
@@ -89,7 +101,7 @@ const USERS = [
   },
   {
     email: "rbradshaw+l3@gmail.com",
-    password: "PiR43Tx2-",
+    password: requiredEnv("E2E_LEVEL_3_MEMBER_PASSWORD", memberPassword),
     memberPatch: {
       name: "Ryan (L3 Test)",
       subscription_status: "active",

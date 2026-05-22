@@ -69,12 +69,14 @@ function accessLabels(event: EventRow | null | undefined) {
 function virtualLabel(event: EventRow | null | undefined) {
   if (event?.virtual_mode === "zoom") return "Zoom";
   if (event?.virtual_mode === "manual") return "Manual link";
+  if (event?.virtual_mode === "livekit") return "LiveKit webinar";
   return "No virtual link";
 }
 
 function missingJoinLink(event: EventRow | null | undefined) {
   if (event?.virtual_mode === "zoom") return !event.event_zoom_meeting?.join_url;
   if (event?.virtual_mode === "manual") return !event.manual_join_url;
+  if (event?.virtual_mode === "livekit") return event.event_livekit_room?.room_status === "failed" || !event.event_livekit_room?.room_name;
   return false;
 }
 
@@ -86,6 +88,7 @@ function locationLabel(event: EventRow | null | undefined) {
   if (!event) return "Not set";
   if (event.virtual_mode === "zoom") return "Zoom session";
   if (event.virtual_mode === "manual") return "Manual virtual link";
+  if (event.virtual_mode === "livekit") return "LiveKit webinar";
   return event.event_venue?.name ?? "No venue";
 }
 
@@ -321,7 +324,15 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
                     <td>{accessLabels(event)}</td>
                     <td><span className={STATUS_BADGE[event.status] ?? "admin-badge"}>{STATUS_LABEL[event.status] ?? event.status}</span></td>
                     <td><span className={readinessBadge(event)}>{readinessLabel(event)}</span></td>
-                    <td><Link href={`/admin/events/${event.id}/edit`} className="admin-btn admin-btn--outline">Edit</Link></td>
+                    <td>
+                      <div className="flex flex-wrap gap-1.5">
+                        <Link href={`/admin/events/${event.id}/edit`} className="admin-btn admin-btn--outline">Edit</Link>
+                        {event.virtual_mode === "livekit" ? (
+                          <Link href={`/admin/events/${event.id}/studio`} className="admin-btn admin-btn--primary">Studio</Link>
+                        ) : null}
+                        <Link href={`/admin/events/attendees?event_id=${event.id}`} className="admin-btn admin-btn--ghost">Attendees</Link>
+                      </div>
+                    </td>
                   </tr>
                 ))
               ) : (

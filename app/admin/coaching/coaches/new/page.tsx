@@ -16,8 +16,8 @@ export default async function NewCoachPage() {
     <div className="admin-page-content">
       <div className="admin-page-header">
         <div>
-          <h1 className="admin-page-title">New Coach</h1>
-          <p className="admin-page-subtitle">Add a new coach profile to the platform.</p>
+          <h1 className="admin-page-header__title">New Coach</h1>
+          <p className="admin-page-header__subtitle">Add a new coach profile to the platform.</p>
         </div>
       </div>
       <CoachForm />

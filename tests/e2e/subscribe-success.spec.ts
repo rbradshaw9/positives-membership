@@ -19,6 +19,17 @@ test.describe("subscribe success handoff", () => {
     ).toBeVisible();
   });
 
+  test("course checkout success fallback points members to course access", async ({ page }) => {
+    const response = await page.goto("/subscribe/success?next=/my-courses");
+    await expectHealthyResponse("/subscribe/success?next=/my-courses", response);
+
+    await expect(page.locator("#success-fallback-login")).toBeVisible();
+    await expect(page.getByRole("heading", { name: /your course is ready/i })).toBeVisible();
+    await expect(
+      page.getByText(/sign in and open My Courses/i)
+    ).toBeVisible();
+  });
+
   test("auth exchange rejects missing session ids", async ({ request }) => {
     const response = await request.get("/api/auth/exchange");
 

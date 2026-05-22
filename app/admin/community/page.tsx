@@ -165,6 +165,9 @@ export default async function AdminCommunityPage() {
               Guide the conversation without over-running it.
             </h2>
             <div className="mt-5 space-y-5">
+              {threads.length === 0 ? (
+                <p className="text-sm text-slate-600">No posts yet.</p>
+              ) : null}
               {threads.map((thread) => (
                 <div
                   key={thread.id}

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { requireActiveMember } from "@/lib/auth/require-active-member";
 import {
   getMemberEvent,
@@ -22,11 +23,29 @@ import {
 import { SafeImage } from "@/components/media/SafeImage";
 import { EventTicketPurchasePanel } from "./EventTicketPurchasePanel";
 import { EventJoinButton } from "./EventJoinButton";
+import { EventReplayPlayer } from "./EventReplayPlayer";
 import { registerEventRsvp } from "./actions";
 
 type Params = Promise<{ id: string }>;
 type SearchParams = Promise<{ ticket?: string; ticket_error?: string; rsvp?: string; rsvp_error?: string }>;
 type MemberEvent = NonNullable<Awaited<ReturnType<typeof getMemberEvent>>>;
+
+export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
+  const member = await requireActiveMember();
+  const { id } = await params;
+  const event = await getMemberEvent(id, member.subscription_tier, member.id);
+
+  if (!event) {
+    return {
+      title: "Event — Positives",
+    };
+  }
+
+  return {
+    title: `${event.title} — Positives`,
+    description: event.excerpt ?? event.description ?? "A Positives member event.",
+  };
+}
 
 function venueAddress(event: MemberEvent) {
   const venue = event.event_venue;
@@ -271,6 +290,7 @@ export default async function EventDetailPage({
   const body = event.body || event.description || "";
   const ticketRequired = event.ticketing_mode === "ticket_required";
   const hasTicketAccess = Boolean(event.member_ticket_access);
+  const isOnlineEvent = event.virtual_mode === "zoom" || event.virtual_mode === "manual" || event.virtual_mode === "livekit";
   const rsvp = rsvpState(event);
   const relatedEvents = await getMemberRelatedEvents({
     event: event as EventRow,
@@ -391,6 +411,11 @@ export default async function EventDetailPage({
                   endsAt={event.ends_at}
                   initialNowMs={nowMs}
                 />
+                {isOnlineEvent && !joinUrl && hasTicketAccess ? (
+                  <p className="rounded-xl border border-border bg-muted/30 px-3 py-2 text-center text-xs leading-relaxed text-muted-foreground">
+                    The online event link will appear here when it is ready.
+                  </p>
+                ) : null}
                 <Button href={`/events/${event.id}/calendar`} variant="outline" className="w-full justify-center">
                   Add to Calendar
                 </Button>
@@ -421,7 +446,7 @@ export default async function EventDetailPage({
                   ) : null}
                 </div>
               </SurfaceCard>
-            ) : event.virtual_mode === "zoom" || event.virtual_mode === "manual" ? (
+            ) : isOnlineEvent ? (
               <SurfaceCard padding="lg">
                 <p className="ui-section-eyebrow mb-3">Online Event</p>
                 <p className="text-sm leading-relaxed text-muted-foreground">
@@ -479,8 +504,8 @@ export default async function EventDetailPage({
         {isPast ? (
           <SurfaceCard padding="lg">
             <p className="ui-section-eyebrow mb-2">Replay</p>
-            {event.replay_url && hasTicketAccess ? (
-              <Button href={event.replay_url} target="_blank" rel="noopener noreferrer">Watch Replay</Button>
+            {(event.replay_asset_id || event.replay_url) && hasTicketAccess ? (
+              <EventReplayPlayer replayAssetId={event.replay_asset_id} replayUrl={event.replay_url} title={event.title} />
             ) : ticketRequired && !hasTicketAccess ? (
               <p className="text-sm text-muted-foreground">Purchase a ticket to access the replay when it is available.</p>
             ) : (

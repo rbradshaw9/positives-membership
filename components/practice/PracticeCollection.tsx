@@ -101,11 +101,11 @@ export function PracticeCollection({
           <p className="font-medium text-foreground">Nothing here yet</p>
           <p className="mt-2 text-sm leading-body text-muted-foreground">
             New published practices in this rhythm will appear here automatically. Until then,
-            Home and the full library are still the best places to keep moving.
+            Today and the full library are still the best places to keep moving.
           </p>
           <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
             <Button href="/today" size="sm">
-              Go to Home
+              Go to Today
             </Button>
             <Button href="/library" variant="secondary" size="sm">
               Open library

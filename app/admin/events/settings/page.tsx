@@ -93,7 +93,7 @@ export default async function EventSettingsPage({ searchParams }: { searchParams
           </p>
         </div>
         <div className="admin-page-header__actions">
-          <Link href="/admin/events" className="admin-btn admin-btn--outline">Calendar</Link>
+          <Link href="/admin/events?view=calendar" className="admin-btn admin-btn--outline">Calendar</Link>
           <Link href="/admin/events/new" className="admin-btn admin-btn--primary">New event</Link>
         </div>
       </div>

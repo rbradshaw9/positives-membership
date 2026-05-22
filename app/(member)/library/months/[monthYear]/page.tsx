@@ -8,6 +8,7 @@ import { getEffectiveMonthYear } from "@/lib/dates/effective-date";
 import { MonthlyThemeCard } from "@/components/today/MonthlyThemeCard";
 import { WeeklyArchive } from "@/components/today/WeeklyArchive";
 import { MonthlyAudioArchive } from "@/components/today/MonthlyAudioArchive";
+import { resolveAudioUrl } from "@/lib/media/resolve-audio-url";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -87,10 +88,27 @@ export default async function MonthDetailPage({ params }: Props) {
   const { practice, theme, daily_count } = detail;
 
   // Fetch the rich data needed by the /today-style components
-  const [monthWeekly, archiveDailyGroup, noteCounts] = await Promise.all([
+  const [rawMonthWeekly, rawArchiveDailyGroup, noteCounts] = await Promise.all([
     getMonthWeeklyContent(monthYear),
     getArchiveDailyAudios(monthYear),
     theme ? getMemberNoteCounts(member.id, [theme.id]) : Promise.resolve<Record<string, number>>({}),
+  ]);
+
+  const [monthWeekly, archiveDailyGroup] = await Promise.all([
+    Promise.all(
+      rawMonthWeekly.map(async (week) => ({
+        ...week,
+        audio_url: await resolveAudioUrl(week.castos_episode_url, week.s3_audio_key),
+      }))
+    ),
+    rawArchiveDailyGroup
+      ? Promise.all(
+          rawArchiveDailyGroup.audios.map(async (audio) => ({
+            ...audio,
+            audio_url: await resolveAudioUrl(audio.castos_episode_url, audio.s3_audio_key),
+          }))
+        ).then((audios) => ({ ...rawArchiveDailyGroup, audios }))
+      : Promise.resolve(null),
   ]);
 
   const currentMonth = monthName(monthYear);

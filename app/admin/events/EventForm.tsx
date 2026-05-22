@@ -147,6 +147,7 @@ function errorMessage(error?: string) {
   if (error === "zoom_setup_required") return "Choose how Zoom should be set up before publishing.";
   if (error === "zoom_create_failed") return "Zoom could not create the session. The event was kept as a draft.";
   if (error === "zoom_detach_failed") return "Zoom could not be removed from this event. Try again.";
+  if (error === "livekit_setup_required") return "LiveKit RoomService and Egress must be healthy before publishing an auto-recorded LiveKit event.";
   if (error === "ticket_required") return "Add at least one active ticket type before publishing a ticketed event.";
   return error ? "The event could not be saved. Check required fields and integration settings." : null;
 }
@@ -155,6 +156,9 @@ function virtualStateLabel(virtualMode: string, event?: EventRow | null) {
   if (virtualMode === "manual") return event?.manual_join_url ? "Manual link set" : "Manual link needed";
   if (virtualMode === "zoom") {
     return event?.event_zoom_meeting?.id ? "Zoom session attached" : "Zoom setup needed";
+  }
+  if (virtualMode === "livekit") {
+    return event?.event_livekit_room?.id ? "LiveKit webinar ready" : "LiveKit webinar setup needed";
   }
   return "No virtual link";
 }
@@ -1453,6 +1457,7 @@ export function EventForm({
                 <option value="none">No virtual link</option>
                 <option value="manual">Manual link</option>
                 <option value="zoom">Zoom</option>
+                <option value="livekit">LiveKit webinar</option>
               </select>
             </div>
             {virtualMode === "manual" ? (

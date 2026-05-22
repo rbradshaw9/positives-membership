@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 
 type InstallPlatform = "ios" | "android" | null;
@@ -13,6 +13,8 @@ type BeforeInstallPromptEvent = Event & {
 const DISMISS_KEY = "positives:install-prompt-dismissed-at";
 const DISMISS_COOLDOWN_MS = 1000 * 60 * 60 * 24 * 14;
 const HIGH_INTENT_ROUTES = new Set(["/today", "/practice", "/account", "/library", "/events", "/coaching"]);
+const PROMPT_EVENT = "positives:install-prompt-state";
+type InstallPromptSnapshot = "hidden" | "ios";
 
 function wasDismissedRecently() {
   if (typeof window === "undefined") return false;
@@ -48,28 +50,41 @@ function detectInstallPlatform(): InstallPlatform {
   return null;
 }
 
+function subscribeToInstallPromptState(onStoreChange: () => void) {
+  window.addEventListener("storage", onStoreChange);
+  window.addEventListener(PROMPT_EVENT, onStoreChange);
+
+  return () => {
+    window.removeEventListener("storage", onStoreChange);
+    window.removeEventListener(PROMPT_EVENT, onStoreChange);
+  };
+}
+
+function getInstallPromptSnapshot(): InstallPromptSnapshot {
+  if (isStandaloneMode() || wasDismissedRecently()) return "hidden";
+  return detectInstallPlatform() === "ios" ? "ios" : "hidden";
+}
+
+function getServerInstallPromptSnapshot(): InstallPromptSnapshot {
+  return "hidden";
+}
+
 export function InstallAppPrompt() {
   const pathname = usePathname();
-  const [platform, setPlatform] = useState<InstallPlatform>(() => {
-    if (typeof window === "undefined" || isStandaloneMode()) {
-      return null;
-    }
-
-    return detectInstallPlatform();
-  });
+  const installPromptSnapshot = useSyncExternalStore(
+    subscribeToInstallPromptState,
+    getInstallPromptSnapshot,
+    getServerInstallPromptSnapshot,
+  );
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [dismissed, setDismissed] = useState(() => {
-    if (typeof window === "undefined" || isStandaloneMode()) {
-      return true;
-    }
-
-    if (wasDismissedRecently()) {
-      return true;
-    }
-
-    return detectInstallPlatform() !== "ios";
-  });
+  const [androidPromptVisible, setAndroidPromptVisible] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
+  const platform: InstallPlatform =
+    androidPromptVisible && deferredPrompt
+      ? "android"
+      : installPromptSnapshot === "ios"
+        ? "ios"
+        : null;
 
   useEffect(() => {
     if (typeof window === "undefined" || isStandaloneMode()) {
@@ -84,14 +99,14 @@ export function InstallAppPrompt() {
       const promptEvent = event as BeforeInstallPromptEvent;
       promptEvent.preventDefault();
       setDeferredPrompt(promptEvent);
-      setPlatform("android");
-      setDismissed(false);
+      setAndroidPromptVisible(true);
     }
 
     function handleAppInstalled() {
       window.localStorage.removeItem(DISMISS_KEY);
-      setDismissed(true);
+      window.dispatchEvent(new Event(PROMPT_EVENT));
       setDeferredPrompt(null);
+      setAndroidPromptVisible(false);
     }
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
@@ -107,7 +122,7 @@ export function InstallAppPrompt() {
     ? [...HIGH_INTENT_ROUTES].some((route) => pathname === route || pathname.startsWith(route + "/"))
     : false;
 
-  if (dismissed || !platform || isStandaloneMode() || !shouldRenderOnRoute) {
+  if (!platform || isStandaloneMode() || !shouldRenderOnRoute) {
     return null;
   }
 
@@ -123,18 +138,21 @@ export function InstallAppPrompt() {
 
     if (choice.outcome === "accepted") {
       window.localStorage.removeItem(DISMISS_KEY);
-      setDismissed(true);
+      window.dispatchEvent(new Event(PROMPT_EVENT));
       setDeferredPrompt(null);
+      setAndroidPromptVisible(false);
       return;
     }
 
     window.localStorage.setItem(DISMISS_KEY, String(Date.now()));
-    setDismissed(true);
+    window.dispatchEvent(new Event(PROMPT_EVENT));
+    setAndroidPromptVisible(false);
   }
 
   function handleDismiss() {
     window.localStorage.setItem(DISMISS_KEY, String(Date.now()));
-    setDismissed(true);
+    window.dispatchEvent(new Event(PROMPT_EVENT));
+    setAndroidPromptVisible(false);
   }
 
   return (

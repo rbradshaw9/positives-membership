@@ -8,7 +8,7 @@ import { Logo } from "@/components/marketing/Logo";
 import { checkTierAccess } from "@/lib/auth/check-tier-access";
 
 const BASE_NAV_ITEMS = [
-  { href: "/today", label: "Home", mobileLabel: "Home" },
+  { href: "/today", label: "Today", mobileLabel: "Today" },
   { href: "/library", label: "Library" },
   { href: "/practice", label: "My Practice", mobileLabel: "Practice" },
 ] as const;

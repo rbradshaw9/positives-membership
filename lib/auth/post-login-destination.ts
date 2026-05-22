@@ -19,6 +19,7 @@ function safePath(path: string | null | undefined) {
 function courseOwnerDestination(next: string) {
   if (
     next.startsWith("/library") ||
+    next.startsWith("/my-courses") ||
     next.startsWith("/account") ||
     next.startsWith("/courses")
   ) {

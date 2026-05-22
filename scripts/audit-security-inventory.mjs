@@ -157,10 +157,20 @@ line(
 );
 line(
   `- ${status(
-    true,
+    Boolean(process.env.ABUSE_GUARD_SECRET),
     process.env.ABUSE_GUARD_SECRET
       ? "ABUSE_GUARD_SECRET override is configured"
       : "ABUSE_GUARD_SECRET override is not set; fallback to SUPABASE_SERVICE_ROLE_KEY is currently in use"
+  )}`
+);
+line(
+  `- ${status(
+    Boolean(process.env.LIVEKIT_STUDIO_TOKEN_SECRET || process.env.LIVEKIT_API_SECRET),
+    process.env.LIVEKIT_STUDIO_TOKEN_SECRET
+      ? "LIVEKIT_STUDIO_TOKEN_SECRET is configured"
+      : process.env.LIVEKIT_API_SECRET
+        ? "LIVEKIT studio tokens use LIVEKIT_API_SECRET fallback; consider a dedicated LIVEKIT_STUDIO_TOKEN_SECRET"
+        : "LiveKit studio token signing secret is missing"
   )}`
 );
 line(

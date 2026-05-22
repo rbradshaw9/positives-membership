@@ -7,18 +7,65 @@ import Stripe from "stripe";
 import type { Enums } from "@/types/supabase";
 import { getPromoterPayPalEmail } from "@/lib/firstpromoter/client";
 
+let envLoaded = false;
+
+function ensureLocalEnvLoaded() {
+  if (envLoaded) return;
+
+  const envPath = path.join(process.cwd(), ".env.local");
+  let raw = "";
+  try {
+    raw = readFileSync(envPath, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    envLoaded = true;
+    return;
+  }
+
+  for (const line of raw.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eqIndex = trimmed.indexOf("=");
+    if (eqIndex === -1) continue;
+
+    const key = trimmed.slice(0, eqIndex).trim();
+    let value = trimmed.slice(eqIndex + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+
+    if (!process.env[key]) {
+      process.env[key] = value;
+    }
+  }
+
+  envLoaded = true;
+}
+
+function e2eEnv(key: string, fallback?: string) {
+  ensureLocalEnvLoaded();
+  const value = process.env[key] ?? fallback;
+  if (!value) {
+    throw new Error(`Missing ${key} for e2e tests. Set it in .env.local.`);
+  }
+  return value;
+}
+
+ensureLocalEnvLoaded();
+
 export const MEMBER_EMAIL = process.env.E2E_MEMBER_EMAIL ?? "rbradshaw+l1@gmail.com";
-export const MEMBER_PASSWORD = process.env.E2E_MEMBER_PASSWORD ?? "PiR43Tx2-";
+export const MEMBER_PASSWORD = e2eEnv("E2E_MEMBER_PASSWORD");
 export const LEVEL_2_MEMBER_EMAIL =
   process.env.E2E_LEVEL_2_MEMBER_EMAIL ?? "rbradshaw+l2@gmail.com";
-export const LEVEL_2_MEMBER_PASSWORD =
-  process.env.E2E_LEVEL_2_MEMBER_PASSWORD ?? "PiR43Tx2-";
+export const LEVEL_2_MEMBER_PASSWORD = e2eEnv("E2E_LEVEL_2_MEMBER_PASSWORD", MEMBER_PASSWORD);
 export const LEVEL_3_MEMBER_EMAIL =
   process.env.E2E_LEVEL_3_MEMBER_EMAIL ?? "rbradshaw+l3@gmail.com";
-export const LEVEL_3_MEMBER_PASSWORD =
-  process.env.E2E_LEVEL_3_MEMBER_PASSWORD ?? "PiR43Tx2-";
+export const LEVEL_3_MEMBER_PASSWORD = e2eEnv("E2E_LEVEL_3_MEMBER_PASSWORD", MEMBER_PASSWORD);
 export const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL ?? "lopcadmin@gmail.com";
-export const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? "PiR43Tx2-";
+export const ADMIN_PASSWORD = e2eEnv("E2E_ADMIN_PASSWORD");
 
 const ADMIN_MONTH_WORKSPACE_FIXTURE = {
   marker: "e2e-admin-month-workspace",
@@ -29,8 +76,6 @@ const ADMIN_MONTH_WORKSPACE_FIXTURE = {
   assignedDailyTitle: "Admin Smoke Assigned Daily",
   unassignedDailyTitle: "Admin Smoke Unassigned Daily",
 };
-
-let envLoaded = false;
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -64,35 +109,6 @@ async function withSupabaseRetry<T extends { error?: { message?: string } | null
   }
 
   return lastResult as T;
-}
-
-function ensureLocalEnvLoaded() {
-  if (envLoaded) return;
-
-  const envPath = path.join(process.cwd(), ".env.local");
-  const raw = readFileSync(envPath, "utf8");
-
-  for (const line of raw.split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    const eqIndex = trimmed.indexOf("=");
-    if (eqIndex === -1) continue;
-
-    const key = trimmed.slice(0, eqIndex).trim();
-    let value = trimmed.slice(eqIndex + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
-
-    if (!process.env[key]) {
-      process.env[key] = value;
-    }
-  }
-
-  envLoaded = true;
 }
 
 function getServiceRoleClient() {

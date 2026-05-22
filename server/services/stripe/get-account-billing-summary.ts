@@ -30,6 +30,7 @@ export interface AccountSubscriptionSnapshot {
   planName: string | null;
   amountLabel: string | null;
   intervalLabel: string | null;
+  discountLabel: string | null;
   currentPeriodEndLabel: string | null;
   cancelAtPeriodEnd: boolean;
   cancelAtLabel: string | null;
@@ -52,6 +53,41 @@ function formatMoney(amountCents: number | null | undefined, currency = "usd") {
     style: "currency",
     currency: currency.toUpperCase(),
   }).format(amountCents / 100);
+}
+
+function formatDiscountLabel(discount: string | Stripe.Discount | null | undefined): string | null {
+  if (!discount || typeof discount === "string") {
+    return discount ? "Discount applied" : null;
+  }
+
+  const coupon = discount.source?.coupon;
+  if (!coupon || typeof coupon === "string") {
+    return "Discount applied";
+  }
+  const duration =
+    coupon.duration === "once"
+      ? " on the next invoice"
+      : coupon.duration === "forever"
+        ? " on every invoice"
+        : coupon.duration === "repeating" && coupon.duration_in_months
+          ? ` for ${coupon.duration_in_months} month${coupon.duration_in_months === 1 ? "" : "s"}`
+          : "";
+
+  if (typeof coupon.percent_off === "number") {
+    return `${coupon.percent_off}% off${duration}`;
+  }
+
+  const amount = formatMoney(coupon.amount_off, coupon.currency ?? "usd");
+  if (amount) {
+    return `${amount} off${duration}`;
+  }
+
+  return coupon.name ? `${coupon.name}${duration}` : `Discount applied${duration}`;
+}
+
+function getActiveDiscountLabel(subscription: Stripe.Subscription): string | null {
+  const firstDiscount = subscription.discounts?.[0] ?? null;
+  return formatDiscountLabel(firstDiscount);
 }
 
 function getPriceIdFromPhase(
@@ -182,6 +218,7 @@ function getSubscriptionSnapshot(
       : null,
     amountLabel: amount,
     intervalLabel: interval ? `/${interval}` : null,
+    discountLabel: getActiveDiscountLabel(subscription),
     currentPeriodEndLabel: item?.current_period_end ? formatDate(item.current_period_end) : null,
     cancelAtPeriodEnd: subscription.cancel_at_period_end,
     cancelAtLabel: subscription.cancel_at ? formatDate(subscription.cancel_at) : null,
@@ -197,7 +234,7 @@ async function fetchAccountBillingSummaryFromStripe(
       customer: stripeCustomerId,
       status: "all",
       limit: 10,
-      expand: ["data.schedule"],
+      expand: ["data.schedule", "data.discounts"],
     });
 
     const subscription = subscriptions.data.find((item) =>

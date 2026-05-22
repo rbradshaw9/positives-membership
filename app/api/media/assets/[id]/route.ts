@@ -2,7 +2,7 @@ import { Readable } from "node:stream";
 import { NextResponse } from "next/server";
 import { getAdminPermissionSet, isBootstrapAdminEmail } from "@/lib/auth/require-admin";
 import { getSession } from "@/lib/auth/get-session";
-import { getMediaObject } from "@/lib/media/s3";
+import { getMediaObject, headMediaObject } from "@/lib/media/s3";
 import { hasActiveMemberAccess } from "@/lib/subscription/access";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
@@ -71,7 +71,24 @@ function bodyToWebStream(body: unknown): ReadableStream<Uint8Array> | null {
   return null;
 }
 
-export async function GET(_request: Request, context: { params: Params }) {
+function parseRange(rangeHeader: string | null, size: number) {
+  if (!rangeHeader || !size) return null;
+  const match = rangeHeader.match(/^bytes=(\d*)-(\d*)$/);
+  if (!match) return null;
+  const startText = match[1] ?? "";
+  const endText = match[2] ?? "";
+  if (!startText && !endText) return null;
+
+  let start = startText ? Number(startText) : size - Number(endText);
+  let end = endText && startText ? Number(endText) : size - 1;
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+  start = Math.max(0, Math.floor(start));
+  end = Math.min(size - 1, Math.floor(end));
+  if (start > end || start >= size) return null;
+  return { start, end };
+}
+
+export async function GET(request: Request, context: { params: Params }) {
   const user = await getSession();
   if (!user) return jsonError("Unauthorized", 401);
 
@@ -98,18 +115,37 @@ export async function GET(_request: Request, context: { params: Params }) {
   }
 
   try {
+    let assetSize = asset.size_bytes;
+    if (request.headers.get("range") && !assetSize) {
+      const head = await headMediaObject({
+        bucket: asset.bucket,
+        key: asset.object_key,
+      });
+      assetSize = head.ContentLength ?? 0;
+    }
+    const range = parseRange(request.headers.get("range"), assetSize);
     const object = await getMediaObject({
       bucket: asset.bucket,
       key: asset.object_key,
+      range: range ? `bytes=${range.start}-${range.end}` : undefined,
     });
     const stream = bodyToWebStream(object.Body);
     if (!stream) return jsonError("Asset body could not be read.", 500);
 
     return new Response(stream, {
+      status: range ? 206 : 200,
       headers: {
         "Content-Type": asset.content_type,
+        "Accept-Ranges": "bytes",
         "Cache-Control": "private, max-age=3600",
-        ...(asset.size_bytes ? { "Content-Length": String(asset.size_bytes) } : {}),
+        ...(range && assetSize
+          ? {
+              "Content-Range": `bytes ${range.start}-${range.end}/${assetSize}`,
+              "Content-Length": String(range.end - range.start + 1),
+            }
+          : assetSize
+            ? { "Content-Length": String(assetSize) }
+            : {}),
       },
     });
   } catch (error) {

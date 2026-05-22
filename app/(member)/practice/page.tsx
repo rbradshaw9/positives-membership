@@ -182,7 +182,7 @@ export default async function PracticePage({
                 <p className="mt-1 text-sm text-white/74">Member since {joinedLabel}</p>
                 <p className="mt-2 max-w-xl text-sm leading-body text-white/78">
                   A focused home for your history and your next practice, without replacing the
-                  day-by-day guidance on Home.
+                  day-by-day guidance on Today.
                 </p>
               </div>
             </div>
@@ -238,7 +238,7 @@ export default async function PracticePage({
                     {[
                       {
                         title: "Start today",
-                        body: "Use Home when you want the clearest next step without deciding what to play.",
+                        body: "Use Today when you want the clearest next step without deciding what to play.",
                       },
                       {
                         title: "Save a note",
@@ -280,7 +280,7 @@ export default async function PracticePage({
                   href="/today"
                   className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4 transition-colors hover:bg-white/8"
                 >
-                  <p className="text-sm font-semibold text-white">Go to Home</p>
+                  <p className="text-sm font-semibold text-white">Go to Today</p>
                   <p className="mt-1 text-sm leading-body text-white/72">
                     Start with today&apos;s guided next step.
                   </p>

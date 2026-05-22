@@ -3,7 +3,6 @@
 import { useState } from "react";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 // Generate time options in 30-min increments: 6:00 AM → 10:00 PM
 const TIME_OPTIONS: Array<{ label: string; minutes: number }> = [];

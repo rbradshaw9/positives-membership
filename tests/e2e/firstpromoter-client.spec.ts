@@ -35,7 +35,8 @@ test.describe("FirstPromoter client", () => {
     const requests: MockRequest[] = [];
 
     global.fetch = (async (input, init) => {
-      const url = new URL(typeof input === "string" ? input : input.url);
+      const requestUrl = input instanceof Request ? input.url : input.toString();
+      const url = new URL(requestUrl);
       const method = init?.method ?? "GET";
       const body = init?.body ? JSON.parse(String(init.body)) : null;
 

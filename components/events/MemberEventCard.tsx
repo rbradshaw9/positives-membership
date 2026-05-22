@@ -36,7 +36,7 @@ function badgeClasses(tone: BadgeTone) {
 }
 
 function eventModeLabel(event: MemberEvent) {
-  if (event.virtual_mode === "zoom" || event.virtual_mode === "manual") {
+  if (event.virtual_mode === "zoom" || event.virtual_mode === "manual" || event.virtual_mode === "livekit") {
     return event.event_venue ? "Hybrid" : "Online";
   }
   return event.event_venue?.is_virtual ? "Online" : "In person";
@@ -68,6 +68,7 @@ export function eventJoinUrl(event: MemberEvent) {
   if (!event.member_ticket_access) return null;
   if (event.virtual_mode === "manual") return event.manual_join_url;
   if (event.virtual_mode === "zoom") return event.event_zoom_meeting?.join_url ?? null;
+  if (event.virtual_mode === "livekit") return `/events/${event.id}/live`;
   return null;
 }
 

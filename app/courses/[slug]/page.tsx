@@ -8,6 +8,7 @@ import {
   memberCanAccessCourse,
   memberHasCourseEntitlement,
 } from "@/lib/queries/get-courses";
+import { sanitizeEventHtml } from "@/lib/content/sanitize-event-html";
 import { hasActiveMemberAccess } from "@/lib/subscription/access";
 import { SafeImage } from "@/components/media/SafeImage";
 import { CourseCheckoutButton } from "../CourseCheckoutButton";
@@ -78,6 +79,7 @@ export default async function PublicCourseDetailPage({ params }: Props) {
   const hasAccess = owned || included;
   const hasPrice = Boolean(course.stripe_price_id && course.price_cents);
   const whatYouGet = asStringList(course.what_you_get);
+  const fullDescription = sanitizeEventHtml(course.full_description);
 
   return (
     <main className="min-h-dvh bg-[#FAFAF8]">
@@ -182,10 +184,10 @@ export default async function PublicCourseDetailPage({ params }: Props) {
               </p>
             )}
 
-            {course.full_description ? (
+            {fullDescription ? (
               <div
                 className="prose prose-sm mt-6 max-w-none text-foreground/80"
-                dangerouslySetInnerHTML={{ __html: course.full_description }}
+                dangerouslySetInnerHTML={{ __html: fullDescription }}
               />
             ) : null}
           </section>

@@ -44,7 +44,10 @@ function getWeekStart(dateStr: string): string {
   const day = date.getDay();
   const diff = day === 0 ? -6 : 1 - day;
   date.setDate(date.getDate() + diff);
-  return date.toISOString().slice(0, 10);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const dayOfMonth = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${dayOfMonth}`;
 }
 
 function formatWeekRangeLabel(startDate: string, endDate: string): string {
@@ -136,7 +139,7 @@ function AudioRow({
 
   const isThis = isCurrentTrack(audio.id);
   const playing = isThis && isPlaying;
-  const src = audio.castos_episode_url ?? "";
+  const src = audio.audio_url ?? audio.castos_episode_url ?? "";
 
   function handleClick() {
     if (!src) return;

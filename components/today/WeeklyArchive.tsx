@@ -42,7 +42,8 @@ function WeekCard({ week }: { week: MonthWeeklyContent }) {
   const [expanded, setExpanded] = useState(false);
   const { playTrack, isCurrentTrack, isPlaying, togglePlayback } = useMemberAudio();
 
-  const hasAudio = !!(week.castos_episode_url || week.s3_audio_key);
+  const src = week.audio_url ?? week.castos_episode_url ?? "";
+  const hasAudio = !!src;
   const hasVideo = !!(week.vimeo_video_id || week.youtube_video_id);
   const playing = isCurrentTrack(week.id) && isPlaying;
   const loaded = isCurrentTrack(week.id);
@@ -51,7 +52,6 @@ function WeekCard({ week }: { week: MonthWeeklyContent }) {
     if (loaded) {
       togglePlayback();
     } else {
-      const src = week.castos_episode_url ?? "";
       if (!src) return;
       playTrack({
         id: week.id,

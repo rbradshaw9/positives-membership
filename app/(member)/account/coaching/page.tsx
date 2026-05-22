@@ -5,7 +5,6 @@ import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import { PageHeader } from "@/components/member/PageHeader";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { SectionLabel } from "@/components/member/SectionLabel";
-import { Button } from "@/components/ui/Button";
 import Link from "next/link";
 import { CoachingPurchaseButtons } from "./coaching-purchase-buttons";
 import { BookingFlow } from "@/components/coaching/BookingFlow";
@@ -14,7 +13,7 @@ import { UpcomingSessionCard } from "@/components/coaching/UpcomingSessionCard";
 export const metadata = {
   title: "Coaching Sessions — Positives",
   description:
-    "Manage your personal coaching sessions with Dr. Paul Jenkins. View your session balance, session history, and book new sessions.",
+    "Manage your personal coaching sessions with a Positives Certified coach. View your session balance, session history, and book new sessions.",
 };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -201,7 +200,7 @@ export default async function AccountCoachingPage({
     <div>
       <PageHeader
         title="Coaching Sessions"
-        subtitle="Work directly with Dr. Paul Jenkins. Track your session balance and book when you're ready."
+        subtitle="Work with a Positives Certified coach. Track your session balance and book when you're ready."
         hero
       />
 
@@ -286,7 +285,7 @@ export default async function AccountCoachingPage({
             ) : (
               <div>
                 <p className="text-sm text-white/60 max-w-xs">
-                  Purchase a session or a Punch Pass to get started with personal coaching.
+                  Purchase a session or a Punch Pass below to get started with personal coaching.
                 </p>
               </div>
             )}
@@ -431,7 +430,6 @@ export default async function AccountCoachingPage({
                   <UpcomingSessionCard
                     key={booking.id}
                     bookingId={booking.id}
-                    coachId={booking.coach_id}
                     coachName={bookingCoach?.display_name ?? "Your Coach"}
                     scheduledAt={booking.scheduled_at}
                     durationMinutes={booking.duration_minutes}

@@ -7,7 +7,8 @@
  * Usage:
  *   npx tsx scripts/seed-coach-profile.ts
  *
- * Requires SUPABASE_SERVICE_ROLE_KEY and NEXT_PUBLIC_SUPABASE_URL in env.
+ * Requires SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SUPABASE_URL, and
+ * SEED_COACH_PASSWORD in env.
  */
 
 import { createClient } from "@supabase/supabase-js";
@@ -27,7 +28,13 @@ const supabase = createClient(supabaseUrl, serviceKey, {
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const COACH_EMAIL = "rbradshaw+coach@gmail.com";
-const COACH_PASSWORD = "PiR43Tx2-";
+const COACH_PASSWORD_ENV = "SEED_COACH_PASSWORD";
+const COACH_PASSWORD = process.env[COACH_PASSWORD_ENV];
+
+if (!COACH_PASSWORD) {
+  console.error(`❌ Missing ${COACH_PASSWORD_ENV}. Set it in your local environment before seeding.`);
+  process.exit(1);
+}
 
 const COACH_PROFILE_DATA = {
   display_name: "Ryan (Test Coach)",
@@ -179,7 +186,7 @@ async function run() {
   }
 
   console.log("\n🎉 Done!");
-  console.log(`   Login: ${COACH_EMAIL} / ${COACH_PASSWORD}`);
+  console.log(`   Login: ${COACH_EMAIL}`);
   console.log("   Manage availability: https://positives.life/account/coaching/availability");
   console.log("   Admin coaching view: https://positives.life/admin/coaching");
 }

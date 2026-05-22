@@ -62,7 +62,7 @@ function getDateContext(item: {
       month: "long",
       day: "numeric",
       year: "numeric",
-    }).format(new Date(item.publish_date));
+    }).format(new Date(`${item.publish_date}T12:00:00`));
   }
   return null;
 }

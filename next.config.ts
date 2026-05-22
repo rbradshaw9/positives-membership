@@ -85,7 +85,7 @@ const nextConfig: NextConfig = {
           // Restrict powerful browser features
           {
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=()",
+            value: "camera=(self), microphone=(self), geolocation=()",
           },
         ],
       },

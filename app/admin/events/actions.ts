@@ -13,6 +13,11 @@ import { expandOccurrences, MAX_GENERATED_OCCURRENCES } from "@/lib/events/recur
 import { zoomApi } from "@/lib/zoom/client";
 import { encryptSecret } from "@/lib/zoom/crypto";
 import { sanitizeEventHtml } from "@/lib/content/sanitize-event-html";
+import {
+  ensureLiveKitEventRoom,
+  getLiveKitEventHealth,
+  liveKitEventRoomName,
+} from "@/lib/livekit/events";
 
 type EventInput = {
   id?: string;
@@ -173,7 +178,9 @@ function parseInput(formData: FormData): EventInput {
     endsAt: value(formData, "ends_at"),
     timezone: value(formData, "timezone") || "America/New_York",
     allDay: formData.get("all_day") === "on",
-    virtualMode: value(formData, "virtual_mode") || "none",
+    virtualMode: ["manual", "zoom", "livekit"].includes(value(formData, "virtual_mode"))
+      ? value(formData, "virtual_mode")
+      : "none",
     ticketingMode: ticketConfig.mode,
     eventCapacity: intOrNull(value(formData, "event_capacity")),
     registrationPlacement: ["below_hero", "sidebar"].includes(value(formData, "registration_placement"))
@@ -731,6 +738,75 @@ async function saveSelectedZoomMeeting(eventIds: string[], input: EventInput) {
   if (error) throw new Error(error.message);
 }
 
+async function assertLiveKitPublishReady(input: EventInput, desiredStatus: string) {
+  if (desiredStatus !== "published" || input.virtualMode !== "livekit") return;
+  const health = await getLiveKitEventHealth();
+  if (health.roomService !== "ok" || health.egressService !== "ok") {
+    redirectForError(input, "livekit_setup_required");
+  }
+}
+
+async function saveLiveKitRooms(eventIds: string[], input: EventInput) {
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  if (input.virtualMode !== "livekit") {
+    await supabase.from("event_livekit_room").delete().in("event_id", eventIds);
+    return;
+  }
+
+  for (const eventId of eventIds) {
+    const roomName = liveKitEventRoomName(eventId);
+    try {
+      await supabase.from("event_livekit_room").upsert(
+        {
+          event_id: eventId,
+          room_name: roomName,
+          mode: "webinar",
+          recording_policy: "auto",
+          room_status: "provisioned",
+          egress_status: "pending",
+          last_error: null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "event_id" }
+      );
+      await ensureLiveKitEventRoom({
+        eventId,
+        title: input.title,
+      });
+      await supabase.from("event_livekit_room").upsert(
+        {
+          event_id: eventId,
+          room_name: roomName,
+          mode: "webinar",
+          recording_policy: "auto",
+          room_status: "provisioned",
+          egress_status: "pending",
+          last_error: null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "event_id" }
+      );
+    } catch (error) {
+      await supabase.from("event_livekit_room").upsert(
+        {
+          event_id: eventId,
+          room_name: roomName,
+          mode: "webinar",
+          recording_policy: "auto",
+          room_status: "failed",
+          egress_status: "pending",
+          last_error: error instanceof Error ? error.message : String(error),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "event_id" }
+      );
+      if (targetStatus(input, input.currentStatus) === "published") {
+        throw error;
+      }
+    }
+  }
+}
+
 export async function saveEvent(formData: FormData) {
   const user = await requireAdmin();
   const input = parseInput(formData);
@@ -770,6 +846,7 @@ export async function saveEvent(formData: FormData) {
     }
 
     const desiredStatus = targetStatus(input, currentStatus);
+    await assertLiveKitPublishReady(input, desiredStatus);
     if (desiredStatus === "published" && input.virtualMode === "manual" && !input.manualJoinUrl) {
       redirectForError(input, "manual_join_url_required");
     }
@@ -815,6 +892,7 @@ export async function saveEvent(formData: FormData) {
       await saveTicketTypes(input.id, input);
       await saveRsvpTypes(input.id, input);
       await syncEventBodyMediaAssets(input.id, row.body);
+      await saveLiveKitRooms([input.id], input);
       await saveSelectedZoomMeeting([input.id], input);
       if (zoomResponse) await saveZoomMeetingForEvents([input.id], input, zoomResponse);
       revalidatePath("/events");
@@ -869,6 +947,7 @@ export async function saveEvent(formData: FormData) {
       const first = createdEvents[0];
       if (first) {
         const eventIds = createdEvents.map((event) => event.id);
+        await saveLiveKitRooms(eventIds, input);
         await saveSelectedZoomMeeting(eventIds, input);
         const zoomResponse = await createZoomMeeting({ input, startsAt: first.starts_at, endsAt: first.ends_at, recurring: true });
         if (zoomResponse) {
@@ -902,6 +981,7 @@ export async function saveEvent(formData: FormData) {
     await saveTicketTypes(data.id, input);
     await saveRsvpTypes(data.id, input);
     await syncEventBodyMediaAssets(data.id, row.body);
+    await saveLiveKitRooms([data.id], input);
     await saveSelectedZoomMeeting([data.id], input);
     if (zoomResponse) await saveZoomMeetingForEvents([data.id], input, zoomResponse);
     revalidatePath("/events");

@@ -1,21 +1,21 @@
 /**
  * app/account/billing/page.tsx
  *
- * In-app billing hub. Replaces the old Stripe Customer Portal redirect.
- * Works two ways:
- *   - Logged-in member (session)
- *   - Past-due recovery email link (?token=...) — no login required
- *
- * Shows plan, renewal, payment method (with in-page update via Stripe
- * Payment Element), and invoice history. Cancel/upgrade live on their
- * own pages and are linked only in session mode.
+ * In-app billing hub. Works two ways:
+ *   - Logged-in member (session): uses the member navigation and card system.
+ *   - Past-due recovery email link (?token=...): no login required.
  */
 
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Logo } from "@/components/marketing/Logo";
-import { resolveBillingContext } from "@/lib/billing/resolve-billing-context";
+import { MemberTopNav } from "@/components/member/MemberTopNav";
+import { PageHeader } from "@/components/member/PageHeader";
+import { SectionLabel } from "@/components/member/SectionLabel";
+import { Button } from "@/components/ui/Button";
+import { SurfaceCard } from "@/components/ui/SurfaceCard";
+import { resolveBillingContext, type BillingContext } from "@/lib/billing/resolve-billing-context";
+import { getPositivesPlanName } from "@/lib/plans";
 import { getAccountBillingSummary } from "@/server/services/stripe/get-account-billing-summary";
 import { getDefaultPaymentMethod } from "@/server/services/stripe/get-payment-method";
 import { BillingClient } from "./billing-client";
@@ -28,7 +28,9 @@ export const metadata: Metadata = {
 function formatDate(iso: string | null | undefined) {
   if (!iso) return null;
   return new Intl.DateTimeFormat("en-US", {
-    month: "short", day: "numeric", year: "numeric",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
   }).format(new Date(iso));
 }
 
@@ -37,6 +39,62 @@ function formatMoney(cents: number, currency: string) {
     style: "currency",
     currency: currency.toUpperCase(),
   }).format(cents / 100);
+}
+
+function BillingFrame({
+  ctx,
+  children,
+}: {
+  ctx: BillingContext;
+  children: React.ReactNode;
+}) {
+  if (ctx.mode === "session") {
+    return (
+      <div className="member-shell min-h-dvh">
+        <MemberTopNav
+          tier={ctx.subscriptionTier}
+          memberName={ctx.memberName}
+          memberAvatarUrl={ctx.memberAvatarUrl}
+        />
+        <main className="member-shell__content flex-1">{children}</main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-dvh bg-background">
+      <main>{children}</main>
+    </div>
+  );
+}
+
+function BillingUnavailable({ ctx }: { ctx: BillingContext }) {
+  return (
+    <BillingFrame ctx={ctx}>
+      <PageHeader
+        title="Billing"
+        subtitle="We could not find a billing account linked to this member profile."
+        hero
+      />
+      <div className="member-container py-8 md:py-10">
+        <SurfaceCard elevated padding="lg" className="surface-card--editorial max-w-xl">
+          <p className="ui-section-eyebrow mb-2">Billing not set up</p>
+          <h2 className="font-heading text-2xl font-bold tracking-tight text-foreground">
+            Billing is not connected yet
+          </h2>
+          <p className="mt-2 text-sm leading-body text-muted-foreground">
+            We could not find a billing account linked to {ctx.email}. If you believe this is
+            an error, contact support@positives.life.
+          </p>
+          <div className="mt-5">
+            <Button href="/account" variant="outline" size="sm">
+              Back to account
+            </Button>
+          </div>
+        </SurfaceCard>
+      </div>
+    </BillingFrame>
+  );
 }
 
 export default async function BillingPage({
@@ -51,23 +109,8 @@ export default async function BillingPage({
     redirect("/login?next=/account/billing");
   }
 
-  // Authenticated but no Stripe customer linked — show a message, never loop.
   if (!ctx.customerId) {
-    return (
-      <div className="min-h-dvh flex flex-col items-center justify-center px-6" style={{ background: "#F6F3EE" }}>
-        <div className="w-full max-w-sm text-center bg-card border border-border rounded-2xl p-8"
-          style={{ boxShadow: "0 12px 36px rgba(18,20,23,0.08)" }}>
-          <h1 className="font-heading font-bold text-xl text-foreground">Billing not set up</h1>
-          <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-            We couldn&apos;t find a billing account linked to {ctx.email}. If you believe this is
-            an error, contact support@positives.life.
-          </p>
-          <Link href="/account" className="mt-5 inline-block text-sm text-primary hover:underline">
-            ← Back to account
-          </Link>
-        </div>
-      </div>
-    );
+    return <BillingUnavailable ctx={ctx} />;
   }
 
   const [summary, card] = await Promise.all([
@@ -78,144 +121,235 @@ export default async function BillingPage({
   const sub = summary.currentSubscription;
   const invoices = summary.recentInvoices ?? [];
   const sessionMode = ctx.mode === "session";
+  const scheduledBillingChange = summary.scheduledBillingChange;
+  const currentTier = ctx.subscriptionTier ?? "level_1";
+  const isPlusOrHigher = currentTier !== "level_1";
+  const currentPlanName = getPositivesPlanName(currentTier);
 
   return (
-    <div className="min-h-dvh flex flex-col" style={{ background: "#F6F3EE" }}>
-      {/* Nav */}
-      <header
-        className="sticky top-0 z-50 w-full"
-        style={{
-          background: "rgba(246,243,238,0.85)",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-          borderBottom: "1px solid rgba(221,215,207,0.6)",
-        }}
-      >
-        <div className="max-w-2xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Logo height={26} />
-          {sessionMode && (
-            <Link href="/account" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              ← Back to account
-            </Link>
-          )}
-        </div>
-      </header>
+    <BillingFrame ctx={ctx}>
+      <PageHeader
+        title="Billing"
+        subtitle={`Plan details, invoices, and membership changes for ${ctx.email}.`}
+        hero
+        right={
+          sessionMode ? (
+            <Button href="/account" variant="outline" size="sm" className="hidden md:inline-flex">
+              Back to account
+            </Button>
+          ) : null
+        }
+      />
 
-      <div className="flex-1 w-full max-w-2xl mx-auto px-6 py-8 flex flex-col gap-5">
-        <div>
-          <h1 className="font-heading font-bold text-2xl text-foreground" style={{ letterSpacing: "-0.02em" }}>
-            Billing
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Signed in as <span className="font-medium text-foreground">{ctx.email}</span>
-          </p>
-        </div>
-
-        {/* Past-due banner */}
+      <div className="member-container py-8 md:py-10 flex flex-col gap-8">
         {sub?.status === "past_due" && (
-          <div className="rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4">
-            <p className="text-sm font-semibold text-amber-900">Your last payment didn&apos;t go through</p>
-            <p className="mt-1 text-sm text-amber-800">
-              Update your card below to restore your membership. We&apos;ll retry the charge automatically.
+          <SurfaceCard padding="md" className="border border-destructive/25 bg-destructive/5">
+            <p className="text-sm font-semibold text-foreground">Payment attention needed</p>
+            <p className="mt-1 text-sm leading-body text-muted-foreground">
+              Update your card below to restore your membership. We will retry the charge automatically.
             </p>
-          </div>
+          </SurfaceCard>
         )}
 
-        {/* Plan card */}
-        <div className="rounded-2xl border border-border bg-card p-5" style={{ boxShadow: "0 2px 12px rgba(18,20,23,0.04)" }}>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-            Current plan
-          </p>
-          {sub ? (
-            <>
-              <p className="text-lg font-semibold text-foreground">
-                {sub.planName ?? "Positives membership"}
-              </p>
-              <div className="mt-1 flex flex-wrap items-baseline gap-x-2 text-sm text-muted-foreground">
-                {sub.amountLabel && (
-                  <span>{sub.amountLabel}{sub.intervalLabel}</span>
-                )}
-                <span className="capitalize">· {sub.status.replace(/_/g, " ")}</span>
-              </div>
-              {sub.cancelAtPeriodEnd && sub.cancelAtLabel ? (
-                <p className="mt-2 text-sm text-amber-700">
-                  Ends on {sub.cancelAtLabel}
-                </p>
-              ) : summary.nextRenewalDate ? (
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Renews on <span className="font-medium text-foreground">{summary.nextRenewalDate}</span>
-                </p>
-              ) : null}
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">No active subscription on file.</p>
-          )}
-        </div>
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+          <section aria-labelledby="billing-plan">
+            <SectionLabel id="billing-plan">Current Plan</SectionLabel>
+            <SurfaceCard elevated padding="lg" className="surface-card--editorial">
+              {sub ? (
+                <>
+                  <p className="member-detail-kicker">Membership</p>
+                  <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
+                    {sub.planName ?? "Positives membership"}
+                  </h2>
+                  <p className="mt-2 text-sm leading-body text-muted-foreground">
+                    {sub.amountLabel ? (
+                      <>
+                        <span className="font-medium text-foreground">{sub.amountLabel}{sub.intervalLabel}</span>
+                        {" · "}
+                      </>
+                    ) : null}
+                    <span className="capitalize">{sub.status.replace(/_/g, " ")}</span>
+                  </p>
 
-        {/* Payment method — client component handles the update flow */}
-        <div className="rounded-2xl border border-border bg-card p-5" style={{ boxShadow: "0 2px 12px rgba(18,20,23,0.04)" }}>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-3">
-            Payment method
-          </p>
-          <BillingClient currentCard={card} token={token ?? null} />
-        </div>
-
-        {/* Invoices */}
-        <div className="rounded-2xl border border-border bg-card p-5" style={{ boxShadow: "0 2px 12px rgba(18,20,23,0.04)" }}>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-3">
-            Invoice history
-          </p>
-          {summary.invoiceLoadFailed ? (
-            <p className="text-sm text-muted-foreground">Invoices couldn&apos;t be loaded right now.</p>
-          ) : invoices.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No invoices yet.</p>
-          ) : (
-            <div className="divide-y divide-border/60">
-              {invoices.map((inv) => {
-                const amount = inv.amountPaidCents > 0 ? inv.amountPaidCents : inv.amountDueCents;
-                return (
-                  <div key={inv.id} className="flex items-center justify-between gap-3 py-2.5">
-                    <div className="min-w-0">
+                  {sub.cancelAtPeriodEnd && sub.cancelAtLabel ? (
+                    <SurfaceCard padding="sm" className="mt-5 border border-destructive/15 bg-destructive/5">
+                      <p className="text-sm font-medium text-foreground">Cancellation scheduled</p>
+                      <p className="mt-1 text-sm leading-body text-muted-foreground">
+                        Your membership remains available until {sub.cancelAtLabel}.
+                      </p>
+                    </SurfaceCard>
+                  ) : scheduledBillingChange ? (
+                    <SurfaceCard padding="sm" className="mt-5 border border-secondary/12 bg-secondary/5">
                       <p className="text-sm font-medium text-foreground">
-                        {formatDate(inv.paidAt ?? inv.createdAt)}
+                        {scheduledBillingChange.kind === "downgrade"
+                          ? "Downgrade scheduled"
+                          : "Plan change scheduled"}
                       </p>
-                      <p className="text-xs text-muted-foreground capitalize">
-                        {inv.status ?? "invoice"} · {formatMoney(amount, inv.currency)}
+                      <p className="mt-1 text-sm leading-body text-muted-foreground">
+                        You keep {scheduledBillingChange.currentPlanName} through{" "}
+                        {scheduledBillingChange.effectiveLabel}. Then your membership changes to{" "}
+                        {scheduledBillingChange.nextPlanName}.
                       </p>
-                    </div>
-                    <div className="flex gap-2 flex-shrink-0">
-                      {inv.invoicePdfUrl && (
-                        <a href={inv.invoicePdfUrl} target="_blank" rel="noreferrer"
-                          className="text-xs font-medium text-primary hover:underline">
-                          PDF
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                    </SurfaceCard>
+                  ) : summary.nextRenewalDate ? (
+                    <p className="mt-5 text-sm leading-body text-muted-foreground">
+                      Renews on <span className="font-medium text-foreground">{summary.nextRenewalDate}</span>.
+                    </p>
+                  ) : null}
+
+                  {sub.discountLabel ? (
+                    <SurfaceCard padding="sm" className="mt-4 border border-secondary/12 bg-secondary/5">
+                      <p className="text-sm font-medium text-foreground">Active discount</p>
+                      <p className="mt-1 text-sm leading-body text-muted-foreground">
+                        Stripe shows {sub.discountLabel} on this subscription.
+                      </p>
+                    </SurfaceCard>
+                  ) : null}
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">No active subscription on file.</p>
+              )}
+            </SurfaceCard>
+          </section>
+
+          <section aria-labelledby="billing-payment">
+            <SectionLabel id="billing-payment">Payment Method</SectionLabel>
+            <SurfaceCard elevated padding="lg" className="surface-card--editorial">
+              <BillingClient currentCard={card} token={token ?? null} />
+            </SurfaceCard>
+          </section>
         </div>
 
-        {/* Plan management — session mode only (cancel/upgrade need a login) */}
+        <section aria-labelledby="billing-invoices">
+          <SectionLabel id="billing-invoices">Invoice History</SectionLabel>
+          <SurfaceCard elevated padding="lg" className="surface-card--editorial">
+            {summary.invoiceLoadFailed ? (
+              <p className="text-sm text-muted-foreground">Invoices could not be loaded right now.</p>
+            ) : invoices.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No invoices yet.</p>
+            ) : (
+              <div className="divide-y divide-border/70 overflow-hidden rounded-2xl border border-border">
+                {invoices.map((inv) => {
+                  const amount = inv.amountPaidCents > 0 ? inv.amountPaidCents : inv.amountDueCents;
+                  return (
+                    <div
+                      key={inv.id}
+                      className="grid gap-3 p-4 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium text-foreground">
+                          {inv.number ?? formatDate(inv.paidAt ?? inv.createdAt)}
+                        </p>
+                        <p className="mt-1 text-muted-foreground capitalize">
+                          {formatDate(inv.paidAt ?? inv.createdAt)} · {inv.status ?? "invoice"} ·{" "}
+                          {formatMoney(amount, inv.currency)}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {inv.hostedInvoiceUrl ? (
+                          <a
+                            href={inv.hostedInvoiceUrl}
+                            className="btn-outline px-3 py-1.5 text-xs"
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            View
+                          </a>
+                        ) : null}
+                        {inv.invoicePdfUrl ? (
+                          <a
+                            href={inv.invoicePdfUrl}
+                            className="btn-ghost px-3 py-1.5 text-xs"
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            PDF
+                          </a>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </SurfaceCard>
+        </section>
+
         {sessionMode && (
-          <div className="flex flex-wrap gap-3">
-            <Link href="/account/cancel"
-              className="text-sm text-muted-foreground hover:text-destructive transition-colors">
-              Cancel membership
-            </Link>
-          </div>
+          <section aria-labelledby="billing-manage">
+            <SectionLabel id="billing-manage">Plan Details</SectionLabel>
+            <SurfaceCard elevated padding="lg" className="surface-card--editorial">
+              <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
+                <div>
+                  <h2 className="text-lg font-semibold tracking-tight text-foreground">
+                    Manage your billing without leaving Positives
+                  </h2>
+                  <div className="mt-2 space-y-2 text-sm leading-body text-muted-foreground">
+                    <p>
+                      Use this page for payment information, billing updates, and invoice history.
+                    </p>
+                    <p>
+                      Your current plan is{" "}
+                      <span className="font-medium text-foreground">{currentPlanName}</span>
+                      {sub?.amountLabel ? (
+                        <>
+                          {" "}
+                          at{" "}
+                          <span className="font-medium text-foreground">
+                            {sub.amountLabel}
+                            {sub.intervalLabel}
+                          </span>
+                        </>
+                      ) : null}
+                      .
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-col items-start gap-3 sm:flex-row md:flex-col md:items-end">
+                  {isPlusOrHigher ? (
+                    <p className="max-w-xs text-left text-xs leading-body text-muted-foreground md:text-right">
+                      Need help changing plans? Email support@positives.life and we will help you
+                      choose the right fit.
+                    </p>
+                  ) : (
+                    <Button href="/account/upgrade-confirm" variant="outline" size="sm">
+                      Review Plus
+                    </Button>
+                  )}
+                  <Button href="/account" variant="ghost" size="sm">
+                    Back to account
+                  </Button>
+                </div>
+              </div>
+              <div className="mt-6 border-t border-border pt-4">
+                <p className="text-xs leading-body text-muted-foreground">
+                  Need to stop renewal?{" "}
+                  <Link href="/account/cancel" className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+                    Cancel membership
+                  </Link>
+                </p>
+              </div>
+            </SurfaceCard>
+          </section>
+        )}
+
+        {!sessionMode && (
+          <p className="text-center text-xs leading-body text-muted-foreground">
+            This secure billing link only allows payment repair. Sign in to manage plan changes
+            from your account.
+          </p>
         )}
       </div>
 
-      <footer className="w-full py-6 text-center" style={{ borderTop: "1px solid rgba(221,215,207,0.5)" }}>
-        <div className="flex items-center justify-center gap-4 text-xs" style={{ color: "#9AA0A8" }}>
-          <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
-          <span aria-hidden="true">·</span>
-          <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
-        </div>
-      </footer>
-    </div>
+      {!sessionMode && (
+        <footer className="w-full py-6 text-center">
+          <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
+            <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
+            <span aria-hidden="true">·</span>
+            <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
+          </div>
+        </footer>
+      )}
+    </BillingFrame>
   );
 }

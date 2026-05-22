@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
+import { PageHeader } from "@/components/member/PageHeader";
+import { SectionLabel } from "@/components/member/SectionLabel";
+import { Button } from "@/components/ui/Button";
+import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { requireActiveMember } from "@/lib/auth/require-active-member";
-import { getAccountBillingSummary } from "@/server/services/stripe/get-account-billing-summary";
 import { getPositivesPlanName } from "@/lib/plans";
-import { Logo } from "@/components/marketing/Logo";
+import { getAccountBillingSummary } from "@/server/services/stripe/get-account-billing-summary";
 import { CancelClient } from "./cancel-client";
 
 export const metadata: Metadata = {
@@ -14,9 +16,8 @@ export const metadata: Metadata = {
 
 export default async function CancelPage() {
   const member = await requireActiveMember();
-
-  // Don't show this page if subscription is already set to cancel
   const billing = await getAccountBillingSummary(member.stripe_customer_id);
+
   if (billing.currentSubscription?.cancelAtPeriodEnd) {
     redirect("/account");
   }
@@ -25,109 +26,75 @@ export default async function CancelPage() {
   const planName = getPositivesPlanName(tier);
   const amountLabel = billing.currentSubscription?.amountLabel ?? null;
   const intervalLabel = billing.currentSubscription?.intervalLabel ?? null;
-  const isL1 = tier === "level_1";
-
-  const offerTitle = isL1 ? "1 Month Free" : "50% Off Next Month";
-  const offerSavings = amountLabel
-    ? isL1
-      ? `Save ${amountLabel}`
-      : `Save ${amountLabel ? "~half your next bill" : "50%"}`
-    : isL1 ? "Skip your next payment entirely" : "Save 50% on your next bill";
-  const offerBody = isL1
-    ? `By clicking redeem you keep full access and your next month is completely free. After that, you'll continue at your regular rate. You can still cancel any time.`
-    : `By clicking redeem you keep full access and your next invoice is 50% off. After that, you'll continue at your regular rate. You can still cancel any time.`;
+  const isPlus = tier !== "level_1";
 
   return (
-    <div className="min-h-dvh flex flex-col" style={{ background: "#F6F3EE" }}>
-      <header
-        className="sticky top-0 z-50 w-full"
-        style={{
-          background: "rgba(246,243,238,0.85)",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-          borderBottom: "1px solid rgba(221,215,207,0.6)",
-        }}
-      >
-        <div className="max-w-6xl mx-auto px-8 py-4 flex items-center justify-between">
-          <Logo height={26} />
-          <Link
-            href="/account"
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            ← Back to account
-          </Link>
-        </div>
-      </header>
+    <div>
+      <PageHeader
+        title="Cancel membership"
+        subtitle="If you are thinking about leaving, we will walk through the options carefully."
+        hero
+        right={
+          <Button href="/account/billing" variant="outline" size="sm" className="hidden md:inline-flex">
+            Back to billing
+          </Button>
+        }
+      />
 
-      <div className="flex-1 flex items-center justify-center py-12 px-6">
-        <div className="w-full max-w-sm">
-          <div
-            className="bg-card border border-border rounded-2xl overflow-hidden"
-            style={{ boxShadow: "0 12px 36px rgba(18,20,23,0.08)" }}
-          >
-            {/* Plan header */}
-            <div className="px-8 pt-8 pb-6">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Confirm cancellation
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">{planName}</p>
-              {amountLabel && (
-                <p className="mt-1 text-2xl font-bold text-foreground" style={{ letterSpacing: "-0.03em" }}>
-                  {amountLabel}
-                  {intervalLabel && <span className="text-base font-normal text-muted-foreground">{intervalLabel}</span>}
+      <div className="member-container py-8 md:py-10">
+        <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+          <section aria-labelledby="cancel-current-plan">
+            <SectionLabel id="cancel-current-plan">Current Plan</SectionLabel>
+            <SurfaceCard elevated padding="lg" className="surface-card--editorial">
+              <p className="member-detail-kicker">Membership</p>
+              <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
+                {planName}
+              </h2>
+              {amountLabel ? (
+                <p className="mt-2 text-sm leading-body text-muted-foreground">
+                  <span className="font-medium text-foreground">
+                    {amountLabel}
+                    {intervalLabel}
+                  </span>
+                  {" · "}
+                  <span className="capitalize">
+                    {billing.currentSubscription?.status.replace(/_/g, " ") ?? "active"}
+                  </span>
                 </p>
-              )}
-              {billing.nextRenewalDate && (
-                <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-                  If you cancel, you&apos;ll still have access until the end of your billing period on{" "}
+              ) : null}
+              {billing.nextRenewalDate ? (
+                <p className="mt-5 text-sm leading-body text-muted-foreground">
+                  If you cancel, you still have access through{" "}
                   <span className="font-medium text-foreground">{billing.nextRenewalDate}</span>.
                 </p>
-              )}
-            </div>
+              ) : null}
+              {billing.currentSubscription?.discountLabel ? (
+                <SurfaceCard padding="sm" className="mt-5 border border-secondary/12 bg-secondary/5">
+                  <p className="text-sm font-medium text-foreground">Active discount</p>
+                  <p className="mt-1 text-sm leading-body text-muted-foreground">
+                    Stripe shows {billing.currentSubscription.discountLabel} on this subscription.
+                  </p>
+                </SurfaceCard>
+              ) : null}
+            </SurfaceCard>
+          </section>
 
-            {/* Retention offer */}
-            <div className="mx-4 mb-4 rounded-xl p-5 text-white" style={{ background: "#111827" }}>
-              <p className="text-xs font-semibold uppercase tracking-wide opacity-70 mb-2">
-                Before you go&hellip;
-              </p>
-              <p className="text-lg font-bold leading-tight" style={{ letterSpacing: "-0.02em" }}>
-                {offerTitle}
-              </p>
-              <div className="flex items-center gap-1.5 mt-1.5">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-70" aria-hidden="true">
-                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
-                  <line x1="7" y1="7" x2="7.01" y2="7"/>
-                </svg>
-                <span className="text-sm opacity-80">{offerSavings}</span>
-              </div>
-              <p className="mt-3 text-sm opacity-70 leading-relaxed">{offerBody}</p>
-            </div>
-
-            <div className="px-4 pb-6 flex flex-col gap-3">
-              <CancelClient />
-            </div>
-          </div>
-
-          <p className="mt-6 text-center text-xs text-muted-foreground">
-            <Link href="/account" className="text-primary hover:underline">
-              Keep my membership
-            </Link>
-          </p>
+          <section aria-labelledby="cancel-options">
+            <SectionLabel id="cancel-options">
+              {isPlus ? "Available Options" : "Before You Go"}
+            </SectionLabel>
+            <SurfaceCard elevated padding="lg" className="surface-card--editorial">
+              <CancelClient isPlus={isPlus} />
+            </SurfaceCard>
+          </section>
         </div>
+
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          <Button href="/account" variant="ghost" size="sm">
+            Keep my membership
+          </Button>
+        </p>
       </div>
-
-      <footer
-        className="w-full py-6 text-center"
-        style={{ borderTop: "1px solid rgba(221,215,207,0.5)" }}
-      >
-        <div className="flex items-center justify-center gap-4 text-xs" style={{ color: "#9AA0A8" }}>
-          <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
-          <span aria-hidden="true">·</span>
-          <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
-          <span aria-hidden="true">·</span>
-          <span>© {new Date().getFullYear()} Positives</span>
-        </div>
-      </footer>
     </div>
   );
 }

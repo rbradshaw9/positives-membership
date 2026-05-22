@@ -46,11 +46,17 @@ function mapVerifyType(actionType: string) {
 function safeRedirectTarget(raw: string | null | undefined) {
   if (!raw) return "/today";
 
+  function safePath(path: string) {
+    if (!path.startsWith("/") || path.startsWith("//")) return "/today";
+    if (path.startsWith("/api/") || path.startsWith("/auth/")) return "/today";
+    return path;
+  }
+
   try {
     const url = new URL(raw);
-    return `${url.pathname}${url.search}${url.hash}`;
+    return safePath(`${url.pathname}${url.search}${url.hash}`);
   } catch {
-    return raw.startsWith("/") ? raw : "/today";
+    return safePath(raw);
   }
 }
 

@@ -56,6 +56,7 @@ function buildReminderHtml(params: {
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${subject}</title></head>
 <body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">${preheader}</div>
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:32px 16px;">
     <tr><td align="center">
       <table width="100%" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;">
@@ -215,9 +216,23 @@ export async function GET(req: Request) {
   await processReminders(h24Start, h24End, "24h");
   await processReminders(h1Start, h1End, "1h");
 
+  const completionCutoff = new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString();
+  const { count: completedCount, error: completeError } = await supabase
+    .from("coaching_booking")
+    .update({ status: "completed", updated_at: new Date().toISOString() })
+    .eq("status", "confirmed")
+    .lt("scheduled_at", completionCutoff)
+    .select("id", { count: "exact", head: true });
+
+  if (completeError) {
+    errors.push(`completion:${completeError.message}`);
+    console.error("[coaching-reminders] completion cleanup", completeError);
+  }
+
   return NextResponse.json({
     ok: true,
     sent: sent.length,
+    completed: completedCount ?? 0,
     errors: errors.length,
     detail: { sent, errors },
   });

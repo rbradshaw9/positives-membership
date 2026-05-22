@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatInTimeZone } from "date-fns-tz";
 import { requireActiveMember } from "@/lib/auth/require-active-member";
 import {
   getMemberEventFilterOptions,
@@ -30,6 +31,15 @@ type MemberEvent = EventRow & {
 };
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const EVENTS_DEFAULT_TIMEZONE = "America/New_York";
+
+function currentEventDateKey() {
+  return formatInTimeZone(new Date(), EVENTS_DEFAULT_TIMEZONE, "yyyy-MM-dd");
+}
+
+function currentEventMonthKey() {
+  return formatInTimeZone(new Date(), EVENTS_DEFAULT_TIMEZONE, "yyyy-MM");
+}
 
 function cleanParam(value?: string) {
   const trimmed = value?.trim();
@@ -99,7 +109,7 @@ function eventStartTime(event: MemberEvent) {
 
 function resolveSelectedDate(paramsDate: string | undefined, month: string, events: MemberEvent[]) {
   if (isDateKey(paramsDate) && paramsDate?.startsWith(month)) return paramsDate;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = currentEventDateKey();
   if (today.startsWith(month)) return today;
   const firstEventDate = events[0] ? eventDateKey(events[0].starts_at, events[0].timezone) : null;
   return firstEventDate?.startsWith(month) ? firstEventDate : `${month}-01`;
@@ -191,7 +201,7 @@ function ViewControls({
         <Button href={href({ month: shiftMonth(month, -1), view, ...shared })} variant="outline" size="sm">
           Previous
         </Button>
-        <Button href={href({ month: new Date().toISOString().slice(0, 7), view, ...shared })} variant="outline" size="sm">
+        <Button href={href({ month: currentEventMonthKey(), view, ...shared })} variant="outline" size="sm">
           Today
         </Button>
         <Button href={href({ month: shiftMonth(month, 1), view, ...shared })} variant="outline" size="sm">
@@ -250,7 +260,7 @@ function MonthView({
   const selectedEvents = events.filter(
     (event) => eventDateKey(event.starts_at, event.timezone) === selectedDate
   );
-  const today = new Date().toISOString().slice(0, 10);
+  const today = currentEventDateKey();
   const shared = { q: query, type, venue };
 
   return (
@@ -398,7 +408,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Searc
   const member = await requireActiveMember();
   const params = await searchParams;
   const view = params.view === "list" ? "list" : "month";
-  const month = isMonthKey(params.month) ? params.month as string : new Date().toISOString().slice(0, 7);
+  const month = isMonthKey(params.month) ? params.month as string : currentEventMonthKey();
   const query = cleanParam(params.q);
   const type = cleanParam(params.type);
   const venue = cleanParam(params.venue);

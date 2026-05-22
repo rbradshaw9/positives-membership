@@ -34,7 +34,9 @@ export type MonthWeeklyContent = Pick<
   | "duration_seconds"
   | "week_start"
   | "month_year"
->;
+> & {
+  audio_url?: string | null;
+};
 
 export async function getMonthWeeklyContent(
   monthYear: string

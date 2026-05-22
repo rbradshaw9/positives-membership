@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { applyRetentionCoupon } from "@/server/services/stripe/member-plan-actions";
 
@@ -25,7 +26,10 @@ export async function POST() {
     member.subscription_tier
   );
 
-  if (result.ok) return NextResponse.json({ ok: true });
+  if (result.ok) {
+    revalidateTag(`account-billing-summary-${member.stripe_customer_id}`, "max");
+    return NextResponse.json({ ok: true, couponId: result.couponId });
+  }
 
   const status = result.reason === "no_subscription" ? 422 : 500;
   return NextResponse.json({ error: result.message }, { status });

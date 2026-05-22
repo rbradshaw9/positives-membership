@@ -40,20 +40,39 @@ export async function resolvePostLoginDestination(
   if (!user) return "/login";
 
   if (isBootstrapAdminEmail(user.email) || (await memberHasAnyAdminRole(user.id))) {
-    return "/admin";
+    const destination = safePath(next);
+    return destination.startsWith("/admin") ? destination : "/admin";
   }
 
   const supabase = asLooseSupabaseClient(supabaseClient);
   const { data: member } = await supabase
     .from("member")
-    .select<{ subscription_status: Enums<"subscription_status"> | null }>(
-      "subscription_status"
+    .select<{ id: string; subscription_status: Enums<"subscription_status"> | null }>(
+      "id, subscription_status"
     )
     .eq("id", user.id)
     .maybeSingle();
 
   if (!member) return "/join";
   if (member.subscription_status === "past_due") return "/account/billing";
-  if (!hasActiveMemberAccess(member.subscription_status)) return "/inactive";
+  if (!hasActiveMemberAccess(member.subscription_status)) {
+    const { count } = await supabase
+      .from("course_entitlement")
+      .select("id", { count: "exact", head: true })
+      .eq("member_id", member.id)
+      .eq("status", "active");
+
+    if (count && count > 0) {
+      const destination = safePath(next);
+      return destination.startsWith("/library") ||
+        destination.startsWith("/my-courses") ||
+        destination.startsWith("/courses") ||
+        destination.startsWith("/account")
+        ? destination
+        : "/library";
+    }
+
+    return "/inactive";
+  }
   return safePath(next);
 }
