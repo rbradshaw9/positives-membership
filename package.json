@@ -19,6 +19,7 @@
     "stripe:reconcile-customers": "node scripts/reconcile-stale-stripe-customers.mjs",
     "courses:import-legacy": "node scripts/import-legacy-course-entitlements.mjs",
     "content:launch": "node scripts/apply-launch-content-plan.mjs",
+    "content:placeholder-report": "node scripts/export-placeholder-content-runway.mjs",
     "audit:launch": "node scripts/audit-launch-readiness.mjs",
     "audit:email": "node scripts/audit-email-launch-readiness.mjs",
     "audit:env": "node scripts/audit-vercel-env-separation.mjs",
