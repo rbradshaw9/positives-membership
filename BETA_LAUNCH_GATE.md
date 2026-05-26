@@ -2,7 +2,7 @@
 
 *Locked scope for the first Positives beta cohort. Update only with an explicit decision.*
 
-**Last updated:** 2026-05-19
+**Last updated:** 2026-05-26
 
 ---
 
