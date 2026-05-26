@@ -1,8 +1,10 @@
-# Beta Tester Tracker Guide
+# Alpha Tester Tracker Guide
 
 ## Purpose
 
-Keep one lightweight source of truth for who is in the beta, what access they have, how active they are, and whether they are actually giving us useful signal.
+Keep one lightweight source of truth for who is in the first alpha group, what
+access they have, how active they are, and whether they are actually giving us
+useful signal.
 
 ## Recommended Tool
 
@@ -14,21 +16,21 @@ Start with a simple Google Sheet or Airtable-style table. The goal is visibility
 - `email`
 - `cohort`
   - alpha
-  - private beta
-  - live
+  - beta
+  - live later
 - `invite_path`
   - alpha free
   - alpha paid test
-  - beta discount
-  - public join
+  - later beta discount
+  - later public join
 - `campaign_code`
 - `invited_at`
 - `activated_at`
 - `billing_state`
   - comped
-  - discounted
-  - grandfathered candidate
-  - full price
+  - paid test
+  - discounted later
+  - full price later
 - `subscription_tier`
 - `course_access`
 - `last_seen_at`
@@ -58,10 +60,12 @@ Start with a simple Google Sheet or Airtable-style table. The goal is visibility
 - use `blocked` for testers waiting on a bug fix or manual help
 - keep the invite path aligned with the actual link that was sent so billing-test
   users do not get mixed into the free alpha group later
+- do not treat the tracker as a public launch list; this is for the first
+  trusted invite wave only
 
 ## What Good Looks Like
 
-- every beta tester has a clear status
+- every alpha tester has a clear status
 - we know who is active and who is silent
 - we can quickly spot:
   - who needs support
