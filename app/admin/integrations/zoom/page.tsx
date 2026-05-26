@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { getZoomConnections } from "@/lib/queries/get-events";
 import { zoomConfigured } from "@/lib/zoom/client";
 
@@ -27,12 +26,12 @@ export default async function ZoomIntegrationsPage({ searchParams }: { searchPar
         </div>
         <div className="admin-page-header__actions">
           {configured ? (
-            <Link
+            <a
               href="/api/admin/integrations/zoom/connect?returnTo=/admin/integrations/zoom"
               className="admin-btn admin-btn--primary"
             >
               Connect Zoom
-            </Link>
+            </a>
           ) : (
             <span className="admin-btn admin-btn--primary opacity-40 cursor-not-allowed" aria-disabled="true" title="Configure Zoom env vars first">
               Connect Zoom
