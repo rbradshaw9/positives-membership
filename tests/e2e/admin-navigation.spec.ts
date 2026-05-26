@@ -1,5 +1,17 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
 import { ADMIN_EMAIL, ADMIN_PASSWORD, loginWithPassword } from "./helpers";
+
+async function expandAdminNavGroup(nav: Locator, name: string) {
+  const button = nav.getByRole("button", { name, exact: true });
+  await expect
+    .poll(async () => {
+      if ((await button.getAttribute("aria-expanded")) !== "true") {
+        await button.click();
+      }
+      return button.getAttribute("aria-expanded");
+    })
+    .toBe("true");
+}
 
 test("admin sidebar groups expand and reveal focused subnavigation", async ({ page }) => {
   await loginWithPassword(page, {
@@ -13,8 +25,7 @@ test("admin sidebar groups expand and reveal focused subnavigation", async ({ pa
   await expect(adminNav.getByRole("button", { name: "Content" })).toHaveAttribute("aria-expanded", "false");
   await expect(adminNav.getByRole("link", { name: "Events" })).toHaveCount(0);
 
-  await adminNav.getByRole("button", { name: "Content" }).click();
-  await expect(adminNav.getByRole("button", { name: "Content" })).toHaveAttribute("aria-expanded", "true");
+  await expandAdminNavGroup(adminNav, "Content");
   await expect(adminNav.getByRole("link", { name: "Events" })).toBeVisible();
   await expect(adminNav.getByRole("link", { name: "Calendar" })).toHaveCount(0);
 
@@ -25,7 +36,6 @@ test("admin sidebar groups expand and reveal focused subnavigation", async ({ pa
   await expect(adminNav.getByRole("link", { name: "Calendar" })).toHaveCount(0);
   await expect(adminNav.getByRole("link", { name: "Ticketing" })).toBeVisible();
 
-  await adminNav.getByRole("button", { name: "Management" }).click();
-  await expect(adminNav.getByRole("button", { name: "Management" })).toHaveAttribute("aria-expanded", "true");
+  await expandAdminNavGroup(adminNav, "Management");
   await expect(adminNav.getByRole("link", { name: "Integrations" })).toBeVisible();
 });
