@@ -4,6 +4,49 @@
 
 Get Positives to a point where a small private beta cohort can use the real product end to end, generate meaningful feedback, and help us surface bugs, friction, content gaps, and performance issues before a broader launch.
 
+## Current Alpha Gate Status - May 26, 2026
+
+The current gate is for the first friendly alpha invite wave, not the full
+public launch or a larger paid private beta.
+
+Verified in production:
+
+- `npm run lint`, `npm run build`, `npm run audit:launch`, and
+  `npm run ops:beta-check` pass.
+- Desktop and mobile route smoke passed across 80 public, member,
+  tier-gated, and admin routes.
+- Production interaction QA passed for protected-route redirects, login,
+  sign-out, public launch/info pages, member navigation, practice tabs, and
+  L1/L2/L3 tier availability.
+- The beta feedback loop works end to end: member submission, admin triage,
+  Asana task linking, admin reply, member inbox visibility, and cleanup.
+- Today audio playback works in production and creates the required
+  `daily_listened` event after completion.
+- The rolling 8-week content window has no missing daily dates, missing audio
+  sources, missing weekly principles, or placeholder rows. The remaining seeded
+  rows are intentionally marked as beta seed content until real June/July
+  content replaces them.
+
+Known open gates and follow-ups:
+
+- Postmark sender-domain readiness still needs dashboard/DNS verification.
+  ActiveCampaign welcome behavior is visible, but app-side Postmark API
+  readiness is not proven by local audit env.
+- Stripe hosted branding, public details, and retention coupon settings still
+  require Dashboard verification.
+- Add-to-home-screen behavior still needs real iPhone Safari and Android Chrome
+  device verification.
+- Real Dr. Paul content should replace seeded June/July content as soon as it
+  is available.
+
+Scope decision for this gate:
+
+- Free or comped alpha testers are the default.
+- A tiny paid-test subgroup can be used to verify real billing.
+- Full lifecycle/reminder automations, community/event/coaching scale,
+  affiliate payout promises, Pinecone/RAG, and public-launch polish are
+  deferred unless they become part of the explicit alpha promise.
+
 ## Recommended Beta Structure
 
 Use a two-step beta:
