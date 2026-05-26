@@ -48,6 +48,20 @@ test("member sign out ends the session on the login page", async ({ page }) => {
   await expect(page).toHaveURL(/\/login\?next=%2Ftoday$/);
 });
 
+test("GET sign-out route is side-effect free", async ({ page }) => {
+  await loginWithPassword(page, {
+    email: MEMBER_EMAIL,
+    password: MEMBER_PASSWORD,
+    next: "/today",
+  });
+
+  await page.goto("/auth/sign-out");
+  await expect(page).toHaveURL(/\/today$/);
+
+  await page.goto("/today");
+  await expect(page.getByRole("region", { name: "Daily Practice", exact: true })).toBeVisible();
+});
+
 test("password sign-in redirects directly to the next destination", async ({ page }) => {
   await loginWithPassword(page, {
     email: LEVEL_3_MEMBER_EMAIL,
