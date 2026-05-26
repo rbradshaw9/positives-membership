@@ -105,9 +105,11 @@ export default async function AdminLayout({
           </div>
           <div className="admin-sidebar__footer-identity">
             <span className="admin-sidebar__user-email">{user.email}</span>
-            <Link href="/auth/sign-out" className="admin-sidebar__sign-out">
-              Sign out
-            </Link>
+            <form action="/auth/sign-out" method="post">
+              <button type="submit" className="admin-sidebar__sign-out">
+                Sign out
+              </button>
+            </form>
           </div>
         </div>
       </aside>

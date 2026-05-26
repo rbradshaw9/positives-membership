@@ -24,14 +24,16 @@ function signedOutResponse(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  return NextResponse.redirect(new URL("/login", request.url), {
+    status: 303,
+  });
+}
+
+export async function POST(request: NextRequest) {
   const supabase = await createClient();
   await supabase.auth.signOut().catch((error) => {
     console.warn("[auth/sign-out] signOut failed:", error);
   });
 
   return signedOutResponse(request);
-}
-
-export async function POST(request: NextRequest) {
-  return GET(request);
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { AdminSidebarNav } from "./AdminSidebarNav";
 
 type AdminMobileNavProps = {
@@ -73,9 +72,11 @@ export function AdminMobileNav(props: AdminMobileNavProps) {
 
             <div className="admin-mobile-drawer__foot">
               <span className="admin-sidebar__user-email">{userEmail}</span>
-              <Link href="/auth/sign-out" className="admin-sidebar__sign-out">
-                Sign out
-              </Link>
+              <form action="/auth/sign-out" method="post">
+                <button type="submit" className="admin-sidebar__sign-out">
+                  Sign out
+                </button>
+              </form>
             </div>
           </div>
         </div>

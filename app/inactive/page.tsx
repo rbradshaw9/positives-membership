@@ -154,9 +154,11 @@ export default async function InactivePage() {
 
           <p className="mt-6 text-center text-xs text-muted-foreground">
             Wrong account?{" "}
-            <Link href="/auth/sign-out" className="text-primary hover:underline">
-              Sign out
-            </Link>
+            <form action="/auth/sign-out" method="post" className="inline">
+              <button type="submit" className="text-primary hover:underline">
+                Sign out
+              </button>
+            </form>
           </p>
         </div>
       </div>

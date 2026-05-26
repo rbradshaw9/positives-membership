@@ -1513,10 +1513,15 @@ select.member-input { cursor: pointer; }
 }
 
 .admin-sidebar__sign-out {
+  border: 0;
+  background: transparent;
+  padding: 0;
   font-size: 0.625rem;
   color: rgba(255, 255, 255, 0.28);
+  font-family: inherit;
   text-decoration: none;
   transition: color 0.15s;
+  cursor: pointer;
 }
 
 .admin-sidebar__sign-out:hover {
