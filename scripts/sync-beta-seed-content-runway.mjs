@@ -119,6 +119,12 @@ function addDays(date, days) {
   return next;
 }
 
+function startOfWeekMonday(date) {
+  const day = date.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  return addDays(date, diff);
+}
+
 function slotDate(row) {
   return row.publish_date ?? row.week_start ?? `${row.month_year ?? ""}-01`;
 }
@@ -168,6 +174,7 @@ if (!supabaseUrl || !serviceKey) {
 const seedAudioUrl = absoluteSeedAudioUrl(args);
 const now = new Date();
 const start = isoDate(now);
+const weekStart = isoDate(startOfWeekMonday(now));
 const end = isoDate(addDays(now, args.days - 1));
 const seedNote = buildSeedNote(isoDate(now));
 
@@ -200,7 +207,7 @@ const { data, error } = await supabase
   .or(
     [
       `and(type.eq.daily_audio,publish_date.gte.${start},publish_date.lte.${end})`,
-      `and(type.eq.weekly_principle,week_start.gte.${start},week_start.lte.${end})`,
+      `and(type.eq.weekly_principle,week_start.gte.${weekStart},week_start.lte.${end})`,
       `and(type.eq.monthly_theme,month_year.gte.${start.slice(0, 7)},month_year.lte.${end.slice(0, 7)})`,
     ].join(",")
   );
@@ -213,7 +220,7 @@ const rows = (data ?? [])
   .sort((a, b) => slotDate(a).localeCompare(slotDate(b)) || a.type.localeCompare(b.type));
 
 console.log(`[beta-seed-content] Mode: ${args.write ? "WRITE" : "DRY RUN"}`);
-console.log(`[beta-seed-content] Window: ${start} -> ${end}`);
+console.log(`[beta-seed-content] Window: ${start} -> ${end} (weekly from ${weekStart})`);
 console.log(`[beta-seed-content] Seed audio: ${seedAudioUrl}`);
 console.log(`[beta-seed-content] Rows to retag: ${rows.length}`);
 

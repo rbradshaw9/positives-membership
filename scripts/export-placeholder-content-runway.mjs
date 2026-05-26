@@ -101,6 +101,12 @@ function addDays(date, days) {
   return next;
 }
 
+function startOfWeekMonday(date) {
+  const day = date.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  return addDays(date, diff);
+}
+
 function slotDate(row) {
   return row.publish_date ?? row.week_start ?? `${row.month_year ?? ""}-01`;
 }
@@ -208,6 +214,7 @@ if (!supabaseUrl || !serviceKey) {
 
 const now = new Date();
 const start = isoDate(now);
+const weekStart = isoDate(startOfWeekMonday(now));
 const end = isoDate(addDays(now, args.days - 1));
 
 const supabase = createClient(supabaseUrl, serviceKey, {
@@ -241,7 +248,7 @@ const { data, error } = await supabase
   .or(
     [
       `and(type.eq.daily_audio,publish_date.gte.${start},publish_date.lte.${end})`,
-      `and(type.eq.weekly_principle,week_start.gte.${start},week_start.lte.${end})`,
+      `and(type.eq.weekly_principle,week_start.gte.${weekStart},week_start.lte.${end})`,
       `and(type.eq.monthly_theme,month_year.gte.${start.slice(0, 7)},month_year.lte.${end.slice(0, 7)})`,
     ].join(",")
   );
