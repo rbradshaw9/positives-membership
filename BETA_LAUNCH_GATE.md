@@ -42,6 +42,7 @@ npm run audit:security
 npm run ops:beta-check
 npm run audit:email
 npm run audit:env
+npm run audit:pwa
 npm run test:e2e   # requires local Supabase + Stripe test env
 ```
 
@@ -54,6 +55,7 @@ Manual smoke (15 min):
 - [ ] `/journal` new entry
 - [ ] `/account` → billing portal
 - [ ] Beta feedback submits and appears in Asana **Positives - Beta Feedback**
+- [ ] Actual Add to Home Screen install on iOS Safari and Android Chrome
 
 ---
 

@@ -23,6 +23,7 @@
     "audit:launch": "node scripts/audit-launch-readiness.mjs",
     "audit:email": "node scripts/audit-email-launch-readiness.mjs",
     "audit:env": "node scripts/audit-vercel-env-separation.mjs",
+    "audit:pwa": "node scripts/audit-pwa-install-readiness.mjs",
     "audit:security": "node scripts/audit-security-inventory.mjs",
     "audit:firstpromoter-parents": "node scripts/audit-firstpromoter-parent-links.mjs",
     "media:s3-smoke": "node --env-file=.env.local scripts/smoke-s3-media.mjs",
