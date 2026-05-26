@@ -56,6 +56,14 @@ const RECOMMENDED_SCRIPTS = [
   "audit:launch",
 ];
 
+const PLACEHOLDER_PATTERNS = [
+  /soundhelix\.com/i,
+  /\bplaceholder\b/i,
+  /\bscaffold\b/i,
+  /\bsample audio\b/i,
+  /\blorem ipsum\b/i,
+];
+
 function runStaticChecks() {
   const packageJsonPath = resolve(__dirname, "../package.json");
   const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
@@ -147,6 +155,25 @@ function isAuditFixtureRow(row) {
   return title.startsWith("E2E ") || title.startsWith("Admin Smoke ");
 }
 
+function hasPlaceholderMarker(row) {
+  const haystack = [
+    row.title,
+    row.excerpt,
+    row.description,
+    row.body,
+    row.castos_episode_url,
+    row.s3_audio_key,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return PLACEHOLDER_PATTERNS.some((pattern) => pattern.test(haystack));
+}
+
+function contentDateKey(row) {
+  return row.publish_date ?? row.week_start ?? row.month_year ?? "";
+}
+
 async function main() {
   const staticResult = runStaticChecks();
 
@@ -164,7 +191,7 @@ async function main() {
 
   const { data: publishedContent, error: publishedError } = await supabase
     .from("content")
-    .select("id, title, type, status, publish_date, week_start, month_year, castos_episode_url, s3_audio_key")
+    .select("id, title, type, status, publish_date, week_start, month_year, excerpt, description, body, castos_episode_url, s3_audio_key")
     .in("type", ["daily_audio", "weekly_principle", "monthly_theme"])
     .eq("status", "published");
 
@@ -174,7 +201,7 @@ async function main() {
 
   const { data: windowRows, error: windowError } = await supabase
     .from("content")
-    .select("id, title, type, status, publish_date, week_start, month_year, castos_episode_url, s3_audio_key")
+    .select("id, title, type, status, publish_date, week_start, month_year, excerpt, description, body, castos_episode_url, s3_audio_key")
     .in("type", ["daily_audio", "weekly_principle", "monthly_theme"])
     .neq("status", "archived")
     .or(
@@ -245,6 +272,9 @@ async function main() {
 
   const missingWeeklyStarts = weekStarts.filter((weekStart) => !publishedWeeklyStarts.has(weekStart));
   const missingMonths = monthYears.filter((monthYear) => !publishedMonths.has(monthYear));
+  const placeholderRows = windowContent.filter(
+    (row) => row.status === "published" && hasPlaceholderMarker(row)
+  ).sort((a, b) => contentDateKey(a).localeCompare(contentDateKey(b)) || a.title.localeCompare(b.title));
 
   console.log("\n[launch-audit] Core member launch readiness\n");
   console.log(`Window: ${windowStart} → ${windowEnd}`);
@@ -255,6 +285,7 @@ async function main() {
   console.log(`Unpublished daily dates in next 8 weeks: ${unpublishedDailyDates.length}`);
   console.log(`Weeks missing published principle: ${missingWeeklyStarts.length}`);
   console.log(`Months missing published theme: ${missingMonths.length}`);
+  console.log(`Published placeholder rows in next 8 weeks: ${placeholderRows.length}`);
 
   if (audioBlockers.length > 0) {
     console.log("\n[audio blockers]");
@@ -298,6 +329,13 @@ async function main() {
     }
   }
 
+  if (placeholderRows.length > 0) {
+    console.log("\n[published placeholder content]");
+    for (const row of placeholderRows) {
+      console.log(`- ${row.type} | ${row.title} | ${contentDateKey(row)}`);
+    }
+  }
+
   const hasBlockers =
     staticResult.hasBlockers ||
     audioBlockers.length > 0 ||
@@ -305,7 +343,8 @@ async function main() {
     missingDailyDates.length > 0 ||
     unpublishedDailyDates.length > 0 ||
     missingWeeklyStarts.length > 0 ||
-    missingMonths.length > 0;
+    missingMonths.length > 0 ||
+    placeholderRows.length > 0;
 
   console.log("");
   if (hasBlockers) {

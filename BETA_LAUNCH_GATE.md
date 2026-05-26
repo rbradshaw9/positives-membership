@@ -38,6 +38,10 @@ Run before inviting each cohort:
 npm run lint
 npm run build
 npm run audit:launch
+npm run audit:security
+npm run ops:beta-check
+npm run audit:email
+npm run audit:env
 npm run test:e2e   # requires local Supabase + Stripe test env
 ```
 
@@ -56,6 +60,7 @@ Manual smoke (15 min):
 ## Content gate (ops — not code)
 
 - [ ] Real daily audio scheduled for beta date range (no empty Today days)
+- [ ] No published SoundHelix/scaffold/placeholder content in the rolling 8-week invite window
 - [ ] At least one weekly principle + monthly theme for current month
 - [ ] Included courses published with lessons that have `video_url` set
 
