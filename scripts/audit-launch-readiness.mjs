@@ -63,6 +63,7 @@ const PLACEHOLDER_PATTERNS = [
   /\bsample audio\b/i,
   /\blorem ipsum\b/i,
 ];
+const BETA_SEED_MARKER = "BETA_SEED_CONTENT";
 
 function runStaticChecks() {
   const packageJsonPath = resolve(__dirname, "../package.json");
@@ -191,7 +192,7 @@ async function main() {
 
   const { data: publishedContent, error: publishedError } = await supabase
     .from("content")
-    .select("id, title, type, status, publish_date, week_start, month_year, excerpt, description, body, castos_episode_url, s3_audio_key")
+    .select("id, title, type, status, publish_date, week_start, month_year, excerpt, description, body, admin_notes, castos_episode_url, s3_audio_key")
     .in("type", ["daily_audio", "weekly_principle", "monthly_theme"])
     .eq("status", "published");
 
@@ -201,7 +202,7 @@ async function main() {
 
   const { data: windowRows, error: windowError } = await supabase
     .from("content")
-    .select("id, title, type, status, publish_date, week_start, month_year, excerpt, description, body, castos_episode_url, s3_audio_key")
+    .select("id, title, type, status, publish_date, week_start, month_year, excerpt, description, body, admin_notes, castos_episode_url, s3_audio_key")
     .in("type", ["daily_audio", "weekly_principle", "monthly_theme"])
     .neq("status", "archived")
     .or(
@@ -275,6 +276,9 @@ async function main() {
   const placeholderRows = windowContent.filter(
     (row) => row.status === "published" && hasPlaceholderMarker(row)
   ).sort((a, b) => contentDateKey(a).localeCompare(contentDateKey(b)) || a.title.localeCompare(b.title));
+  const betaSeedRows = windowContent.filter(
+    (row) => row.status === "published" && row.admin_notes?.includes(BETA_SEED_MARKER)
+  );
 
   console.log("\n[launch-audit] Core member launch readiness\n");
   console.log(`Window: ${windowStart} → ${windowEnd}`);
@@ -286,6 +290,7 @@ async function main() {
   console.log(`Weeks missing published principle: ${missingWeeklyStarts.length}`);
   console.log(`Months missing published theme: ${missingMonths.length}`);
   console.log(`Published placeholder rows in next 8 weeks: ${placeholderRows.length}`);
+  console.log(`Published beta seed rows in next 8 weeks: ${betaSeedRows.length}`);
 
   if (audioBlockers.length > 0) {
     console.log("\n[audio blockers]");

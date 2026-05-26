@@ -63,6 +63,7 @@ Manual smoke (15 min):
 
 - [ ] Real daily audio scheduled for beta date range (no empty Today days)
 - [ ] No published SoundHelix/scaffold/placeholder content in the rolling 8-week invite window
+- [ ] Alpha-only seed rows are allowed through July if tagged `BETA_SEED_CONTENT`; replace them with approved Dr. Paul/Castos content as soon as real June/July content arrives
 - [ ] At least one weekly principle + monthly theme for current month
 - [ ] Included courses published with lessons that have `video_url` set
 
