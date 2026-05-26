@@ -130,6 +130,8 @@ const POSTMARK_ENV_KEYS = [
   "POSTMARK_SERVER_TOKEN",
   "POSTMARK_API_TOKEN",
   "POSTMARK_MESSAGE_STREAM",
+  "POSTMARK_FROM_EMAIL",
+  "POSTMARK_REPLY_TO_EMAIL",
   "POSTMARK_INBOUND_WEBHOOK_SECRET",
   "POSTMARK_WEBHOOK_SECRET",
 ];
@@ -144,6 +146,18 @@ function result(ok, text) {
 
 function normalize(value) {
   return String(value ?? "").trim().toLowerCase();
+}
+
+function emailAddress(value) {
+  const raw = String(value ?? "").trim();
+  const bracketMatch = raw.match(/<([^>]+)>/);
+  return (bracketMatch?.[1] ?? raw).trim().replace(/^mailto:/i, "");
+}
+
+function emailDomain(value) {
+  const address = emailAddress(value);
+  const atIdx = address.lastIndexOf("@");
+  return atIdx === -1 ? "" : address.slice(atIdx + 1).toLowerCase();
 }
 
 function escapeRegExp(value) {
@@ -204,6 +218,26 @@ async function acCollection(path, key, limit = 100) {
   return items;
 }
 
+async function postmarkFetch(path) {
+  const token = process.env.POSTMARK_SERVER_TOKEN || process.env.POSTMARK_API_TOKEN || "";
+  if (!token) {
+    throw new Error("POSTMARK_SERVER_TOKEN or POSTMARK_API_TOKEN is missing.");
+  }
+
+  const response = await fetch(`https://api.postmarkapp.com${path}`, {
+    headers: {
+      Accept: "application/json",
+      "X-Postmark-Server-Token": token,
+    },
+  });
+  const text = await response.text();
+  const body = text ? JSON.parse(text) : {};
+  if (!response.ok) {
+    throw new Error(`${response.status}: ${text.slice(0, 300)}`);
+  }
+  return body;
+}
+
 async function safeCheck(label, callback) {
   try {
     return { label, ok: true, value: await callback() };
@@ -232,6 +266,23 @@ function findById(items, id) {
 function findByName(items, name) {
   const expected = normalize(name);
   return items.find((item) => normalize(item.name) === expected);
+}
+
+async function getPostmarkState() {
+  const configuredStream = process.env.POSTMARK_MESSAGE_STREAM || "outbound";
+  const [server, streamsBody] = await Promise.all([
+    postmarkFetch("/server"),
+    postmarkFetch("/message-streams?MessageStreamType=All&IncludeArchivedStreams=true"),
+  ]);
+  const streams = streamsBody.MessageStreams ?? streamsBody.MessageStream ?? streamsBody.messageStreams ?? [];
+
+  return {
+    server,
+    streams,
+    configuredStream,
+    fromEmail: process.env.POSTMARK_FROM_EMAIL || "",
+    replyToEmail: process.env.POSTMARK_REPLY_TO_EMAIL || "",
+  };
 }
 
 async function getActiveCampaignState() {
@@ -377,6 +428,37 @@ function hasSendEmailHookRoute() {
   return existsSync(resolve(repoRoot, "app/api/auth/send-email-hook/route.ts"));
 }
 
+function printPostmarkSection(check) {
+  print("## Postmark API");
+  if (!check.ok) {
+    print(`- ${result(false, check.error)}`);
+    print("- This audit does not send email; add production Postmark env to the audit process or verify in the dashboard.");
+    print();
+    return;
+  }
+
+  const server = check.value.server;
+  const streams = Array.isArray(check.value.streams) ? check.value.streams : [];
+  const configuredStream = check.value.configuredStream;
+  const configuredStreamVisible = streams.some((stream) => stream.ID === configuredStream);
+  const fromDomain = emailDomain(check.value.fromEmail);
+  const replyToDomain = emailDomain(check.value.replyToEmail);
+  const deliveryType = server.DeliveryType ?? server.deliveryType ?? "unknown";
+
+  print(`- ${result(Boolean(server.ID || server.Name), "server API token can read the Postmark server")}`);
+  print(`- Server: ${server.Name || "unnamed"} (${deliveryType})`);
+  print(`- ${result(streams.length > 0, `${streams.length} message stream(s) visible`)}`);
+  print(`- ${result(configuredStreamVisible, `configured message stream visible: ${configuredStream}`)}`);
+  print(`- ${result(fromDomain === DOMAIN, `from domain aligns with ${DOMAIN}`)}`);
+  print(`- ${result(!replyToDomain || replyToDomain === DOMAIN, `reply-to domain aligns with ${DOMAIN}`)}`);
+  if (streams.length > 0) {
+    for (const stream of streams.slice(0, 8)) {
+      print(`  - ${stream.ID}: ${stream.Name || "unnamed"} (${stream.MessageStreamType || "unknown"})`);
+    }
+  }
+  print();
+}
+
 function printActiveCampaignSection(check) {
   print("## ActiveCampaign");
   if (!check.ok) {
@@ -459,7 +541,7 @@ function printAppConfigSection() {
   print();
 }
 
-function printNextSteps(activeCampaignCheck, dnsCheck) {
+function printNextSteps(activeCampaignCheck, dnsCheck, postmarkCheck) {
   const acSummary = activeCampaignCheck.ok
     ? summarizeActiveCampaign(activeCampaignCheck.value)
     : null;
@@ -475,9 +557,10 @@ function printNextSteps(activeCampaignCheck, dnsCheck) {
     dnsCheck.ok &&
     summarizeDns(dnsCheck.value).postmarkDkim.length > 0 &&
     summarizeDns(dnsCheck.value).spfRecords.some((record) => /postmarkapp\.com/i.test(record));
+  const postmarkApiReady = postmarkCheck.ok;
 
   print("## Recommended Follow-Up");
-  if (fullLaunchAcReady && dnsReady && hasPostmarkEnv()) {
+  if (fullLaunchAcReady && dnsReady && postmarkApiReady) {
     print("- No major configuration gaps detected by this read-only audit.");
     print("- Next safe step: send controlled test emails only to internal test addresses from the dashboard.");
     return;
@@ -496,16 +579,21 @@ function printNextSteps(activeCampaignCheck, dnsCheck) {
     print("- Move remaining sender addresses from personal Gmail to an approved positives.life sender.");
   }
 
-  if (!dnsReady || !hasPostmarkEnv()) {
+  if (postmarkApiReady) {
+    print("- Postmark server API and message stream are reachable without sending a test email.");
+  }
+
+  if (!dnsReady || !postmarkApiReady) {
     print("- Verify Postmark sender-domain DNS and message streams in the Postmark/ActiveCampaign dashboard.");
   }
 
   print("- After dashboard changes, rerun `npm run audit:email` before sending controlled test messages.");
 }
 
-const [activeCampaignCheck, dnsCheck] = await Promise.all([
+const [activeCampaignCheck, dnsCheck, postmarkCheck] = await Promise.all([
   safeCheck("ActiveCampaign", getActiveCampaignState),
   safeCheck("DNS", getDnsState),
+  safeCheck("Postmark", getPostmarkState),
 ]);
 
 print("# Email Launch Readiness Audit");
@@ -516,6 +604,7 @@ print("Mode: read-only, no contacts changed, no messages sent");
 print();
 
 printAppConfigSection();
+printPostmarkSection(postmarkCheck);
 printActiveCampaignSection(activeCampaignCheck);
 printDnsSection(dnsCheck);
-printNextSteps(activeCampaignCheck, dnsCheck);
+printNextSteps(activeCampaignCheck, dnsCheck, postmarkCheck);

@@ -99,6 +99,18 @@ Current model:
 Preview reminders should be tested manually or against controlled staging data
 only. Do not let preview/staging cron fire against production contacts.
 
+## Audit Commands
+
+Use the read-only audits before treating preview or production as beta-ready:
+
+- `npm run audit:env` compares Vercel Production and Preview values without
+  printing secrets. Preview should not share production Supabase keys, should
+  have its own preview app URL, and should have a Stripe test-mode webhook
+  secret.
+- `npm run audit:email` checks app email configuration, Postmark server/message
+  streams when Postmark env is available, ActiveCampaign launch objects, and
+  sender-domain DNS. It does not create contacts or send email.
+
 ## Why Not An Admin Test/Live Switch
 
 An admin switch sounds convenient, but it creates hidden risk:
