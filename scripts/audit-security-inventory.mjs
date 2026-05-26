@@ -43,6 +43,8 @@ function status(ok, label) {
 
 loadEnv(ENV_PATH);
 
+const EXPECTED_APP_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://positives.life").replace(/\/$/, "");
+
 const REQUIRED_SECRETS = [
   "SUPABASE_SERVICE_ROLE_KEY",
   "STRIPE_WEBHOOK_SECRET",
@@ -138,6 +140,42 @@ async function getBucketInventory() {
   });
 }
 
+function getSupabaseProjectRef() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+  return url.match(/^https:\/\/([^.]+)\.supabase\.co/i)?.[1] ?? "";
+}
+
+async function getSupabaseAuthConfig() {
+  const projectRef = getSupabaseProjectRef();
+  const token = process.env.SUPABASE_ACCESS_TOKEN;
+  if (!projectRef || !token) {
+    throw new Error("SUPABASE_ACCESS_TOKEN or Supabase project ref is missing.");
+  }
+
+  const response = await fetch(`https://api.supabase.com/v1/projects/${projectRef}/config/auth`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+    },
+  });
+  const text = await response.text();
+  const body = text ? JSON.parse(text) : {};
+  if (!response.ok) {
+    throw new Error(`${response.status}: ${text.slice(0, 300)}`);
+  }
+
+  return {
+    projectRef,
+    mailerAutoconfirm: body.mailer_autoconfirm,
+    passwordHibpEnabled: body.password_hibp_enabled,
+    hookSendEmailEnabled: body.hook_send_email_enabled,
+    hookSendEmailUri: body.hook_send_email_uri,
+    hookSendEmailSecretPresent: Boolean(body.hook_send_email_secrets),
+    siteUrl: body.site_url,
+    uriAllowList: body.uri_allow_list,
+  };
+}
+
 line("# Security Inventory Audit");
 line();
 line(`Generated: ${new Date().toISOString()}`);
@@ -214,8 +252,24 @@ for (const check of getSignedRouteChecks()) {
 }
 line();
 
+line("## Supabase Auth Configuration");
+try {
+  const authConfig = await getSupabaseAuthConfig();
+  const expectedHookUri = `${EXPECTED_APP_URL}/api/auth/send-email-hook`;
+  line(`- Project ref: ${authConfig.projectRef}`);
+  line(`- ${status(authConfig.mailerAutoconfirm === true, "email confirmation is disabled / users are auto-confirmed")}`);
+  line(`- ${status(authConfig.passwordHibpEnabled === true, "leaked-password protection is enabled")}`);
+  line(`- ${status(authConfig.hookSendEmailEnabled === true, "send-email hook is enabled")}`);
+  line(`- ${status(authConfig.hookSendEmailUri === expectedHookUri, `send-email hook URL is ${expectedHookUri}`)}`);
+  line(`- ${status(authConfig.hookSendEmailSecretPresent, "send-email hook secret is configured")}`);
+  line(`- ${status(authConfig.siteUrl === EXPECTED_APP_URL, `site URL is ${EXPECTED_APP_URL}`)}`);
+  line(`- ${status(String(authConfig.uriAllowList ?? "").includes(`${EXPECTED_APP_URL}/**`), "redirect allow list includes production app URL")}`);
+} catch (error) {
+  line(`- CHECK - ${error instanceof Error ? error.message : "Supabase Auth config check failed"}`);
+}
+line();
+
 line("## Manual Dashboard Checks");
-line("- CHECK - Verify Supabase Auth leaked-password protection is enabled in production.");
-line("- CHECK - Verify production send-email hook secret and URL are configured in Supabase Auth.");
+line("- CHECK - Supabase leaked-password protection requires a Pro plan or higher if the API reports it disabled.");
 line("- CHECK - Verify no newly added public tables were created outside migrations or ad-hoc SQL.");
 line("- CHECK - Review bootstrap ADMIN_EMAILS usage and remove it after role seeding is fully trusted.");
