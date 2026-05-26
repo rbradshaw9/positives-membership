@@ -1,7 +1,5 @@
 import { requireMember } from "@/lib/auth/require-member";
 import { AffiliatePortal } from "@/components/affiliate/AffiliatePortal";
-import { type AffiliateTrackedLink } from "@/lib/affiliate/portal";
-import { getPromoterTrackedLinks } from "@/lib/firstpromoter/client";
 
 export const metadata = {
   title: "Affiliate Portal — Positives",
@@ -14,16 +12,6 @@ export default async function AffiliatePage() {
   const token = member.fp_ref_id ?? null;
   const paypalEmail = member.paypal_email ?? "";
 
-  let trackedLinks: AffiliateTrackedLink[] = [];
-
-  if (promoterId) {
-    try {
-      trackedLinks = await getPromoterTrackedLinks(promoterId);
-    } catch {
-      // Non-fatal — render with partial data
-    }
-  }
-
   return (
     <AffiliatePortal
       isAffiliate={Boolean(promoterId)}
@@ -33,7 +21,7 @@ export default async function AffiliatePage() {
       token={token}
       memberName={member.name ?? ""}
       paypalEmail={paypalEmail}
-      trackedLinks={trackedLinks}
+      trackedLinks={[]}
     />
   );
 }

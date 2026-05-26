@@ -2053,6 +2053,8 @@ export function AffiliatePortal({
   const [dashboardData, setDashboardData] = useState<AffiliatePortalDashboardData | null>(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
+  const [trackedLinksData, setTrackedLinksData] = useState<AffiliateTrackedLink[]>(trackedLinks);
+  const [trackedLinksLoaded, setTrackedLinksLoaded] = useState(trackedLinks.length > 0);
 
   void affiliateId;
   void affiliateLinkId;
@@ -2063,6 +2065,7 @@ export function AffiliatePortal({
   const performance = dashboardData?.performance ?? EMPTY_AFFILIATE_DASHBOARD.performance;
   const commissions = dashboardData?.commissions ?? EMPTY_AFFILIATE_DASHBOARD.commissions;
   const payouts = dashboardData?.payouts ?? EMPTY_AFFILIATE_DASHBOARD.payouts;
+  const visibleTrackedLinks = trackedLinksData;
 
   useEffect(() => {
     track("affiliate_portal_viewed", {
@@ -2070,6 +2073,40 @@ export function AffiliatePortal({
       is_affiliate: enrolled,
     });
   }, [enrolled]);
+
+  useEffect(() => {
+    if (!enrolled || trackedLinksLoaded) return;
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      async function loadTrackedLinks() {
+        try {
+          const response = await fetch("/api/affiliate/links", {
+            method: "GET",
+            cache: "no-store",
+          });
+
+          if (!response.ok) return;
+
+          const data = (await response.json()) as { trackedLinks?: AffiliateTrackedLink[] };
+          if (!cancelled) {
+            setTrackedLinksData(data.trackedLinks ?? []);
+          }
+        } finally {
+          if (!cancelled) {
+            setTrackedLinksLoaded(true);
+          }
+        }
+      }
+
+      void loadTrackedLinks();
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [enrolled, trackedLinksLoaded]);
 
   useEffect(() => {
     if (!enrolled) return;
@@ -2131,6 +2168,8 @@ export function AffiliatePortal({
     setEnrolled(true);
     setDashboardData(null);
     setDashboardError(null);
+    setTrackedLinksData([]);
+    setTrackedLinksLoaded(false);
     track("affiliate_enrollment_completed", {
       source_path: "/account/affiliate",
       affiliate_token_present: Boolean(result.token),
@@ -2320,7 +2359,7 @@ export function AffiliatePortal({
           }}
           onSlugSave={handleSlugSave}
           onSlugConfirmChange={setSlugConfirmed}
-          trackedLinks={trackedLinks}
+          trackedLinks={visibleTrackedLinks}
         />
       ) : null}
 
@@ -2352,32 +2391,32 @@ export function AffiliatePortal({
           <PerformanceTab performance={performance} />
         )
       ) : null}
-      {activeTab === "share" ? <ShareTab referralLink={referralLink} trackedLinks={trackedLinks} /> : null}
+      {activeTab === "share" ? <ShareTab referralLink={referralLink} trackedLinks={visibleTrackedLinks} /> : null}
       {activeTab === "earnings" ? (
-        dashboardLoading && !dashboardData ? (
-          <SurfaceCard tone="tint">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">
-              Loading earnings
-            </p>
-            <h3 className="mt-3 text-xl font-semibold tracking-[-0.03em] text-slate-950">
-              Pulling commissions and payout history
-            </h3>
-            <p className="mt-3 text-sm leading-6 text-slate-600">
-              This tab loads live affiliate reporting on demand, which keeps the portal
-              lighter when you only need your link.
-            </p>
-          </SurfaceCard>
-        ) : dashboardError ? (
-          <SurfaceCard tone="tint">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
-              Earnings unavailable
-            </p>
-            <h3 className="mt-3 text-xl font-semibold tracking-[-0.03em] text-slate-950">
-              We couldn&apos;t load your commissions or payouts yet
-            </h3>
-            <p className="mt-3 text-sm leading-6 text-slate-600">{dashboardError}</p>
-          </SurfaceCard>
-        ) : (
+        <>
+          {dashboardLoading && !dashboardData ? (
+            <SurfaceCard tone="tint">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">
+                Loading earnings
+              </p>
+              <h3 className="mt-3 text-xl font-semibold tracking-[-0.03em] text-slate-950">
+                Pulling commissions and payout history
+              </h3>
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                Your payout settings are available now. Live affiliate reporting will fill in as soon as it is ready.
+              </p>
+            </SurfaceCard>
+          ) : dashboardError ? (
+            <SurfaceCard tone="tint">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
+                Earnings unavailable
+              </p>
+              <h3 className="mt-3 text-xl font-semibold tracking-[-0.03em] text-slate-950">
+                We couldn&apos;t load your commissions or payouts yet
+              </h3>
+              <p className="mt-3 text-sm leading-6 text-slate-600">{dashboardError}</p>
+            </SurfaceCard>
+          ) : null}
           <EarningsTab
             performance={performance}
             commissions={commissions}
@@ -2389,7 +2428,7 @@ export function AffiliatePortal({
             paypalSaved={paypalSaved}
             paypalError={paypalError}
           />
-        )
+        </>
       ) : null}
     </div>
   );
