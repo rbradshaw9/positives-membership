@@ -1,6 +1,8 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getAdminClient } from "@/lib/supabase/admin";
+import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import { computeNewStreak } from "@/lib/streak/compute-streak";
 import { POINT_VALUES, awardMemberPoints } from "@/lib/points/award";
 import { metricCount, metricDistribution } from "@/lib/observability/metrics";
@@ -85,7 +87,8 @@ export async function markListened(contentId: string): Promise<{ newStreak: numb
     }
 
     // ── 2. Write activity_event record ─────────────────────────────────────────
-    const { data: activityEvent, error: eventError } = await supabase
+    const adminClient = asLooseSupabaseClient(getAdminClient());
+    const { data: activityEvent, error: eventError } = await adminClient
       .from("activity_event")
       .insert({
         member_id: user.id,
@@ -94,7 +97,7 @@ export async function markListened(contentId: string): Promise<{ newStreak: numb
         metadata: { percent_completed: 80 },
         // occurred_at defaults to NOW() in DB
       })
-      .select("id")
+      .select<{ id: string }>("id")
       .single();
 
     if (eventError) {
