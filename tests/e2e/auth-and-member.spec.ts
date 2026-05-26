@@ -12,6 +12,11 @@ test("protected member routes redirect to login", async ({ page }) => {
     await page.goto(pathname);
     await expect(page).toHaveURL(new RegExp(`/login\\?next=${encodeURIComponent(pathname)}`));
   }
+
+  await page.goto("/today?welcome=1");
+  await expect(page).toHaveURL(
+    new RegExp(`/login\\?next=${encodeURIComponent("/today?welcome=1")}`)
+  );
 });
 
 test("signed-in non-admin is redirected away from admin", async ({ page }) => {

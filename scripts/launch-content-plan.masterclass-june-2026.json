@@ -1,0 +1,37 @@
+{
+  "metadata": {
+    "name": "June 2026 monthly masterclass content-ops test",
+    "created_at": "2026-05-26",
+    "reason": "Load the first Dr. Paul monthly masterclass using existing monthly_theme fields and resource_links."
+  },
+  "months": [
+    {
+      "month_year": "2026-06",
+      "status": "published",
+      "description": "June centers on the Influence Quadrant: noticing where your energy is going, choosing the places where you can actually influence change, and practicing steadier responses where control is not available.",
+      "admin_notes": "June 2026 masterclass replay loaded from Vimeo 1194853573 with Zoom summary resource link on 2026-05-26. Replace or refine copy after Dr. Paul/team editorial review."
+    }
+  ],
+  "monthly_themes": [
+    {
+      "month_year": "2026-06",
+      "title": "The Influence Quadrant",
+      "status": "published",
+      "excerpt": "A monthly masterclass on focusing your energy where influence is possible.",
+      "description": "In this Positives Life Mastery Series masterclass, Dr. Paul Jenkins introduces The Influence Quadrant as a practical way to notice where your attention, emotion, and effort are going. The session helps members distinguish between what they can control, what they can influence, what they can accept, and what they need to release so daily practice becomes calmer and more effective.",
+      "body": "Use this masterclass as the June anchor for the Positives practice rhythm. Watch for the places where you are spending emotional energy without real influence, then choose one small response that brings your attention back to what you can practice today. The goal is not to force control over life. The goal is to become more intentional with the influence you already have.",
+      "reflection_prompt": "Where are you spending energy on something outside your control, and what is one response you can influence today?",
+      "media_url": "https://vimeo.com/1194853573",
+      "duration_seconds": 4148,
+      "thumbnail_image_url": "https://i.vimeocdn.com/video/2160607915-8086e82d3c90d795549d5d550ff25534cb69f3475e7da55273060ef58c88b3cf-d_295x166?region=us",
+      "featured_image_url": "https://i.vimeocdn.com/video/2160607915-8086e82d3c90d795549d5d550ff25534cb69f3475e7da55273060ef58c88b3cf-d_295x166?region=us",
+      "resource_links": [
+        {
+          "label": "Zoom summary",
+          "url": "https://docs.zoom.us/doc/37HTQ0kyTCuyeoFy0YL_7A"
+        }
+      ],
+      "admin_notes": "Loaded as the first monthly masterclass content-ops test on 2026-05-26. Vimeo oEmbed title: Positives Life Mastery Series - June 2026 - The Influence Quadrant. Description is AI-assisted draft copy and should receive Dr. Paul/team editorial approval."
+    }
+  ]
+}

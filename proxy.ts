@@ -15,6 +15,7 @@ import { updateSession } from "@/lib/supabase/proxy";
  */
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const requestedPath = `${pathname}${request.nextUrl.search}`;
 
   // Protected route groups
   const isMemberRoute =
@@ -40,7 +41,8 @@ export async function proxy(request: NextRequest) {
   if (requiresAuth && !hasSupabaseCookie) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
-    loginUrl.searchParams.set("next", pathname);
+    loginUrl.search = "";
+    loginUrl.searchParams.set("next", requestedPath);
     return NextResponse.redirect(loginUrl);
   }
 
@@ -61,8 +63,9 @@ export async function proxy(request: NextRequest) {
   if ((isMemberRoute || isAdminRoute) && !user) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
+    loginUrl.search = "";
     // Preserve the intended destination for post-login redirect
-    loginUrl.searchParams.set("next", pathname);
+    loginUrl.searchParams.set("next", requestedPath);
     return NextResponse.redirect(loginUrl);
   }
 

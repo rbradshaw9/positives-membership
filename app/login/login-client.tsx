@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { formatSupabaseAuthError } from "@/lib/auth/client-error";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/marketing/Logo";
 
@@ -15,6 +15,16 @@ import { Logo } from "@/components/marketing/Logo";
 
 type Mode = "password" | "magic";
 
+const subscribeToHydration = () => () => {};
+
+function useHydrated() {
+  return useSyncExternalStore(
+    subscribeToHydration,
+    () => true,
+    () => false
+  );
+}
+
 function LoginForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/today";
@@ -24,6 +34,7 @@ function LoginForm() {
   const [magicSent, setMagicSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const hydrated = useHydrated();
 
   async function handlePasswordSignIn(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -246,7 +257,7 @@ function LoginForm() {
             </div>
             <button
               type="submit"
-              disabled={pending}
+              disabled={pending || !hydrated}
               className="w-full px-6 py-3.5 rounded-full text-white font-medium text-sm transition-all disabled:opacity-60"
               style={{
                 background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
@@ -281,7 +292,7 @@ function LoginForm() {
             </div>
             <button
               type="submit"
-              disabled={pending}
+              disabled={pending || !hydrated}
               className="w-full px-6 py-3.5 rounded-full text-white font-medium text-sm transition-all disabled:opacity-60"
               style={{
                 background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",

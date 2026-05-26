@@ -125,7 +125,7 @@ test.describe("member billing portal", () => {
 
     await welcomeDialog.getByRole("link", { name: "Create my password" }).click();
 
-    await expect(page).toHaveURL(/\/account#password$/);
+    await expect(page).toHaveURL(/\/account\?focus=password#password$/);
     await expect(page.getByRole("heading", { name: "Account", exact: true })).toBeVisible();
     await expect(page.locator("#password")).toBeVisible();
     await expect(page.getByLabel("New password")).toBeFocused();

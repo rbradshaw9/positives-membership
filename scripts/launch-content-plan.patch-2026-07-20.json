@@ -1,0 +1,66 @@
+{
+  "metadata": {
+    "name": "L1 beta runway patch through 2026-07-20",
+    "created_at": "2026-05-26",
+    "reason": "Fill the rolling 8-week launch audit window for the first Positives beta invite gate."
+  },
+  "weekly_principles": [
+    {
+      "week_start": "2026-07-20",
+      "month_year": "2026-07",
+      "title": "Practicing the Response You Want to Become",
+      "status": "published",
+      "excerpt": "Repeated responses quietly become the life you recognize as yours.",
+      "body": "A response is never only about the moment in front of you. Each response is also a small vote for the kind of person you are practicing becoming. This week is about choosing the response you want to strengthen: honest without being harsh, calm without being passive, and responsible without carrying what was never yours.",
+      "reflection_prompt": "What response do you want to practice often enough that it starts to feel like who you are?",
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-16.mp3",
+      "admin_notes": "Beta runway scaffold patch generated 2026-05-26. Placeholder audio/copy; replace with final approved Dr. Paul/Castos content before broad launch."
+    }
+  ],
+  "daily_audios": [
+    {
+      "publish_date": "2026-07-17",
+      "month_year": "2026-07",
+      "title": "Choosing a Cleaner Response",
+      "status": "published",
+      "excerpt": "A cleaner response leaves less repair work behind.",
+      "reflection_prompt": "Where could you practice this today: choosing a cleaner response? Name one specific moment where it would change your response.",
+      "duration_seconds": 435,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+      "admin_notes": "Beta runway scaffold patch generated 2026-05-26. Placeholder audio/copy; replace with final approved Dr. Paul/Castos content before broad launch."
+    },
+    {
+      "publish_date": "2026-07-18",
+      "month_year": "2026-07",
+      "title": "Letting the Moment Breathe",
+      "status": "published",
+      "excerpt": "Not every moment needs an immediate answer.",
+      "reflection_prompt": "Where could you practice this today: letting the moment breathe? Name one specific moment where it would change your response.",
+      "duration_seconds": 450,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
+      "admin_notes": "Beta runway scaffold patch generated 2026-05-26. Placeholder audio/copy; replace with final approved Dr. Paul/Castos content before broad launch."
+    },
+    {
+      "publish_date": "2026-07-19",
+      "month_year": "2026-07",
+      "title": "The Gift of Not Reacting",
+      "status": "published",
+      "excerpt": "Sometimes the strongest response is the one you do not rush.",
+      "reflection_prompt": "Where could you practice this today: the gift of not reacting? Name one specific moment where it would change your response.",
+      "duration_seconds": 465,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3",
+      "admin_notes": "Beta runway scaffold patch generated 2026-05-26. Placeholder audio/copy; replace with final approved Dr. Paul/Castos content before broad launch."
+    },
+    {
+      "publish_date": "2026-07-20",
+      "month_year": "2026-07",
+      "title": "Practicing Who You Are Becoming",
+      "status": "published",
+      "excerpt": "Today is one more chance to practice the response you want to strengthen.",
+      "reflection_prompt": "Where could you practice this today: practicing who you are becoming? Name one specific moment where it would change your response.",
+      "duration_seconds": 480,
+      "castos_episode_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3",
+      "admin_notes": "Beta runway scaffold patch generated 2026-05-26. Placeholder audio/copy; replace with final approved Dr. Paul/Castos content before broad launch."
+    }
+  ]
+}
