@@ -1842,9 +1842,11 @@ export async function loginWithPassword(
     await normalizeLoginFixtureAccess(email);
   }
   await page.goto(`/login?next=${encodeURIComponent(next)}`);
+  const signInButton = page.getByRole("button", { name: /sign in/i });
+  await expect(signInButton).toBeEnabled();
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: /sign in/i }).click();
+  await signInButton.click();
   const escapedExpected = expectedPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
   try {
