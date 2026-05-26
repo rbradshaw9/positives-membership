@@ -125,6 +125,10 @@ if (missingPriceKeys.length > 0) {
 }
 
 const PRICE_IDS = PRICE_ENV_KEYS.map((key) => process.env[key]);
+const PORTAL_CONFIGURATION_IDS = [
+  process.env.STRIPE_PORTAL_CONFIG_L1,
+  process.env.STRIPE_PORTAL_CONFIG_L2PLUS,
+].filter(Boolean);
 
 const stripe = new Stripe(STRIPE_SECRET_KEY, {
   apiVersion: "2026-03-25.dahlia",
@@ -160,12 +164,13 @@ async function loadPortalProducts(priceIds) {
   }));
 }
 
-function buildPortalConfiguration(products) {
+function buildPortalConfiguration(products, options = {}) {
   return {
-    name: "Positives member billing",
+    name: options.name ?? "Positives member billing",
     default_return_url: `${APP_URL}/account`,
     business_profile: {
-      headline: "Manage your Positives membership in one calm place.",
+      headline:
+        options.headline ?? "Manage your Positives membership in one calm place.",
       privacy_policy_url: `${APP_URL}/privacy`,
       terms_of_service_url: `${APP_URL}/terms`,
     },
@@ -208,6 +213,23 @@ function buildPortalConfiguration(products) {
   };
 }
 
+async function getPortalConfigurationTargets() {
+  const configurations = await stripe.billingPortal.configurations.list({ limit: 20 });
+  const targets = new Map();
+
+  if (PORTAL_CONFIGURATION_IDS.length > 0) {
+    for (const id of PORTAL_CONFIGURATION_IDS) {
+      targets.set(id, await stripe.billingPortal.configurations.retrieve(id));
+    }
+    return Array.from(targets.values());
+  }
+
+  const portalConfig =
+    configurations.data.find((config) => config.is_default) ?? configurations.data[0];
+  if (portalConfig) targets.set(portalConfig.id, portalConfig);
+  return Array.from(targets.values());
+}
+
 async function main() {
   const account = await stripe.accounts.retrieve();
   const accountId = account.id;
@@ -239,23 +261,25 @@ async function main() {
 
   console.warn(`[stripe-branding] ${accountBrandingFallback}`);
 
-  const configurations = await stripe.billingPortal.configurations.list({ limit: 20 });
-  const portalConfig =
-    configurations.data.find((config) => config.is_default) ?? configurations.data[0];
+  const portalConfigurationTargets = await getPortalConfigurationTargets();
   const portalConfigurationParams = buildPortalConfiguration(products);
-  let updatedConfig;
+  const updatedConfigs = [];
 
-  if (portalConfig) {
-    console.log(`[stripe-branding] Updating portal configuration ${portalConfig.id}...`);
-    updatedConfig = await stripe.billingPortal.configurations.update(
-      portalConfig.id,
-      portalConfigurationParams
-    );
+  if (portalConfigurationTargets.length > 0) {
+    for (const portalConfig of portalConfigurationTargets) {
+      console.log(`[stripe-branding] Updating portal configuration ${portalConfig.id}...`);
+      const updatedConfig = await stripe.billingPortal.configurations.update(
+        portalConfig.id,
+        portalConfigurationParams
+      );
+      updatedConfigs.push(updatedConfig);
+    }
   } else {
     console.log("[stripe-branding] Creating Positives portal configuration...");
-    updatedConfig = await stripe.billingPortal.configurations.create(
+    const updatedConfig = await stripe.billingPortal.configurations.create(
       portalConfigurationParams
     );
+    updatedConfigs.push(updatedConfig);
   }
 
   console.log(
@@ -275,15 +299,19 @@ async function main() {
           iconPath: ICON_PATH,
           logoPath: LOGO_PATH,
         },
-        portalConfigurationId: updatedConfig.id,
-        portalDefaultReturnUrl: updatedConfig.default_return_url,
-        portalHeadline: updatedConfig.business_profile.headline,
-        portalSubscriptionUpdateEnabled:
-          updatedConfig.features.subscription_update.enabled,
-        portalProrationBehavior:
-          updatedConfig.features.subscription_update.proration_behavior,
-        portalDowngradeHandling:
-          updatedConfig.features.subscription_update.schedule_at_period_end,
+        portalConfigurationsUpdated: updatedConfigs.map((updatedConfig) => ({
+          id: updatedConfig.id,
+          defaultReturnUrl: updatedConfig.default_return_url,
+          headline: updatedConfig.business_profile.headline,
+          subscriptionCancelEnabled:
+            updatedConfig.features.subscription_cancel.enabled,
+          subscriptionUpdateEnabled:
+            updatedConfig.features.subscription_update.enabled,
+          prorationBehavior:
+            updatedConfig.features.subscription_update.proration_behavior,
+          downgradeHandling:
+            updatedConfig.features.subscription_update.schedule_at_period_end,
+        })),
         portalProductsRequested: products,
         liveModeNextStep:
           keyMode === "test"

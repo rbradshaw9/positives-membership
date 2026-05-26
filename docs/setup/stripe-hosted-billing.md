@@ -67,6 +67,7 @@ The script:
 - derives the Stripe account from the active secret key
 - refuses unknown or mismatched key modes
 - prints account branding dashboard instructions
+- configures the env-listed L1 and L2+ Customer Portal configurations, or the default configuration if explicit IDs are not set
 - configures Customer Portal headline, policy links, and return URL
 - enables plan switching for the configured L1/L2/L3 prices
 - sets upgrade proration to `create_prorations`
@@ -97,10 +98,14 @@ The Customer Portal configuration should report:
 
 ```txt
 subscription_update.enabled = true
+subscription_cancel.enabled = true
 subscription_update.proration_behavior = create_prorations
 subscription_update.billing_cycle_anchor = unchanged
 subscription_update.trial_update_behavior = continue_trial
 ```
+
+If `STRIPE_PORTAL_CONFIG_L1` and `STRIPE_PORTAL_CONFIG_L2PLUS` are set, verify
+both configurations report those values.
 
 Manual sandbox check:
 
