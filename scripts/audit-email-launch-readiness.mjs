@@ -460,25 +460,47 @@ function printAppConfigSection() {
 }
 
 function printNextSteps(activeCampaignCheck, dnsCheck) {
-  const acReady =
+  const acSummary = activeCampaignCheck.ok
+    ? summarizeActiveCampaign(activeCampaignCheck.value)
+    : null;
+  const betaCriticalAcReady =
     activeCampaignCheck.ok &&
-    summarizeActiveCampaign(activeCampaignCheck.value).missingAutomations.length === 0 &&
-    summarizeActiveCampaign(activeCampaignCheck.value).gmailMessages.length === 0;
+    Boolean(activeCampaignCheck.value.welcomeAutomation) &&
+    acSummary?.welcomeHasTagTrigger &&
+    acSummary.gmailMessages.length === 0 &&
+    acSummary.positiveMessages.length > 0;
+  const fullLaunchAcReady =
+    betaCriticalAcReady && acSummary?.missingAutomations.length === 0;
   const dnsReady =
     dnsCheck.ok &&
     summarizeDns(dnsCheck.value).postmarkDkim.length > 0 &&
     summarizeDns(dnsCheck.value).spfRecords.some((record) => /postmarkapp\.com/i.test(record));
 
   print("## Recommended Follow-Up");
-  if (acReady && dnsReady && hasPostmarkEnv()) {
+  if (fullLaunchAcReady && dnsReady && hasPostmarkEnv()) {
     print("- No major configuration gaps detected by this read-only audit.");
     print("- Next safe step: send controlled test emails only to internal test addresses from the dashboard.");
-  } else {
-    print("- Build/verify any missing ActiveCampaign launch automations, especially lifecycle and R01-R06 reminder flows.");
-    print("- Move remaining sender addresses from personal Gmail to an approved positives.life sender.");
-    print("- Verify Postmark sender-domain DNS and message streams in the Postmark/ActiveCampaign dashboard.");
-    print("- After dashboard changes, rerun `npm run audit:email` before sending controlled test messages.");
+    return;
   }
+
+  if (betaCriticalAcReady) {
+    print("- Beta-critical ActiveCampaign welcome behavior is visible: C01 exists, triggers from welcome_ready, and uses positives.life senders.");
+    if (acSummary?.missingAutomations.length) {
+      print("- Missing lifecycle/reminder automations are post-beta scope unless they become part of the invite promise.");
+    }
+  } else {
+    print("- Verify beta-critical ActiveCampaign welcome behavior: C01, welcome_ready trigger, and positives.life sender messages.");
+  }
+
+  if (acSummary?.gmailMessages.length) {
+    print("- Move remaining sender addresses from personal Gmail to an approved positives.life sender.");
+  }
+
+  if (!dnsReady || !hasPostmarkEnv()) {
+    print("- Verify Postmark sender-domain DNS and message streams in the Postmark/ActiveCampaign dashboard.");
+  }
+
+  print("- After dashboard changes, rerun `npm run audit:email` before sending controlled test messages.");
 }
 
 const [activeCampaignCheck, dnsCheck] = await Promise.all([
