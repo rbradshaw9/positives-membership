@@ -9,13 +9,15 @@ import {
   publishEntireMonth,
   createOrUpdateMasterclass,
   createOrUpdateWeekly,
+  bulkCreateWeeklyPrinciples,
   quickCreateDaily,
 } from "../actions";
 import { DailyAudioGrid } from "./DailyAudioGrid";
-import { BulkAudioUploader } from "@/components/admin/BulkAudioUploader";
 import { MonthlyMasterclassEditor } from "./MonthlyMasterclassEditor";
+import { MonthNotesEditor } from "./MonthNotesEditor";
 import { WeeklyReflectionSection } from "./WeeklyReflectionSection";
 import type { WeekSlot } from "./WeeklyReflectionSection";
+import { getEffectiveMonthYear } from "@/lib/dates/effective-date";
 
 /**
  * app/admin/months/[id]/page.tsx
@@ -98,6 +100,13 @@ export default async function MonthWorkspacePage({
   const totalSlots = month.dailySlots.length;
   const fillPct =
     totalSlots > 0 ? Math.round((filledSlots / totalSlots) * 100) : 0;
+  const effectiveMonthYear = getEffectiveMonthYear();
+  const memberPreviewHref =
+    month.month_year === effectiveMonthYear
+      ? "/today"
+      : month.month_year < effectiveMonthYear
+        ? `/library/months/${month.month_year}`
+        : null;
 
   // Build week slots and match with existing weekly reflections
   const rawWeekSlots = getWeekSlots(month.month_year);
@@ -170,6 +179,8 @@ export default async function MonthWorkspacePage({
             ? "Month and all content published."
             : sp.success === "updated"
               ? "Changes saved."
+              : sp.success === "weekly_created"
+                ? "Weekly principle drafts created."
               : "Done."}
         </div>
       )}
@@ -199,6 +210,13 @@ export default async function MonthWorkspacePage({
         </div>
 
         <div className="admin-page-header__actions">
+          {memberPreviewHref ? (
+            <Link href={memberPreviewHref} className="admin-btn admin-btn--outline" target="_blank" rel="noopener noreferrer">
+              Preview member view
+            </Link>
+          ) : (
+            <span className="admin-month-preview-note">Preview opens when this month is active.</span>
+          )}
           {month.status !== "published" && (
             <form action={publishEntireMonth}>
               <input type="hidden" name="id" value={month.id} />
@@ -224,24 +242,17 @@ export default async function MonthWorkspacePage({
         </div>
         <div className="admin-month-guide__nav" aria-label="Month setup sections">
           {setupItems.map((item) => (
-            <a key={item.label} href={item.href} className={item.complete ? "is-complete" : ""}>
+            <a
+              key={item.label}
+              href={item.href}
+              className={item.complete ? "is-complete" : ""}
+              aria-label={`${item.label}: ${item.value}. ${item.detail}`}
+            >
               <span>{item.label}</span>
               <strong>{item.value}</strong>
             </a>
           ))}
         </div>
-      </div>
-
-      <div className="admin-month-setup-grid">
-        {setupItems.map((item) => (
-          <a key={item.label} href={item.href} className={item.complete ? "admin-month-setup-card is-complete" : "admin-month-setup-card"}>
-            <div className="admin-month-setup-card__topline">
-              <span>{item.label}</span>
-              <span>{item.value}</span>
-            </div>
-            <p>{item.detail}</p>
-          </a>
-        ))}
       </div>
 
       {alerts.length > 0 && (
@@ -293,56 +304,18 @@ export default async function MonthWorkspacePage({
           monthYear={month.month_year}
           weekSlots={weekSlots}
           action={createOrUpdateWeekly}
+          bulkAction={bulkCreateWeeklyPrinciples}
         />
       </div>
 
-      <div id="month-notes" className="admin-section admin-anchor-section" style={{ marginBottom: "1.5rem" }}>
-        <div className="admin-section__header">
-          <div>
-            <span className="admin-section__title">Month notes</span>
-            <p className="admin-section__subtitle">Optional context for the month record and internal planning.</p>
-          </div>
-        </div>
-        <div className="admin-section__body">
-          <form action={updateMonthlyPractice} className="admin-flow-form">
-            <input type="hidden" name="id" value={month.id} />
-            <div className="admin-form-grid-2">
-              <div className="admin-form-field">
-                <label className="admin-form-section__label">Description</label>
-                <textarea
-                  name="description"
-                  rows={3}
-                  defaultValue={month.description ?? ""}
-                  placeholder="Month description (optional)…"
-                  className="admin-textarea admin-textarea--no-resize"
-                />
-              </div>
-              <div className="admin-form-field">
-                <label className="admin-form-section__label">Admin notes</label>
-                <textarea
-                  name="admin_notes"
-                  rows={3}
-                  defaultValue={month.admin_notes ?? ""}
-                  placeholder="Internal notes…"
-                  className="admin-textarea admin-textarea--no-resize"
-                />
-              </div>
-            </div>
-            <button type="submit" className="admin-btn admin-btn--primary">
-              Save notes
-            </button>
-          </form>
-        </div>
-      </div>
+      <MonthNotesEditor
+        action={updateMonthlyPractice}
+        adminNotes={month.admin_notes}
+        description={month.description}
+        monthId={month.id}
+      />
 
       <div id="daily-audio" className="admin-anchor-section">
-        <BulkAudioUploader
-          monthId={month.id}
-          monthYear={month.month_year}
-          openDates={month.dailySlots
-            .filter((s) => s.content === null)
-            .map((s) => s.date)}
-        />
         <DailyAudioGrid
           monthId={month.id}
           monthYear={month.month_year}

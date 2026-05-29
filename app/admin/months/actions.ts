@@ -362,6 +362,65 @@ export async function createOrUpdateWeekly(formData: FormData) {
   redirect(`/admin/months/${monthId}?success=updated`);
 }
 
+// ─── Bulk create missing weekly principle drafts ────────────────────────────
+
+export async function bulkCreateWeeklyPrinciples(formData: FormData) {
+  await requireAdmin();
+  const monthId = formData.get("month_id")?.toString();
+  const monthYear = formData.get("month_year")?.toString();
+  const weekStarts = formData.getAll("week_start").map((value) => value.toString());
+
+  if (!monthId || !monthYear || weekStarts.length === 0) {
+    redirect(`/admin/months/${monthId ?? ""}?error=missing_fields`);
+  }
+
+  const supabase = adminClient();
+  const { data: existingRows, error: existingError } = await supabase
+    .from("content")
+    .select("week_start")
+    .eq("monthly_practice_id", monthId)
+    .eq("type", "weekly_principle")
+    .in("week_start", weekStarts);
+
+  if (existingError) {
+    console.error("[bulkCreateWeeklyPrinciples] Existing lookup error:", existingError.message);
+    redirect(`/admin/months/${monthId}?error=bulk_weekly_failed`);
+  }
+
+  const existingWeekStarts = new Set(
+    (existingRows ?? [])
+      .map((row) => row.week_start)
+      .filter((weekStart): weekStart is string => Boolean(weekStart))
+  );
+  const missingWeekStarts = weekStarts.filter((weekStart) => !existingWeekStarts.has(weekStart));
+
+  if (missingWeekStarts.length > 0) {
+    const rows = missingWeekStarts.map((weekStart) => ({
+      type: "weekly_principle" as const,
+      title: `Week of ${weekStart}`,
+      excerpt: null,
+      body: null,
+      reflection_prompt: null,
+      week_start: weekStart,
+      month_year: monthYear,
+      monthly_practice_id: monthId,
+      status: "draft" as const,
+      source: "admin" as const,
+      is_active: false,
+      updated_at: new Date().toISOString(),
+    }));
+
+    const { error } = await supabase.from("content").insert(rows);
+    if (error) {
+      console.error("[bulkCreateWeeklyPrinciples] Insert error:", error.message);
+      redirect(`/admin/months/${monthId}?error=bulk_weekly_failed`);
+    }
+  }
+
+  bustContentCaches();
+  redirect(`/admin/months/${monthId}?success=weekly_created`);
+}
+
 // ─── Quick Create Daily Audio ───────────────────────────────────────────────
 
 export async function quickCreateDaily(formData: FormData) {

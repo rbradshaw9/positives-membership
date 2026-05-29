@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { useTransition, useState, useRef } from "react";
 import type { DailySlot } from "@/lib/queries/get-admin-month-detail";
+import { BulkAudioUploader } from "@/components/admin/BulkAudioUploader";
 import {
   swapDailyAudios,
   assignDailyAudio,
   unassignDailyAudio,
 } from "../actions";
+import { usePersistentSectionState } from "./usePersistentSectionState";
 
 /**
  * app/admin/months/[id]/DailyAudioGrid.tsx
@@ -44,6 +46,10 @@ export function DailyAudioGrid({
   quickCreateAction,
 }: Props) {
   const [quickAddDate, setQuickAddDate] = useState<string | null>(null);
+  const [expanded, setExpanded] = usePersistentSectionState(
+    `admin:month:${monthId}:daily`,
+    true
+  );
   const [isPending, startTransition] = useTransition();
   const [draggingDate, setDraggingDate] = useState<string | null>(null);
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
@@ -52,6 +58,9 @@ export function DailyAudioGrid({
 
   const filledSlots = dailySlots.filter((s) => s.content !== null).length;
   const totalSlots = dailySlots.length;
+  const openDates = dailySlots
+    .filter((slot) => slot.content === null)
+    .map((slot) => slot.date);
   const fillPct =
     totalSlots > 0 ? Math.round((filledSlots / totalSlots) * 100) : 0;
   const dayOffset = dailySlots[0]
@@ -124,259 +133,280 @@ export function DailyAudioGrid({
   return (
     <div className="admin-section">
       {/* Header */}
-      <div className="admin-section__header">
-        <div>
+      <button
+        type="button"
+        className="admin-section__header admin-section__header-button"
+        onClick={() => setExpanded((current) => !current)}
+        aria-expanded={expanded}
+      >
+        <span>
           <span className="admin-section__title">Daily audio</span>
-          <p className="admin-section__subtitle">
+          <span className="admin-section__subtitle">
             Upload in bulk, assign open days, or drag filled days to reorder.
-          </p>
-        </div>
-        <span className="admin-section__count">
-          {filledSlots}/{totalSlots}
+          </span>
         </span>
-      </div>
+        <span className="admin-section__header-meta">
+          <span className="admin-section__count">
+            {filledSlots}/{totalSlots}
+          </span>
+          <span className="admin-section__toggle">{expanded ? "Hide" : "Show"}</span>
+        </span>
+      </button>
 
-      <div className="admin-section__body">
-        {/* Fill progress bar */}
-        <div className="admin-cal-progress">
-          <div
-            className="admin-cal-progress__bar"
-            style={{ width: `${fillPct}%` }}
-          />
-        </div>
+      {expanded ? (
+        <>
+          <div className="admin-section__body">
+            <BulkAudioUploader
+              monthId={monthId}
+              monthYear={monthYear}
+              openDates={openDates}
+            />
 
-        {/* Saving indicator */}
-        {isPending && (
-          <p className="admin-cal-saving">Saving…</p>
-        )}
-
-        {/* Calendar grid */}
-        <div
-          className="admin-cal-grid"
-          style={{
-            opacity: isPending ? 0.6 : 1,
-            pointerEvents: isPending ? "none" : undefined,
-          }}
-        >
-          {/* Weekday headers */}
-          {WEEKDAYS.map((d) => (
-            <div key={d} className="admin-cal-weekday">
-              {d}
-            </div>
-          ))}
-
-          {/* Leading empty cells for the first day's weekday offset */}
-          {Array.from({ length: dayOffset }, (_, i) => (
-            <div key={`empty-${i}`} />
-          ))}
-
-          {/* Day cells */}
-          {dailySlots.map((slot) => {
-            const filled = slot.content !== null;
-            const isBeingDragged = draggingDate === slot.date;
-            const isDragTarget =
-              dragOverDate === slot.date &&
-              draggingDate !== null &&
-              draggingDate !== slot.date;
-
-            const cellClass = [
-              "admin-cal-day",
-              filled ? "admin-cal-day--filled" : "admin-cal-day--empty",
-              isBeingDragged ? "is-dragging" : "",
-              isDragTarget ? "is-drop-target" : "",
-            ].filter(Boolean).join(" ");
-
-            return (
+            {/* Fill progress bar */}
+            <div className="admin-cal-progress">
               <div
-                key={slot.date}
-                onDragOver={(e) => handleDragOver(e, slot.date)}
-                onDragLeave={handleDragLeave}
-                onDrop={(e) =>
-                  handleDrop(e, slot.date, slot.content?.id ?? null)
-                }
-                className={cellClass}
-              >
-                <span className="admin-cal-day__number">
-                  {slot.dayOfMonth}
-                </span>
-
-                {filled ? (
-                  <div
-                    className="admin-cal-day__content"
-                    draggable
-                    onDragStart={(e) =>
-                      handleDragStart(e, slot.date, slot.content!.id)
-                    }
-                    onDragEnd={handleDragEnd}
-                  >
-                    <Link
-                      href={`/admin/months/${monthId}/content/${slot.content!.id}/edit`}
-                      className="admin-cal-day__title"
-                      title={slot.content!.title}
-                      draggable={false}
-                    >
-                      {slot.content!.title}
-                    </Link>
-                    <div className="admin-cal-day__meta">
-                      <span>{slot.content!.listens} plays</span>
-                      <span>{slot.content!.notes} notes</span>
-                    </div>
-                    <form action={unassignDailyAudio}>
-                      <input
-                        type="hidden"
-                        name="content_id"
-                        value={slot.content!.id}
-                      />
-                      <input type="hidden" name="month_id" value={monthId} />
-                      <button
-                        type="submit"
-                        className="admin-cal-day__remove"
-                        title="Remove from this date"
-                      >
-                        Remove
-                      </button>
-                    </form>
-                  </div>
-                ) : (
-                  <div className="admin-cal-day__empty">
-                    {unassigned.length > 0 ? (
-                      <form
-                        action={assignDailyAudio}
-                        className="admin-cal-day__assign"
-                      >
-                        <input type="hidden" name="month_id" value={monthId} />
-                        <input
-                          type="hidden"
-                          name="publish_date"
-                          value={slot.date}
-                        />
-                        <input
-                          type="hidden"
-                          name="month_year"
-                          value={monthYear}
-                        />
-                        <select
-                          name="content_id"
-                          required
-                          defaultValue=""
-                          className="admin-cal-day__select"
-                        >
-                          <option value="" disabled>
-                            Choose audio
-                          </option>
-                          {unassigned.map((a) => (
-                            <option key={a.id} value={a.id}>
-                              {a.title.length > 28
-                                ? a.title.slice(0, 28) + "…"
-                                : a.title}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          type="submit"
-                          className="admin-cal-day__action"
-                      >
-                        Assign
-                      </button>
-                      </form>
-                    ) : (
-                      <span className="admin-cal-day__empty-label">Open</span>
-                    )}
-                    {quickCreateAction && (
-                      <button
-                        type="button"
-                        onClick={() => setQuickAddDate(quickAddDate === slot.date ? null : slot.date)}
-                        className="admin-cal-day__action"
-                      >
-                        New
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Quick add inline form */}
-      {quickAddDate && quickCreateAction && (
-        <div className="admin-quick-audio">
-          <div className="admin-quick-audio__header">
-            <p>
-              New daily audio - {formatMonthDay(quickAddDate)}
-            </p>
-            <button
-              type="button"
-              onClick={() => setQuickAddDate(null)}
-              className="admin-link-button"
-            >
-              Close
-            </button>
-          </div>
-          <form action={quickCreateAction} className="admin-flow-form">
-            <input type="hidden" name="month_id" value={monthId} />
-            <input type="hidden" name="month_year" value={monthYear} />
-            <input type="hidden" name="publish_date" value={quickAddDate} />
-
-            <div className="admin-form-grid-2">
-              <div className="admin-form-field admin-form-field--full">
-                <label className="admin-label">
-                  Title <span className="admin-label__required">*</span>
-                </label>
-                <input
-                  name="title"
-                  type="text"
-                  required
-                  placeholder="Daily Practice Title"
-                  className="admin-input"
-                />
-              </div>
-              <div className="admin-form-field">
-                <label className="admin-label">Audio URL (Castos / direct MP3)</label>
-                <input
-                  name="castos_episode_url"
-                  type="url"
-                  placeholder="https://…"
-                  className="admin-input"
-                />
-              </div>
-              <div className="admin-form-field">
-                <label className="admin-label">S3 Key / Google Drive ID</label>
-                <input
-                  name="s3_audio_key"
-                  type="text"
-                  placeholder="audio/2026/04/practice-01.mp3"
-                  className="admin-input"
-                />
-              </div>
-              <div className="admin-form-field">
-                <label className="admin-label">Duration (seconds)</label>
-                <input
-                  name="duration_seconds"
-                  type="number"
-                  placeholder="600"
-                  className="admin-input"
-                />
-              </div>
-              <div className="admin-form-field">
-                <label className="admin-label">Status</label>
-                <select name="status" defaultValue="draft" className="admin-select">
-                  <option value="draft">Draft</option>
-                  <option value="published">Published</option>
-                </select>
-              </div>
+                className="admin-cal-progress__bar"
+                style={{ width: `${fillPct}%` }}
+              />
             </div>
 
-            <button
-              type="submit"
-              className="admin-btn admin-btn--primary"
+            {/* Saving indicator */}
+            {isPending && (
+              <p className="admin-cal-saving">Saving…</p>
+            )}
+
+            {/* Calendar grid */}
+            <div
+              className="admin-cal-grid"
+              style={{
+                opacity: isPending ? 0.6 : 1,
+                pointerEvents: isPending ? "none" : undefined,
+              }}
             >
-              Create daily audio
-            </button>
-          </form>
-        </div>
-      )}
+              {/* Weekday headers */}
+              {WEEKDAYS.map((d) => (
+                <div key={d} className="admin-cal-weekday">
+                  {d}
+                </div>
+              ))}
+
+              {/* Leading empty cells for the first day's weekday offset */}
+              {Array.from({ length: dayOffset }, (_, i) => (
+                <div key={`empty-${i}`} />
+              ))}
+
+              {/* Day cells */}
+              {dailySlots.map((slot) => {
+                const filled = slot.content !== null;
+                const isBeingDragged = draggingDate === slot.date;
+                const isDragTarget =
+                  dragOverDate === slot.date &&
+                  draggingDate !== null &&
+                  draggingDate !== slot.date;
+                const dayLabel = formatMonthDay(slot.date);
+
+                const cellClass = [
+                  "admin-cal-day",
+                  filled ? "admin-cal-day--filled" : "admin-cal-day--empty",
+                  isBeingDragged ? "is-dragging" : "",
+                  isDragTarget ? "is-drop-target" : "",
+                ].filter(Boolean).join(" ");
+
+                return (
+                  <div
+                    key={slot.date}
+                    onDragOver={(e) => handleDragOver(e, slot.date)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) =>
+                      handleDrop(e, slot.date, slot.content?.id ?? null)
+                    }
+                    className={cellClass}
+                  >
+                    <span className="admin-cal-day__number">
+                      {slot.dayOfMonth}
+                    </span>
+
+                    {filled ? (
+                      <div
+                        className="admin-cal-day__content"
+                        draggable
+                        onDragStart={(e) =>
+                          handleDragStart(e, slot.date, slot.content!.id)
+                        }
+                        onDragEnd={handleDragEnd}
+                      >
+                        <Link
+                          href={`/admin/months/${monthId}/content/${slot.content!.id}/edit`}
+                          className="admin-cal-day__title"
+                          title={slot.content!.title}
+                          draggable={false}
+                        >
+                          {slot.content!.title}
+                        </Link>
+                        <div className="admin-cal-day__meta">
+                          <span>{slot.content!.listens} plays</span>
+                          <span>{slot.content!.notes} notes</span>
+                        </div>
+                        <form action={unassignDailyAudio}>
+                          <input
+                            type="hidden"
+                            name="content_id"
+                            value={slot.content!.id}
+                          />
+                          <input type="hidden" name="month_id" value={monthId} />
+                          <button
+                            type="submit"
+                            className="admin-cal-day__remove"
+                            title="Remove from this date"
+                          >
+                            Remove
+                          </button>
+                        </form>
+                      </div>
+                    ) : (
+                      <div className="admin-cal-day__empty">
+                        {unassigned.length > 0 ? (
+                          <form
+                            action={assignDailyAudio}
+                            className="admin-cal-day__assign"
+                          >
+                            <input type="hidden" name="month_id" value={monthId} />
+                            <input
+                              type="hidden"
+                              name="publish_date"
+                              value={slot.date}
+                            />
+                            <input
+                              type="hidden"
+                              name="month_year"
+                              value={monthYear}
+                            />
+                            <select
+                              name="content_id"
+                              required
+                              defaultValue=""
+                              className="admin-cal-day__select"
+                              aria-label={`Audio for ${dayLabel}`}
+                            >
+                              <option value="" disabled>
+                                Choose audio
+                              </option>
+                              {unassigned.map((a) => (
+                                <option key={a.id} value={a.id}>
+                                  {a.title.length > 28
+                                    ? a.title.slice(0, 28) + "…"
+                                    : a.title}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              type="submit"
+                              className="admin-cal-day__action"
+                              aria-label={`Assign audio to ${dayLabel}`}
+                            >
+                              Assign
+                            </button>
+                          </form>
+                        ) : (
+                          <span className="admin-cal-day__empty-label">Open</span>
+                        )}
+                        {quickCreateAction && (
+                          <button
+                            type="button"
+                            onClick={() => setQuickAddDate(quickAddDate === slot.date ? null : slot.date)}
+                            className="admin-cal-day__action"
+                          >
+                            New
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Quick add inline form */}
+          {quickAddDate && quickCreateAction && (
+            <div className="admin-quick-audio">
+              <div className="admin-quick-audio__header">
+                <p>
+                  New daily audio - {formatMonthDay(quickAddDate)}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setQuickAddDate(null)}
+                  className="admin-link-button"
+                >
+                  Close
+                </button>
+              </div>
+              <form action={quickCreateAction} className="admin-flow-form">
+                <input type="hidden" name="month_id" value={monthId} />
+                <input type="hidden" name="month_year" value={monthYear} />
+                <input type="hidden" name="publish_date" value={quickAddDate} />
+
+                <div className="admin-form-grid-2">
+                  <div className="admin-form-field admin-form-field--full">
+                    <label className="admin-label">
+                      Title <span className="admin-label__required">*</span>
+                    </label>
+                    <input
+                      name="title"
+                      type="text"
+                      required
+                      placeholder="Daily Practice Title"
+                      className="admin-input"
+                    />
+                  </div>
+                  <div className="admin-form-field">
+                    <label className="admin-label">Audio URL (Castos / direct MP3)</label>
+                    <input
+                      name="castos_episode_url"
+                      type="url"
+                      placeholder="https://…"
+                      className="admin-input"
+                    />
+                  </div>
+                  <div className="admin-form-field">
+                    <label className="admin-label">S3 Key / Google Drive ID</label>
+                    <input
+                      name="s3_audio_key"
+                      type="text"
+                      placeholder="audio/2026/04/practice-01.mp3"
+                      className="admin-input"
+                    />
+                  </div>
+                  <div className="admin-form-field">
+                    <label className="admin-label">Duration (seconds)</label>
+                    <input
+                      name="duration_seconds"
+                      type="number"
+                      placeholder="600"
+                      className="admin-input"
+                    />
+                  </div>
+                  <div className="admin-form-field">
+                    <label className="admin-label">Status</label>
+                    <select name="status" defaultValue="draft" className="admin-select">
+                      <option value="draft">Draft</option>
+                      <option value="published">Published</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="admin-btn admin-btn--primary"
+                >
+                  Create daily audio
+                </button>
+              </form>
+            </div>
+          )}
+        </>
+      ) : null}
     </div>
   );
 }

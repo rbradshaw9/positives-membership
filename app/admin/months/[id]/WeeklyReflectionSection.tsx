@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { ContentItem } from "@/lib/queries/get-admin-month-detail";
+import { usePersistentSectionState } from "./usePersistentSectionState";
 
 /**
  * WeeklyReflectionSection - shows all week slots for a month.
@@ -19,10 +20,11 @@ export type WeekSlot = {
 };
 
 interface Props {
+  action: (formData: FormData) => Promise<void>;
+  bulkAction: (formData: FormData) => Promise<void>;
   monthId: string;
   monthYear: string;
   weekSlots: WeekSlot[];
-  action: (formData: FormData) => Promise<void>;
 }
 
 const STATUS_BADGE: Record<string, string> = {
@@ -38,37 +40,77 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export function WeeklyReflectionSection({
+  action,
+  bulkAction,
   monthId,
   monthYear,
   weekSlots,
-  action,
 }: Props) {
   const filledCount = weekSlots.filter((w) => w.content).length;
+  const missingSlots = weekSlots.filter((w) => !w.content);
+  const [expanded, setExpanded] = usePersistentSectionState(
+    `admin:month:${monthId}:weekly`,
+    true
+  );
 
   return (
     <div className="admin-section" style={{ marginBottom: "1.5rem" }}>
-      <div className="admin-section__header">
-        <div>
+      <button
+        type="button"
+        className="admin-section__header admin-section__header-button"
+        onClick={() => setExpanded((current) => !current)}
+        aria-expanded={expanded}
+      >
+        <span>
           <span className="admin-section__title">Weekly principles</span>
-          <p className="admin-section__subtitle">
+          <span className="admin-section__subtitle">
             Add one clear focus for each week in the month.
-          </p>
-        </div>
-        <span className="admin-section__count">
-          {filledCount}/{weekSlots.length}
+          </span>
         </span>
-      </div>
-      <div className="admin-week-list">
-        {weekSlots.map((slot) => (
-          <WeekSlotRow
-            key={slot.weekStart}
-            slot={slot}
-            monthId={monthId}
-            monthYear={monthYear}
-            action={action}
-          />
-        ))}
-      </div>
+        <span className="admin-section__header-meta">
+          <span className="admin-section__count">
+            {filledCount}/{weekSlots.length}
+          </span>
+          <span className="admin-section__toggle">{expanded ? "Hide" : "Show"}</span>
+        </span>
+      </button>
+      {expanded ? (
+        <>
+          {missingSlots.length > 0 ? (
+            <div className="admin-week-bulk">
+              <div>
+                <p className="admin-week-bulk__title">
+                  {missingSlots.length} week{missingSlots.length === 1 ? "" : "s"} still need a draft.
+                </p>
+                <p className="admin-week-bulk__copy">
+                  Create placeholders now, then edit each title and reflection when ready.
+                </p>
+              </div>
+              <form action={bulkAction}>
+                <input type="hidden" name="month_id" value={monthId} />
+                <input type="hidden" name="month_year" value={monthYear} />
+                {missingSlots.map((slot) => (
+                  <input key={slot.weekStart} type="hidden" name="week_start" value={slot.weekStart} />
+                ))}
+                <button type="submit" className="admin-btn admin-btn--outline">
+                  Create missing drafts
+                </button>
+              </form>
+            </div>
+          ) : null}
+          <div className="admin-week-list">
+            {weekSlots.map((slot) => (
+              <WeekSlotRow
+                key={slot.weekStart}
+                slot={slot}
+                monthId={monthId}
+                monthYear={monthYear}
+                action={action}
+              />
+            ))}
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }

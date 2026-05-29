@@ -2571,6 +2571,13 @@ select.admin-select:focus,
   font-variant-numeric: tabular-nums;
 }
 
+.admin-month-preview-note {
+  color: var(--color-muted-fg);
+  font-size: 0.75rem;
+  line-height: 1.35;
+  max-width: 12rem;
+}
+
 .admin-month-guide {
   align-items: stretch;
   background: linear-gradient(135deg, var(--color-card), color-mix(in srgb, var(--color-primary) 7%, var(--color-card)));
@@ -2640,57 +2647,6 @@ select.admin-select:focus,
   color: var(--color-foreground);
   font-size: 0.875rem;
   font-variant-numeric: tabular-nums;
-}
-
-.admin-month-setup-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-}
-
-.admin-month-setup-card {
-  border: 1px solid var(--color-border);
-  border-radius: 0.75rem;
-  background: var(--color-card);
-  box-shadow: var(--shadow-soft);
-  color: inherit;
-  display: block;
-  padding: 1rem;
-  text-decoration: none;
-  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
-}
-
-.admin-month-setup-card:hover {
-  border-color: color-mix(in srgb, var(--color-primary) 28%, var(--color-border));
-  box-shadow: var(--shadow-medium);
-  transform: translateY(-1px);
-}
-
-.admin-month-setup-card.is-complete {
-  border-color: color-mix(in srgb, var(--color-primary) 24%, var(--color-border));
-}
-
-.admin-month-setup-card__topline {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  color: var(--color-foreground);
-  font-size: 0.875rem;
-  font-weight: 700;
-}
-
-.admin-month-setup-card__topline span:last-child {
-  color: var(--color-primary);
-  font-variant-numeric: tabular-nums;
-}
-
-.admin-month-setup-card p {
-  margin: 0.5rem 0 0;
-  color: var(--color-muted-fg);
-  font-size: 0.8125rem;
-  line-height: 1.45;
 }
 
 .admin-month-alerts {
@@ -2839,6 +2795,30 @@ select.admin-select:focus,
   flex-direction: column;
 }
 
+.admin-week-bulk {
+  align-items: center;
+  background: color-mix(in srgb, var(--color-primary) 5%, var(--color-card));
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+}
+
+.admin-week-bulk__title {
+  color: var(--color-foreground);
+  font-size: 0.875rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.admin-week-bulk__copy {
+  color: var(--color-muted-fg);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  margin: 0.2rem 0 0;
+}
+
 .admin-week-row {
   display: flex;
   flex-wrap: wrap;
@@ -2939,10 +2919,6 @@ select.admin-select:focus,
     justify-content: space-between;
   }
 
-  .admin-month-setup-grid {
-    grid-template-columns: 1fr;
-  }
-
   .admin-week-row__main,
   .admin-week-row__actions {
     width: 100%;
@@ -2950,6 +2926,11 @@ select.admin-select:focus,
 
   .admin-week-row__actions {
     justify-content: space-between;
+  }
+
+  .admin-week-bulk {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .admin-form-grid-2 {
@@ -3192,6 +3173,51 @@ select.admin-select:focus,
   font-size: 0.875rem;
   font-weight: 700;
   margin: 0;
+}
+
+.admin-upload-summary {
+  align-items: flex-start;
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  padding: 0.75rem 0.875rem;
+}
+
+.admin-upload-summary--success {
+  background: rgba(34, 197, 94, 0.07);
+  border-color: rgba(34, 197, 94, 0.22);
+}
+
+.admin-upload-summary--warning {
+  background: rgba(245, 158, 11, 0.07);
+  border-color: rgba(245, 158, 11, 0.24);
+}
+
+.admin-upload-summary--error {
+  background: rgba(239, 68, 68, 0.06);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.admin-upload-summary--compact {
+  background: color-mix(in srgb, var(--color-muted) 32%, transparent);
+  margin-bottom: 0;
+}
+
+.admin-upload-summary__title {
+  color: var(--color-foreground);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.admin-upload-summary__copy {
+  color: var(--color-muted-fg);
+  font-size: 0.75rem;
+  line-height: 1.35;
+  margin: 0.15rem 0 0;
 }
 
 @media (max-width: 1024px) {

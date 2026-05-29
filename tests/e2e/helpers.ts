@@ -1736,7 +1736,7 @@ export async function ensureAdminMonthWorkspaceFixture() {
   const { error: deleteFixtureContentError } = await supabase
     .from("content")
     .delete()
-    .eq("admin_notes", ADMIN_MONTH_WORKSPACE_FIXTURE.marker);
+    .eq("monthly_practice_id", monthId);
 
   if (deleteFixtureContentError) {
     throw new Error(

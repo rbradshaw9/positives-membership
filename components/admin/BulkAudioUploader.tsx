@@ -118,6 +118,7 @@ export function BulkAudioUploader({ monthId, monthYear, openDates }: Props) {
   const [overIndex, setOverIndex] = useState<number | null>(null);
   const [assignProgress, setAssignProgress] = useState(0);
   const [assignError, setAssignError] = useState<string | null>(null);
+  const [lastSkippedCount, setLastSkippedCount] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -127,9 +128,11 @@ export function BulkAudioUploader({ monthId, monthYear, openDates }: Props) {
 
   // ── Add files ───────────────────────────────────────────────────────────────
   function addFiles(fileList: FileList) {
-    const audioFiles = Array.from(fileList)
+    const files = Array.from(fileList);
+    const audioFiles = files
       .filter(isAudio)
       .sort((a, b) => a.name.localeCompare(b.name));
+    setLastSkippedCount(files.length - audioFiles.length);
     if (audioFiles.length === 0) return;
 
     const newItems: QueueItem[] = audioFiles.map((file, i) => ({
@@ -298,14 +301,19 @@ export function BulkAudioUploader({ monthId, monthYear, openDates }: Props) {
   // ── Render: done ────────────────────────────────────────────────────────────
   if (stage === "done") {
     return (
-      <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 flex items-center gap-3">
+      <div className="admin-upload-summary admin-upload-summary--success">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a"
           strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <polyline points="20 6 9 17 4 12" />
         </svg>
-        <p className="text-sm font-medium text-emerald-800">
-          {uploadedCount} audio file{uploadedCount !== 1 ? "s" : ""} added to the calendar. Refreshing…
-        </p>
+        <div>
+          <p className="admin-upload-summary__title">
+            {uploadedCount} audio file{uploadedCount !== 1 ? "s" : ""} added to the calendar.
+          </p>
+          <p className="admin-upload-summary__copy">
+            They were assigned to the next open day{uploadedCount === 1 ? "" : "s"} in order. Refreshing...
+          </p>
+        </div>
       </div>
     );
   }
@@ -314,6 +322,16 @@ export function BulkAudioUploader({ monthId, monthYear, openDates }: Props) {
   if (stage === "empty") {
     return (
       <div className="mb-6">
+        {lastSkippedCount > 0 ? (
+          <div className="admin-upload-summary admin-upload-summary--warning">
+            <p className="admin-upload-summary__title">
+              {lastSkippedCount} file{lastSkippedCount === 1 ? "" : "s"} skipped.
+            </p>
+            <p className="admin-upload-summary__copy">
+              Only MP3, M4A, AAC, WAV, and OGG audio files can be uploaded here.
+            </p>
+          </div>
+        ) : null}
         <div
           onDragOver={onZoneDragOver}
           onDragLeave={onZoneDragLeave}
@@ -497,8 +515,19 @@ export function BulkAudioUploader({ monthId, monthYear, openDates }: Props) {
 
       {/* Footer / assign */}
       <div className="px-4 py-3 border-t border-border flex flex-col gap-2">
+        <div className="admin-upload-summary admin-upload-summary--compact">
+          <p className="admin-upload-summary__title">
+            Upload summary: {uploadedCount} ready, {uploadingCount} uploading, {errorCount} failed.
+          </p>
+          <p className="admin-upload-summary__copy">
+            {openDates.length} open day{openDates.length === 1 ? "" : "s"} available this month.
+          </p>
+        </div>
         {assignError && (
-          <p className="text-xs text-destructive">{assignError}</p>
+          <div className="admin-upload-summary admin-upload-summary--error">
+            <p className="admin-upload-summary__title">Import stopped</p>
+            <p className="admin-upload-summary__copy">{assignError}</p>
+          </div>
         )}
         {overCapacity && (
           <p className="text-xs text-amber-600">

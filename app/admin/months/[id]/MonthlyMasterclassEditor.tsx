@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import type { ContentItem } from "@/lib/queries/get-admin-month-detail";
 import { ContentImagePicker } from "@/components/admin/ContentImagePicker";
+import { usePersistentSectionState } from "./usePersistentSectionState";
 
 /**
  * MonthlyMasterclassEditor - inline create/edit for the monthly_theme.
@@ -44,7 +44,10 @@ export function MonthlyMasterclassEditor({
   existing,
   action,
 }: Props) {
-  const [expanded, setExpanded] = useState(!existing);
+  const [expanded, setExpanded] = usePersistentSectionState(
+    `admin:month:${monthId}:theme`,
+    !existing
+  );
 
   return (
     <div className="admin-section" style={{ marginBottom: "1.5rem" }}>
@@ -52,6 +55,7 @@ export function MonthlyMasterclassEditor({
         type="button"
         className="admin-section__header admin-section__header-button"
         onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
       >
         <span>
           <span className="admin-section__title">Monthly theme</span>
