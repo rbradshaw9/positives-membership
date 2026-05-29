@@ -22,8 +22,8 @@ import type { WeekSlot } from "./WeeklyReflectionSection";
  * Month Workspace — the single-screen command center for a month.
  *
  * Inline editing for:
- *   1. Monthly masterclass (create / edit in-place)
- *   2. Weekly reflections (per-week inline forms)
+ *   1. Monthly theme (create / edit in-place)
+ *   2. Weekly principles (per-week inline forms)
  *   3. Daily audio (existing grid + quick-add support)
  */
 
@@ -116,11 +116,11 @@ export default async function MonthWorkspacePage({
   }
   const filledWeeks = weekSlots.filter((w) => w.content).length;
   if (filledWeeks === 0) {
-    alerts.push({ level: "warning", message: "No weekly reflections added" });
+    alerts.push({ level: "warning", message: "No weekly principles added" });
   } else if (filledWeeks < weekSlots.length) {
     alerts.push({
       level: "info",
-      message: `${filledWeeks} of ${weekSlots.length} weekly reflections filled`,
+      message: `${filledWeeks} of ${weekSlots.length} weekly principles filled`,
     });
   }
   if (fillPct < 50) {
@@ -133,23 +133,28 @@ export default async function MonthWorkspacePage({
   const setupItems = [
     {
       label: "Monthly theme",
+      href: "#monthly-theme",
       value: month.theme ? "Ready" : "Needed",
       detail: month.theme?.title ?? "Add the guiding theme for this month.",
       complete: Boolean(month.theme),
     },
     {
       label: "Weekly principles",
+      href: "#weekly-principles",
       value: `${filledWeeks}/${weekSlots.length}`,
       detail: filledWeeks === weekSlots.length ? "Each week has a reflection." : "Fill the remaining weekly reflections.",
       complete: filledWeeks === weekSlots.length,
     },
     {
       label: "Daily audio",
+      href: "#daily-audio",
       value: `${filledSlots}/${totalSlots}`,
       detail: `${fillPct}% of daily practices are scheduled.`,
       complete: filledSlots === totalSlots,
     },
   ];
+  const completedSetupItems = setupItems.filter((item) => item.complete).length;
+  const nextSetupItem = setupItems.find((item) => !item.complete);
 
   return (
     <div className="admin-month-workspace">
@@ -205,15 +210,37 @@ export default async function MonthWorkspacePage({
         </div>
       </div>
 
+      <div className="admin-month-guide">
+        <div>
+          <p className="admin-month-guide__eyebrow">Setup progress</p>
+          <h2 className="admin-month-guide__title">
+            {completedSetupItems}/{setupItems.length} areas ready
+          </h2>
+          <p className="admin-month-guide__copy">
+            {nextSetupItem
+              ? `Next: ${nextSetupItem.detail}`
+              : "This month has the core content pieces in place."}
+          </p>
+        </div>
+        <div className="admin-month-guide__nav" aria-label="Month setup sections">
+          {setupItems.map((item) => (
+            <a key={item.label} href={item.href} className={item.complete ? "is-complete" : ""}>
+              <span>{item.label}</span>
+              <strong>{item.value}</strong>
+            </a>
+          ))}
+        </div>
+      </div>
+
       <div className="admin-month-setup-grid">
         {setupItems.map((item) => (
-          <div key={item.label} className={item.complete ? "admin-month-setup-card is-complete" : "admin-month-setup-card"}>
+          <a key={item.label} href={item.href} className={item.complete ? "admin-month-setup-card is-complete" : "admin-month-setup-card"}>
             <div className="admin-month-setup-card__topline">
               <span>{item.label}</span>
               <span>{item.value}</span>
             </div>
             <p>{item.detail}</p>
-          </div>
+          </a>
         ))}
       </div>
 
@@ -252,20 +279,24 @@ export default async function MonthWorkspacePage({
         ))}
       </div>
 
-      <MonthlyMasterclassEditor
-        monthId={month.id}
-        monthYear={month.month_year}
-        existing={month.theme}
-        action={createOrUpdateMasterclass}
-      />
-      <WeeklyReflectionSection
-        monthId={month.id}
-        monthYear={month.month_year}
-        weekSlots={weekSlots}
-        action={createOrUpdateWeekly}
-      />
+      <div id="monthly-theme" className="admin-anchor-section">
+        <MonthlyMasterclassEditor
+          monthId={month.id}
+          monthYear={month.month_year}
+          existing={month.theme}
+          action={createOrUpdateMasterclass}
+        />
+      </div>
+      <div id="weekly-principles" className="admin-anchor-section">
+        <WeeklyReflectionSection
+          monthId={month.id}
+          monthYear={month.month_year}
+          weekSlots={weekSlots}
+          action={createOrUpdateWeekly}
+        />
+      </div>
 
-      <div className="admin-section" style={{ marginBottom: "1.5rem" }}>
+      <div id="month-notes" className="admin-section admin-anchor-section" style={{ marginBottom: "1.5rem" }}>
         <div className="admin-section__header">
           <div>
             <span className="admin-section__title">Month notes</span>
@@ -273,9 +304,9 @@ export default async function MonthWorkspacePage({
           </div>
         </div>
         <div className="admin-section__body">
-          <form action={updateMonthlyPractice}>
+          <form action={updateMonthlyPractice} className="admin-flow-form">
             <input type="hidden" name="id" value={month.id} />
-            <div className="admin-form-grid-2" style={{ marginBottom: "1rem" }}>
+            <div className="admin-form-grid-2">
               <div className="admin-form-field">
                 <label className="admin-form-section__label">Description</label>
                 <textarea
@@ -287,7 +318,7 @@ export default async function MonthWorkspacePage({
                 />
               </div>
               <div className="admin-form-field">
-                <label className="admin-form-section__label">Admin Notes</label>
+                <label className="admin-form-section__label">Admin notes</label>
                 <textarea
                   name="admin_notes"
                   rows={3}
@@ -298,26 +329,28 @@ export default async function MonthWorkspacePage({
               </div>
             </div>
             <button type="submit" className="admin-btn admin-btn--primary">
-              Save Details
+              Save notes
             </button>
           </form>
         </div>
       </div>
 
-      <BulkAudioUploader
-        monthId={month.id}
-        monthYear={month.month_year}
-        openDates={month.dailySlots
-          .filter((s) => s.content === null)
-          .map((s) => s.date)}
-      />
-      <DailyAudioGrid
-        monthId={month.id}
-        monthYear={month.month_year}
-        dailySlots={month.dailySlots}
-        unassigned={unassigned}
-        quickCreateAction={quickCreateDaily}
-      />
+      <div id="daily-audio" className="admin-anchor-section">
+        <BulkAudioUploader
+          monthId={month.id}
+          monthYear={month.month_year}
+          openDates={month.dailySlots
+            .filter((s) => s.content === null)
+            .map((s) => s.date)}
+        />
+        <DailyAudioGrid
+          monthId={month.id}
+          monthYear={month.month_year}
+          dailySlots={month.dailySlots}
+          unassigned={unassigned}
+          quickCreateAction={quickCreateDaily}
+        />
+      </div>
     </div>
   );
 }

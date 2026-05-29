@@ -29,6 +29,13 @@ interface Props {
   quickCreateAction?: (formData: FormData) => Promise<void>;
 }
 
+function formatMonthDay(date: string) {
+  return new Date(`${date}T12:00:00`).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
 export function DailyAudioGrid({
   monthId,
   monthYear,
@@ -172,23 +179,12 @@ export function DailyAudioGrid({
               draggingDate !== null &&
               draggingDate !== slot.date;
 
-            let cellBg: string;
-            let cellBorder: string;
-            let cellTransform = "none";
-            let cellBoxShadow = "none";
-
-            if (isDragTarget) {
-              cellBg = "rgba(46,196,182,0.06)";
-              cellBorder = "var(--color-primary)";
-              cellTransform = "scale(1.04)";
-              cellBoxShadow = "0 0 0 2px rgba(46,196,182,0.25)";
-            } else if (filled) {
-              cellBg = "rgba(34,197,94,0.05)";
-              cellBorder = "rgba(34,197,94,0.28)";
-            } else {
-              cellBg = "color-mix(in srgb, var(--color-muted) 50%, white)";
-              cellBorder = "var(--color-border)";
-            }
+            const cellClass = [
+              "admin-cal-day",
+              filled ? "admin-cal-day--filled" : "admin-cal-day--empty",
+              isBeingDragged ? "is-dragging" : "",
+              isDragTarget ? "is-drop-target" : "",
+            ].filter(Boolean).join(" ");
 
             return (
               <div
@@ -198,45 +194,15 @@ export function DailyAudioGrid({
                 onDrop={(e) =>
                   handleDrop(e, slot.date, slot.content?.id ?? null)
                 }
-                style={{
-                  position: "relative",
-                  borderRadius: "0.5rem",
-                  border: `1px solid ${cellBorder}`,
-                  textAlign: "center",
-                  padding: "0.375rem",
-                  minHeight: "3.75rem",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "flex-start",
-                  background: cellBg,
-                  transform: cellTransform,
-                  boxShadow: cellBoxShadow,
-                  opacity: isBeingDragged ? 0.35 : 1,
-                  transition: "transform 150ms ease, box-shadow 150ms ease, opacity 150ms ease, background 150ms ease",
-                }}
+                className={cellClass}
               >
-                <span
-                  style={{
-                    fontSize: "0.6875rem",
-                    color: "var(--color-muted-fg)",
-                    fontVariantNumeric: "tabular-nums",
-                    fontWeight: 600,
-                    lineHeight: 1,
-                  }}
-                >
+                <span className="admin-cal-day__number">
                   {slot.dayOfMonth}
                 </span>
 
                 {filled ? (
-                  /* Draggable content block */
                   <div
-                    style={{
-                      width: "100%",
-                      marginTop: "0.25rem",
-                      cursor: "grab",
-                      userSelect: "none",
-                    }}
+                    className="admin-cal-day__content"
                     draggable
                     onDragStart={(e) =>
                       handleDragStart(e, slot.date, slot.content!.id)
@@ -245,37 +211,17 @@ export function DailyAudioGrid({
                   >
                     <Link
                       href={`/admin/months/${monthId}/content/${slot.content!.id}/edit`}
-                      style={{
-                        fontSize: "0.5625rem",
-                        color: "var(--color-foreground)",
-                        textDecoration: "none",
-                        lineHeight: 1.3,
-                        display: "-webkit-box",
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: "vertical",
-                        overflow: "hidden",
-                        transition: "color 120ms ease",
-                      }}
+                      className="admin-cal-day__title"
                       title={slot.content!.title}
                       draggable={false}
                     >
                       {slot.content!.title}
                     </Link>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: "0.25rem",
-                        marginTop: "0.125rem",
-                        fontSize: "0.5625rem",
-                        color: "var(--color-muted-fg)",
-                      }}
-                    >
+                    <div className="admin-cal-day__meta">
                       <span>{slot.content!.listens} plays</span>
                       <span>{slot.content!.notes} notes</span>
                     </div>
-                    <form action={unassignDailyAudio} style={{ marginTop: "0.125rem" }}>
+                    <form action={unassignDailyAudio}>
                       <input
                         type="hidden"
                         name="content_id"
@@ -284,15 +230,7 @@ export function DailyAudioGrid({
                       <input type="hidden" name="month_id" value={monthId} />
                       <button
                         type="submit"
-                        style={{
-                          fontSize: "0.5625rem",
-                          color: "rgba(239,68,68,0.5)",
-                          background: "none",
-                          border: "none",
-                          cursor: "pointer",
-                          padding: 0,
-                          transition: "color 120ms ease",
-                        }}
+                        className="admin-cal-day__remove"
                         title="Remove from this date"
                       >
                         Remove
@@ -300,12 +238,11 @@ export function DailyAudioGrid({
                     </form>
                   </div>
                 ) : (
-                  /* Empty slot — show assign picker */
-                  <div style={{ width: "100%", marginTop: "0.25rem" }}>
+                  <div className="admin-cal-day__empty">
                     {unassigned.length > 0 ? (
                       <form
                         action={assignDailyAudio}
-                        style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.125rem" }}
+                        className="admin-cal-day__assign"
                       >
                         <input type="hidden" name="month_id" value={monthId} />
                         <input
@@ -322,18 +259,10 @@ export function DailyAudioGrid({
                           name="content_id"
                           required
                           defaultValue=""
-                          style={{
-                            width: "100%",
-                            fontSize: "0.5625rem",
-                            background: "transparent",
-                            border: "none",
-                            color: "var(--color-muted-fg)",
-                            cursor: "pointer",
-                            textAlign: "center",
-                          }}
+                          className="admin-cal-day__select"
                         >
                           <option value="" disabled>
-                            pick…
+                            Choose audio
                           </option>
                           {unassigned.map((a) => (
                             <option key={a.id} value={a.id}>
@@ -345,37 +274,19 @@ export function DailyAudioGrid({
                         </select>
                         <button
                           type="submit"
-                          style={{
-                            fontSize: "0.5625rem",
-                            color: "var(--color-primary)",
-                            background: "none",
-                            border: "none",
-                            cursor: "pointer",
-                            padding: 0,
-                            fontWeight: 600,
-                            transition: "color 120ms ease",
-                          }}
+                          className="admin-cal-day__action"
                       >
                         Assign
                       </button>
                       </form>
                     ) : (
-                      <span style={{ fontSize: "0.5625rem", color: "var(--color-muted-fg)" }}>—</span>
+                      <span className="admin-cal-day__empty-label">Open</span>
                     )}
                     {quickCreateAction && (
                       <button
                         type="button"
                         onClick={() => setQuickAddDate(quickAddDate === slot.date ? null : slot.date)}
-                        style={{
-                          fontSize: "0.5625rem",
-                          color: "var(--color-primary)",
-                          background: "none",
-                          border: "none",
-                          cursor: "pointer",
-                          padding: 0,
-                          fontWeight: 600,
-                          marginTop: "0.125rem",
-                        }}
+                        className="admin-cal-day__action"
                       >
                         New
                       </button>
@@ -390,57 +301,26 @@ export function DailyAudioGrid({
 
       {/* Quick add inline form */}
       {quickAddDate && quickCreateAction && (
-        <div
-          style={{
-            marginTop: "1rem",
-            padding: "1rem 1.25rem",
-            borderRadius: "0.625rem",
-            border: "1px solid var(--color-primary)",
-            background: "rgba(46,196,182,0.03)",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "0.75rem",
-            }}
-          >
-            <p
-              style={{
-                fontSize: "0.8125rem",
-                fontWeight: 700,
-                color: "var(--color-foreground)",
-              }}
-            >
-              New daily audio -{" "}
-              {new Date(quickAddDate + "T12:00:00").toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-              })}
+        <div className="admin-quick-audio">
+          <div className="admin-quick-audio__header">
+            <p>
+              New daily audio - {formatMonthDay(quickAddDate)}
             </p>
             <button
               type="button"
               onClick={() => setQuickAddDate(null)}
-              style={{
-                fontSize: "0.75rem",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                color: "var(--color-muted-fg)",
-              }}
+              className="admin-link-button"
             >
-              ✕ Close
+              Close
             </button>
           </div>
-          <form action={quickCreateAction}>
+          <form action={quickCreateAction} className="admin-flow-form">
             <input type="hidden" name="month_id" value={monthId} />
             <input type="hidden" name="month_year" value={monthYear} />
             <input type="hidden" name="publish_date" value={quickAddDate} />
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-              <div className="admin-form-field" style={{ gridColumn: "1 / -1" }}>
+            <div className="admin-form-grid-2">
+              <div className="admin-form-field admin-form-field--full">
                 <label className="admin-label">
                   Title <span className="admin-label__required">*</span>
                 </label>
@@ -491,9 +371,8 @@ export function DailyAudioGrid({
             <button
               type="submit"
               className="admin-btn admin-btn--primary"
-              style={{ marginTop: "0.75rem" }}
             >
-              Create Daily Audio
+              Create daily audio
             </button>
           </form>
         </div>
