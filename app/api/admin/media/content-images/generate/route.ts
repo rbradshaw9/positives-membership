@@ -26,9 +26,11 @@ type GenerateImageInput = {
   description?: string;
   excerpt?: string;
   fieldLabel?: string;
+  overlayText?: string;
   prompt?: string;
   reflectionPrompt?: string;
   target?: "featured" | "poster" | "thumbnail";
+  textTreatment?: "none" | "title-card";
   title?: string;
 };
 
@@ -38,7 +40,6 @@ const POSITIVES_IMAGE_STYLE = [
   "Avoid stock-photo cliches, cheesy wellness symbols, generic meditation silhouettes, fake text, logos, watermarks, before-and-after imagery, and medical claims.",
   "Design for a 16:9 thumbnail/poster crop. Keep the subject and visual weight centered so it works in cards, video posters, and hero surfaces.",
   "Use sophisticated, restrained colors inspired by clean whites, soft neutrals, gentle greens, muted blue accents, and warm human skin tones.",
-  "No text in the image.",
 ].join(" ");
 
 function jsonError(message: string, status = 400) {
@@ -67,6 +68,88 @@ function monthKey(date = new Date()) {
   };
 }
 
+function escapeXml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function wrapHeadline(value: string) {
+  const headline = cleanText(value, 150).replace(/\s+/g, " ");
+  const words = headline.split(" ").filter(Boolean);
+  const maxChars = headline.length > 70 ? 22 : headline.length > 44 ? 26 : 30;
+  const lines: string[] = [];
+
+  for (const word of words) {
+    const current = lines.at(-1);
+    if (!current) {
+      lines.push(word);
+      continue;
+    }
+
+    if (`${current} ${word}`.length <= maxChars || lines.length >= 4) {
+      lines[lines.length - 1] = `${current} ${word}`;
+    } else {
+      lines.push(word);
+    }
+  }
+
+  return lines.slice(0, 4);
+}
+
+function titleCardSvg(headline: string, fieldLabel: string) {
+  const lines = wrapHeadline(headline);
+  if (lines.length === 0) return null;
+
+  const maxLineLength = Math.max(...lines.map((line) => line.length));
+  const fontSize = lines.length <= 2 && maxLineLength <= 19 ? 124 : lines.length <= 3 ? 96 : 78;
+  const lineHeight = Math.round(fontSize * 1.05);
+  const blockHeight = lineHeight * lines.length;
+  const firstBaseline = Math.round(540 - blockHeight / 2 + fontSize * 0.78);
+  const eyebrow = cleanText(fieldLabel, 42).toUpperCase();
+
+  const textLines = lines
+    .map((line, index) => `<tspan x="116" dy="${index === 0 ? 0 : lineHeight}">${escapeXml(line)}</tspan>`)
+    .join("");
+
+  return Buffer.from(`
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="shade" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#111827" stop-opacity="0.84"/>
+      <stop offset="0.48" stop-color="#111827" stop-opacity="0.46"/>
+      <stop offset="1" stop-color="#111827" stop-opacity="0.04"/>
+    </linearGradient>
+    <linearGradient id="warm" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#0f766e" stop-opacity="0.42"/>
+      <stop offset="1" stop-color="#f8fafc" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#020617" flood-opacity="0.38"/>
+    </filter>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#shade)"/>
+  <rect width="1920" height="1080" fill="url(#warm)"/>
+  <rect x="116" y="${Math.max(138, firstBaseline - fontSize - 84)}" width="128" height="8" rx="4" fill="#80b9aa"/>
+  <text x="116" y="${Math.max(210, firstBaseline - fontSize - 38)}" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="800" letter-spacing="4" fill="#d8eee9" opacity="0.96">${escapeXml(eyebrow || "POSITIVES")}</text>
+  <text x="116" y="${firstBaseline}" font-family="Inter, Arial, sans-serif" font-size="${fontSize}" font-weight="900" letter-spacing="0" fill="#ffffff" filter="url(#shadow)">${textLines}</text>
+</svg>
+`);
+}
+
+async function applyTitleCardOverlay(image: Buffer, headline: string, fieldLabel: string) {
+  const overlay = titleCardSvg(headline, fieldLabel);
+  if (!overlay) return image;
+
+  return sharp(image)
+    .composite([{ input: overlay, top: 0, left: 0 }])
+    .png({ compressionLevel: 9, quality: 92 })
+    .toBuffer();
+}
+
 function mapAsset(row: MediaAssetRow) {
   return {
     id: row.id,
@@ -91,6 +174,8 @@ function buildPrompt(input: GenerateImageInput) {
   const reflectionPrompt = cleanText(input.reflectionPrompt, 280);
   const adminPrompt = cleanText(input.prompt, 1200);
   const target = input.target === "poster" ? "thumbnail/poster" : input.target === "thumbnail" ? "thumbnail" : "featured image";
+  const headline = cleanText(input.overlayText, 150) || title;
+  const isTitleCard = input.textTreatment === "title-card" && headline;
 
   const contentContext = [
     title ? `Title: ${title}` : "",
@@ -104,6 +189,13 @@ function buildPrompt(input: GenerateImageInput) {
   return [
     POSITIVES_IMAGE_STYLE,
     `Image role: ${target} for the ${fieldLabel} field.`,
+    isTitleCard
+      ? [
+          "Create a cinematic YouTube-style intro graphic background with generous clean negative space on the left side for a large title overlay.",
+          "Do not render any letters, words, captions, logos, labels, signage, or fake text inside the generated image; the application will add exact title typography afterward.",
+          "Use stronger thumbnail contrast and a clear focal subject on the right or center-right so the final image reads well at small sizes.",
+        ].join(" ")
+      : "No text in the image.",
     contentContext ? `Content context:\n${contentContext}` : "Content context: create an inviting default image for a Positives monthly practice.",
     "Output should feel specific and art-directed, not generic.",
   ].join("\n\n");
@@ -174,6 +266,15 @@ export async function POST(request: Request) {
       .resize({ width: 1920, height: 1080, fit: "cover" })
       .png({ compressionLevel: 9, quality: 92 })
       .toBuffer();
+
+    const headline = cleanText(input.overlayText, 150) || cleanText(input.title, 150);
+    if (input.textTreatment === "title-card" && headline) {
+      normalizedBody = await applyTitleCardOverlay(
+        normalizedBody,
+        headline,
+        cleanText(input.fieldLabel, 80) || "Positives"
+      );
+    }
   } catch (error) {
     console.error("[content-images/generate] generated image normalization failed:", error);
     return jsonError("Generated image could not be processed.", 502);
@@ -246,6 +347,8 @@ export async function POST(request: Request) {
           revisedPrompt: generated.revisedPrompt,
           source: "admin_content_image_picker",
           target: input.target ?? "featured",
+          textTreatment: input.textTreatment === "title-card" ? "title-card" : "none",
+          overlayText: cleanText(input.overlayText, 150) || cleanText(input.title, 150) || null,
         },
         imageOptimization: preparedImage.metadata,
       },

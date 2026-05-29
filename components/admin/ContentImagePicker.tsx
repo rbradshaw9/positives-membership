@@ -50,11 +50,13 @@ export function ContentImagePicker({
   const [assets, setAssets] = useState<ContentImageAsset[]>([]);
   const [libraryLoaded, setLibraryLoaded] = useState(false);
   const [libraryLoading, setLibraryLoading] = useState(false);
+  const [includeTitleText, setIncludeTitleText] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const generationPromptRef = useRef<HTMLTextAreaElement>(null);
+  const imageTextRef = useRef<HTMLInputElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const altInputRef = useRef<HTMLInputElement>(null);
 
@@ -98,9 +100,11 @@ export function ContentImagePicker({
       description: data?.get("description")?.toString() ?? "",
       excerpt: data?.get("excerpt")?.toString() ?? "",
       fieldLabel: label,
+      overlayText: imageTextRef.current?.value ?? "",
       prompt: generationPromptRef.current?.value ?? "",
       reflectionPrompt: data?.get("reflection_prompt")?.toString() ?? "",
       target: selectedVariant === "poster" ? "poster" : selectedVariant === "thumbnail" ? "thumbnail" : "featured",
+      textTreatment: includeTitleText ? "title-card" : "none",
       title: data?.get("title")?.toString() ?? "",
     };
   }
@@ -128,6 +132,7 @@ export function ContentImagePicker({
       setSelectedUrl(selectionUrl(asset));
       setModalOpen(false);
       if (generationPromptRef.current) generationPromptRef.current.value = "";
+      if (imageTextRef.current) imageTextRef.current.value = "";
     } catch (generateError) {
       setError(generateError instanceof Error ? generateError.message : "Image could not be generated.");
     } finally {
@@ -266,6 +271,30 @@ export function ContentImagePicker({
                 <p className="admin-hint">
                   Uses the current title, excerpt, and description from this form, then saves the result to the image library.
                 </p>
+                <label className="flex items-start gap-3 rounded-lg border border-border bg-muted/20 p-3">
+                  <input
+                    type="checkbox"
+                    checked={includeTitleText}
+                    onChange={(event) => setIncludeTitleText(event.currentTarget.checked)}
+                    className="mt-1 h-4 w-4"
+                  />
+                  <span className="grid gap-1">
+                    <span className="admin-label">Add YouTube-style title text</span>
+                    <span className="admin-hint">
+                      Generates the background with space for typography, then adds exact text on top for a polished poster.
+                    </span>
+                  </span>
+                </label>
+                {includeTitleText ? (
+                  <label className="admin-form-field">
+                    <span className="admin-label">Text on image</span>
+                    <input
+                      ref={imageTextRef}
+                      className="admin-input"
+                      placeholder="Leave blank to use the content title"
+                    />
+                  </label>
+                ) : null}
                 <div className="event-image-modal__actions">
                   <button type="button" className="admin-btn admin-btn--outline" onClick={() => setModalOpen(false)}>
                     Cancel
