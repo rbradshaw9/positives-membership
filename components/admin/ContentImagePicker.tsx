@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SafeImage } from "@/components/media/SafeImage";
 
 type ContentImageAsset = {
@@ -27,6 +27,7 @@ type ContentImagePickerProps = {
 };
 
 const ACCEPTED_IMAGE_HELP = "Accepted: JPG, PNG, WebP, or GIF up to 8 MB.";
+const CONTENT_IMAGE_LIBRARY_EVENT = "content-image-library-updated";
 
 function formatFileSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -48,7 +49,6 @@ export function ContentImagePicker({
   const [modalOpen, setModalOpen] = useState(false);
   const [tab, setTab] = useState<"generate" | "library" | "upload">("library");
   const [assets, setAssets] = useState<ContentImageAsset[]>([]);
-  const [libraryLoaded, setLibraryLoaded] = useState(false);
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [includeTitleText, setIncludeTitleText] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -60,15 +60,33 @@ export function ContentImagePicker({
   const titleInputRef = useRef<HTMLInputElement>(null);
   const altInputRef = useRef<HTMLInputElement>(null);
 
+  function mergeAsset(asset: ContentImageAsset) {
+    setAssets((current) => [asset, ...current.filter((item) => item.id !== asset.id)]);
+  }
+
+  useEffect(() => {
+    function handleLibraryUpdate(event: Event) {
+      const asset = (event as CustomEvent<ContentImageAsset>).detail;
+      if (asset?.id) mergeAsset(asset);
+    }
+
+    window.addEventListener(CONTENT_IMAGE_LIBRARY_EVENT, handleLibraryUpdate);
+    return () => window.removeEventListener(CONTENT_IMAGE_LIBRARY_EVENT, handleLibraryUpdate);
+  }, []);
+
+  function rememberAsset(asset: ContentImageAsset) {
+    mergeAsset(asset);
+    window.dispatchEvent(new CustomEvent(CONTENT_IMAGE_LIBRARY_EVENT, { detail: asset }));
+  }
+
   async function loadLibrary() {
     setLibraryLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/admin/media/content-images");
+      const response = await fetch("/api/admin/media/content-images", { cache: "no-store" });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error ?? "Image library could not be loaded.");
       setAssets(Array.isArray(payload.assets) ? payload.assets : []);
-      setLibraryLoaded(true);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Image library could not be loaded.");
     } finally {
@@ -80,7 +98,14 @@ export function ContentImagePicker({
     setTab(nextTab);
     setError(null);
     setModalOpen(true);
-    if (nextTab === "library" && !libraryLoaded) {
+    if (nextTab === "library") {
+      void loadLibrary();
+    }
+  }
+
+  function switchTab(nextTab: "generate" | "library" | "upload") {
+    setTab(nextTab);
+    if (nextTab === "library" && !libraryLoading) {
       void loadLibrary();
     }
   }
@@ -127,8 +152,7 @@ export function ContentImagePicker({
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error ?? "Image could not be generated.");
       const asset = payload.asset as ContentImageAsset;
-      setAssets((current) => [asset, ...current.filter((item) => item.id !== asset.id)]);
-      setLibraryLoaded(true);
+      rememberAsset(asset);
       setSelectedUrl(selectionUrl(asset));
       setModalOpen(false);
       if (generationPromptRef.current) generationPromptRef.current.value = "";
@@ -162,8 +186,7 @@ export function ContentImagePicker({
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error ?? "Image could not be uploaded.");
       const asset = payload.asset as ContentImageAsset;
-      setAssets((current) => [asset, ...current.filter((item) => item.id !== asset.id)]);
-      setLibraryLoaded(true);
+      rememberAsset(asset);
       setSelectedUrl(selectionUrl(asset));
       setModalOpen(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -244,13 +267,13 @@ export function ContentImagePicker({
             </div>
 
             <div className="event-image-modal__tabs" role="tablist" aria-label="Image options">
-              <button type="button" className={tab === "generate" ? "is-active" : ""} onClick={() => setTab("generate")}>
+              <button type="button" className={tab === "generate" ? "is-active" : ""} onClick={() => switchTab("generate")}>
                 Generate
               </button>
-              <button type="button" className={tab === "library" ? "is-active" : ""} onClick={() => setTab("library")}>
+              <button type="button" className={tab === "library" ? "is-active" : ""} onClick={() => switchTab("library")}>
                 Library
               </button>
-              <button type="button" className={tab === "upload" ? "is-active" : ""} onClick={() => setTab("upload")}>
+              <button type="button" className={tab === "upload" ? "is-active" : ""} onClick={() => switchTab("upload")}>
                 Upload
               </button>
             </div>

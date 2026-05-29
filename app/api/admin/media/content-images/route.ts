@@ -80,7 +80,10 @@ export async function GET() {
     return jsonError("Image library could not be loaded.", 500);
   }
 
-  return NextResponse.json({ assets: (data ?? []).map(mapAsset) });
+  return NextResponse.json(
+    { assets: (data ?? []).map(mapAsset) },
+    { headers: { "Cache-Control": "no-store" } }
+  );
 }
 
 export async function POST(request: Request) {

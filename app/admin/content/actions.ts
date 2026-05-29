@@ -106,6 +106,7 @@ function safeAdminReturnTo(value: string) {
 
 function buildRow(input: ContentInput) {
   const isDaily = input.type === "daily_audio";
+  const isPracticeContent = isDaily || input.type === "weekly_principle" || input.type === "monthly_theme";
   const isCoaching = input.type === "coaching_call";
 
   // Base row with all standard + new rich fields
@@ -140,7 +141,7 @@ function buildRow(input: ContentInput) {
     admin_notes: input.admin_notes || null,
     source: "admin" as const,
     // Sprint 10 fields
-    tier_min: input.tier_min || null,
+    tier_min: isPracticeContent ? null : input.tier_min || null,
     starts_at: input.starts_at ? new Date(input.starts_at).toISOString() : null,
     send_reminders: input.send_reminders,
     send_replay_email: input.send_replay_email,

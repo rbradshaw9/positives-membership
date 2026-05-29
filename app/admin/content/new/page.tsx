@@ -165,6 +165,7 @@ export function ContentForm({
   const isDaily = type === "daily_audio";
   const isWeekly = type === "weekly_principle";
   const isMonthly = type === "monthly_theme";
+  const isPracticeContent = isDaily || isWeekly || isMonthly;
   const isCoaching = type === "coaching_call";
   const contentTypeOptions = [
     { value: "daily_audio", label: "Daily - audio practice" },
@@ -318,85 +319,87 @@ export function ContentForm({
         </div>
       </div>
 
-      {/* ─── Tier & scheduling (Sprint 10) ──────────────────────────────── */}
-      <div className="admin-form-section">
-        <p className="admin-form-section__label">Access &amp; scheduling</p>
+      {!isPracticeContent || isCoaching || !!values?.starts_at ? (
+        <div className="admin-form-section">
+          <p className="admin-form-section__label">Access &amp; scheduling</p>
 
-        {/* Tier min */}
-        <div className="admin-form-field">
-          <label htmlFor="tier_min" className="admin-label">
-            Minimum tier
-          </label>
-          <select
-            id="tier_min"
-            name="tier_min"
-            defaultValue={values?.tier_min ?? ""}
-            className="admin-select"
-          >
-            <option value="">All tiers (no restriction)</option>
-            <option value="level_1">All Members</option>
-            <option value="level_2">Membership + Events and above</option>
-            <option value="level_3">Coaching Circle and above</option>
-            <option value="level_4">Executive Coaching only</option>
-          </select>
-          <p className="admin-hint">
-            Members below this tier will not see this content in library or search.
-          </p>
-        </div>
-
-        {/* starts_at — relevant for coaching calls and future events */}
-        {(isCoaching || !!values?.starts_at) && (
-          <>
+          {!isPracticeContent ? (
             <div className="admin-form-field">
-              <label htmlFor="starts_at" className="admin-label">
-                Call date &amp; time
+              <label htmlFor="tier_min" className="admin-label">
+                Minimum tier
               </label>
-              <input
-                id="starts_at"
-                name="starts_at"
-                type="datetime-local"
-                defaultValue={startsAtLocal}
-                className="admin-input"
-              />
+              <select
+                id="tier_min"
+                name="tier_min"
+                defaultValue={values?.tier_min ?? ""}
+                className="admin-select"
+              >
+                <option value="">All tiers (no restriction)</option>
+                <option value="level_1">All Members</option>
+                <option value="level_2">Membership + Events and above</option>
+                <option value="level_3">Coaching Circle and above</option>
+                <option value="level_4">Executive Coaching only</option>
+              </select>
               <p className="admin-hint">
-                When the live call happens. Leave blank for replays with no scheduled time.
+                Members below this tier will not see this content in library or search.
               </p>
             </div>
+          ) : null}
 
-            <div className="admin-form-grid-2">
-              <label
-                className="admin-form-field"
-                style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start" }}
-              >
-                <input type="hidden" name="send_reminders" value="off" />
+          {/* starts_at — relevant for coaching calls and future events */}
+          {(isCoaching || !!values?.starts_at) && (
+            <>
+              <div className="admin-form-field">
+                <label htmlFor="starts_at" className="admin-label">
+                  Call date &amp; time
+                </label>
                 <input
-                  type="checkbox"
-                  name="send_reminders"
-                  value="on"
-                  defaultChecked={values?.send_reminders ?? true}
-                  style={{ marginTop: "0.25rem", accentColor: "var(--color-primary)", width: "1rem", height: "1rem", flexShrink: 0 }}
+                  id="starts_at"
+                  name="starts_at"
+                  type="datetime-local"
+                  defaultValue={startsAtLocal}
+                  className="admin-input"
                 />
-                <span>Send the 24h and 1h reminder emails</span>
-              </label>
+                <p className="admin-hint">
+                  When the live call happens. Leave blank for replays with no scheduled time.
+                </p>
+              </div>
 
-              <label
-                className="admin-form-field"
-                style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start" }}
-              >
-                <input type="hidden" name="send_replay_email" value="off" />
-                <input
-                  type="checkbox"
-                  name="send_replay_email"
-                  value="on"
-                  defaultChecked={values?.send_replay_email ?? true}
-                  style={{ marginTop: "0.25rem", accentColor: "var(--color-primary)", width: "1rem", height: "1rem", flexShrink: 0 }}
-                />
-                <span>Send the replay-ready email when replay media is added</span>
-              </label>
-            </div>
-          </>
-        )}
-      </div>
+              <div className="admin-form-grid-2">
+                <label
+                  className="admin-form-field"
+                  style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start" }}
+                >
+                  <input type="hidden" name="send_reminders" value="off" />
+                  <input
+                    type="checkbox"
+                    name="send_reminders"
+                    value="on"
+                    defaultChecked={values?.send_reminders ?? true}
+                    style={{ marginTop: "0.25rem", accentColor: "var(--color-primary)", width: "1rem", height: "1rem", flexShrink: 0 }}
+                  />
+                  <span>Send the 24h and 1h reminder emails</span>
+                </label>
+
+                <label
+                  className="admin-form-field"
+                  style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start" }}
+                >
+                  <input type="hidden" name="send_replay_email" value="off" />
+                  <input
+                    type="checkbox"
+                    name="send_replay_email"
+                    value="on"
+                    defaultChecked={values?.send_replay_email ?? true}
+                    style={{ marginTop: "0.25rem", accentColor: "var(--color-primary)", width: "1rem", height: "1rem", flexShrink: 0 }}
+                  />
+                  <span>Send the replay-ready email when replay media is added</span>
+                </label>
+              </div>
+            </>
+          )}
+        </div>
+      ) : null}
 
       {/* ─── Publishing date ─────────────────────────────────────────────── */}
       <div className="admin-form-section">
