@@ -12,6 +12,8 @@ export const ALLOWED_IMAGE_TYPES = new Set([
 export type ImageVariantName = "web" | "poster" | "thumbnail";
 
 type ImageVariantSpec = {
+  fit: "cover" | "inside";
+  height?: number;
   maxWidth: number;
   name: ImageVariantName;
   quality: number;
@@ -37,7 +39,7 @@ export type OptimizedImageMetadata = {
     sizeBytes: number;
     width: number | null;
   };
-  pipelineVersion: 1;
+  pipelineVersion: 2;
   skippedReason?: string;
   variants: Partial<Record<ImageVariantName, OptimizedImageVariant>>;
 };
@@ -50,9 +52,9 @@ export type PreparedImageUpload = {
 };
 
 const VARIANT_SPECS: ImageVariantSpec[] = [
-  { name: "web", suffix: "web-1920", maxWidth: 1920, quality: 82 },
-  { name: "poster", suffix: "poster-1280", maxWidth: 1280, quality: 82 },
-  { name: "thumbnail", suffix: "thumb-640", maxWidth: 640, quality: 78 },
+  { name: "web", suffix: "web-1920", maxWidth: 1920, fit: "inside", quality: 82 },
+  { name: "poster", suffix: "poster-1280", maxWidth: 1280, height: 720, fit: "cover", quality: 82 },
+  { name: "thumbnail", suffix: "thumb-640", maxWidth: 640, height: 360, fit: "cover", quality: 78 },
 ];
 
 function variantKey(originalKey: string, suffix: string) {
@@ -133,7 +135,7 @@ export async function prepareOptimizedImageUpload(params: {
       sizeBytes: params.sizeBytes,
       width: originalWidth,
     },
-    pipelineVersion: 1,
+    pipelineVersion: 2,
     variants: {},
   };
 
@@ -160,9 +162,10 @@ export async function prepareOptimizedImageUpload(params: {
       const output = await sharp(params.body)
         .rotate()
         .resize({
-          fit: "inside",
+          fit: spec.fit,
+          height: spec.height,
           width: spec.maxWidth,
-          withoutEnlargement: true,
+          withoutEnlargement: spec.fit === "inside",
         })
         .webp({
           effort: 5,
