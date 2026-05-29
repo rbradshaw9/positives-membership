@@ -2,6 +2,7 @@ import { Readable } from "node:stream";
 import { NextResponse } from "next/server";
 import { getAdminPermissionSet, isBootstrapAdminEmail } from "@/lib/auth/require-admin";
 import { getSession } from "@/lib/auth/get-session";
+import { getImageVariantFromMetadata, type ImageVariantName } from "@/lib/media/image-optimization";
 import { getMediaObject, headMediaObject } from "@/lib/media/s3";
 import { hasActiveMemberAccess } from "@/lib/subscription/access";
 import { getAdminClient } from "@/lib/supabase/admin";
@@ -19,6 +20,7 @@ type MediaAssetRow = {
   object_key: string;
   content_type: string;
   size_bytes: number;
+  metadata: unknown;
   status: string;
   visibility: "member" | "admin";
   original_filename: string | null;
@@ -88,6 +90,12 @@ function parseRange(rangeHeader: string | null, size: number) {
   return { start, end };
 }
 
+function normalizeVariant(value: string | null): ImageVariantName | "original" | null {
+  if (value === "web" || value === "poster" || value === "thumbnail" || value === "original") return value;
+  if (value === "thumb") return "thumbnail";
+  return null;
+}
+
 export async function GET(request: Request, context: { params: Params }) {
   const user = await getSession();
   if (!user) return jsonError("Unauthorized", 401);
@@ -96,7 +104,7 @@ export async function GET(request: Request, context: { params: Params }) {
   const supabase = asLooseSupabaseClient(getAdminClient());
   const { data: asset, error } = await supabase
     .from("media_asset")
-    .select<MediaAssetRow>("id, bucket, object_key, content_type, size_bytes, status, visibility, original_filename")
+    .select<MediaAssetRow>("id, bucket, object_key, content_type, size_bytes, metadata, status, visibility, original_filename")
     .eq("id", id)
     .maybeSingle();
 
@@ -115,18 +123,25 @@ export async function GET(request: Request, context: { params: Params }) {
   }
 
   try {
-    let assetSize = asset.size_bytes;
+    const requestedVariant = normalizeVariant(new URL(request.url).searchParams.get("variant"));
+    const optimizedVariant = asset.content_type.startsWith("image/")
+      ? getImageVariantFromMetadata(asset.metadata, requestedVariant)
+      : null;
+    const objectKey = optimizedVariant?.key ?? asset.object_key;
+    const contentType = optimizedVariant?.contentType ?? asset.content_type;
+    let assetSize = optimizedVariant?.sizeBytes ?? asset.size_bytes;
+
     if (request.headers.get("range") && !assetSize) {
       const head = await headMediaObject({
         bucket: asset.bucket,
-        key: asset.object_key,
+        key: objectKey,
       });
       assetSize = head.ContentLength ?? 0;
     }
     const range = parseRange(request.headers.get("range"), assetSize);
     const object = await getMediaObject({
       bucket: asset.bucket,
-      key: asset.object_key,
+      key: objectKey,
       range: range ? `bytes=${range.start}-${range.end}` : undefined,
     });
     const stream = bodyToWebStream(object.Body);
@@ -135,9 +150,11 @@ export async function GET(request: Request, context: { params: Params }) {
     return new Response(stream, {
       status: range ? 206 : 200,
       headers: {
-        "Content-Type": asset.content_type,
+        "Content-Type": contentType,
         "Accept-Ranges": "bytes",
-        "Cache-Control": "private, max-age=3600",
+        "Cache-Control": optimizedVariant
+          ? "private, max-age=86400"
+          : "private, max-age=3600",
         ...(range && assetSize
           ? {
               "Content-Range": `bytes ${range.start}-${range.end}/${assetSize}`,

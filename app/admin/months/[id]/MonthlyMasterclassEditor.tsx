@@ -135,6 +135,7 @@ export function MonthlyMasterclassEditor({
                   label="Featured image"
                   defaultValue={existing?.featured_image_url}
                   placeholder="Used as the larger monthly theme artwork."
+                  recommendation="Recommended: 1920 x 1080 px, 16:9. Minimum: 1280 x 720 px."
                 />
               </div>
               <div className="admin-form-field">
@@ -143,6 +144,8 @@ export function MonthlyMasterclassEditor({
                   label="Thumbnail / poster"
                   defaultValue={existing?.thumbnail_image_url}
                   placeholder="Used as a compact card or video poster."
+                  recommendation="Recommended: 1280 x 720 px, 16:9. Keep key text or faces centered."
+                  selectedVariant="poster"
                 />
               </div>
             </div>

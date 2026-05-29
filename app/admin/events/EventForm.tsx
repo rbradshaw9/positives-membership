@@ -94,6 +94,7 @@ type EventImageAsset = {
   originalFilename: string | null;
   contentType: string;
   sizeBytes: number;
+  thumbnailUrl?: string;
   url: string;
   createdAt: string;
 };
@@ -460,7 +461,7 @@ function EventImagePicker({ defaultValue = "" }: { defaultValue?: string | null 
                       <button key={asset.id} type="button" className="event-image-card" onClick={() => selectAsset(asset)}>
                         <span className="event-image-card__thumb">
                           <SafeImage
-                            src={asset.url}
+                            src={asset.thumbnailUrl ?? asset.url}
                             alt=""
                             width={320}
                             height={240}

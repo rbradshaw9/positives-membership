@@ -17,6 +17,7 @@ type EventImageAsset = {
   originalFilename: string | null;
   contentType: string;
   sizeBytes: number;
+  thumbnailUrl?: string;
   url: string;
   createdAt: string;
 };
@@ -548,7 +549,7 @@ export function EventDetailsEditor({
                     {assets.map((asset) => (
                       <button key={asset.id} type="button" className="event-image-card" onClick={() => insertImage(asset)}>
                         <span className="event-image-card__thumb">
-                          <img src={asset.url} alt={asset.altText ?? asset.title ?? ""} loading="lazy" />
+                          <img src={asset.thumbnailUrl ?? asset.url} alt={asset.altText ?? asset.title ?? ""} loading="lazy" />
                         </span>
                         <span className="event-image-card__title">{asset.title || asset.originalFilename || "Event image"}</span>
                         <span className="event-image-card__meta">{formatFileSize(asset.sizeBytes)}</span>

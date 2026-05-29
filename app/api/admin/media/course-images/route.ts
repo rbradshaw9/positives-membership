@@ -1,15 +1,18 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/require-admin";
+import {
+  ALLOWED_IMAGE_TYPES,
+  MAX_IMAGE_UPLOAD_BYTES,
+  imageAssetUrl,
+  prepareOptimizedImageUpload,
+} from "@/lib/media/image-optimization";
 import { getS3MediaConfig, mediaObjectKey, putMediaObject } from "@/lib/media/s3";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 type MediaAssetRow = {
   id: string;
@@ -50,7 +53,9 @@ function mapAsset(row: MediaAssetRow) {
     originalFilename: row.original_filename,
     contentType: row.content_type,
     sizeBytes: row.size_bytes,
-    url: `/api/media/assets/${row.id}`,
+    url: imageAssetUrl(row.id),
+    posterUrl: imageAssetUrl(row.id, "poster"),
+    thumbnailUrl: imageAssetUrl(row.id, "thumbnail"),
     createdAt: row.created_at,
   };
 }
@@ -82,19 +87,42 @@ export async function POST(request: Request) {
 
   if (!(file instanceof File)) return jsonError("Choose an image to upload.");
   if (!ALLOWED_IMAGE_TYPES.has(file.type)) return jsonError("Upload a JPG, PNG, WebP, or GIF image.");
-  if (file.size <= 0 || file.size > MAX_IMAGE_BYTES) return jsonError("Images must be smaller than 8 MB.");
+  if (file.size <= 0 || file.size > MAX_IMAGE_UPLOAD_BYTES) return jsonError("Images must be smaller than 8 MB.");
 
   const title = formData.get("title")?.toString().trim() || file.name.replace(/\.[^.]+$/, "");
   const altText = formData.get("alt_text")?.toString().trim() || title;
   const { year, month } = monthKey();
   const objectKey = mediaObjectKey("images", "courses", "editor-uploads", year, month, `${randomUUID()}-${safeFilename(file.name)}`);
+  const body = Buffer.from(await file.arrayBuffer());
+  let preparedImage: Awaited<ReturnType<typeof prepareOptimizedImageUpload>>;
 
   try {
-    await putMediaObject({
-      key: objectKey,
-      body: Buffer.from(await file.arrayBuffer()),
+    preparedImage = await prepareOptimizedImageUpload({
+      body,
       contentType: file.type,
+      originalKey: objectKey,
+      sizeBytes: file.size,
     });
+  } catch (error) {
+    console.error("[course-images] image optimization failed:", error);
+    return jsonError("Image could not be processed. Try a different JPG, PNG, WebP, or GIF.", 400);
+  }
+
+  try {
+    await Promise.all([
+      putMediaObject({
+        key: objectKey,
+        body,
+        contentType: file.type,
+      }),
+      ...preparedImage.variants.map((variant) =>
+        putMediaObject({
+          key: variant.key,
+          body: variant.body,
+          contentType: variant.contentType,
+        })
+      ),
+    ]);
   } catch (error) {
     console.error("[course-images] S3 upload failed:", error);
     return jsonError("Image could not be uploaded to S3.", 502);
@@ -115,10 +143,12 @@ export async function POST(request: Request) {
       original_filename: file.name,
       content_type: file.type,
       size_bytes: file.size,
+      width: preparedImage.originalWidth,
+      height: preparedImage.originalHeight,
       status: "active",
       visibility: "member",
       uploaded_by: user.id,
-      metadata: {},
+      metadata: { imageOptimization: preparedImage.metadata },
     })
     .select<MediaAssetRow>("id, title, alt_text, original_filename, content_type, size_bytes, object_key, created_at")
     .single();

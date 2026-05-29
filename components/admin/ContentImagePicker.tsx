@@ -10,6 +10,8 @@ type ContentImageAsset = {
   originalFilename: string | null;
   contentType: string;
   sizeBytes: number;
+  posterUrl?: string;
+  thumbnailUrl?: string;
   url: string;
   createdAt: string;
 };
@@ -20,7 +22,11 @@ type ContentImagePickerProps = {
   label: string;
   name: string;
   placeholder?: string;
+  recommendation?: string;
+  selectedVariant?: "poster" | "thumbnail" | "web";
 };
+
+const ACCEPTED_IMAGE_HELP = "Accepted: JPG, PNG, WebP, or GIF up to 8 MB.";
 
 function formatFileSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -34,16 +40,21 @@ export function ContentImagePicker({
   label,
   name,
   placeholder = "Upload or choose optional artwork.",
+  recommendation,
+  selectedVariant = "web",
 }: ContentImagePickerProps) {
+  const rootRef = useRef<HTMLDivElement>(null);
   const [selectedUrl, setSelectedUrl] = useState(defaultValue ?? "");
   const [modalOpen, setModalOpen] = useState(false);
-  const [tab, setTab] = useState<"library" | "upload">("library");
+  const [tab, setTab] = useState<"generate" | "library" | "upload">("library");
   const [assets, setAssets] = useState<ContentImageAsset[]>([]);
   const [libraryLoaded, setLibraryLoaded] = useState(false);
   const [libraryLoading, setLibraryLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const generationPromptRef = useRef<HTMLTextAreaElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const altInputRef = useRef<HTMLInputElement>(null);
 
@@ -63,7 +74,7 @@ export function ContentImagePicker({
     }
   }
 
-  function openModal(nextTab: "library" | "upload") {
+  function openModal(nextTab: "generate" | "library" | "upload") {
     setTab(nextTab);
     setError(null);
     setModalOpen(true);
@@ -72,9 +83,56 @@ export function ContentImagePicker({
     }
   }
 
+  function selectionUrl(asset: ContentImageAsset) {
+    if (selectedVariant === "poster") return asset.posterUrl ?? asset.url;
+    if (selectedVariant === "thumbnail") return asset.thumbnailUrl ?? asset.url;
+    return asset.url;
+  }
+
+  function generationContext() {
+    const form = rootRef.current?.closest("form");
+    const data = form ? new FormData(form) : null;
+
+    return {
+      body: data?.get("body")?.toString() ?? "",
+      description: data?.get("description")?.toString() ?? "",
+      excerpt: data?.get("excerpt")?.toString() ?? "",
+      fieldLabel: label,
+      prompt: generationPromptRef.current?.value ?? "",
+      reflectionPrompt: data?.get("reflection_prompt")?.toString() ?? "",
+      target: selectedVariant === "poster" ? "poster" : selectedVariant === "thumbnail" ? "thumbnail" : "featured",
+      title: data?.get("title")?.toString() ?? "",
+    };
+  }
+
   function selectAsset(asset: ContentImageAsset) {
-    setSelectedUrl(asset.url);
+    setSelectedUrl(selectionUrl(asset));
     setModalOpen(false);
+  }
+
+  async function generateImage() {
+    setGenerating(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/admin/media/content-images/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(generationContext()),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error ?? "Image could not be generated.");
+      const asset = payload.asset as ContentImageAsset;
+      setAssets((current) => [asset, ...current.filter((item) => item.id !== asset.id)]);
+      setLibraryLoaded(true);
+      setSelectedUrl(selectionUrl(asset));
+      setModalOpen(false);
+      if (generationPromptRef.current) generationPromptRef.current.value = "";
+    } catch (generateError) {
+      setError(generateError instanceof Error ? generateError.message : "Image could not be generated.");
+    } finally {
+      setGenerating(false);
+    }
   }
 
   async function uploadImage() {
@@ -101,7 +159,7 @@ export function ContentImagePicker({
       const asset = payload.asset as ContentImageAsset;
       setAssets((current) => [asset, ...current.filter((item) => item.id !== asset.id)]);
       setLibraryLoaded(true);
-      setSelectedUrl(asset.url);
+      setSelectedUrl(selectionUrl(asset));
       setModalOpen(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
       if (titleInputRef.current) titleInputRef.current.value = "";
@@ -114,7 +172,7 @@ export function ContentImagePicker({
   }
 
   return (
-    <div className="grid gap-3">
+    <div ref={rootRef} className="grid gap-3">
       <input type="hidden" name={name} value={selectedUrl} readOnly />
       <div className="overflow-hidden rounded-xl border border-border bg-muted/20">
         {selectedUrl ? (
@@ -140,6 +198,9 @@ export function ContentImagePicker({
         <button type="button" className="admin-btn admin-btn--primary justify-center" onClick={() => openModal("upload")}>
           Upload image
         </button>
+        <button type="button" className="admin-btn admin-btn--outline justify-center" onClick={() => openModal("generate")}>
+          Generate image
+        </button>
         <button type="button" className="admin-btn admin-btn--outline justify-center" onClick={() => openModal("library")}>
           Choose from library
         </button>
@@ -150,6 +211,8 @@ export function ContentImagePicker({
         ) : null}
       </div>
       {description ? <p className="admin-hint">{description}</p> : null}
+      {recommendation ? <p className="admin-hint">{recommendation}</p> : null}
+      <p className="admin-hint">{ACCEPTED_IMAGE_HELP}</p>
 
       {modalOpen ? (
         <div className="event-image-modal" role="dialog" aria-modal="true" aria-labelledby={`${name}-content-image-title`}>
@@ -162,6 +225,13 @@ export function ContentImagePicker({
                 <p className="event-image-modal__subtitle">
                   Upload a new S3 image or choose one from the content image library.
                 </p>
+                {recommendation ? (
+                  <p className="event-image-modal__subtitle">
+                    {recommendation} {ACCEPTED_IMAGE_HELP}
+                  </p>
+                ) : (
+                  <p className="event-image-modal__subtitle">{ACCEPTED_IMAGE_HELP}</p>
+                )}
               </div>
               <button type="button" className="admin-btn admin-btn--outline" onClick={() => setModalOpen(false)}>
                 Close
@@ -169,6 +239,9 @@ export function ContentImagePicker({
             </div>
 
             <div className="event-image-modal__tabs" role="tablist" aria-label="Image options">
+              <button type="button" className={tab === "generate" ? "is-active" : ""} onClick={() => setTab("generate")}>
+                Generate
+              </button>
               <button type="button" className={tab === "library" ? "is-active" : ""} onClick={() => setTab("library")}>
                 Library
               </button>
@@ -179,7 +252,30 @@ export function ContentImagePicker({
 
             {error ? <div className="admin-banner admin-banner--error">{error}</div> : null}
 
-            {tab === "library" ? (
+            {tab === "generate" ? (
+              <div className="event-image-modal__body">
+                <label className="admin-form-field">
+                  <span className="admin-label">Creative direction</span>
+                  <textarea
+                    ref={generationPromptRef}
+                    className="admin-textarea admin-textarea--no-resize"
+                    rows={4}
+                    placeholder="Optional: describe mood, subject, symbolism, or what to avoid."
+                  />
+                </label>
+                <p className="admin-hint">
+                  Uses the current title, excerpt, and description from this form, then saves the result to the image library.
+                </p>
+                <div className="event-image-modal__actions">
+                  <button type="button" className="admin-btn admin-btn--outline" onClick={() => setModalOpen(false)}>
+                    Cancel
+                  </button>
+                  <button type="button" className="admin-btn admin-btn--primary" onClick={() => void generateImage()} disabled={generating}>
+                    {generating ? "Generating..." : "Generate and use image"}
+                  </button>
+                </div>
+              </div>
+            ) : tab === "library" ? (
               <div className="event-image-modal__body">
                 <div className="event-image-modal__toolbar">
                   <p className="event-image-modal__subtitle">
@@ -195,7 +291,7 @@ export function ContentImagePicker({
                       <button key={asset.id} type="button" className="event-image-card" onClick={() => selectAsset(asset)}>
                         <span className="event-image-card__thumb">
                           <SafeImage
-                            src={asset.url}
+                            src={asset.thumbnailUrl ?? asset.url}
                             alt=""
                             width={320}
                             height={240}

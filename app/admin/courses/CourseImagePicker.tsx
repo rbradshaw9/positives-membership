@@ -6,6 +6,7 @@ type Asset = {
   id: string;
   title: string | null;
   originalFilename: string | null;
+  thumbnailUrl?: string;
   url: string;
 };
 
@@ -109,7 +110,7 @@ export function CourseImagePicker({ defaultValue = "" }: { defaultValue?: string
                   aspectRatio: "1.25",
                   borderRadius: "0.625rem",
                   border: value === asset.url ? "2px solid var(--color-primary)" : "1px solid var(--color-border)",
-                  background: `center / cover url(${asset.url})`,
+                  background: `center / cover url(${asset.thumbnailUrl ?? asset.url})`,
                   cursor: "pointer",
                 }}
               />

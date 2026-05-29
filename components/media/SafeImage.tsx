@@ -36,6 +36,7 @@ function isOptimizableRemoteUrl(url: URL) {
 }
 
 export function canUseNextImage(src: string) {
+  if (src.startsWith("/api/media/assets/")) return false;
   if (src.startsWith("/")) return true;
 
   try {

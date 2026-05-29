@@ -301,6 +301,7 @@ export function ContentForm({
               defaultValue={values?.featured_image_url}
               placeholder="Used on larger detail and monthly surfaces."
               description="Best for monthly themes, library details, and gentle Daily card atmosphere."
+              recommendation="Recommended: 1920 x 1080 px, 16:9. Minimum: 1280 x 720 px."
             />
           </div>
           <div className="admin-form-field">
@@ -310,6 +311,8 @@ export function ContentForm({
               defaultValue={values?.thumbnail_image_url}
               placeholder="Used for compact cards and video posters."
               description="Optional. If blank, the featured image is reused where a thumbnail is helpful."
+              recommendation="Recommended: 1280 x 720 px, 16:9. Keep key text or faces centered."
+              selectedVariant="poster"
             />
           </div>
         </div>
