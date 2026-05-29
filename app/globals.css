@@ -2146,12 +2146,54 @@ select.member-input { cursor: pointer; }
   gap: 0.75rem;
 }
 
+.admin-section__header-button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-section__header-button:hover {
+  background: color-mix(in srgb, var(--color-muted) 45%, transparent);
+}
+
+.admin-section__header-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
 .admin-section__title {
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-muted-fg);
+}
+
+.admin-section__subtitle {
+  display: block;
+  margin: 0.25rem 0 0;
+  color: var(--color-muted-fg);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.admin-section__count,
+.admin-section__toggle {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-muted);
+  color: var(--color-muted-fg);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.4rem 0.65rem;
+  white-space: nowrap;
 }
 
 .admin-section__body {
@@ -2496,6 +2538,10 @@ select.admin-select:focus,
 
 /* ── Month workspace — page header split layout ───────────────────────────── */
 
+.admin-month-workspace {
+  max-width: 72rem;
+}
+
 .admin-page-header--split {
   display: flex;
   align-items: flex-start;
@@ -2514,6 +2560,90 @@ select.admin-select:focus,
 .admin-month-year-label {
   font-size: 0.8125rem;
   color: var(--color-muted-fg);
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-month-setup-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.admin-month-setup-card {
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  background: var(--color-card);
+  box-shadow: var(--shadow-soft);
+  padding: 1rem;
+}
+
+.admin-month-setup-card.is-complete {
+  border-color: color-mix(in srgb, var(--color-primary) 24%, var(--color-border));
+}
+
+.admin-month-setup-card__topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: var(--color-foreground);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.admin-month-setup-card__topline span:last-child {
+  color: var(--color-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-month-setup-card p {
+  margin: 0.5rem 0 0;
+  color: var(--color-muted-fg);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.admin-month-alerts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.admin-month-alert {
+  border: 1px solid color-mix(in srgb, var(--color-secondary) 18%, var(--color-border));
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--color-secondary) 7%, transparent);
+  color: var(--color-muted-fg);
+  font-size: 0.75rem;
+  line-height: 1.3;
+  padding: 0.45rem 0.75rem;
+}
+
+.admin-month-alert.is-warning {
+  border-color: rgba(245, 158, 11, 0.24);
+  background: rgba(245, 158, 11, 0.07);
+  color: #b45309;
+}
+
+.admin-month-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-bottom: 1.5rem;
+  color: var(--color-muted-fg);
+  font-size: 0.8125rem;
+}
+
+.admin-month-metric {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.admin-month-metric strong {
+  color: var(--color-foreground);
   font-variant-numeric: tabular-nums;
 }
 
@@ -2564,7 +2694,128 @@ select.admin-select:focus,
   font-variant-numeric: tabular-nums;
 }
 
+.admin-flow-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.admin-link-button {
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.admin-link-button:hover {
+  color: color-mix(in srgb, var(--color-primary) 78%, black);
+}
+
 /* ── Month workspace — weekly reflections list ────────────────────────────── */
+
+.admin-week-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-week-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  padding: 0.875rem 1.25rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.admin-week-row:first-child {
+  border-top: 0;
+}
+
+.admin-week-row--empty {
+  background: color-mix(in srgb, var(--color-muted) 22%, transparent);
+}
+
+.admin-week-row__main {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.admin-week-row__date {
+  color: var(--color-muted-fg);
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  min-width: 5.5rem;
+}
+
+.admin-week-row__title {
+  color: var(--color-foreground);
+  font-size: 0.875rem;
+  font-weight: 700;
+  min-width: 0;
+  overflow: hidden;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-week-row__title:hover {
+  color: var(--color-primary);
+}
+
+.admin-week-row__empty-label {
+  color: var(--color-muted-fg);
+  font-size: 0.8125rem;
+}
+
+.admin-week-row__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.admin-week-row__form {
+  flex-basis: 100%;
+  margin-top: 0.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+@media (max-width: 768px) {
+  .admin-page-header--split,
+  .admin-month-workspace .admin-section__header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-section__header-meta {
+    justify-content: space-between;
+  }
+
+  .admin-month-setup-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-week-row__main,
+  .admin-week-row__actions {
+    width: 100%;
+  }
+
+  .admin-week-row__actions {
+    justify-content: space-between;
+  }
+}
 
 .admin-weekly-list {
   display: flex;

@@ -119,13 +119,13 @@ export function DailyAudioGrid({
       {/* Header */}
       <div className="admin-section__header">
         <div>
-          <span className="admin-section__title">Daily Audio Grid</span>
-          <p className="admin-hint" style={{ marginTop: "0.125rem" }}>
-            Drag filled slots to reorder
+          <span className="admin-section__title">Daily audio</span>
+          <p className="admin-section__subtitle">
+            Upload in bulk, assign open days, or drag filled days to reorder.
           </p>
         </div>
-        <span className="admin-hint" style={{ flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>
-          {filledSlots}/{totalSlots} filled ({fillPct}%)
+        <span className="admin-section__count">
+          {filledSlots}/{totalSlots}
         </span>
       </div>
 
@@ -272,8 +272,8 @@ export function DailyAudioGrid({
                         color: "var(--color-muted-fg)",
                       }}
                     >
-                      <span>🎧{slot.content!.listens}</span>
-                      <span>📝{slot.content!.notes}</span>
+                      <span>{slot.content!.listens} plays</span>
+                      <span>{slot.content!.notes} notes</span>
                     </div>
                     <form action={unassignDailyAudio} style={{ marginTop: "0.125rem" }}>
                       <input
@@ -295,7 +295,7 @@ export function DailyAudioGrid({
                         }}
                         title="Remove from this date"
                       >
-                        ✕
+                        Remove
                       </button>
                     </form>
                   </div>
@@ -355,9 +355,9 @@ export function DailyAudioGrid({
                             fontWeight: 600,
                             transition: "color 120ms ease",
                           }}
-                        >
-                          + Assign
-                        </button>
+                      >
+                        Assign
+                      </button>
                       </form>
                     ) : (
                       <span style={{ fontSize: "0.5625rem", color: "var(--color-muted-fg)" }}>—</span>
@@ -377,7 +377,7 @@ export function DailyAudioGrid({
                           marginTop: "0.125rem",
                         }}
                       >
-                        + New
+                        New
                       </button>
                     )}
                   </div>
@@ -414,7 +414,7 @@ export function DailyAudioGrid({
                 color: "var(--color-foreground)",
               }}
             >
-              New Daily Audio —{" "}
+              New daily audio -{" "}
               {new Date(quickAddDate + "T12:00:00").toLocaleDateString("en-US", {
                 month: "short",
                 day: "numeric",

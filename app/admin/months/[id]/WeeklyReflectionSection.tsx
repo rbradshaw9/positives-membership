@@ -46,17 +46,15 @@ export function WeeklyReflectionSection({
   return (
     <div className="admin-section" style={{ marginBottom: "1.5rem" }}>
       <div className="admin-section__header">
-        <span className="admin-section__title">📝 Weekly Reflections</span>
-        <span
-          style={{
-            fontSize: "0.6875rem",
-            color: "var(--color-muted-fg)",
-          }}
-        >
-          {weekSlots.filter((w) => w.content).length}/{weekSlots.length} filled
+        <div>
+          <span className="admin-section__title">Weekly principles</span>
+          <p className="admin-section__subtitle">Add one clear focus for each week in the month.</p>
+        </div>
+        <span className="admin-section__count">
+          {weekSlots.filter((w) => w.content).length}/{weekSlots.length}
         </span>
       </div>
-      <div className="admin-section__body" style={{ padding: 0 }}>
+      <div className="admin-week-list">
         {weekSlots.map((slot) => (
           <WeekSlotRow
             key={slot.weekStart}
@@ -85,99 +83,52 @@ function WeekSlotRow({
   const [expanded, setExpanded] = useState(false);
 
   if (slot.content) {
-    // Filled state: compact row
     return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0.75rem 1.25rem",
-          borderBottom: "1px solid var(--color-border)",
-          gap: "0.75rem",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", minWidth: 0, flex: 1 }}>
-          <span
-            style={{
-              fontSize: "0.6875rem",
-              color: "var(--color-muted-fg)",
-              fontVariantNumeric: "tabular-nums",
-              minWidth: "6rem",
-              flexShrink: 0,
-            }}
-          >
+      <div className="admin-week-row">
+        <div className="admin-week-row__main">
+          <span className="admin-week-row__date">
             Wk {slot.weekNumber} · {slot.weekLabel}
           </span>
           <Link
             href={`/admin/months/${monthId}/content/${slot.content.id}/edit`}
-            style={{
-              fontSize: "0.8125rem",
-              fontWeight: 600,
-              color: "var(--color-foreground)",
-              textDecoration: "none",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
+            className="admin-week-row__title"
           >
             {slot.content.title}
           </Link>
         </div>
-        <span className={STATUS_BADGE[slot.content.status] ?? STATUS_BADGE.draft}>
-          {STATUS_LABEL[slot.content.status] ?? slot.content.status}
-        </span>
+        <div className="admin-week-row__actions">
+          <span className={STATUS_BADGE[slot.content.status] ?? STATUS_BADGE.draft}>
+            {STATUS_LABEL[slot.content.status] ?? slot.content.status}
+          </span>
+          <Link href={`/admin/months/${monthId}/content/${slot.content.id}/edit`} className="admin-link-button">
+            Edit
+          </Link>
+        </div>
       </div>
     );
   }
 
-  // Empty state: add button + expandable form
   return (
-    <div
-      style={{
-        borderBottom: "1px solid var(--color-border)",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0.75rem 1.25rem",
-          gap: "0.75rem",
-        }}
-      >
-        <span
-          style={{
-            fontSize: "0.6875rem",
-            color: "var(--color-muted-fg)",
-            fontVariantNumeric: "tabular-nums",
-            minWidth: "6rem",
-          }}
-        >
+    <div className="admin-week-row admin-week-row--empty">
+      <div className="admin-week-row__main">
+        <span className="admin-week-row__date">
           Wk {slot.weekNumber} · {slot.weekLabel}
         </span>
+        <span className="admin-week-row__empty-label">No weekly principle yet</span>
+      </div>
+      <div className="admin-week-row__actions">
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          style={{
-            font: "inherit",
-            fontSize: "0.75rem",
-            fontWeight: 600,
-            color: "var(--color-primary)",
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            padding: 0,
-          }}
+          className="admin-link-button"
         >
-          {expanded ? "Cancel" : "+ Add reflection"}
+          {expanded ? "Cancel" : "Add"}
         </button>
       </div>
 
       {expanded && (
-        <div style={{ padding: "0 1.25rem 1rem" }}>
-          <form action={action}>
+        <div className="admin-week-row__form">
+          <form action={action} className="admin-flow-form">
             <input type="hidden" name="month_id" value={monthId} />
             <input type="hidden" name="month_year" value={monthYear} />
             <input type="hidden" name="week_start" value={slot.weekStart} />
@@ -236,9 +187,8 @@ function WeekSlotRow({
             <button
               type="submit"
               className="admin-btn admin-btn--primary"
-              style={{ marginTop: "0.5rem" }}
             >
-              Create Reflection
+              Create weekly principle
             </button>
           </form>
         </div>
