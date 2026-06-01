@@ -222,18 +222,18 @@ export function ContentImagePicker({
           </div>
         )}
       </div>
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <button type="button" className="admin-btn admin-btn--primary justify-center" onClick={() => openModal("upload")}>
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        <button type="button" className="admin-btn admin-btn--primary min-w-[8.5rem] flex-1 justify-center" onClick={() => openModal("upload")}>
           Upload image
         </button>
-        <button type="button" className="admin-btn admin-btn--outline justify-center" onClick={() => openModal("generate")}>
+        <button type="button" className="admin-btn admin-btn--outline min-w-[8.5rem] flex-1 justify-center" onClick={() => openModal("generate")}>
           Generate image
         </button>
-        <button type="button" className="admin-btn admin-btn--outline justify-center" onClick={() => openModal("library")}>
+        <button type="button" className="admin-btn admin-btn--outline min-w-[8.5rem] flex-1 justify-center" onClick={() => openModal("library")}>
           Choose from library
         </button>
         {selectedUrl ? (
-          <button type="button" className="admin-btn admin-btn--outline justify-center" onClick={() => setSelectedUrl("")}>
+          <button type="button" className="admin-btn admin-btn--outline min-w-[8.5rem] flex-1 justify-center" onClick={() => setSelectedUrl("")}>
             Remove image
           </button>
         ) : null}

@@ -643,6 +643,12 @@ export function ContentForm({
       {/* ─── Downloads & links ───────────────────────────────────────────── */}
       <div className="admin-form-section">
         <p className="admin-form-section__label">Downloads &amp; links</p>
+        {isPracticeContent ? (
+          <p className="admin-hint" style={{ marginBottom: "0.75rem" }}>
+            Only add member-facing resources such as worksheets or public articles. Do not add
+            source notes, Zoom docs, transcripts, recordings, or internal planning links here.
+          </p>
+        ) : null}
 
         <div className="admin-form-field">
           <label htmlFor="download_url" className="admin-label">

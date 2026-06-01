@@ -22,6 +22,7 @@ import { stripCmsPreamble } from "@/lib/content/strip-cms-preamble";
 interface MonthlyThemeCardProps {
   content: MonthlyContent | null;
   initialNoteCount?: number;
+  monthLabel?: string;
   viewerUserId?: string | null;
 }
 
@@ -32,6 +33,7 @@ function currentMonthName(): string {
 export function MonthlyThemeCard({
   content,
   initialNoteCount = 0,
+  monthLabel,
 }: MonthlyThemeCardProps) {
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteCount, setNoteCount] = useState(initialNoteCount);
@@ -59,9 +61,10 @@ export function MonthlyThemeCard({
   const hasBody = !!(content?.body || content?.description);
   const rawBodyText = content?.body || content?.description || "";
   // Strip title + excerpt if the CMS baked them into the top of the body field
-  const bodyText = stripCmsPreamble(rawBodyText, content?.title, content?.description);
+  const bodyText = stripCmsPreamble(rawBodyText, content?.title, content?.excerpt);
   const isLongBody = bodyText.replace(/\\n/g, "\n").length > 320;
   const [bodyExpanded, setBodyExpanded] = useState(false);
+  const displayMonth = monthLabel ?? currentMonthName();
 
   return (
     <>
@@ -94,10 +97,10 @@ export function MonthlyThemeCard({
           ) : (
             <>
               <h2 className="font-heading font-bold text-xl text-foreground/40 leading-heading tracking-[-0.02em] mb-2">
-                {currentMonthName()}&apos;s theme
+                {displayMonth}&apos;s theme
               </h2>
               <p className="text-sm text-muted-foreground leading-body">
-                {currentMonthName()}&apos;s theme arrives at the start of the month.
+                {displayMonth}&apos;s theme arrives at the start of the month.
               </p>
             </>
           )}
@@ -184,11 +187,11 @@ export function MonthlyThemeCard({
                 &ldquo;{content.reflection_prompt}&rdquo;
               </p>
             )}
-            <div className="pt-3 border-t border-border/60 flex items-center justify-between">
+            <div className="flex flex-col gap-3 border-t border-border/60 pt-3 sm:flex-row sm:items-center sm:justify-between">
               <button
                 type="button"
                 onClick={handleOpenNote}
-                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all"
+                className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all"
                 style={{
                   background: noteCount > 0
                     ? "color-mix(in srgb, var(--color-accent) 12%, transparent)"

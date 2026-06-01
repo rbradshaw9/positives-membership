@@ -234,11 +234,11 @@ export function WeeklyPrincipleCard({
                 &ldquo;{content.reflection_prompt}&rdquo;
               </p>
             )}
-            <div className="pt-3 border-t border-border/60 flex items-center justify-between">
+            <div className="flex flex-col gap-3 border-t border-border/60 pt-3 sm:flex-row sm:items-center sm:justify-between">
               <button
                 type="button"
                 onClick={handleOpenNote}
-                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all"
+                className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all"
                 style={{
                   background: noteCount > 0
                     ? "color-mix(in srgb, var(--color-secondary) 12%, transparent)"

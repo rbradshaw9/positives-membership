@@ -144,14 +144,14 @@ export default async function MonthWorkspacePage({
       label: "Monthly theme",
       href: "#monthly-theme",
       value: month.theme ? "Ready" : "Needed",
-      detail: month.theme?.title ?? "Add the guiding theme for this month.",
+      detail: month.theme?.title ?? "Add the member-facing theme for this month.",
       complete: Boolean(month.theme),
     },
     {
       label: "Weekly principles",
       href: "#weekly-principles",
       value: `${filledWeeks}/${weekSlots.length}`,
-      detail: filledWeeks === weekSlots.length ? "Each week has a reflection." : "Fill the remaining weekly reflections.",
+      detail: filledWeeks === weekSlots.length ? "Each week has a clear practice focus." : "Fill the remaining weekly practice focuses.",
       complete: filledWeeks === weekSlots.length,
     },
     {
@@ -237,7 +237,7 @@ export default async function MonthWorkspacePage({
           <p className="admin-month-guide__copy">
             {nextSetupItem
               ? `Next: ${nextSetupItem.detail}`
-              : "This month has the core content pieces in place."}
+              : "This month has the member-facing theme, weekly focus, and daily audio in place."}
           </p>
         </div>
         <div className="admin-month-guide__nav" aria-label="Month setup sections">

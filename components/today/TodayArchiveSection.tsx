@@ -122,7 +122,7 @@ export function TodayArchiveSection({
         <button
           type="button"
           onClick={() => setArchiveOpen((open) => !open)}
-          className="btn-secondary shrink-0 text-center text-sm"
+          className="btn-outline shrink-0 justify-center text-center text-sm"
           aria-expanded={archiveOpen}
           aria-controls="today-archive-content"
         >

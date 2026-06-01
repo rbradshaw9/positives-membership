@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { ContentItem } from "@/lib/queries/get-admin-month-detail";
 import { ContentImagePicker } from "@/components/admin/ContentImagePicker";
 import { usePersistentSectionState } from "./usePersistentSectionState";
@@ -60,7 +61,7 @@ export function MonthlyMasterclassEditor({
         <span>
           <span className="admin-section__title">Monthly theme</span>
           <span className="admin-section__subtitle">
-            {existing?.title ?? "Create the anchor lesson and artwork for this month."}
+            {existing?.title ?? "Create the member-facing theme, artwork, and reflection prompt."}
           </span>
         </span>
         <span className="admin-section__header-meta">
@@ -85,7 +86,7 @@ export function MonthlyMasterclassEditor({
             <section className="admin-form-group">
               <div className="admin-form-group__header">
                 <h3>Basics</h3>
-                <p>Name the theme and give it a short framing line.</p>
+                <p>Name the theme and give members one clear reason it matters this month.</p>
               </div>
               <div className="admin-form-field">
                 <label htmlFor="mc-title" className="admin-label">
@@ -162,7 +163,10 @@ export function MonthlyMasterclassEditor({
             <section className="admin-form-group">
               <div className="admin-form-group__header">
                 <h3>Content</h3>
-                <p>Use this for the member-facing summary and supporting notes.</p>
+                <p>
+                  Use transcripts, call notes, or research only as source material. Paste polished
+                  member-facing copy here, not Zoom links, source docs, or internal notes.
+                </p>
               </div>
               <div className="admin-form-field">
                 <label htmlFor="mc-description" className="admin-label">
@@ -196,7 +200,7 @@ export function MonthlyMasterclassEditor({
             <section className="admin-form-group">
               <div className="admin-form-group__header">
                 <h3>Media and status</h3>
-                <p>Attach the video and choose whether members can see it.</p>
+                <p>Attach legacy video links here, then choose whether members can see the theme.</p>
               </div>
               <div className="admin-form-grid-2">
                 <div className="admin-form-field">
@@ -208,10 +212,13 @@ export function MonthlyMasterclassEditor({
                     name="media_url"
                     type="url"
                     defaultValue={reconstructMediaUrl(existing)}
-                    placeholder="Paste a Vimeo or YouTube URL…"
+                    placeholder="Paste a Vimeo or YouTube URL..."
                     className="admin-input"
                   />
-                  <p className="admin-hint">Auto-detected: Vimeo or YouTube</p>
+                  <p className="admin-hint">
+                    Auto-detected: Vimeo or YouTube. For a new Mux upload, save the theme first,
+                    then open the full editor.
+                  </p>
                 </div>
 
                 <div className="admin-form-field">
@@ -237,6 +244,14 @@ export function MonthlyMasterclassEditor({
               <button type="submit" className="admin-btn admin-btn--primary">
                 {existing ? "Save monthly theme" : "Create monthly theme"}
               </button>
+              {existing ? (
+                <Link
+                  href={`/admin/months/${monthId}/content/${existing.id}/edit`}
+                  className="admin-btn admin-btn--outline"
+                >
+                  Open full editor
+                </Link>
+              ) : null}
             </div>
           </form>
         </div>

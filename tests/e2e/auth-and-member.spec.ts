@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import {
   LEVEL_3_MEMBER_EMAIL,
   LEVEL_3_MEMBER_PASSWORD,
@@ -6,6 +6,17 @@ import {
   MEMBER_EMAIL,
   MEMBER_PASSWORD,
 } from "./helpers";
+
+async function dismissMemberTourIfPresent(page: Page) {
+  const closeTourButton = page.getByRole("button", { name: "Close tour" });
+  try {
+    await expect(closeTourButton).toBeVisible({ timeout: 2_500 });
+  } catch {
+    return;
+  }
+  await closeTourButton.click();
+  await expect(closeTourButton).toHaveCount(0);
+}
 
 test("protected member routes redirect to login", async ({ page }) => {
   for (const pathname of ["/today", "/practice", "/community", "/coaching", "/account"]) {
@@ -88,16 +99,20 @@ test("member can navigate launch routes and use practice tabs", async ({ page })
     password: MEMBER_PASSWORD,
     next: "/today",
   });
+  await dismissMemberTourIfPresent(page);
 
   await expect(page.getByRole("region", { name: "Daily Practice", exact: true })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Continue your practice" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Your practice rhythm" })).toBeVisible();
   await expect(
     page.getByRole("heading", {
-      name: "Today is your next step. My Practice is your personal history.",
+      name: "One daily practice, supported by this week and this month.",
     })
   ).toBeVisible();
+  await expect(page.getByText("Today").first()).toBeVisible();
+  await expect(page.getByText("This Week").first()).toBeVisible();
+  await expect(page.getByText("This Month").first()).toBeVisible();
   await expect(page.getByText("Home is today's guidance")).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Open My Practice" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "View History" })).toBeVisible();
   await expect(page.getByText("Start your streak")).toHaveCount(0);
   await expect(
     page

@@ -64,7 +64,7 @@ export function WeeklyReflectionSection({
         <span>
           <span className="admin-section__title">Weekly principles</span>
           <span className="admin-section__subtitle">
-            Add one clear focus for each week in the month.
+            Add one clear member-facing focus for each week in the month.
           </span>
         </span>
         <span className="admin-section__header-meta">
@@ -83,7 +83,7 @@ export function WeeklyReflectionSection({
                   {missingSlots.length} week{missingSlots.length === 1 ? "" : "s"} still need a draft.
                 </p>
                 <p className="admin-week-bulk__copy">
-                  Create placeholders now, then edit each title and reflection when ready.
+                  Create placeholders now, then turn source notes into short, polished weekly copy.
                 </p>
               </div>
               <form action={bulkAction}>
@@ -163,7 +163,7 @@ function WeekSlotRow({
           <span>{slot.weekLabel}</span>
         </span>
         <span className="admin-week-row__empty-label">
-          Add the principle members will return to this week.
+          Add the focus members will return to this week.
         </span>
       </div>
       <div className="admin-week-row__actions">
@@ -192,7 +192,7 @@ function WeekSlotRow({
                   name="title"
                   type="text"
                   required
-                  placeholder={`Week ${slot.weekNumber} principle`}
+                  placeholder={`Week ${slot.weekNumber} focus`}
                   className="admin-input"
                 />
               </div>
@@ -213,7 +213,7 @@ function WeekSlotRow({
               <textarea
                 name="body"
                 rows={3}
-                placeholder="The weekly principle or reflection content…"
+                placeholder="Polished weekly principle or reflection copy..."
                 className="admin-textarea admin-textarea--no-resize"
               />
             </div>
