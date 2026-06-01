@@ -205,14 +205,27 @@ async function testCoach() {
   return data;
 }
 
-async function runCoachingPath(checks: Record<string, SmokeCheck>) {
+async function testCoachById(coachId: string) {
+  const supabase = asLooseSupabaseClient(getAdminClient());
+  const { data, error } = await supabase
+    .from("coach_profile")
+    .select<{ id: string; display_name: string; session_duration_minutes: number }>(
+      "id, display_name, session_duration_minutes"
+    )
+    .eq("id", coachId)
+    .maybeSingle();
+  if (error || !data?.id) throw new Error(error?.message ?? "Requested coach not found for coaching smoke test");
+  return data;
+}
+
+async function runCoachingPath(checks: Record<string, SmokeCheck>, coachId?: string | null) {
   const supabase = asLooseSupabaseClient(getAdminClient());
   let bookingId: string | null = null;
   let zoomConnectionId: string | null = null;
   let zoomMeetingId: string | null = null;
 
   try {
-    const [coach, member] = await Promise.all([testCoach(), testMember()]);
+    const [coach, member] = await Promise.all([coachId ? testCoachById(coachId) : testCoach(), testMember()]);
     const scheduledAt = startTime(105).toISOString();
     const durationMinutes = coach.session_duration_minutes || 60;
     const zoomSession = await createCoachingZoomMeeting({
@@ -228,6 +241,11 @@ async function runCoachingPath(checks: Record<string, SmokeCheck>) {
     }
     zoomConnectionId = zoomSession.connectionId;
     zoomMeetingId = zoomSession.meetingId;
+    checks.coachingZoomConnection = {
+      ok: Boolean(zoomConnectionId),
+      detail: "Coaching selected this Zoom connection",
+      id: zoomConnectionId ?? undefined,
+    };
     checks.coachingZoomCreate = { ok: true, detail: "Created coaching Zoom meeting", id: zoomMeetingId };
 
     const { data: bookingRaw, error: bookingError } = await supabase
@@ -283,7 +301,7 @@ async function runCoachingPath(checks: Record<string, SmokeCheck>) {
   }
 }
 
-export async function runZoomAppSmokeTest(params: { connectionId?: string | null } = {}): Promise<ZoomAppSmokeTestResult> {
+export async function runZoomAppSmokeTest(params: { connectionId?: string | null; coachId?: string | null } = {}): Promise<ZoomAppSmokeTestResult> {
   const connectionId = params.connectionId ?? (await latestActivePlatformConnectionId());
   const checks: Record<string, SmokeCheck> = {};
 
@@ -295,7 +313,7 @@ export async function runZoomAppSmokeTest(params: { connectionId?: string | null
   checks.connection = { ok: true, detail: "Active platform Zoom connection found", id: connectionId };
   await runEventPath({ connectionId, kind: "meeting", checks });
   await runEventPath({ connectionId, kind: "webinar", checks });
-  await runCoachingPath(checks);
+  await runCoachingPath(checks, params.coachId);
 
   return {
     ok: Object.values(checks).every((check) => check.ok),
