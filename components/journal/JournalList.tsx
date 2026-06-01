@@ -70,6 +70,7 @@ export function JournalList({ notes }: JournalListProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [query, setQuery] = useState("");
+  const [category, setCategory] = useState<"all" | "notes" | "reflections">("all");
   const [activeNote, setActiveNote] = useState<MemberNote | null>(null);
 
   function handleOpen(note: MemberNote) {
@@ -91,9 +92,14 @@ export function JournalList({ notes }: JournalListProps) {
   }
 
   const normalizedQuery = query.trim().toLowerCase();
+  const categoryNotes = notes.filter((note) => {
+    if (category === "notes") return note.is_freeform;
+    if (category === "reflections") return !note.is_freeform;
+    return true;
+  });
   const filteredNotes = !normalizedQuery
-    ? notes
-    : notes.filter((note) => {
+    ? categoryNotes
+    : categoryNotes.filter((note) => {
         const haystack = [
           note.entry_text,
           note.content_title ?? "",
@@ -119,7 +125,56 @@ export function JournalList({ notes }: JournalListProps) {
 
   return (
     <>
-      <div className="mb-6">
+      <div className="mb-6 space-y-3">
+        <div
+          className="grid rounded-2xl border border-border p-1 text-sm shadow-soft sm:inline-grid sm:grid-cols-3"
+          style={{ backgroundColor: "var(--color-card)" }}
+          role="tablist"
+          aria-label="Journal categories"
+        >
+          {[
+            { key: "all", label: "All", count: notes.length },
+            { key: "notes", label: "Notes", count: notes.filter((note) => note.is_freeform).length },
+            {
+              key: "reflections",
+              label: "Reflections",
+              count: notes.filter((note) => !note.is_freeform).length,
+            },
+          ].map((item) => {
+            const selected = category === item.key;
+
+            return (
+              <button
+                key={item.key}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                onClick={() => setCategory(item.key as typeof category)}
+                className={[
+                  "rounded-xl px-4 py-2 text-sm font-semibold transition-colors",
+                  selected ? "shadow-soft" : "hover:bg-muted",
+                ].join(" ")}
+                style={{
+                  backgroundColor: selected ? "var(--color-primary)" : "transparent",
+                  color: selected ? "#fff" : "var(--color-muted-foreground)",
+                }}
+              >
+                {item.label}
+                <span
+                  className="ml-2"
+                  style={{
+                    color: selected
+                      ? "rgba(255,255,255,0.72)"
+                      : "color-mix(in srgb, var(--color-muted-foreground) 72%, transparent)",
+                  }}
+                >
+                  {item.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
         <label className="sr-only" htmlFor="journal-search">
           Search notes
         </label>

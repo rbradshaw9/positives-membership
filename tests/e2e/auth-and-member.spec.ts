@@ -102,17 +102,11 @@ test("member can navigate launch routes and use practice tabs", async ({ page })
   await dismissMemberTourIfPresent(page);
 
   await expect(page.getByRole("region", { name: "Daily Practice", exact: true })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Your practice rhythm" })).toBeVisible();
-  await expect(
-    page.getByRole("heading", {
-      name: "One daily practice, supported by this week and this month.",
-    })
-  ).toBeVisible();
-  await expect(page.getByText("Today").first()).toBeVisible();
-  await expect(page.getByText("This Week").first()).toBeVisible();
-  await expect(page.getByText("This Month").first()).toBeVisible();
+  await expect(page.getByText("Your Rhythm")).toHaveCount(0);
+  await expect(page.getByText("Go Deeper")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Open this week's principle" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Open this month's theme" })).toBeVisible();
   await expect(page.getByText("Home is today's guidance")).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Open My Practice" })).toBeVisible();
   await expect(page.getByText("Start your streak")).toHaveCount(0);
   await expect(
     page
@@ -120,14 +114,10 @@ test("member can navigate launch routes and use practice tabs", async ({ page })
       .getByText(/Start today's practice|Today's practice is complete|Today's audio will appear here/)
   ).toBeVisible();
 
-  const weeklyVideoButton = page.getByRole("button", { name: /watch this week's video/i });
-  if ((await weeklyVideoButton.count()) > 0) {
-    const weeklyCard = page.getByRole("article", { name: "This week's principle" });
-    await expect(weeklyCard.locator("iframe")).toHaveCount(0);
-    await weeklyVideoButton.first().click();
-    await expect(weeklyCard.locator("iframe")).toHaveCount(0);
-    await expect(weeklyCard.getByRole("button", { name: /play:/i })).toBeVisible();
-  }
+  await page.getByRole("button", { name: "Open this week's principle" }).click();
+  const weeklyDialog = page.getByRole("dialog", { name: "This Week" });
+  await expect(weeklyDialog).toBeVisible();
+  await weeklyDialog.getByRole("button", { name: "Close" }).click();
 
   await page.setViewportSize({ width: 390, height: 844 });
   const archiveToggle = page.getByRole("button", { name: "Explore past practices" });

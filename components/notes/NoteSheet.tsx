@@ -13,7 +13,7 @@ import {
  * components/notes/NoteSheet.tsx
  * Responsive note-writing surface.
  *
- * Desktop (md+): fixed right slide-over panel, 380px wide.
+ * Desktop (md+): centered modal.
  * Mobile (<md):  bottom sheet rising from the bottom.
  *
  * Sprint 3: onSaved receives (isNew: boolean, savedText: string).
@@ -207,23 +207,23 @@ export function NoteSheet({
       <div
         role="presentation"
         onClick={handleCancel}
-        className="fixed inset-0 z-[70] bg-foreground/20 backdrop-blur-[2px] md:bg-foreground/10"
+        className="fixed inset-0 z-[90] bg-foreground/35 backdrop-blur-[3px]"
         aria-hidden="true"
       />
 
-      {/* ── Desktop: right slide-over ─────────────────────────── */}
+      {/* ── Desktop: centered modal ───────────────────────────── */}
       <aside
         role="dialog"
         aria-modal="true"
         aria-label={headerTitle}
         className={[
-          "fixed z-[80] flex flex-col bg-card shadow-large",
+          "fixed z-[100] flex flex-col bg-card shadow-large",
           "hidden md:flex",
-          "top-0 right-0 bottom-0 w-[380px]",
-          "border-l border-border",
-          "transition-transform duration-200 ease-out",
-          isOpen ? "translate-x-0" : "translate-x-full",
+          "left-1/2 top-1/2 max-h-[82dvh] w-[min(42rem,calc(100vw-3rem))]",
+          "-translate-x-1/2 -translate-y-1/2 rounded-[1.5rem] border border-border",
+          "overflow-hidden",
         ].join(" ")}
+        style={{ backgroundColor: "var(--color-card)" }}
       >
         <NoteSheetContent
           headerTitle={headerTitle}
@@ -249,7 +249,7 @@ export function NoteSheet({
         aria-modal="true"
         aria-label={headerTitle}
         className={[
-          "fixed z-[80] flex flex-col bg-card shadow-large",
+          "fixed z-[100] flex flex-col bg-card shadow-large",
           "md:hidden",
           "bottom-0 left-0 right-0",
           "rounded-t-[1.75rem]",
@@ -257,7 +257,10 @@ export function NoteSheet({
           "transition-transform duration-200 ease-out",
           isOpen ? "translate-y-0" : "translate-y-full",
         ].join(" ")}
-        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+        style={{
+          backgroundColor: "var(--color-card)",
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        }}
       >
         {/* Grab handle — wider and softer */}
         <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
@@ -326,7 +329,7 @@ function NoteSheetContent({
 
   if (saveState === "saved" && savedResult) {
     return (
-      <div className="flex flex-1 flex-col justify-between gap-5 p-5">
+      <div className="flex flex-1 flex-col justify-between gap-5 bg-card p-5 text-foreground">
         <div className="flex items-center justify-between border-b border-border pb-4">
           <div className="min-w-0">
             <p className="text-sm font-medium text-foreground">
@@ -393,7 +396,7 @@ function NoteSheetContent({
   }
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 p-5 gap-4">
+    <div className="flex flex-col flex-1 min-h-0 gap-4 bg-card p-5 text-foreground">
       {/* Header — icon + title (replaces all-caps xs text) */}
       <div className="flex items-center justify-between flex-shrink-0 border-b border-border pb-4">
         <div className="flex items-center gap-2 min-w-0">
@@ -432,7 +435,7 @@ function NoteSheetContent({
         </button>
       </div>
 
-      <div className="rounded-2xl border border-border/80 bg-surface-tint px-4 py-3">
+      <div className="rounded-2xl border border-border bg-card px-4 py-3 shadow-soft">
         <p className="text-sm leading-body text-muted-foreground">{helperText}</p>
       </div>
 
@@ -445,13 +448,13 @@ function NoteSheetContent({
         className={[
           "flex-1 min-h-[16rem] resize-none rounded-xl p-4 md:min-h-0",
           "text-[15px] text-foreground leading-body placeholder:text-muted-foreground",
-          "border border-border",
+          "border border-border/90",
           "focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60",
           "transition-colors",
         ].join(" ")}
         style={{
-          background: "var(--color-surface-tint)",
-          boxShadow: "inset 0 2px 4px rgba(18,20,23,0.03)",
+          background: "var(--color-card)",
+          boxShadow: "inset 0 0 0 1px rgba(18,20,23,0.03)",
         }}
       />
 

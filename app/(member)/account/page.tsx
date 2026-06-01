@@ -9,7 +9,6 @@ import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { AffiliateCTA } from "@/components/affiliate/AffiliateCTA";
 import { UpgradeCard } from "./upgrade-card";
 import { PodcastFeedSection } from "./podcast-feed-section";
-import { signOut } from "./actions";
 import { getPositivesPlanName } from "@/lib/plans";
 import { requireMember } from "@/lib/auth/require-member";
 import { createClient } from "@/lib/supabase/server";
@@ -679,7 +678,7 @@ export default async function AccountPage({
                 <p className="mt-2 text-sm leading-body text-muted-foreground">
                   Sign out here if you&apos;re using a shared device or wrapping up your session.
                 </p>
-                <form action={signOut} className="mt-5">
+                <form action="/auth/sign-out" method="post" className="mt-5">
                   <Button
                     type="submit"
                     variant="outline"

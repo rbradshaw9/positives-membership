@@ -30,7 +30,9 @@ test("mobile first-session loop keeps core beta actions reachable", async ({ pag
   await page.getByRole("button", { name: "Dismiss" }).click();
   await expect(page.getByText("you’re in the Positives beta")).toBeHidden();
 
-  const practiceLink = page.getByRole("link", { name: "Open My Practice" });
+  const practiceLink = page
+    .getByRole("navigation", { name: "Member navigation" })
+    .getByRole("link", { name: "Practice" });
   await practiceLink.scrollIntoViewIfNeeded();
   await expect(practiceLink).toBeVisible();
   await practiceLink.click();

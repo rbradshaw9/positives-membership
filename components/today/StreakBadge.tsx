@@ -25,7 +25,7 @@ export function StreakBadge({ initialStreak }: StreakBadgeProps) {
   useEffect(() => {
     function handleStreakUpdated(e: Event) {
       const { newStreak } = (e as CustomEvent<{ newStreak: number }>).detail;
-      if (typeof newStreak === "number" && newStreak !== streak) {
+      if (typeof newStreak === "number" && newStreak > 0) {
         setStreak(newStreak);
         setJustUpdated(true);
         // Remove the "just updated" glow after 3 s
@@ -33,9 +33,18 @@ export function StreakBadge({ initialStreak }: StreakBadgeProps) {
       }
     }
 
+    function handleTodayListened() {
+      setStreak((current) => Math.max(current, 1));
+      setJustUpdated(true);
+      setTimeout(() => setJustUpdated(false), 3000);
+    }
+
     window.addEventListener("positives:streak-updated", handleStreakUpdated);
-    return () => window.removeEventListener("positives:streak-updated", handleStreakUpdated);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    window.addEventListener("positives:today-listened", handleTodayListened);
+    return () => {
+      window.removeEventListener("positives:streak-updated", handleStreakUpdated);
+      window.removeEventListener("positives:today-listened", handleTodayListened);
+    };
   }, []);
 
   const isActive = streak > 0;

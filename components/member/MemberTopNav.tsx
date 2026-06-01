@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut } from "@/app/(member)/account/actions";
 import { Logo } from "@/components/marketing/Logo";
 import { startMemberOnboardingTour } from "@/components/onboarding/MemberOnboardingTour";
 import { checkTierAccess } from "@/lib/auth/check-tier-access";
@@ -252,7 +251,7 @@ export function MemberTopNav({
                   <span>Take the tour</span>
                 </button>
 
-                <form action={signOut}>
+                <form action="/auth/sign-out" method="post">
                   <button
                     type="submit"
                     role="menuitem"

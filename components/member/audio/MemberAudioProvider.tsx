@@ -274,16 +274,18 @@ export function MemberAudioProvider({
     memberAudioStore.markCompleted(track.id);
 
     if (track.onCompleteAction?.kind === "daily_listened") {
+      window.dispatchEvent(
+        new CustomEvent("positives:today-listened", {
+          detail: { contentId: track.onCompleteAction.contentId },
+        })
+      );
       // Fire-and-forget but capture the new streak to push to the UI in real time
       markListened(track.onCompleteAction.contentId).then(({ newStreak }) => {
-        window.dispatchEvent(
-          new CustomEvent("positives:today-listened", {
-            detail: { contentId: track.onCompleteAction?.contentId },
-          })
-        );
-        window.dispatchEvent(
-          new CustomEvent("positives:streak-updated", { detail: { newStreak } })
-        );
+        if (newStreak > 0) {
+          window.dispatchEvent(
+            new CustomEvent("positives:streak-updated", { detail: { newStreak } })
+          );
+        }
       }).catch(() => {
         // Best-effort — tracking failure must never interrupt the member experience
       });
