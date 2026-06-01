@@ -51,6 +51,14 @@ type ContentInput = {
   return_to: string;
 };
 
+type ResourceLink = {
+  label?: unknown;
+  url?: unknown;
+};
+
+const PRACTICE_CONTENT_TYPES = new Set(["daily_audio", "weekly_principle", "monthly_theme"]);
+const URL_PATTERN = /https?:\/\/[^\s)>\]]+/gi;
+
 function adminClient() {
   return createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -104,32 +112,93 @@ function safeAdminReturnTo(value: string) {
   return value;
 }
 
+function isPracticeContentType(type: string) {
+  return PRACTICE_CONTENT_TYPES.has(type);
+}
+
+function isInternalZoomReference(value: string) {
+  const matches = value.match(URL_PATTERN) ?? [value];
+
+  return matches.some((match) => {
+    try {
+      const hostname = new URL(match).hostname.toLowerCase();
+      return (
+        hostname === "zoom.us" ||
+        hostname.endsWith(".zoom.us") ||
+        hostname === "zoom.com" ||
+        hostname.endsWith(".zoom.com") ||
+        hostname === "zoomgov.com" ||
+        hostname.endsWith(".zoomgov.com")
+      );
+    } catch {
+      return false;
+    }
+  });
+}
+
+function isInternalZoomLabel(value: string) {
+  return /\bzoom\b/i.test(value) && /\b(notes?|summary|transcript|recording|link|doc)\b/i.test(value);
+}
+
+function cleanPracticeMemberText(value: string, isPracticeContent: boolean) {
+  if (!isPracticeContent || !value) return value;
+
+  return value
+    .split(/\r?\n/)
+    .filter((line) => !isInternalZoomReference(line))
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function parseResourceLinks(rawValue: string, isPracticeContent: boolean) {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawValue);
+  } catch {
+    return [];
+  }
+
+  if (!Array.isArray(parsed)) return [];
+
+  return parsed.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const resource = item as ResourceLink;
+    const label = typeof resource.label === "string" ? resource.label.trim() : "";
+    const url = typeof resource.url === "string" ? resource.url.trim() : "";
+    if (!label && !url) return [];
+
+    if (isPracticeContent && (isInternalZoomReference(url) || isInternalZoomLabel(label))) {
+      return [];
+    }
+
+    return [{ label, url }];
+  });
+}
+
+function cleanDownloadUrl(value: string, isPracticeContent: boolean) {
+  if (!value) return null;
+  if (isPracticeContent && isInternalZoomReference(value)) return null;
+  return value;
+}
+
 function buildRow(input: ContentInput) {
   const isDaily = input.type === "daily_audio";
-  const isPracticeContent = isDaily || input.type === "weekly_principle" || input.type === "monthly_theme";
+  const isPracticeContent = isPracticeContentType(input.type);
   const isCoaching = input.type === "coaching_call";
 
   // Base row with all standard + new rich fields
   const row: Record<string, unknown> = {
     type: input.type,
     title: input.title,
-    excerpt: input.excerpt || null,
-    description: input.description || null,
+    excerpt: cleanPracticeMemberText(input.excerpt, isPracticeContent) || null,
+    description: cleanPracticeMemberText(input.description, isPracticeContent) || null,
     featured_image_url: input.featured_image_url || null,
     thumbnail_image_url: input.thumbnail_image_url || null,
-    body: input.body || null,
-    reflection_prompt: input.reflection_prompt || null,
-    download_url: input.download_url || null,
-    resource_links: (() => {
-      try {
-        const parsed = JSON.parse(input.resource_links);
-        // resource_links is NOT NULL in DB (default '[]'::jsonb).
-        // Must never write null — return empty array instead.
-        return Array.isArray(parsed) ? parsed : [];
-      } catch {
-        return [];
-      }
-    })(),
+    body: cleanPracticeMemberText(input.body, isPracticeContent) || null,
+    reflection_prompt: cleanPracticeMemberText(input.reflection_prompt, isPracticeContent) || null,
+    download_url: cleanDownloadUrl(input.download_url, isPracticeContent),
+    resource_links: parseResourceLinks(input.resource_links, isPracticeContent),
     status: input.status,
     is_active: input.status === "published",
     publish_date: input.publish_date || null,
