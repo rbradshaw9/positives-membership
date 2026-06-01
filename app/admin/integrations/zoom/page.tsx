@@ -63,6 +63,7 @@ function smokeCheckLabels(run?: ZoomTestRunRow) {
   if (!run?.checks) return [];
   return [
     ["User", run.checks.user],
+    ["Scopes", run.checks.scopes],
     ["Meeting+", run.checks.meetingCreate],
     ["Meeting-", run.checks.meetingDelete],
     ["Webinar+", run.checks.webinarCreate],
@@ -265,7 +266,9 @@ export default async function ZoomIntegrationsPage({ searchParams }: { searchPar
                   <div className="flex flex-wrap gap-1">
                     <CapabilityBadge label="User" ok={hasScope(connection.scopes, "user:read:user")} />
                     <CapabilityBadge label="Meetings" ok={hasScope(connection.scopes, "meeting:write:meeting")} />
+                    <CapabilityBadge label="Meeting delete" ok={hasScope(connection.scopes, "meeting:delete:meeting") || hasScope(connection.scopes, "meeting:delete:meeting:admin")} />
                     <CapabilityBadge label="Webinars" ok={hasScope(connection.scopes, "webinar:write:webinar")} />
+                    <CapabilityBadge label="Webinar delete" ok={hasScope(connection.scopes, "webinar:delete:webinar") || hasScope(connection.scopes, "webinar:delete:webinar:admin")} />
                   </div>
                 </td>
                 <td>

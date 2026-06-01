@@ -18,10 +18,10 @@ export async function runAndPersistZoomSmokeTest(params: {
   const startedAt = new Date().toISOString();
   const { data: connectionRaw } = await supabase
     .from("zoom_connection")
-    .select("id, status")
+    .select("id, status, scopes")
     .eq("id", params.connectionId)
     .maybeSingle();
-  const connection = connectionRaw as { id: string; status: "active" | "needs_reconnect" | "disabled" } | null;
+  const connection = connectionRaw as { id: string; status: "active" | "needs_reconnect" | "disabled"; scopes: string[] | null } | null;
 
   if (!connection || connection.status === "disabled") {
     return {
@@ -46,7 +46,7 @@ export async function runAndPersistZoomSmokeTest(params: {
   const run = runRaw as { id: string } | null;
 
   try {
-    const result = await runZoomSmokeTest(params.connectionId);
+    const result = await runZoomSmokeTest(params.connectionId, connection.scopes);
     const finishedAt = new Date().toISOString();
     const firstError = Object.values(result.checks).find((check) => !check.ok)?.detail ?? null;
 

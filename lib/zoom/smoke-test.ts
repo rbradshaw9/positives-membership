@@ -19,6 +19,7 @@ export type ZoomSmokeTestResult = {
   ok: boolean;
   checks: {
     user: SmokeCheck;
+    scopes: SmokeCheck;
     meetingCreate: SmokeCheck;
     meetingDelete: SmokeCheck;
     webinarCreate: SmokeCheck;
@@ -35,14 +36,36 @@ function startTime() {
   return formatInTimeZone(new Date(Date.now() + 30 * 60 * 1000), "UTC", "yyyy-MM-dd'T'HH:mm:ss");
 }
 
+function hasScope(scopes: string[] | null | undefined, scope: string) {
+  return (scopes ?? []).includes(scope);
+}
+
+function missingSmokeTestScopes(scopes: string[] | null | undefined) {
+  const missing = [];
+  if (!hasScope(scopes, "meeting:write:meeting") && !hasScope(scopes, "meeting:write:meeting:admin")) {
+    missing.push("meeting:write:meeting");
+  }
+  if (!hasScope(scopes, "meeting:delete:meeting") && !hasScope(scopes, "meeting:delete:meeting:admin")) {
+    missing.push("meeting:delete:meeting");
+  }
+  if (!hasScope(scopes, "webinar:write:webinar") && !hasScope(scopes, "webinar:write:webinar:admin")) {
+    missing.push("webinar:write:webinar");
+  }
+  if (!hasScope(scopes, "webinar:delete:webinar") && !hasScope(scopes, "webinar:delete:webinar:admin")) {
+    missing.push("webinar:delete:webinar");
+  }
+  return missing;
+}
+
 async function deleteZoomObject(connectionId: string, kind: "meeting" | "webinar", id: string) {
   const path = kind === "webinar" ? `/webinars/${encodeURIComponent(id)}` : `/meetings/${encodeURIComponent(id)}`;
   await zoomApi<null>(connectionId, path, { method: "DELETE" });
 }
 
-export async function runZoomSmokeTest(connectionId: string): Promise<ZoomSmokeTestResult> {
+export async function runZoomSmokeTest(connectionId: string, scopes?: string[] | null): Promise<ZoomSmokeTestResult> {
   const checks: ZoomSmokeTestResult["checks"] = {
     user: { ok: false },
+    scopes: { ok: false },
     meetingCreate: { ok: false },
     meetingDelete: { ok: false },
     webinarCreate: { ok: false },
@@ -59,6 +82,20 @@ export async function runZoomSmokeTest(connectionId: string): Promise<ZoomSmokeT
   } catch (error) {
     checks.user = checkError(error);
   }
+
+  const missingScopes = missingSmokeTestScopes(scopes);
+  if (missingScopes.length > 0) {
+    checks.scopes = {
+      ok: false,
+      detail: `Missing Zoom scopes required for safe smoke tests: ${missingScopes.join(", ")}`,
+    };
+    checks.meetingCreate = { ok: false, detail: "Skipped because required smoke-test scopes are missing" };
+    checks.meetingDelete = { ok: false, detail: "Skipped because required smoke-test scopes are missing" };
+    checks.webinarCreate = { ok: false, detail: "Skipped because required smoke-test scopes are missing" };
+    checks.webinarDelete = { ok: false, detail: "Skipped because required smoke-test scopes are missing" };
+    return { ok: false, checks };
+  }
+  checks.scopes = { ok: true, detail: "Required create/delete scopes are present" };
 
   let meetingId: string | null = null;
   try {
