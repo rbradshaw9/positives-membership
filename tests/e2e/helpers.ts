@@ -66,6 +66,8 @@ export const LEVEL_3_MEMBER_EMAIL =
 export const LEVEL_3_MEMBER_PASSWORD = e2eEnv("E2E_LEVEL_3_MEMBER_PASSWORD", MEMBER_PASSWORD);
 export const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL ?? "lopcadmin@gmail.com";
 export const ADMIN_PASSWORD = e2eEnv("E2E_ADMIN_PASSWORD");
+export const COACH_EMAIL = process.env.E2E_COACH_EMAIL ?? "rbradshaw+coach@gmail.com";
+export const COACH_PASSWORD = e2eEnv("E2E_COACH_PASSWORD", MEMBER_PASSWORD);
 
 const ADMIN_MONTH_WORKSPACE_FIXTURE = {
   marker: "e2e-admin-month-workspace",

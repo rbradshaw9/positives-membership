@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test";
 import {
   ADMIN_EMAIL,
   ADMIN_PASSWORD,
+  COACH_EMAIL,
+  COACH_PASSWORD,
   cleanupZoomOwnershipFixtures,
   createZoomOwnershipFixture,
   getCoachProfileZoomConnectionId,
@@ -18,6 +20,23 @@ test.beforeEach(async () => {
 
 test.afterEach(async () => {
   await cleanupZoomOwnershipFixtures(ZOOM_OWNERSHIP_PREFIX);
+});
+
+test("demo coach account gets the coach-scoped Zoom integration page", async ({ page }) => {
+  await loginWithPassword(page, {
+    email: COACH_EMAIL,
+    password: COACH_PASSWORD,
+    next: "/admin/integrations/zoom",
+  });
+
+  await expect(page.getByRole("heading", { name: "Zoom accounts" })).toBeVisible();
+  if ((await page.getByRole("link", { name: "Connect My Coaching Zoom" }).count()) > 0) {
+    await expect(page.getByRole("link", { name: "Connect My Coaching Zoom" })).toBeVisible();
+  } else {
+    await expect(page.getByText("Zoom OAuth is not configured yet.")).toBeVisible();
+  }
+  await expect(page.getByRole("link", { name: "Connect Platform Zoom" })).toHaveCount(0);
+  await expect(page.getByText("Coaching Zoom default")).toBeVisible();
 });
 
 test("coach Zoom defaults are scoped to platform accounts and the coach's own account", async ({
