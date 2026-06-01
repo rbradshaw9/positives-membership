@@ -67,6 +67,7 @@ export function DailyPracticeCard({
       <article
         aria-label="Daily Practice"
         role="region"
+        data-tour-target="today-daily-practice"
         className="rounded-[1.75rem] p-6 md:p-8 shadow-large relative overflow-hidden bg-[linear-gradient(180deg,#121418_0%,#0A0A0A_100%)]"
         style={{
           color: "white",

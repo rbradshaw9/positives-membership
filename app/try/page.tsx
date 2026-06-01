@@ -28,7 +28,7 @@ const FIRST_WEEK = [
   {
     eyebrow: "Real access",
     title: "Choose the level you actually want to experience",
-    body: "Membership, Membership + Events, and Coaching Circle all start as real Stripe-backed trials, not watered-down previews.",
+    body: "Positives and Positives Plus both start as real Stripe-backed trials, not watered-down previews.",
   },
 ] as const;
 
@@ -36,12 +36,12 @@ const TRIAL_STEPS = [
   {
     step: "01",
     title: "Choose the level that fits you now",
-    body: "Start with core Membership, add live Events, or step into Coaching Circle if you already know you want deeper support.",
+    body: "Start with the daily Positives rhythm, or choose Positives Plus if you want live events and replays included.",
   },
   {
     step: "02",
     title: "Use it fully for the next 7 days",
-    body: "You get the actual level you chose right away, including events or coaching access when that tier includes them.",
+    body: "You get the actual level you chose right away, including event access when Positives Plus includes it.",
   },
   {
     step: "03",
@@ -53,30 +53,21 @@ const TRIAL_STEPS = [
 const TRIAL_PLANS: TrialPlanOption[] = [
   {
     tier: "level_1",
-    title: "Membership",
+    title: "Positives",
     monthlyPrice: 37,
     tagline: "Daily practice, weekly reflections, monthly themes, and the growing member library.",
-    summary: "Best for someone who wants the daily Positives rhythm without adding events or coaching yet.",
+    summary: "Best for someone who wants the daily Positives rhythm without adding live events yet.",
     priceId: config.stripe.prices.level1Monthly,
     isLive: Boolean(config.stripe.prices.level1Monthly),
   },
   {
     tier: "level_2",
-    title: "Membership + Events",
+    title: "Positives Plus",
     monthlyPrice: 97,
-    tagline: "Everything in Membership, plus live workshops, event access, and replays.",
+    tagline: "Everything in Positives, plus live workshops, event access, and replays.",
     summary: "Best for someone who wants the daily practice plus a more interactive event rhythm.",
     priceId: config.stripe.prices.level2Monthly,
     isLive: Boolean(config.stripe.prices.level2Monthly),
-  },
-  {
-    tier: "level_3",
-    title: "Coaching Circle",
-    monthlyPrice: 297,
-    tagline: "Everything in Membership + Events, plus weekly group coaching and deeper support.",
-    summary: "Best for someone who wants the full Positives experience with regular coaching built in.",
-    priceId: config.stripe.prices.level3Monthly,
-    isLive: Boolean(config.stripe.prices.level3Monthly),
   },
 ];
 
@@ -195,8 +186,8 @@ export default function TryPage() {
                 Start with the level that matches the kind of support you want.
               </h2>
               <p className="mt-4 text-sm" style={{ color: "#68707A", lineHeight: "1.8" }}>
-                Pick the version of Positives you want to experience first. The trial stays tied to
-                that level, and Stripe only begins billing on day 8 if you decide to stay.
+                Pick the version of Positives you want to experience first. Coaching sessions can be
+                added separately when you want more direct support.
               </p>
 
               <TrialPageClient
@@ -342,7 +333,7 @@ export default function TryPage() {
             >
               <p className="text-sm" style={{ color: "#4A5360", lineHeight: "1.8" }}>
                 Card required today. Stripe stores it now and begins billing on day 8 for the
-                level you choose unless you cancel first in the billing center.
+                membership you choose unless you cancel first in the billing center.
               </p>
             </div>
           </div>

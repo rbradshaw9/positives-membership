@@ -4,9 +4,8 @@ import { getPlanName } from "@/lib/plans";
 
 /**
  * components/coaching/CoachingUpgradePrompt.tsx
- * Sprint 10: Shown to members without Coaching Circle access on /coaching.
- * Calm, non-pushy upgrade prompt. Tier name is passed from the server.
- * No Stripe logic here — links to the member billing center.
+ * Shown to members without legacy coaching replay access on /coaching.
+ * Calm, non-pushy prompt. Tier name is passed from the server.
  */
 
 export function CoachingUpgradePrompt({ tier }: { tier: string | null }) {
@@ -52,19 +51,21 @@ export function CoachingUpgradePrompt({ tier }: { tier: string | null }) {
             className="text-sm leading-relaxed"
             style={{ color: "var(--color-muted-foreground)" }}
           >
-            Live weekly coaching with Dr. Paul is available in Coaching Circle and above. You&apos;re
-            currently on <strong style={{ color: "var(--color-foreground)" }}>{tierLabel}</strong>.
+            Your current membership is{" "}
+            <strong style={{ color: "var(--color-foreground)" }}>{tierLabel}</strong>. Coaching is
+            now handled as a separate session package rather than a public membership level.
           </p>
           <p
             className="text-sm leading-relaxed mt-2"
             style={{ color: "var(--color-muted-foreground)" }}
           >
-            Coaching access opens with <strong style={{ color: "var(--color-foreground)" }}>Coaching Circle</strong> and above.
+            You can review available coaching sessions from your account when you want more direct
+            support.
           </p>
         </div>
 
-        <Button href="/account/billing">
-          Manage membership
+        <Button href="/account/coaching">
+          View coaching sessions
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M5 12h14M12 5l7 7-7 7" />
           </svg>

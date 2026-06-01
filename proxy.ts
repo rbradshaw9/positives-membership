@@ -16,19 +16,21 @@ import { updateSession } from "@/lib/supabase/proxy";
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const requestedPath = `${pathname}${request.nextUrl.search}`;
+  const isPathOrChild = (path: string) =>
+    pathname === path || pathname.startsWith(`${path}/`);
 
   // Protected route groups
   const isMemberRoute =
-    pathname.startsWith("/dashboard") ||
-    pathname.startsWith("/today") ||
-    pathname.startsWith("/library") ||
-    pathname.startsWith("/my-courses") ||
-    pathname.startsWith("/practice") ||
-    pathname.startsWith("/events") ||
-    pathname.startsWith("/community") ||
-    pathname.startsWith("/coaching") ||
-    pathname.startsWith("/journal") ||
-    pathname.startsWith("/account");
+    isPathOrChild("/dashboard") ||
+    isPathOrChild("/today") ||
+    isPathOrChild("/library") ||
+    isPathOrChild("/my-courses") ||
+    isPathOrChild("/practice") ||
+    isPathOrChild("/events") ||
+    isPathOrChild("/community") ||
+    isPathOrChild("/coaching") ||
+    isPathOrChild("/journal") ||
+    isPathOrChild("/account");
 
   const isAdminRoute = pathname.startsWith("/admin");
   const requiresAuth = isMemberRoute || isAdminRoute;

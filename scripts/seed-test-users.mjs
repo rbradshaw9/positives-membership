@@ -110,6 +110,18 @@ const USERS = [
     },
     label: "Level 3 member",
   },
+  {
+    email: "rbradshaw+coach@gmail.com",
+    password: requiredEnv("E2E_COACH_PASSWORD", memberPassword),
+    memberPatch: {
+      name: "Test Coach",
+      subscription_status: "active",
+      subscription_tier: "level_3",
+      password_set: true,
+    },
+    label: "Coach",
+    coach: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -182,6 +194,76 @@ async function upsertMember(userId, email, patch) {
   console.log(`  ✓ Member row upserted — status=active tier=${patch.subscription_tier}`);
 }
 
+async function ensureCoachAccess(userId) {
+  const { data: coachRole, error: roleErr } = await supabase
+    .from("admin_role")
+    .select("id")
+    .eq("key", "coach")
+    .single();
+
+  if (roleErr || !coachRole) {
+    throw new Error(`find coach role: ${roleErr?.message ?? "not found"}`);
+  }
+
+  const { error: roleAssignErr } = await supabase
+    .from("admin_user_role")
+    .upsert(
+      {
+        member_id: userId,
+        role_id: coachRole.id,
+        platform_access: true,
+      },
+      { onConflict: "member_id,role_id" }
+    );
+
+  if (roleAssignErr) {
+    throw new Error(`assign coach role: ${roleAssignErr.message}`);
+  }
+
+  const { data: existingProfile, error: profileLookupErr } = await supabase
+    .from("coach_profile")
+    .select("id")
+    .eq("member_id", userId)
+    .maybeSingle();
+
+  if (profileLookupErr) {
+    throw new Error(`find coach profile: ${profileLookupErr.message}`);
+  }
+
+  if (existingProfile) {
+    const { error: profileUpdateErr } = await supabase
+      .from("coach_profile")
+      .update({
+        is_active: true,
+        accepts_new: true,
+      })
+      .eq("id", existingProfile.id);
+
+    if (profileUpdateErr) {
+      throw new Error(`update coach profile: ${profileUpdateErr.message}`);
+    }
+  } else {
+    const { error: profileInsertErr } = await supabase
+      .from("coach_profile")
+      .insert({
+        member_id: userId,
+        display_name: "Ryan (Test Coach)",
+        title: "Executive Coach",
+        is_active: true,
+        accepts_new: true,
+        session_duration_minutes: 60,
+        buffer_minutes_after: 15,
+        routing_group: "default",
+      });
+
+    if (profileInsertErr) {
+      throw new Error(`create coach profile: ${profileInsertErr.message}`);
+    }
+  }
+
+  console.log("  ✓ Coach role/profile ready");
+}
+
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
@@ -192,6 +274,7 @@ for (const user of USERS) {
   try {
     const userId = await upsertAuthUser(user.email, user.password);
     await upsertMember(userId, user.email, user.memberPatch);
+    if (user.coach) await ensureCoachAccess(userId);
     console.log(`  ✓ Done\n`);
   } catch (err) {
     console.error(`  ✗ Failed: ${err.message}\n`);
@@ -204,4 +287,5 @@ console.log("  lopcadmin@gmail.com  → /admin  (email in ADMIN_EMAILS)");
 console.log("  rbradshaw+l1@gmail.com → /today  (Level 1 active member)");
 console.log("  rbradshaw+l2@gmail.com → /today  (Level 2 active member)");
 console.log("  rbradshaw+l3@gmail.com → /today  (Level 3 active member)");
+console.log("  rbradshaw+coach@gmail.com → /admin/coaching  (Coach)");
 console.log("");

@@ -302,6 +302,27 @@ function sortEventTickets(event: EventRow) {
   };
 }
 
+function eventAccessLevelsForMemberTier(memberTier: string | null | undefined): EventAccessLevel[] {
+  switch (memberTier) {
+    case "level_1":
+      return ["level_1"];
+    case "level_2":
+      return ["level_1", "level_2"];
+    case "level_3":
+      return ["level_1", "level_2", "level_3"];
+    case "level_4":
+      return ["level_1", "level_2", "level_3", "level_4"];
+    default:
+      return [];
+  }
+}
+
+function eventAllowsMemberTier(event: EventRow, memberTier: string | null | undefined) {
+  const allowed = new Set(eventAccessLevelsForMemberTier(memberTier));
+  if (allowed.size === 0) return false;
+  return (event.member_event_access_level ?? []).some((row) => allowed.has(row.subscription_tier));
+}
+
 async function fetchEventAdminOptions() {
   const supabase = asLooseSupabaseClient(getAdminClient());
   const [typesResult, hostsResult, venuesResult, zoomResult, settingsResult] = await Promise.all([
@@ -698,13 +719,13 @@ export async function getMemberEvents(params: {
   const { month, events } = await getAdminEvents({
     month: params.month,
     status: "published",
-    accessLevel: params.memberTier,
     query: params.query,
     typeId,
   });
 
   const published = events.filter((event) => {
     if (event.status !== "published" || event.visibility === "hidden") return false;
+    if (!eventAllowsMemberTier(event, params.memberTier)) return false;
     if (params.venueSlug && event.event_venue?.slug !== params.venueSlug) return false;
     return true;
   });
@@ -726,8 +747,7 @@ export async function getMemberEvent(id: string, memberTier: string | null, memb
   if (!memberTier) return null;
   const event = await getAdminEvent(id);
   if (!event || event.status !== "published" || event.visibility === "hidden") return null;
-  const hasAccess = (event.member_event_access_level ?? []).some((row) => row.subscription_tier === memberTier);
-  if (!hasAccess) return null;
+  if (!eventAllowsMemberTier(event, memberTier)) return null;
   if (!memberId) {
     const rsvpState = await getEventRsvpState(event, null);
     const [withInventory] = await withEventTicketInventory([event]);
@@ -822,7 +842,7 @@ function memberCanSeeEvent(event: EventRow, memberTier: string) {
   return (
     event.status === "published" &&
     event.visibility !== "hidden" &&
-    (event.member_event_access_level ?? []).some((row) => row.subscription_tier === memberTier)
+    eventAllowsMemberTier(event, memberTier)
   );
 }
 

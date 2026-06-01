@@ -231,6 +231,7 @@ export function BetaFeedbackWidget({
     <>
       <button
         type="button"
+        data-testid="beta-feedback-launcher"
         onClick={() =>
           setIsOpen((open) => {
             if (!open) {
@@ -243,15 +244,34 @@ export function BetaFeedbackWidget({
           })
         }
         className={[
-          "fixed bottom-28 right-4 z-40 inline-flex items-center gap-2 rounded-full px-4 py-3 text-sm font-semibold backdrop-blur md:bottom-8",
+          "fixed bottom-[calc(env(safe-area-inset-bottom)+5rem)] right-3 z-40 inline-flex h-11 w-11 items-center justify-center rounded-full text-xs font-semibold backdrop-blur sm:h-auto sm:w-auto sm:gap-2 sm:right-4 sm:px-4 sm:py-3 sm:text-sm md:bottom-8",
           unreadCount > 0
             ? "border border-teal-200 bg-white text-slate-900 shadow-[0_22px_58px_rgba(46,196,182,0.22)] ring-4 ring-teal-100/70"
             : "border border-sky-200/80 bg-white/96 text-slate-700 shadow-[0_18px_48px_rgba(15,23,42,0.14)]",
         ].join(" ")}
+        aria-label={unreadCount > 0 ? `${unreadCount} new feedback replies` : "Share beta feedback"}
       >
-        <span>{unreadCount > 0 ? "New feedback replies" : "Share beta feedback"}</span>
+        <span className="hidden sm:inline">
+          {unreadCount > 0 ? "New feedback replies" : "Share beta feedback"}
+        </span>
+        <span className="sm:hidden" aria-hidden="true">
+          <svg
+            width="19"
+            height="19"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
+            <path d="M8 9h8" />
+            <path d="M8 13h5" />
+          </svg>
+        </span>
         {unreadCount > 0 ? (
-          <span className="inline-flex min-w-[1.4rem] items-center justify-center rounded-full bg-teal-500 px-1.5 py-0.5 text-[0.7rem] font-semibold text-white">
+          <span className="absolute -right-1 -top-1 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-teal-500 px-1.5 py-0.5 text-[0.65rem] font-semibold text-white sm:static sm:min-w-[1.4rem] sm:text-[0.7rem]">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         ) : null}

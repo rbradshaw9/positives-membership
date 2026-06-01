@@ -2,8 +2,10 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { formatSupabaseAuthError } from "@/lib/auth/client-error";
+import { signInWithPasswordAction } from "@/app/login/actions";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useState, useSyncExternalStore } from "react";
+import { Suspense, useActionState, useState, useSyncExternalStore } from "react";
+import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import { Logo } from "@/components/marketing/Logo";
 
@@ -25,6 +27,25 @@ function useHydrated() {
   );
 }
 
+function PasswordSubmitButton({ hydrated }: { hydrated: boolean }) {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending || !hydrated}
+      className="w-full px-6 py-3.5 rounded-full text-white font-medium text-sm transition-all disabled:opacity-60"
+      style={{
+        background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
+        boxShadow: "0 6px 24px rgba(47,111,237,0.25)",
+        letterSpacing: "-0.01em",
+      }}
+    >
+      {pending ? "Signing in…" : "Sign in →"}
+    </button>
+  );
+}
+
 function LoginForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/today";
@@ -34,34 +55,8 @@ function LoginForm() {
   const [magicSent, setMagicSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [passwordState, passwordAction] = useActionState(signInWithPasswordAction, {});
   const hydrated = useHydrated();
-
-  async function handlePasswordSignIn(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const email = (formData.get("email") as string)?.trim();
-    const password = formData.get("password") as string;
-
-    setError(null);
-    setPending(true);
-
-    const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    setPending(false);
-
-    if (signInError) {
-      setError(formatSupabaseAuthError(signInError.message));
-      return;
-    }
-
-    const postLoginUrl = new URL("/auth/post-login", window.location.origin);
-    postLoginUrl.searchParams.set("next", next);
-    window.location.assign(postLoginUrl.toString());
-  }
 
   async function handleMagicLink(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -205,14 +200,15 @@ function LoginForm() {
           </button>
         </div>
 
-        {error && (
+        {(mode === "password" ? passwordState.error : error) && (
           <div className="mb-4 px-4 py-3 rounded-xl bg-destructive/10 text-destructive text-sm">
-            {error}
+            {mode === "password" ? passwordState.error : error}
           </div>
         )}
 
         {mode === "password" ? (
-          <form method="post" onSubmit={handlePasswordSignIn} className="flex flex-col gap-4">
+          <form action={passwordAction} className="flex flex-col gap-4">
+            <input type="hidden" name="next" value={next} />
             <div>
               <label
                 htmlFor="login-email"
@@ -245,9 +241,6 @@ function LoginForm() {
                 autoComplete="current-password"
                 placeholder="Your password"
                 className={inputClassName}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") e.currentTarget.form?.requestSubmit();
-                }}
               />
             </div>
             <div className="flex items-center justify-end -mt-1">
@@ -255,18 +248,7 @@ function LoginForm() {
                 Forgot password?
               </Link>
             </div>
-            <button
-              type="submit"
-              disabled={pending || !hydrated}
-              className="w-full px-6 py-3.5 rounded-full text-white font-medium text-sm transition-all disabled:opacity-60"
-              style={{
-                background: "linear-gradient(135deg, #2F6FED 0%, #245DD0 100%)",
-                boxShadow: "0 6px 24px rgba(47,111,237,0.25)",
-                letterSpacing: "-0.01em",
-              }}
-            >
-              {pending ? "Signing in…" : "Sign in →"}
-            </button>
+            <PasswordSubmitButton hydrated={hydrated} />
           </form>
         ) : (
           <form method="post" onSubmit={handleMagicLink} className="flex flex-col gap-4">

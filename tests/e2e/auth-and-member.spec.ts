@@ -112,7 +112,7 @@ test("member can navigate launch routes and use practice tabs", async ({ page })
   await expect(page.getByText("This Week").first()).toBeVisible();
   await expect(page.getByText("This Month").first()).toBeVisible();
   await expect(page.getByText("Home is today's guidance")).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "View History" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open My Practice" })).toBeVisible();
   await expect(page.getByText("Start your streak")).toHaveCount(0);
   await expect(
     page

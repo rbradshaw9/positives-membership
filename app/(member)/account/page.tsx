@@ -356,7 +356,7 @@ export default async function AccountPage({
               />
             </section>
 
-            <section aria-labelledby="section-membership">
+            <section aria-labelledby="section-membership" data-tour-target="account-membership-billing">
               <SectionLabel id="section-membership">Membership & Billing</SectionLabel>
               <SurfaceCard elevated className="surface-card--editorial">
                 <p className="member-detail-kicker">Current plan</p>
@@ -590,7 +590,7 @@ export default async function AccountPage({
               </section>
             )}
 
-            <section aria-labelledby="section-referral">
+            <section aria-labelledby="section-referral" data-tour-target="account-affiliate-program">
               <SectionLabel id="section-referral">Affiliate Program</SectionLabel>
               {member?.fp_promoter_id ? (
                 <SurfaceCard elevated className="surface-card--editorial">

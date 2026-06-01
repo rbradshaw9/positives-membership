@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { requireActiveMember } from "@/lib/auth/require-active-member";
 import { getMemberEvent } from "@/lib/queries/get-events";
 import { currentTimestampMs, formatEventDateRange } from "@/lib/events/dates";
 import { generateLiveKitEventToken, liveKitPublicUrl } from "@/lib/livekit/events";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { LiveKitEventRoom } from "@/components/events/LiveKitEventRoom";
+import { MemberUnavailableState } from "@/components/member/MemberUnavailableState";
 
 type Params = Promise<{ id: string }>;
 
@@ -17,10 +17,32 @@ export default async function MemberLiveEventPage({ params }: { params: Params }
   const member = await requireActiveMember();
   const { id } = await params;
   const event = await getMemberEvent(id, member.subscription_tier, member.id);
-  if (!event) notFound();
+  if (!event) {
+    return (
+      <MemberUnavailableState
+        eyebrow="Live room unavailable"
+        title="This live event room is not available."
+        subtitle="The event may not be included with your membership, or it may have been hidden while details are being finalized. Return to Events to see what is available now."
+        primaryHref="/events"
+        primaryLabel="Back to Events"
+        secondaryHref="/account"
+        secondaryLabel="View account"
+      />
+    );
+  }
 
   if (event.virtual_mode !== "livekit" || !event.event_livekit_room?.room_name) {
-    notFound();
+    return (
+      <MemberUnavailableState
+        eyebrow="Live room unavailable"
+        title="This event does not have a live room."
+        subtitle="Some events use another online link, an in-person location, or replay-only access. Return to the event details for the right next step."
+        primaryHref={`/events/${event.id}`}
+        primaryLabel="Back to event"
+        secondaryHref="/events"
+        secondaryLabel="All Events"
+      />
+    );
   }
 
   const now = currentTimestampMs();

@@ -897,7 +897,7 @@ function EnrollScreen({
   onAgreementChange: (value: boolean) => void;
 }) {
   return (
-    <div style={{ maxWidth: 560, margin: "3rem auto", padding: "0 1rem" }}>
+    <div data-tour-target="affiliate-portal-primary" style={{ maxWidth: 560, margin: "3rem auto", padding: "0 1rem" }}>
       <SurfaceCard elevated className="surface-card--editorial relative overflow-hidden p-8 text-center">
         <div
           aria-hidden="true"
@@ -1052,7 +1052,7 @@ function PayoutSetupStep({
   error: string | null;
 }) {
   return (
-    <div style={{ maxWidth: 560, margin: "3rem auto", padding: "0 1rem" }}>
+    <div data-tour-target="affiliate-portal-primary" style={{ maxWidth: 560, margin: "3rem auto", padding: "0 1rem" }}>
       <SurfaceCard elevated className="surface-card--editorial relative overflow-hidden p-8 text-center">
         <div
           aria-hidden="true"
@@ -2255,7 +2255,7 @@ export function AffiliatePortal({
   }
 
   return (
-    <div style={{ maxWidth: 1120, margin: "0 auto", padding: "1.75rem 1rem 5rem" }}>
+    <div data-tour-target="affiliate-portal-primary" style={{ maxWidth: 1120, margin: "0 auto", padding: "1.75rem 1rem 5rem" }}>
       <div className="mb-8 flex flex-col gap-5">
         <div style={{ maxWidth: 760 }}>
           <div

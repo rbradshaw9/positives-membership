@@ -227,7 +227,7 @@ export default async function TodayPage() {
               href="/practice"
               className="btn-outline shrink-0 justify-center text-center text-sm"
             >
-              View History
+              Open My Practice
             </Link>
           </div>
           <div className="mt-3 grid divide-y divide-border/70 md:grid-cols-3 md:divide-x md:divide-y-0">

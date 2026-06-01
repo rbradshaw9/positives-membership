@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "@/app/(member)/account/actions";
 import { Logo } from "@/components/marketing/Logo";
+import { startMemberOnboardingTour } from "@/components/onboarding/MemberOnboardingTour";
 import { checkTierAccess } from "@/lib/auth/check-tier-access";
 
 const BASE_NAV_ITEMS = [
@@ -138,6 +139,7 @@ export function MemberTopNav({
                   key={href}
                   href={href}
                   aria-current={isActive ? "page" : undefined}
+                  data-tour-target={href === "/today" ? "member-nav-today" : href === "/practice" ? "member-nav-practice" : undefined}
                   className={[
                     "rounded-full px-3.5 py-2 text-sm font-medium transition-colors",
                     isActive
@@ -158,6 +160,7 @@ export function MemberTopNav({
             <button
               type="button"
               onClick={() => setMenuOpen((open) => !open)}
+              data-tour-target="member-profile-menu"
               className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-2.5 py-1.5 text-left text-white transition-colors hover:bg-white/8"
               aria-expanded={menuOpen}
               aria-haspopup="menu"
@@ -216,6 +219,39 @@ export function MemberTopNav({
                   </Link>
                 ) : null}
 
+                <button
+                  type="button"
+                  role="menuitem"
+                  data-tour-target="member-tour-launcher"
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-white/82 transition-colors hover:bg-white/6 hover:text-white"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    startMemberOnboardingTour();
+                  }}
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.75"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M12 3v4" />
+                    <path d="M12 17v4" />
+                    <path d="M3 12h4" />
+                    <path d="M17 12h4" />
+                    <path d="m5.6 5.6 2.8 2.8" />
+                    <path d="m15.6 15.6 2.8 2.8" />
+                    <path d="m18.4 5.6-2.8 2.8" />
+                    <path d="m8.4 15.6-2.8 2.8" />
+                  </svg>
+                  <span>Take the tour</span>
+                </button>
+
                 <form action={signOut}>
                   <button
                     type="submit"
@@ -262,6 +298,7 @@ export function MemberTopNav({
                 <Link
                   href={href}
                   aria-current={isActive ? "page" : undefined}
+                  data-tour-target={href === "/today" ? "member-nav-today" : href === "/practice" ? "member-nav-practice" : undefined}
                   className={[
                     "flex flex-col items-center gap-1 px-2 py-3 text-[10px] font-semibold uppercase tracking-wide transition-colors",
                     isActive ? "text-primary" : "text-white/45 hover:text-white",

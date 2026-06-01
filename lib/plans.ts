@@ -24,8 +24,8 @@ export const ADMIN_PLAN_SHORT_LABEL_BY_TIER: Record<SubscriptionTier, string> = 
 export const TIER_ACCESS_LABEL_BY_TIER: Record<SubscriptionTier, string> = {
   level_1: "All Members",
   level_2: "Plus and above",
-  level_3: "Coaching Circle and above",
-  level_4: "Executive Coaching only",
+  level_3: "Legacy Coaching Circle and above",
+  level_4: "Legacy Executive Coaching only",
 };
 
 export function getPlanName(tier: string | null | undefined): string {

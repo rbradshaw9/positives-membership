@@ -1,4 +1,3 @@
-import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { requireActiveMember } from "@/lib/auth/require-active-member";
@@ -25,6 +24,7 @@ import { EventTicketPurchasePanel } from "./EventTicketPurchasePanel";
 import { EventJoinButton } from "./EventJoinButton";
 import { EventReplayPlayer } from "./EventReplayPlayer";
 import { registerEventRsvp } from "./actions";
+import { MemberUnavailableState } from "@/components/member/MemberUnavailableState";
 
 type Params = Promise<{ id: string }>;
 type SearchParams = Promise<{ ticket?: string; ticket_error?: string; rsvp?: string; rsvp_error?: string }>;
@@ -301,7 +301,19 @@ export default async function EventDetailPage({
   const member = await requireActiveMember();
   const [{ id }, query] = await Promise.all([params, searchParams]);
   const event = await getMemberEvent(id, member.subscription_tier, member.id);
-  if (!event) notFound();
+  if (!event) {
+    return (
+      <MemberUnavailableState
+        eyebrow="Event unavailable"
+        title="This event is not available from your current view."
+        subtitle="It may be part of Positives Plus, hidden while details are being finalized, or no longer open. You can return to Events to see what is available for your membership."
+        primaryHref="/events"
+        primaryLabel="Back to Events"
+        secondaryHref="/account"
+        secondaryLabel="View account"
+      />
+    );
+  }
 
   const nowMs = currentTimestampMs();
   const joinUrl = eventJoinUrl(event);

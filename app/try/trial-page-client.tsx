@@ -7,7 +7,7 @@ import { track } from "@/lib/analytics/ga";
 import { getStoredFirstPromoterRefId } from "@/lib/firstpromoter/referral";
 
 export type TrialPlanOption = {
-  tier: "level_1" | "level_2" | "level_3";
+  tier: "level_1" | "level_2";
   title: string;
   monthlyPrice: number;
   tagline: string;
@@ -24,9 +24,8 @@ type TrialPageClientProps = {
 };
 
 const TIER_LABEL: Record<TrialPlanOption["tier"], string> = {
-  level_1: "Membership",
-  level_2: "Membership + Events",
-  level_3: "Coaching Circle",
+  level_1: "Positives",
+  level_2: "Positives Plus",
 };
 
 export function TrialPageClient({

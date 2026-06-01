@@ -8,9 +8,9 @@
 import { requireMember } from "@/lib/auth/require-member";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
-import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/member/PageHeader";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
+import { Button } from "@/components/ui/Button";
 import { AvailabilityEditor } from "./AvailabilityEditor";
 
 export const metadata = {
@@ -66,8 +66,35 @@ export default async function CoachAvailabilityPage() {
   const { coach, windows } = await getCoachData(member.id);
 
   if (!coach) {
-    // Not a coach — redirect to coaching page
-    redirect("/account/coaching");
+    return (
+      <div>
+        <PageHeader
+          title="Coaching Availability"
+          subtitle="This area is only for Positives coaches who manage bookable session times."
+          hero
+        />
+        <div className="member-container py-8 pb-28 md:py-10">
+          <SurfaceCard
+            tone="tint"
+            padding="lg"
+            elevated
+            className="surface-card--editorial mx-auto max-w-2xl text-center"
+          >
+            <p className="member-detail-kicker">Coach-only settings</p>
+            <h2 className="mt-3 text-2xl font-semibold tracking-[-0.035em] text-foreground">
+              Your coaching sessions live in Account.
+            </h2>
+            <p className="mx-auto mt-3 max-w-xl text-sm leading-[1.8] text-muted-foreground">
+              Availability settings are for active coaches. If you are here to book, review, or
+              purchase coaching sessions, head back to your Coaching Sessions page.
+            </p>
+            <Button href="/account/coaching" className="mt-6 justify-center">
+              Back to Coaching Sessions
+            </Button>
+          </SurfaceCard>
+        </div>
+      </div>
+    );
   }
 
   return (

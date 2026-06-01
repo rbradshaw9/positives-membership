@@ -5,6 +5,8 @@ import { PasswordNudgeBanner } from "@/components/member/PasswordNudgeBanner";
 import { MemberShellClient } from "@/components/member/MemberShellClient";
 import { ServiceWorkerRegistration } from "@/components/platform/ServiceWorkerRegistration";
 import { config } from "@/lib/config";
+import { MEMBER_ONBOARDING_TOUR_KEY, type MemberTourStatus } from "@/lib/onboarding/member-tour";
+import { createClient } from "@/lib/supabase/server";
 import { isStreakActive } from "@/lib/streak/compute-streak";
 import { getEffectiveDate } from "@/lib/dates/effective-date";
 import { trackFirstMemberLogin } from "@/lib/member/track-first-login";
@@ -53,6 +55,23 @@ export default async function MemberLayout({
   const marketingOptedOut = member.email_unsubscribed === true;
   const hasCommunityAccess = checkTierAccess(member.subscription_tier, "level_2");
   const adminPermissionSetPromise = getAdminPermissionSet(member.id, member.email);
+  const onboardingTourPromise = createClient()
+    .then((supabase) =>
+      supabase
+        .from("member_onboarding_tour")
+        .select("status, last_step")
+        .eq("member_id", member.id)
+        .eq("tour_key", MEMBER_ONBOARDING_TOUR_KEY)
+        .maybeSingle()
+        .overrideTypes<{ status: MemberTourStatus; last_step: string | null }>()
+    )
+    .catch((error) => {
+      console.error(
+        "[member-layout] onboarding tour lookup failed:",
+        error instanceof Error ? error.message : String(error)
+      );
+      return { data: null, error };
+    });
   const communityUnreadCountPromise = hasCommunityAccess
     ? getCommunityUnreadCount(member.id)
     : Promise.resolve(0);
@@ -62,11 +81,18 @@ export default async function MemberLayout({
       ? getMemberBetaFeedbackThreads(member.id)
       : Promise.resolve({ threads: [], unreadCount: 0 });
 
-  const [adminPermissionSet, communityUnreadCount, betaFeedbackInbox] = await Promise.all([
+  const [adminPermissionSet, communityUnreadCount, betaFeedbackInbox, onboardingTourResult] = await Promise.all([
     adminPermissionSetPromise,
     communityUnreadCountPromise,
     betaFeedbackInboxPromise,
+    onboardingTourPromise,
   ]);
+  if (onboardingTourResult.error) {
+    console.error("[member-layout] onboarding tour query failed:", onboardingTourResult.error.message);
+  }
+  const onboardingTourAvailable = !onboardingTourResult.error;
+  const onboardingTourStatus =
+    (onboardingTourResult.data?.status as MemberTourStatus | undefined) ?? null;
   const cookieStore = await cookies();
   const impersonationSession = verifyImpersonationSessionToken(
     cookieStore.get(IMPERSONATION_COOKIE_NAME)?.value
@@ -100,6 +126,13 @@ export default async function MemberLayout({
       showAdminNav={showAdminNav}
       isImpersonating={isImpersonating}
       memberEmail={member.email}
+      onboardingTourStatus={onboardingTourStatus}
+      shouldAutoStartOnboardingTour={
+        onboardingTourAvailable &&
+        !onboardingTourResult.data &&
+        !member.first_login_at &&
+        !isImpersonating
+      }
     >
       <ServiceWorkerRegistration />
       {showPasswordNudge && <PasswordNudgeBanner />}

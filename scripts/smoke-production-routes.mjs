@@ -63,8 +63,8 @@ const MEMBER_ROUTES = [
   "/account/coaching/availability",
 ];
 
-const LEVEL_2_ROUTES = ["/events"];
-const LEVEL_3_ROUTES = ["/coaching", "/community"];
+const LEVEL_2_ROUTES = ["/events", "/community"];
+const LEGACY_LEVEL_3_ROUTES = ["/coaching"];
 
 const ADMIN_ROUTES = [
   "/admin",
@@ -274,6 +274,14 @@ async function buildDynamicRoutes(supabase) {
     }
   }
 
+  const event = await maybeSingle(
+    supabase,
+    "member_event",
+    "id, title",
+    (query) => query.eq("status", "published").neq("visibility", "hidden").order("starts_at", { ascending: true })
+  );
+  if (event?.id) routes.push({ role: "level2", path: `/events/${event.id}` });
+
   const member = await maybeSingle(
     supabase,
     "member",
@@ -411,7 +419,7 @@ const routes = uniqRoutes([
   ...dynamicRoutes.filter((route) => route.role === "member"),
   ...LEVEL_2_ROUTES.map((path) => ({ role: "level2", path })),
   ...dynamicRoutes.filter((route) => route.role === "level2"),
-  ...LEVEL_3_ROUTES.map((path) => ({ role: "level3", path })),
+  ...LEGACY_LEVEL_3_ROUTES.map((path) => ({ role: "level3", path })),
   ...ADMIN_ROUTES.map((path) => ({ role: "admin", path })),
   ...dynamicRoutes.filter((route) => route.role === "admin"),
 ]);

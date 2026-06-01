@@ -36,8 +36,8 @@ const LANDING_FAQS = [
     a: "The founding member rate ($37/month or $370/year, down from the standard $97/month) is a special price for early members who join during our launch. Your rate stays locked in permanently — when we raise prices for new members, yours doesn't change.",
   },
   {
-    q: "What do the other pricing tiers include?",
-    a: "Membership is the foundation. Membership + Events adds live member events plus replay access as those sessions are published. Coaching Circle adds weekly live coaching and replay access. Executive Coaching is the highest-touch option and begins with a Breakthrough Session.",
+    q: "What are the membership options?",
+    a: "Positives is the foundation: daily guided audio, weekly principles, monthly themes, and the member library. Positives Plus adds live member events and replay access as those sessions are published. Coaching sessions are sold separately as add-on packages.",
   },
 ] as const;
 

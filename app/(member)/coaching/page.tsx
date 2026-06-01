@@ -10,13 +10,11 @@ import { Button } from "@/components/ui/Button";
 
 /**
  * app/(member)/coaching/page.tsx
- * Sprint 10: Weekly coaching call hub.
- * Sprint 11: hero mode on PageHeader, EmptyState for no-upcoming-call case.
+ * Legacy weekly coaching call hub.
  *
  * Access rules:
- *   Level 1 → upgrade prompt
- *   Level 2 → upgrade prompt
- *   Level 3+ → full coaching page
+ *   Level 1/2 → coaching sessions prompt
+ *   Level 3+ → legacy coaching call archive
  *
  * Zoom URL is server-side ONLY. Never embedded in client JS.
  * join_url column holds the Zoom link (castos_episode_url is reserved for audio).
@@ -24,7 +22,7 @@ import { Button } from "@/components/ui/Button";
 
 export const metadata = {
   title: "Coaching — Positives",
-  description: "Weekly live coaching calls with Dr. Paul Jenkins.",
+  description: "Coaching support and legacy coaching call access for Positives members.",
 };
 
 const COACHING_MIN_TIER = "level_3";
@@ -54,7 +52,7 @@ export default async function CoachingPage() {
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <PageHeader
         title="Coaching"
-        subtitle="Weekly live calls with Dr. Paul Jenkins. Join live or watch the replay."
+        subtitle="Legacy coaching call access for members who still have it. New coaching support is handled as a separate session package."
         hero
       />
 

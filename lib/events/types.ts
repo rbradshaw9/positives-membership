@@ -1,8 +1,8 @@
 export const EVENT_ACCESS_LEVELS = [
   { value: "level_1", label: "Membership" },
-  { value: "level_2", label: "Membership + Events" },
-  { value: "level_3", label: "Coaching Circle" },
-  { value: "level_4", label: "Executive Coaching" },
+  { value: "level_2", label: "Positives Plus" },
+  { value: "level_3", label: "Legacy Coaching Circle" },
+  { value: "level_4", label: "Legacy Executive Coaching" },
 ] as const;
 
 export type EventAccessLevel = (typeof EVENT_ACCESS_LEVELS)[number]["value"];

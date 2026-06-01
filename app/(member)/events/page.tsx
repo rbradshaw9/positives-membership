@@ -431,7 +431,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Searc
     <div className="member-container py-8 pb-28 md:py-12">
       <section className="mb-7 grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
         <div>
-          <p className="ui-section-eyebrow mb-3">Membership + Events</p>
+          <p className="ui-section-eyebrow mb-3">Positives Plus</p>
           <h1 className="heading-balance font-heading text-4xl font-bold leading-heading tracking-normal text-foreground md:text-5xl">
             Events
           </h1>

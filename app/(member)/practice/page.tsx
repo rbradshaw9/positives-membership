@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveMember } from "@/lib/auth/require-active-member";
-import { checkTierAccess } from "@/lib/auth/check-tier-access";
 import { getMemberPracticeSummary } from "@/lib/queries/get-member-practice-summary";
 import { getMemberListeningInsights } from "@/lib/queries/get-member-listening-insights";
 import { resolveAudioUrl } from "@/lib/media/resolve-audio-url";
@@ -146,7 +145,6 @@ export default async function PracticePage({
   const enrichedDaily = buildItems(dailyItems.slice(0, 4), noteContentIds);
   const enrichedWeekly = buildItems(weeklyItems.slice(0, 4), noteContentIds);
   const enrichedMonthly = buildItems(monthlyItems.slice(0, 4), noteContentIds);
-  const coachingAccess = checkTierAccess(member.subscription_tier, "level_3");
   const hasHeatmapActivity = summary.heatmap.some((cell) => cell.state !== "none");
   const hasRecentlyCompleted = listeningInsights.recentlyCompleted.length > 0;
 
@@ -306,17 +304,15 @@ export default async function PracticePage({
                   </p>
                 </Link>
 
-                {coachingAccess && (
-                  <Link
-                    href="/coaching"
-                    className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4 transition-colors hover:bg-white/8"
-                  >
-                    <p className="text-sm font-semibold text-white">Coaching</p>
-                    <p className="mt-1 text-sm leading-body text-white/72">
-                      Upcoming calls and replays for coaching tiers.
-                    </p>
-                  </Link>
-                )}
+                <Link
+                  href="/account/coaching"
+                  className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4 transition-colors hover:bg-white/8"
+                >
+                  <p className="text-sm font-semibold text-white">Coaching Sessions</p>
+                  <p className="mt-1 text-sm leading-body text-white/72">
+                    Review available add-on coaching support.
+                  </p>
+                </Link>
               </div>
             </SurfaceCard>
           </div>

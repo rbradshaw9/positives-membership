@@ -55,12 +55,12 @@ export default async function CommunityPage({ searchParams }: PageProps) {
         />
         <div className="member-container py-10">
           <SurfaceCard tone="tint" padding="lg" className="surface-card--editorial mx-auto max-w-2xl text-center">
-            <p className="ui-section-eyebrow mb-3">Membership + Events Feature</p>
+            <p className="ui-section-eyebrow mb-3">Positives Plus Feature</p>
             <h2 className="heading-balance text-2xl font-semibold tracking-[-0.035em] text-foreground">
               Join the deeper member room.
             </h2>
             <p className="mt-3 text-sm leading-[1.8] text-muted-foreground">
-              Community is part of Membership + Events and above. That keeps the room smaller,
+              Community is part of Positives Plus. That keeps the room smaller,
               warmer, and much easier for members and coaches to engage with care.
             </p>
             <Button href="/join" className="mt-6">

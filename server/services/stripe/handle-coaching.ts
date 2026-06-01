@@ -45,11 +45,13 @@ export async function handleCoachingCheckout(
   session: Stripe.Checkout.Session,
   customerId: string
 ): Promise<void> {
-  const supabase = asLooseSupabaseClient(getAdminClient());
+  const adminClient = getAdminClient();
+  const supabase = asLooseSupabaseClient(adminClient);
   const stripe = getStripe();
 
   const packType = (session.metadata?.pack_type ?? null) as PackType | null;
   const metaMemberId = session.metadata?.member_id ?? null;
+  const isGuestCheckout = session.metadata?.guest === "true" && !metaMemberId;
 
   if (!packType || !(packType in PACK_CONFIG)) {
     console.error(
@@ -62,23 +64,22 @@ export async function handleCoachingCheckout(
     return;
   }
 
-  // ── Step 1: Resolve member ───────────────────────────────────────────────
+  // ── Step 1: Resolve or create member ─────────────────────────────────────
   let memberId = metaMemberId;
   let memberEmail: string | null = null;
+  let stripeCustomer: Stripe.Customer | null = null;
+
+  try {
+    const customer = await stripe.customers.retrieve(customerId);
+    if (!customer.deleted) stripeCustomer = customer;
+  } catch (err) {
+    console.error(
+      `[CoachingWebhook] Failed to retrieve customer ${customerId}: ` +
+        `${err instanceof Error ? err.message : String(err)}`
+    );
+  }
 
   if (!memberId) {
-    // Fallback: look up by customer email
-    let stripeCustomer: Stripe.Customer | null = null;
-    try {
-      const customer = await stripe.customers.retrieve(customerId);
-      if (!customer.deleted) stripeCustomer = customer;
-    } catch (err) {
-      console.error(
-        `[CoachingWebhook] Failed to retrieve customer ${customerId}: ` +
-          `${err instanceof Error ? err.message : String(err)}`
-      );
-    }
-
     const email =
       session.customer_details?.email ?? stripeCustomer?.email ?? null;
 
@@ -93,33 +94,115 @@ export async function handleCoachingCheckout(
       return;
     }
 
-    const { data: memberRow } = await supabase
+    const customerName =
+      session.customer_details?.name?.trim() ??
+      stripeCustomer?.name?.trim() ??
+      null;
+
+    const { data: memberRow, error: memberLookupError } = await supabase
       .from("member")
-      .select<{ id: string; email: string }>("id, email")
+      .select<{ id: string; email: string; stripe_customer_id: string | null }>(
+        "id, email, stripe_customer_id"
+      )
       .eq("email", email)
       .maybeSingle();
 
-    if (!memberRow) {
-      console.error(
-        `[CoachingWebhook] No member row for email ${email} — session: ${session.id}`
+    if (memberLookupError) {
+      throw new Error(
+        `[CoachingWebhook] Failed to look up member for ${email}: ${memberLookupError.message}`
       );
-      metricCount("coaching.checkout.completed", 1, {
-        outcome: "missing_member",
-        livemode: session.livemode,
-      });
-      return;
     }
 
-    memberId = memberRow.id;
-    memberEmail = memberRow.email;
+    if (memberRow) {
+      memberId = memberRow.id;
+      memberEmail = memberRow.email;
+
+      if (!memberRow.stripe_customer_id) {
+        await supabase
+          .from("member")
+          .update({ stripe_customer_id: customerId })
+          .eq("id", memberRow.id);
+      }
+    } else {
+      const { data: newUserData, error: createError } =
+        await adminClient.auth.admin.createUser({
+          email,
+          email_confirm: true,
+        });
+
+      if (createError) {
+        console.log(
+          `[CoachingWebhook] createUser returned error for ${email}; checking member table. Error: ${createError.message}`
+        );
+
+        const { data: existingMember } = await supabase
+          .from("member")
+          .select<{ id: string; email: string }>("id, email")
+          .eq("email", email)
+          .maybeSingle();
+
+        if (!existingMember) {
+          throw new Error(
+            `[CoachingWebhook] Could not create or resolve member for ${email}.`
+          );
+        }
+
+        memberId = existingMember.id;
+        memberEmail = existingMember.email;
+      } else {
+        memberId = newUserData.user.id;
+        memberEmail = email;
+      }
+
+      const { error: upsertError } = await supabase
+        .from("member")
+        .upsert(
+          {
+            id: memberId,
+            email,
+            ...(customerName ? { name: customerName } : {}),
+            stripe_customer_id: customerId,
+            subscription_status: "inactive",
+            launch_cohort: "live",
+            launch_source: "public_coaching",
+          },
+          { onConflict: "id" }
+        );
+
+      if (upsertError) {
+        throw new Error(
+          `[CoachingWebhook] Failed to create coaching buyer member row for ${email}: ${upsertError.message}`
+        );
+      }
+    }
   } else {
     // Fetch email for AC sync
     const { data: memberRow } = await supabase
       .from("member")
-      .select<{ email: string }>("email")
+      .select<{ email: string; stripe_customer_id: string | null }>(
+        "email, stripe_customer_id"
+      )
       .eq("id", memberId)
       .maybeSingle();
     memberEmail = memberRow?.email ?? null;
+
+    if (memberRow && !memberRow.stripe_customer_id) {
+      await supabase
+        .from("member")
+        .update({ stripe_customer_id: customerId })
+        .eq("id", memberId);
+    }
+  }
+
+  if (!memberId) {
+    console.error(
+      `[CoachingWebhook] Cannot grant pack because member could not be resolved — session: ${session.id}`
+    );
+    metricCount("coaching.checkout.completed", 1, {
+      outcome: "missing_member",
+      livemode: session.livemode,
+    });
+    return;
   }
 
   // ── Step 2: Insert coaching_session_pack (idempotent) ────────────────────
@@ -169,13 +252,45 @@ export async function handleCoachingCheckout(
       `packType: ${packType}, sessions: ${pack.sessions}, expiresAt: ${expiresAt ?? "none"}`
   );
 
+  // ── Step 3: Guest login token for payment-first coaching buyers ─────────
+  if (isGuestCheckout && memberEmail) {
+    const { data: linkData, error: linkError } =
+      await adminClient.auth.admin.generateLink({
+        type: "magiclink",
+        email: memberEmail,
+      });
+
+    if (linkError || !linkData?.properties?.hashed_token) {
+      console.error(
+        `[CoachingWebhook] Failed to generate onboarding token for ${memberEmail}: ` +
+          `${linkError?.message ?? "no hashed_token in response"}`
+      );
+      metricCount("coaching.checkout.completed", 1, {
+        outcome: "pack_granted_no_login_token",
+        pack_type: packType,
+        livemode: session.livemode,
+      });
+    } else {
+      const { error: tokenError } = await supabase
+        .from("member")
+        .update({ onboarding_token: linkData.properties.hashed_token })
+        .eq("id", memberId);
+
+      if (tokenError) {
+        console.error(
+          `[CoachingWebhook] Failed to store onboarding token for ${memberEmail}: ${tokenError.message}`
+        );
+      }
+    }
+  }
+
   metricCount("coaching.checkout.completed", 1, {
     outcome: "pack_granted",
     pack_type: packType,
     livemode: session.livemode,
   });
 
-  // ── Step 3: AC sync (non-blocking) ──────────────────────────────────────
+  // ── Step 4: AC sync (non-blocking) ──────────────────────────────────────
   if (memberEmail) {
     after(async () => {
       try {

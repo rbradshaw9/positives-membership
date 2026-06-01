@@ -16,8 +16,8 @@ const JOIN_FAQS = [
     a: "Everything you need to start and sustain the practice: daily guided audio sessions fresh every morning, weekly mindset principles backed by research, a monthly theme from Dr. Paul, and access to the member library as new sessions are released.",
   },
   {
-    q: "What are the other pricing tiers?",
-    a: "Membership + Events adds live member events and event replays as they are scheduled. Coaching Circle adds weekly group coaching and replay access. Executive Coaching is our most personalized path and begins with a Breakthrough Session.",
+    q: "What are the membership options?",
+    a: "Positives includes the daily practice, weekly principles, monthly themes, and member library. Positives Plus adds live member events and event replays as they are scheduled. Coaching sessions are sold separately as add-on packages.",
   },
   {
     q: "Is there a free trial?",

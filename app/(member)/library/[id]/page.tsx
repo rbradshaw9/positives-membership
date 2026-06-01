@@ -14,6 +14,7 @@ import { ResourceLinks } from "@/components/media/ResourceLinks";
 import { LibraryReflectSection } from "@/components/library/LibraryReflectSection";
 import { AudioPlayer } from "@/components/today/AudioPlayer";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
+import { MemberUnavailableState } from "@/components/member/MemberUnavailableState";
 
 /**
  * app/(member)/library/[id]/page.tsx
@@ -89,7 +90,17 @@ export default async function LibraryItemPage({ params }: Props) {
 
   // Tier access enforcement
   if (!checkTierAccess(member.subscription_tier, item.tier_min)) {
-    notFound();
+    return (
+      <MemberUnavailableState
+        eyebrow="Library item unavailable"
+        title="This practice is not included with your current membership."
+        subtitle="You can return to the library to continue with the practices available to you, or review your membership from Account."
+        primaryHref="/library"
+        primaryLabel="Back to Library"
+        secondaryHref="/account"
+        secondaryLabel="View account"
+      />
+    );
   }
 
   const noteCounts = await getMemberNoteCounts(member.id, [id]);

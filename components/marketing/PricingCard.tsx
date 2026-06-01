@@ -3,13 +3,13 @@
 /**
  * components/marketing/PricingCard.tsx
  *
- * Supports all 4 Positives membership tiers.
+ * Supports the current public membership tiers plus legacy internal tiers.
  *
  * Activation logic (no `comingSoon` prop needed):
  *   - priceId is a non-empty string → real checkout form (card is live)
  *   - priceId is empty/null/undefined → "Notify me" disabled button
  *
- * Pricing for L2/L3/L4:
+ * Pricing for L2 and legacy L3/L4:
  *   - When no priceId is set, shows a tasteful TBD block
  *   - When priceId is set, pricing data is read from PRICING constant
  *
@@ -49,7 +49,7 @@ interface PricingCardProps {
 
 const CARDS = {
   1: {
-    title: "Membership",
+    title: "Positives",
     tagline: "Daily practice, steady guidance, and a growing member library.",
     badge: "Founding Member Rate",
     benefits: [
@@ -60,11 +60,11 @@ const CARDS = {
     ],
   },
   2: {
-    title: "Membership + Events",
-    tagline: "Everything in Membership, plus live events and replay access.",
+    title: "Positives Plus",
+    tagline: "Everything in Positives, plus live events and replay access.",
     badge: "Live now",
     benefits: [
-      "Everything in Membership",
+      "Everything in Positives",
       "Live member events",
       "Event replays in your Events area",
       "A simple place to find upcoming sessions and replays",
@@ -72,26 +72,24 @@ const CARDS = {
     ],
   },
   3: {
-    title: "Coaching Circle",
-    tagline: "Everything in Membership + Events, plus weekly group coaching.",
-    badge: "Live now",
+    title: "Legacy Coaching Circle",
+    tagline: "Legacy coaching access for members who still have it.",
+    badge: "Legacy",
     benefits: [
-      "Everything in Membership + Events",
-      "Weekly group coaching sessions",
-      "Coaching session replays",
-      "A deeper accountability rhythm",
-      "A higher-touch path when you want more support",
+      "Everything in Positives Plus",
+      "Legacy coaching session access",
+      "Coaching session replays when available",
+      "No longer sold as a public membership tier",
     ],
   },
   4: {
-    title: "Executive Coaching",
-    tagline: "Our highest-touch path for personalized support.",
-    badge: "Coming Soon",
+    title: "Legacy Executive Coaching",
+    tagline: "Admin-managed coaching package access.",
+    badge: "Legacy",
     benefits: [
-      "Everything in Coaching Circle",
-      "Bi-weekly private 1:1 sessions",
-      "Personalized coaching plan",
-      "Direct access to Dr. Paul",
+      "Admin-managed package or custom invoice",
+      "Personalized coaching support",
+      "Not sold as a public membership tier",
     ],
   },
 } as const;

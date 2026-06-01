@@ -171,7 +171,7 @@ export function ContentForm({
     { value: "daily_audio", label: "Daily - audio practice" },
     { value: "weekly_principle", label: "Weekly - principle" },
     { value: "monthly_theme", label: "Monthly - theme" },
-    { value: "coaching_call", label: "Coaching call (Coaching Circle+)" },
+    { value: "coaching_call", label: "Coaching call (legacy)" },
   ];
 
   // Format stored ISO string back to datetime-local input value (YYYY-MM-DDTHH:mm)
@@ -336,9 +336,9 @@ export function ContentForm({
               >
                 <option value="">All tiers (no restriction)</option>
                 <option value="level_1">All Members</option>
-                <option value="level_2">Membership + Events and above</option>
-                <option value="level_3">Coaching Circle and above</option>
-                <option value="level_4">Executive Coaching only</option>
+                <option value="level_2">Positives Plus and above</option>
+                <option value="level_3">Legacy Coaching Circle and above</option>
+                <option value="level_4">Legacy Executive Coaching only</option>
               </select>
               <p className="admin-hint">
                 Members below this tier will not see this content in library or search.

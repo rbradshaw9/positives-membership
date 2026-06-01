@@ -931,6 +931,47 @@ export type Database = {
         }
         Relationships: []
       }
+      member_onboarding_tour: {
+        Row: {
+          completed_at: string | null
+          dismissed_at: string | null
+          last_step: string | null
+          member_id: string
+          started_at: string | null
+          status: string
+          tour_key: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          dismissed_at?: string | null
+          last_step?: string | null
+          member_id: string
+          started_at?: string | null
+          status?: string
+          tour_key: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          dismissed_at?: string | null
+          last_step?: string | null
+          member_id?: string
+          started_at?: string | null
+          status?: string
+          tour_key?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_onboarding_tour_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "member"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       member_w9: {
         Row: {
           address: string
