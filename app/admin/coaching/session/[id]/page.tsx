@@ -11,8 +11,8 @@ import { requireAdminPermission } from "@/lib/auth/require-admin";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
-import { SessionRoomClient } from "@/app/(member)/account/coaching/session/[id]/session-room-client";
 import { PostSessionWrapper } from "@/app/(member)/account/coaching/session/[id]/post-session-wrapper";
+import { ZoomSessionPanel } from "@/components/coaching/ZoomSessionPanel";
 
 export const metadata = { title: "Session Room — Positives Admin" };
 
@@ -24,7 +24,6 @@ type BookingRow = {
   scheduled_at: string;
   duration_minutes: number;
   timezone: string | null;
-  livekit_room_name: string | null;
   zoom_join_url: string | null;
   member_intake: string | null;
   member: { name: string | null; email: string } | null;
@@ -51,7 +50,7 @@ export default async function AdminCoachingSessionPage({
   const { data: raw } = await supabase
     .from("coaching_booking")
     .select(`id, member_id, coach_id, status, scheduled_at, duration_minutes, timezone,
-             livekit_room_name, zoom_join_url, member_intake,
+             zoom_join_url, member_intake,
              member:member(name, email),
              coach:coach_profile(id, member_id, display_name, avatar_url)`)
     .eq("id", bookingId)
@@ -113,7 +112,7 @@ export default async function AdminCoachingSessionPage({
         )}
 
         {booking.status === "confirmed" && (
-          <section aria-label="Video session">
+          <section aria-label="Zoom session">
             {!isAssignedCoach ? (
               <SurfaceCard padding="md" className="border border-border">
                 <p className="text-sm font-medium text-foreground">Admin view — read only</p>
@@ -122,13 +121,11 @@ export default async function AdminCoachingSessionPage({
                 </p>
               </SurfaceCard>
             ) : sessionOpen ? (
-              <SessionRoomClient
-                bookingId={bookingId}
-                scheduledAt={booking.scheduled_at}
-                durationMinutes={booking.duration_minutes}
-                coachName={coachProfile?.display_name ?? "Coach"}
-                memberName={memberProfile?.name ?? null}
+              <ZoomSessionPanel
+                zoomJoinUrl={booking.zoom_join_url}
                 role={role}
+                otherPartyName={memberProfile?.name ?? memberProfile?.email ?? "Member"}
+                manageUrl="/admin/coaching"
               />
             ) : sessionPast ? (
               <PostSessionWrapper
@@ -146,7 +143,7 @@ export default async function AdminCoachingSessionPage({
                       : `Session starts in ${minutesUntil} minutes`}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    The video room opens 30 minutes before the session. Check back then.
+                    The Zoom session opens 30 minutes before the session. Check back then.
                   </p>
                   {booking.zoom_join_url && (
                     <a

@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import { encryptSecret } from "@/lib/zoom/crypto";
 import { exchangeZoomCode, fetchZoomMe } from "@/lib/zoom/client";
+import { canManageCoachZoom, canManagePlatformZoom } from "@/lib/zoom/authorization";
 
 type OAuthState = {
   state: string;
@@ -37,6 +39,13 @@ export async function GET(request: Request) {
   await supabase.from("zoom_oauth_state").delete().eq("state", state);
 
   try {
+    if (data.owner_kind === "platform" && !(await canManagePlatformZoom(user))) {
+      throw new Error("Platform Zoom permission denied.");
+    }
+    if (data.owner_kind === "coach" && !(await canManageCoachZoom(user))) {
+      throw new Error("Coach Zoom permission denied.");
+    }
+
     const token = await exchangeZoomCode(code);
     const me = await fetchZoomMe(token.access_token);
     const label = me.email ? `Zoom - ${me.email}` : "Zoom account";
@@ -61,6 +70,21 @@ export async function GET(request: Request) {
       .single();
 
     if (error || !connection) throw new Error(error?.message ?? "Zoom connection insert failed.");
+
+    if (data.owner_kind === "coach") {
+      await supabase
+        .from("coach_profile")
+        .update({
+          zoom_connection_id: connection.id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("member_id", user.id);
+    }
+
+    revalidatePath("/admin/integrations/zoom");
+    revalidatePath("/admin/coaching");
+    revalidatePath("/admin/events");
+    revalidateTag("zoom-connections", "max");
 
     const returnUrl = new URL(data.return_to, url.origin);
     returnUrl.searchParams.set("zoomConnectionId", connection.id);

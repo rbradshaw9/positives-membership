@@ -18,7 +18,7 @@ function venueAddress(venue: NonNullable<Awaited<ReturnType<typeof getMemberEven
 
 function isOnlineOnlyVenue(venue: NonNullable<Awaited<ReturnType<typeof getMemberEventVenuePage>>>["venue"]) {
   const name = venue.name.trim().toLowerCase();
-  return venue.is_virtual || name === "zoom" || name === "online" || name === "livekit";
+  return venue.is_virtual || name === "zoom" || name === "online";
 }
 
 export default async function EventVenuePage({ params }: { params: Params }) {

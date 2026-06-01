@@ -71,12 +71,13 @@ export function ZoomMeetingPicker({
             <option value="">Choose Zoom account</option>
             {connections.map((connection) => (
               <option key={connection.id} value={connection.id}>
-                {connection.label} {connection.zoom_user_email ? `(${connection.zoom_user_email})` : ""}
+                {connection.owner_kind === "coach" ? "Coach" : "Platform"} - {connection.label}
+                {connection.zoom_user_email ? ` (${connection.zoom_user_email})` : ""}
               </option>
             ))}
           </select>
           <a
-            href={`/api/admin/integrations/zoom/connect?returnTo=${encodeURIComponent(connectReturn)}`}
+            href={`/api/admin/integrations/zoom/connect?ownerKind=platform&returnTo=${encodeURIComponent(connectReturn)}`}
             className="mt-2 inline-flex text-xs font-semibold text-primary"
           >
             Create new Zoom connection

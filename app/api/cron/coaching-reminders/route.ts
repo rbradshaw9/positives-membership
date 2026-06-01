@@ -22,6 +22,7 @@ type BookingRow = {
   scheduled_at: string;
   duration_minutes: number;
   timezone: string;
+  zoom_join_url: string | null;
   admin_note: string | null;
   member: { email: string; name: string | null } | null;
   coach: { display_name: string; member_id: string | null } | null;
@@ -78,8 +79,8 @@ function buildReminderHtml(params: {
           </table>
         </td></tr>
         <tr><td style="padding:0 32px 32px;">
-          <a href="${params.joinUrl}" style="display:inline-block;background:#6366f1;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;padding:12px 24px;border-radius:10px;">Join Session</a>
-          <p style="margin:16px 0 0;font-size:12px;color:#94a3b8;">The room opens 30 minutes before your session starts.</p>
+          <a href="${params.joinUrl}" style="display:inline-block;background:#6366f1;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;padding:12px 24px;border-radius:10px;">Join Zoom Session</a>
+          <p style="margin:16px 0 0;font-size:12px;color:#94a3b8;">The Zoom session opens 30 minutes before your session starts.</p>
         </td></tr>
         <tr><td style="padding:16px 32px;border-top:1px solid #f1f5f9;">
           <p style="margin:0;font-size:12px;color:#94a3b8;">This reminder was sent to you because you have an upcoming coaching session on Positives.</p>
@@ -96,9 +97,9 @@ function buildReminderHtml(params: {
     `With: ${params.coachName}`,
     `When: ${params.sessionTime}`,
     "",
-    `Join your session: ${params.joinUrl}`,
+    `Join your Zoom session: ${params.joinUrl}`,
     "",
-    "The room opens 30 minutes before your session starts.",
+    "The Zoom session opens 30 minutes before your session starts.",
   ].join("\n");
 
   return { subject, html, text };
@@ -132,7 +133,7 @@ export async function GET(req: Request) {
   ) {
     const { data: bookingsRaw } = await supabase
       .from("coaching_booking")
-      .select("id, scheduled_at, duration_minutes, timezone, admin_note, member:member(email, name), coach:coach_profile(display_name, member_id)")
+      .select("id, scheduled_at, duration_minutes, timezone, zoom_join_url, admin_note, member:member(email, name), coach:coach_profile(display_name, member_id)")
       .eq("status", "confirmed")
       .gte("scheduled_at", windowStart.toISOString())
       .lte("scheduled_at", windowEnd.toISOString());
@@ -150,7 +151,7 @@ export async function GET(req: Request) {
 
       try {
         const sessionTime = formatReminderTime(b.scheduled_at, b.timezone || "America/New_York");
-        const joinUrl = `https://positives.life/account/coaching/session/${b.id}`;
+        const joinUrl = b.zoom_join_url ?? `https://positives.life/account/coaching/session/${b.id}`;
 
         const { subject, html, text } = buildReminderHtml({
           memberName: member.name,

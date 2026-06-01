@@ -39,6 +39,9 @@ type BookingRow = {
   duration_minutes: number;
   member_intake: string | null;
   timezone: string;
+  zoom_connection_id: string | null;
+  zoom_join_url: string | null;
+  zoom_meeting_id: string | null;
   member: { email: string; name: string | null } | null;
   coach: { display_name: string; member_id: string | null } | null;
 };
@@ -79,6 +82,19 @@ function isJoinable(iso: string, durationMinutes: number) {
   return now >= start - 30 * 60 * 1000 && now <= start + (durationMinutes + 15) * 60 * 1000;
 }
 
+function ZoomStatusBadge({ booking }: { booking: BookingRow }) {
+  const attached = Boolean(booking.zoom_meeting_id && booking.zoom_join_url);
+  return (
+    <span
+      className={`inline-flex w-fit rounded-full px-2 py-0.5 text-xs font-semibold ${
+        attached ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+      }`}
+    >
+      {attached ? "Zoom attached" : "Zoom missing"}
+    </span>
+  );
+}
+
 // ─── Data ──────────────────────────────────────────────────────────────────────
 
 async function getCoachingData(coachMemberId?: string) {
@@ -95,7 +111,7 @@ async function getCoachingData(coachMemberId?: string) {
 
       supabase
         .from("coaching_booking")
-        .select("id, status, scheduled_at, duration_minutes, member_intake, timezone, member:member(email, name), coach:coach_profile(display_name, member_id)")
+        .select("id, status, scheduled_at, duration_minutes, member_intake, timezone, zoom_connection_id, zoom_join_url, zoom_meeting_id, member:member(email, name), coach:coach_profile(display_name, member_id)")
         .eq("status", "confirmed")
         .gte("scheduled_at", now)
         .order("scheduled_at", { ascending: true })
@@ -103,7 +119,7 @@ async function getCoachingData(coachMemberId?: string) {
 
       supabase
         .from("coaching_booking")
-        .select("id, status, scheduled_at, duration_minutes, member_intake, timezone, member:member(email, name), coach:coach_profile(display_name, member_id)")
+        .select("id, status, scheduled_at, duration_minutes, member_intake, timezone, zoom_connection_id, zoom_join_url, zoom_meeting_id, member:member(email, name), coach:coach_profile(display_name, member_id)")
         .in("status", ["completed", "canceled", "noshow"])
         .order("scheduled_at", { ascending: false })
         .limit(10),
@@ -206,6 +222,8 @@ function SessionCard({ booking }: { booking: BookingRow }) {
         </svg>
         <span>{formatFullDate(booking.scheduled_at, tz)}</span>
       </div>
+
+      <ZoomStatusBadge booking={booking} />
 
       {/* Intake notes */}
       {booking.member_intake ? (
@@ -441,6 +459,7 @@ export default async function AdminCoachingPage() {
                     <th>Coach</th>
                     <th>Scheduled</th>
                     <th>In</th>
+                    <th>Zoom</th>
                     <th>Notes</th>
                     <th>Actions</th>
                   </tr>
@@ -469,6 +488,9 @@ export default async function AdminCoachingPage() {
                           }`}>
                             {joinable ? "Live" : label}
                           </span>
+                        </td>
+                        <td>
+                          <ZoomStatusBadge booking={b} />
                         </td>
                         <td className="text-sm text-muted-foreground">
                           {b.member_intake ? (

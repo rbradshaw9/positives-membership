@@ -6,20 +6,17 @@
  * Creates a confirmed coaching booking:
  * 1. Validates the member has available sessions
  * 2. Validates the slot is still available
- * 3. Deducts one session from the oldest eligible pack (in a transaction)
- * 4. Creates the coaching_booking record
- * 5. Creates a Livekit room
+ * 3. Creates the coaching_booking record
+ * 4. Deducts one session from the oldest eligible pack with an optimistic lock
+ * 5. Creates a Zoom meeting when a Zoom account is available
  * 6. Returns the booking ID
- *
- * All critical steps are atomic — session deduction and booking creation
- * happen in the same Postgres transaction via RPC.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireMember } from "@/lib/auth/require-member";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
-import { createCoachingRoom, coachingRoomName } from "@/lib/livekit/client";
+import { createCoachingZoomMeeting } from "@/lib/zoom/coaching";
 import { sendPostmarkEmail } from "@/lib/email/postmark";
 import {
   renderCoachingConfirmationEmail,
@@ -168,25 +165,35 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ── 5. Create Livekit room ────────────────────────────────────────────────
-    const roomName = coachingRoomName(bookingId);
+    // ── 5. Create Zoom meeting ────────────────────────────────────────────────
+    let zoomJoinUrl: string | null = null;
     try {
-      await createCoachingRoom({
-        roomName,
-        emptyTimeoutSeconds: 300,
-        maxParticipants: 2,
+      const zoomSession = await createCoachingZoomMeeting({
+        coachId,
+        memberName: member.name ?? null,
+        memberEmail: member.email,
+        scheduledAt,
+        durationMinutes: coach.session_duration_minutes,
+        timezone,
       });
-
-      await supabase
-        .from("coaching_booking")
-        .update({
-          livekit_room_name: roomName,
-          livekit_room_created_at: new Date().toISOString(),
-        })
-        .eq("id", bookingId);
-    } catch (livekitErr) {
-      // Non-fatal — room can be created later when joining
-      console.error("[coaching/book] Livekit room creation failed:", livekitErr);
+      if (zoomSession) {
+        zoomJoinUrl = zoomSession.joinUrl;
+        await supabase
+          .from("coaching_booking")
+          .update({
+            zoom_connection_id: zoomSession.connectionId,
+            zoom_join_url: zoomSession.joinUrl,
+            zoom_meeting_id: zoomSession.meetingId,
+            zoom_start_url_ciphertext: zoomSession.startUrlCiphertext,
+            zoom_host_email: zoomSession.hostEmail,
+            zoom_provider_status: zoomSession.providerStatus,
+            zoom_raw_metadata: zoomSession.rawMetadata,
+          })
+          .eq("id", bookingId);
+      }
+    } catch (zoomErr) {
+      // Non-fatal — admins can attach a Zoom link manually if account setup fails.
+      console.error("[coaching/book] Zoom meeting creation failed:", zoomErr);
     }
 
     // ── 6. Send confirmation email (non-fatal) ────────────────────────────────
@@ -200,7 +207,9 @@ export async function POST(req: NextRequest) {
         minute: "2-digit",
         timeZone: timezone,
       });
-      const joinUrl = `https://positives.life/account/coaching/session/${bookingId}`;
+      const sessionUrl = `https://positives.life/account/coaching/session/${bookingId}`;
+      const joinUrl = zoomJoinUrl ?? sessionUrl;
+      const calendarUrl = `${sessionUrl}/calendar`;
       const cancelUrl = "https://positives.life/account/coaching";
 
       // Member confirmation
@@ -212,6 +221,7 @@ export async function POST(req: NextRequest) {
         durationMinutes: coach.session_duration_minutes,
         joinUrl,
         cancelUrl,
+        calendarUrl,
       });
 
       await sendPostmarkEmail({
@@ -241,7 +251,9 @@ export async function POST(req: NextRequest) {
             scheduledAt: scheduledAtFormatted,
             durationMinutes: coach.session_duration_minutes,
             memberIntake: intake ?? null,
-            sessionUrl: joinUrl,
+            sessionUrl,
+            joinUrl,
+            calendarUrl,
           });
 
           await sendPostmarkEmail({
@@ -262,7 +274,7 @@ export async function POST(req: NextRequest) {
     // ── 7. Return success ─────────────────────────────────────────────────────
     return NextResponse.json({
       bookingId,
-      roomName,
+      zoomJoinUrl,
       scheduledAt,
       coachName: coach.display_name,
       durationMinutes: coach.session_duration_minutes,

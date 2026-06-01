@@ -22,13 +22,29 @@ type CoachPayload = {
   accepts_new: boolean;
   session_duration_minutes: number;
   buffer_minutes_after: number;
+  zoom_connection_id?: string | null;
 };
+
+async function validZoomConnectionId(
+  supabase: ReturnType<typeof asLooseSupabaseClient>,
+  connectionId: string | null | undefined
+) {
+  if (!connectionId) return null;
+  const { data } = await supabase
+    .from("zoom_connection")
+    .select("id")
+    .eq("id", connectionId)
+    .eq("status", "active")
+    .maybeSingle();
+  return data ? connectionId : null;
+}
 
 export async function POST(req: NextRequest) {
   try {
     await requireAdmin();
     const payload = (await req.json()) as CoachPayload;
     const supabase = asLooseSupabaseClient(getAdminClient());
+    const zoomConnectionId = await validZoomConnectionId(supabase, payload.zoom_connection_id);
 
     const { data, error } = await supabase
       .from("coach_profile")
@@ -43,6 +59,7 @@ export async function POST(req: NextRequest) {
         accepts_new: payload.accepts_new ?? true,
         session_duration_minutes: payload.session_duration_minutes ?? 60,
         buffer_minutes_after: payload.buffer_minutes_after ?? 15,
+        zoom_connection_id: zoomConnectionId,
       })
       .select("id")
       .single();
@@ -66,6 +83,7 @@ export async function PATCH(req: NextRequest) {
     if (!payload.id) return NextResponse.json({ error: "id is required" }, { status: 400 });
 
     const supabase = asLooseSupabaseClient(getAdminClient());
+    const zoomConnectionId = await validZoomConnectionId(supabase, payload.zoom_connection_id);
 
     const { error } = await supabase
       .from("coach_profile")
@@ -80,6 +98,7 @@ export async function PATCH(req: NextRequest) {
         accepts_new: payload.accepts_new,
         session_duration_minutes: payload.session_duration_minutes,
         buffer_minutes_after: payload.buffer_minutes_after,
+        zoom_connection_id: zoomConnectionId,
         updated_at: new Date().toISOString(),
       })
       .eq("id", payload.id);

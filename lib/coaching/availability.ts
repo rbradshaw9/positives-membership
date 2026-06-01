@@ -13,6 +13,7 @@
 
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
+import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 
 export type AvailabilityWindow = {
   day_of_week: number;   // 0=Sun, 1=Mon, ..., 6=Sat
@@ -155,29 +156,15 @@ function generateSlotsForCoach(params: {
       (b.duration_minutes + coach.buffer_minutes_after) * 60 * 1000,
   }));
 
-  // Iterate each day in range
-  const current = new Date(rangeStart);
-  current.setUTCHours(0, 0, 0, 0);
-
   const blockedSet = new Set(blockedDates);
 
-  while (current <= rangeEnd) {
-    const dayOfWeek = current.getUTCDay(); // This is UTC day — close enough for availability
+  for (const window of windows) {
+    const tz = window.timezone;
+    for (const dateKey of localDateKeys(rangeStart, rangeEnd, tz)) {
+      if (blockedSet.has(dateKey) || dayOfWeekForDateKey(dateKey) !== window.day_of_week) continue;
 
-    const dayWindows = windows.filter((w) => w.day_of_week === dayOfWeek);
-
-    // Skip days the coach has blocked
-    const dateKey = current.toISOString().slice(0, 10); // YYYY-MM-DD UTC
-    if (blockedSet.has(dateKey)) {
-      current.setUTCDate(current.getUTCDate() + 1);
-      continue;
-    }
-
-    for (const window of dayWindows) {
-      const tz = window.timezone;
-      // Convert window times (in coach local timezone) to UTC for this day
-      const windowStart = localMinutesToUtc(current, window.start_minutes, tz);
-      const windowEnd = localMinutesToUtc(current, window.end_minutes, tz);
+      const windowStart = localMinutesToUtc(dateKey, window.start_minutes, tz);
+      const windowEnd = localMinutesToUtc(dateKey, window.end_minutes, tz);
 
       // Step through slots within the window
       let slotStart = Math.max(windowStart, rangeStart.getTime());
@@ -204,47 +191,48 @@ function generateSlotsForCoach(params: {
         slotStart += 30 * 60 * 1000;
       }
     }
-
-    // Next day
-    current.setUTCDate(current.getUTCDate() + 1);
   }
 
   return slots;
 }
 
+function localDateKeys(rangeStart: Date, rangeEnd: Date, timezone: string) {
+  const keys: string[] = [];
+  const seen = new Set<string>();
+  const cursor = new Date(rangeStart);
+  cursor.setUTCHours(0, 0, 0, 0);
+  const end = new Date(rangeEnd);
+  end.setUTCHours(23, 59, 59, 999);
+
+  while (cursor <= end) {
+    const key = formatInTimeZone(cursor, timezone, "yyyy-MM-dd");
+    if (!seen.has(key)) {
+      seen.add(key);
+      keys.push(key);
+    }
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  const endKey = formatInTimeZone(rangeEnd, timezone, "yyyy-MM-dd");
+  if (!seen.has(endKey)) keys.push(endKey);
+  return keys.sort();
+}
+
+function dayOfWeekForDateKey(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day, 12)).getUTCDay();
+}
+
 /**
  * Convert minutes-from-midnight in a given timezone to UTC milliseconds
- * for a specific UTC date.
+ * for a specific local date.
  */
 function localMinutesToUtc(
-  utcDay: Date,
+  dateKey: string,
   minutesFromMidnight: number,
   timezone: string
 ): number {
-  // Build a date string in local timezone and parse it
-  const year = utcDay.getUTCFullYear();
-  const month = String(utcDay.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(utcDay.getUTCDate()).padStart(2, "0");
   const hours = String(Math.floor(minutesFromMidnight / 60)).padStart(2, "0");
   const mins = String(minutesFromMidnight % 60).padStart(2, "0");
-
-  // Use Intl to get offset for this timezone on this date
-  const localDateStr = `${year}-${month}-${day}T${hours}:${mins}:00`;
-
-  try {
-    // Parse the local time as if it's in the coach's timezone
-    const tempDate = new Date(`${localDateStr}Z`); // treat as UTC first
-    const tzOffset = getTimezoneOffsetMinutes(tempDate, timezone);
-    return tempDate.getTime() + tzOffset * 60 * 1000;
-  } catch {
-    return new Date(`${localDateStr}Z`).getTime();
-  }
-}
-
-function getTimezoneOffsetMinutes(date: Date, timezone: string): number {
-  const utcStr = date.toLocaleString("en-US", { timeZone: "UTC" });
-  const localStr = date.toLocaleString("en-US", { timeZone: timezone });
-  const utcDate = new Date(utcStr);
-  const localDate = new Date(localStr);
-  return (utcDate.getTime() - localDate.getTime()) / 60000;
+  return fromZonedTime(`${dateKey}T${hours}:${mins}:00`, timezone).getTime();
 }

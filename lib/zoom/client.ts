@@ -155,5 +155,6 @@ export async function zoomApi<T>(connectionId: string, path: string, init: Reque
   if (!response.ok) {
     throw new Error(`Zoom API failed: ${response.status} ${await response.text()}`);
   }
-  return response.json() as Promise<T>;
+  const text = await response.text();
+  return (text ? JSON.parse(text) : null) as T;
 }

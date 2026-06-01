@@ -23,8 +23,9 @@ export type CoachingConfirmationEmailInput = {
   coachName: string;
   scheduledAt: string;       // human-readable, already in member's timezone
   durationMinutes: number;
-  joinUrl: string;           // e.g. https://positives.life/account/coaching/session/[id]
+  joinUrl: string;           // Zoom join URL when available
   cancelUrl: string;         // e.g. https://positives.life/account/coaching (cancel from there)
+  calendarUrl?: string;
 };
 
 export function renderCoachingConfirmationEmail(
@@ -36,7 +37,7 @@ export function renderCoachingConfirmationEmail(
   const safeDuration = `${input.durationMinutes} minutes`;
 
   const subject = `Your coaching session with ${input.coachName} is confirmed`;
-  const preheader = `${safeDate} · ${safeDuration} · Join right here on Positives.`;
+  const preheader = `${safeDate} · ${safeDuration} · Join on Zoom.`;
 
   const sessionCard = infoCard(`
     <p style="margin:0 0 10px;font-family:${B.fontBody};font-size:13px;font-weight:700;color:${B.foreground};text-transform:uppercase;letter-spacing:0.12em;">Session details</p>
@@ -52,7 +53,7 @@ export function renderCoachingConfirmationEmail(
       <td class="email-padding" style="background:${B.card};padding:38px 42px 18px;">
         <p style="margin:0 0 12px;font-family:${B.fontBody};font-size:12px;font-weight:700;color:${B.primary};text-transform:uppercase;letter-spacing:0.16em;">Session confirmed</p>
         <h1 class="email-h1" style="margin:0 0 16px;font-family:${B.fontHeading};font-size:24px;line-height:1.25;color:${B.foreground};letter-spacing:-0.02em;">You&rsquo;re booked, ${safeName}.</h1>
-        <p style="margin:0;font-family:${B.fontBody};font-size:15px;line-height:1.75;color:${B.mutedFg};">Your coaching session is confirmed. When it&rsquo;s time, click the button below to join right here on Positives &mdash; no app download needed.</p>
+        <p style="margin:0;font-family:${B.fontBody};font-size:15px;line-height:1.75;color:${B.mutedFg};">Your coaching session is confirmed. When it&rsquo;s time, click the button below to join on Zoom.</p>
       </td>
     </tr>
     <tr>
@@ -60,9 +61,10 @@ export function renderCoachingConfirmationEmail(
     </tr>
     <tr>
       <td class="email-padding" style="background:${B.card};padding:8px 42px 30px;">
-        ${ctaButton("Join Session", input.joinUrl)}
+        ${ctaButton("Join Zoom Session", input.joinUrl)}
         <p style="margin:18px 0 0;font-family:${B.fontBody};font-size:12px;line-height:1.7;color:${B.mutedFg};">
           Need to cancel? <a href="${input.cancelUrl}" style="color:${B.primary};font-weight:700;text-decoration:none;">Manage your session</a> from your coaching dashboard. Cancellations more than 24 hours in advance will restore your session credit.
+          ${input.calendarUrl ? `<br><a href="${input.calendarUrl}" style="color:${B.primary};font-weight:700;text-decoration:none;">Download calendar invite</a>` : ""}
         </p>
       </td>
     </tr>
@@ -78,7 +80,8 @@ export function renderCoachingConfirmationEmail(
     input.scheduledAt,
     `Duration: ${safeDuration}`,
     "",
-    `Join your session: ${input.joinUrl}`,
+    `Join your Zoom session: ${input.joinUrl}`,
+    input.calendarUrl ? `Calendar invite: ${input.calendarUrl}` : "",
     "",
     `Need to cancel? Visit ${input.cancelUrl} — cancellations 24+ hours in advance restore your session credit.`,
     "",
@@ -176,7 +179,9 @@ export type CoachBookingNotificationInput = {
   scheduledAt: string;
   durationMinutes: number;
   memberIntake: string | null;
-  sessionUrl: string;      // session room URL
+  sessionUrl: string;      // Positives booking detail URL
+  joinUrl: string | null;  // Zoom join URL when available
+  calendarUrl?: string;
 };
 
 export function renderCoachBookingNotificationEmail(
@@ -218,7 +223,11 @@ export function renderCoachBookingNotificationEmail(
     ${intakeCard ? `<tr><td class="email-padding" style="background:${B.card};padding:0 42px 18px;">${intakeCard}</td></tr>` : ""}
     <tr>
       <td class="email-padding" style="background:${B.card};padding:8px 42px 30px;">
-        ${ctaButton("View Session Room", input.sessionUrl)}
+        ${ctaButton(input.joinUrl ? "Join Zoom Session" : "View Session Details", input.joinUrl ?? input.sessionUrl)}
+        <p style="margin:18px 0 0;font-family:${B.fontBody};font-size:12px;line-height:1.7;color:${B.mutedFg};">
+          Booking details: <a href="${input.sessionUrl}" style="color:${B.primary};font-weight:700;text-decoration:none;">Open in Positives</a>
+          ${input.calendarUrl ? `<br><a href="${input.calendarUrl}" style="color:${B.primary};font-weight:700;text-decoration:none;">Download calendar invite</a>` : ""}
+        </p>
       </td>
     </tr>
     ${transactionalEmailFooter()}
@@ -235,7 +244,9 @@ export function renderCoachBookingNotificationEmail(
     "",
     input.memberIntake ? `Pre-session notes:\n${input.memberIntake}` : "No pre-session notes.",
     "",
-    `Session room: ${input.sessionUrl}`,
+    input.joinUrl ? `Join Zoom session: ${input.joinUrl}` : `Session details: ${input.sessionUrl}`,
+    input.joinUrl ? `Booking details: ${input.sessionUrl}` : "",
+    input.calendarUrl ? `Calendar invite: ${input.calendarUrl}` : "",
   ].join("\n");
 
   return { subject, html, text };

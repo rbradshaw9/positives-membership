@@ -31,6 +31,7 @@ type BookingResult = {
   coachName: string;
   scheduledAt: string;
   durationMinutes: number;
+  zoomJoinUrl: string | null;
 };
 
 type Step = "idle" | "loading" | "selecting" | "confirming" | "booked" | "error";
@@ -113,6 +114,7 @@ export function BookingFlow({ onBooked }: { onBooked?: (result: BookingResult) =
         coachName: data.coachName,
         scheduledAt: data.scheduledAt,
         durationMinutes: data.durationMinutes ?? 60,
+        zoomJoinUrl: data.zoomJoinUrl ?? null,
       };
       setResult(booked);
       setStep("booked");
@@ -166,7 +168,9 @@ export function BookingFlow({ onBooked }: { onBooked?: (result: BookingResult) =
     const sessionStartDate = new Date(result.scheduledAt);
     const sessionEndDate = new Date(sessionStartDate.getTime() + result.durationMinutes * 60 * 1000);
     const gCalFmt = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(".000", "");
-    const gCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`Coaching Session with ${result.coachName}`)}&dates=${gCalFmt(sessionStartDate)}/${gCalFmt(sessionEndDate)}&details=${encodeURIComponent(`Join your session: https://positives.life/account/coaching/session/${result.bookingId}`)}`;
+    const sessionUrl = `https://positives.life/account/coaching/session/${result.bookingId}`;
+    const joinUrl = result.zoomJoinUrl ?? sessionUrl;
+    const gCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`Coaching Session with ${result.coachName}`)}&dates=${gCalFmt(sessionStartDate)}/${gCalFmt(sessionEndDate)}&details=${encodeURIComponent(`Join your session: ${joinUrl}\n\nManage your booking: ${sessionUrl}`)}`;
 
     return (
       <div
@@ -191,7 +195,7 @@ export function BookingFlow({ onBooked }: { onBooked?: (result: BookingResult) =
             variant="primary"
             size="sm"
           >
-            View session room
+            {result.zoomJoinUrl ? "View Zoom session" : "View booking"}
           </Button>
           <a
             href={gCalUrl}

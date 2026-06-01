@@ -58,6 +58,7 @@ function serverHydrationSnapshot() {
 
 type SearchParams = { error?: string; success?: string; zoomConnectionId?: string; starts_at?: string };
 type ModalKind = "type" | "host" | "venue" | null;
+type ZoomFirstVirtualMode = "none" | "manual" | "zoom";
 type HostAssignmentDraft = {
   hostId: string;
   role: "host" | "organizer" | "speaker" | "instructor" | "partner";
@@ -161,7 +162,6 @@ function errorMessage(error?: string) {
   if (error === "zoom_setup_required") return "Choose how Zoom should be set up before publishing.";
   if (error === "zoom_create_failed") return "Zoom could not create the session. The event was kept as a draft.";
   if (error === "zoom_detach_failed") return "Zoom could not be removed from this event. Try again.";
-  if (error === "livekit_setup_required") return "LiveKit RoomService and Egress must be healthy before publishing an auto-recorded LiveKit event.";
   if (error === "ticket_required") return "Add at least one active ticket type before publishing a ticketed event.";
   return error ? "The event could not be saved. Check required fields and integration settings." : null;
 }
@@ -171,9 +171,7 @@ function virtualStateLabel(virtualMode: string, event?: EventRow | null) {
   if (virtualMode === "zoom") {
     return event?.event_zoom_meeting?.id ? "Zoom session attached" : "Zoom setup needed";
   }
-  if (virtualMode === "livekit") {
-    return event?.event_livekit_room?.id ? "LiveKit webinar ready" : "LiveKit webinar setup needed";
-  }
+  if (virtualMode === "livekit") return "Legacy LiveKit event";
   return "No virtual link";
 }
 
@@ -736,7 +734,9 @@ export function EventForm({
   const [endsAt, setEndsAt] = useState(
     event ? datetimeLocal(event.ends_at, initialTimezone) : addOneHourLocal(initialStartsAt)
   );
-  const [virtualMode, setVirtualMode] = useState(event?.virtual_mode ?? "none");
+  const [virtualMode, setVirtualMode] = useState<ZoomFirstVirtualMode>(
+    event?.virtual_mode === "livekit" ? "zoom" : event?.virtual_mode ?? "zoom"
+  );
   const hasAttachedZoom = Boolean(event?.event_zoom_meeting?.id);
   const [zoomMode, setZoomMode] = useState(hasAttachedZoom ? "none" : "");
   const [ticketingMode, setTicketingMode] = useState(event?.ticketing_mode ?? "included");
@@ -1447,7 +1447,7 @@ export function EventForm({
           </Link>
         </FieldSection>
 
-        <FieldSection title="Virtual / Zoom">
+        <FieldSection title="Zoom">
           <div className="rounded-2xl border border-border bg-muted/30 p-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -1466,12 +1466,11 @@ export function EventForm({
 
           <div className="admin-form-grid-2">
             <div className="admin-form-field">
-              <label htmlFor="virtual_mode" className="admin-label">Virtual mode</label>
-              <select id="virtual_mode" name="virtual_mode" value={virtualMode} onChange={(event) => setVirtualMode(event.target.value as EventRow["virtual_mode"])} className="admin-select">
+              <label htmlFor="virtual_mode" className="admin-label">Join method</label>
+              <select id="virtual_mode" name="virtual_mode" value={virtualMode} onChange={(event) => setVirtualMode(event.target.value as ZoomFirstVirtualMode)} className="admin-select">
                 <option value="none">No virtual link</option>
                 <option value="manual">Manual link</option>
                 <option value="zoom">Zoom</option>
-                <option value="livekit">LiveKit webinar</option>
               </select>
             </div>
             {virtualMode === "manual" ? (
@@ -1552,7 +1551,7 @@ export function EventForm({
                     Connect a Zoom account before creating or choosing a Zoom session.
                   </p>
                   <a
-                    href={`/api/admin/integrations/zoom/connect?returnTo=${encodeURIComponent(connectReturn)}`}
+                    href={`/api/admin/integrations/zoom/connect?ownerKind=platform&returnTo=${encodeURIComponent(connectReturn)}`}
                     className="admin-btn admin-btn--primary mt-3"
                   >
                     Connect Zoom account

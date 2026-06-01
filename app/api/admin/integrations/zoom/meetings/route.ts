@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { zoomApi } from "@/lib/zoom/client";
+import { getAuthorizedZoomConnection } from "@/lib/zoom/authorization";
 
 type ZoomListResponse = {
   meetings?: Array<{ id: number | string; topic: string; start_time?: string; join_url?: string }>;
@@ -8,13 +9,18 @@ type ZoomListResponse = {
 };
 
 export async function GET(request: Request) {
-  await requireAdmin();
+  const user = await requireAdmin();
   const url = new URL(request.url);
   const connectionId = url.searchParams.get("connectionId");
   const type = url.searchParams.get("type") === "webinar" ? "webinar" : "meeting";
 
   if (!connectionId) {
     return NextResponse.json({ items: [] });
+  }
+
+  const connection = await getAuthorizedZoomConnection(connectionId, user);
+  if (!connection) {
+    return NextResponse.json({ items: [], error: "zoom_connection_forbidden" }, { status: 403 });
   }
 
   try {

@@ -6,8 +6,6 @@ import {
   getBetaFeedbackAsanaProjectUrl,
   getOpenBetaFeedbackAsanaTasks,
 } from "@/lib/integrations/asana";
-import { livekitConfigured } from "@/lib/livekit/client";
-import { getLiveKitEventHealth } from "@/lib/livekit/events";
 
 type HealthTone = "good" | "watch" | "risk" | "neutral";
 
@@ -109,7 +107,6 @@ async function fetchOpsHealthSnapshot() {
     asanaResult,
     sentryResult,
     stripeResult,
-    livekitEventHealth,
   ] = await Promise.all([
     getFeedbackSnapshot(supabase),
     getEarlyMemberCount(supabase),
@@ -117,8 +114,8 @@ async function fetchOpsHealthSnapshot() {
     getOpenBetaFeedbackAsanaTasks(),
     getSentrySnapshot(),
     getStripeSnapshot(expectedStripeWebhookUrl),
-    getLiveKitEventHealth(),
   ]);
+  const zoomResult = await getZoomConnectionSnapshot(supabase);
 
   const latestCommit = process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.SENTRY_RELEASE ?? null;
   const latestDeployment =
@@ -152,20 +149,7 @@ async function fetchOpsHealthSnapshot() {
       error: asanaResult.error,
       tone: asanaResult.error ? "watch" as HealthTone : "good" as HealthTone,
     },
-    livekit: {
-      configured: livekitConfigured(),
-      serverUrl: process.env.LIVEKIT_URL ?? null,
-      publicUrlConfigured: Boolean(process.env.NEXT_PUBLIC_LIVEKIT_URL),
-      roomService: livekitEventHealth.roomService,
-      egressService: livekitEventHealth.egressService,
-      roomError: livekitEventHealth.roomError,
-      egressError: livekitEventHealth.egressError,
-      tone: (livekitEventHealth.roomService === "ok" && livekitEventHealth.egressService === "ok"
-        ? "good"
-        : livekitConfigured()
-          ? "watch"
-          : "neutral") as HealthTone,
-    },
+    zoom: zoomResult,
   };
 }
 
@@ -223,6 +207,41 @@ async function getFeedbackSnapshot(supabase: ReturnType<typeof asLooseSupabaseCl
     latest: rows.slice(0, 5),
     error: null as string | null,
     tone: blockerHigh > 0 ? "risk" as HealthTone : open > 0 ? "watch" as HealthTone : "good" as HealthTone,
+  };
+}
+
+async function getZoomConnectionSnapshot(supabase: ReturnType<typeof asLooseSupabaseClient>) {
+  const { data, error } = await supabase
+    .from("zoom_connection")
+    .select("id, owner_kind, status, zoom_user_email, last_error")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    return {
+      configured: false,
+      activeConnections: 0,
+      platformConnections: 0,
+      coachConnections: 0,
+      lastError: error.message,
+      tone: "watch" as HealthTone,
+    };
+  }
+
+  const rows = (data ?? []) as Array<{
+    owner_kind: "platform" | "coach";
+    status: "active" | "needs_reconnect" | "disabled";
+    last_error: string | null;
+  }>;
+  const active = rows.filter((row) => row.status === "active");
+  const errored = rows.find((row) => row.last_error);
+
+  return {
+    configured: Boolean(process.env.ZOOM_CLIENT_ID && process.env.ZOOM_CLIENT_SECRET && process.env.ZOOM_REDIRECT_URI),
+    activeConnections: active.length,
+    platformConnections: active.filter((row) => row.owner_kind === "platform").length,
+    coachConnections: active.filter((row) => row.owner_kind === "coach").length,
+    lastError: errored?.last_error ?? null,
+    tone: active.length > 0 ? "good" as HealthTone : "watch" as HealthTone,
   };
 }
 

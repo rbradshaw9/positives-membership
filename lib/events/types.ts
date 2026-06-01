@@ -84,6 +84,7 @@ export type ZoomConnectionOption = {
   id: string;
   label: string;
   owner_kind: "platform" | "coach";
+  owner_member_id: string | null;
   zoom_user_email: string | null;
   status: "active" | "needs_reconnect" | "disabled";
 };

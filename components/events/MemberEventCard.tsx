@@ -37,11 +37,11 @@ function badgeClasses(tone: BadgeTone) {
 
 function isOnlineOnlyVenue(event: MemberEvent) {
   const venueName = event.event_venue?.name.trim().toLowerCase();
-  return Boolean(event.event_venue?.is_virtual || venueName === "zoom" || venueName === "online" || venueName === "livekit");
+  return Boolean(event.event_venue?.is_virtual || venueName === "zoom" || venueName === "online");
 }
 
 function eventModeLabel(event: MemberEvent) {
-  if (event.virtual_mode === "zoom" || event.virtual_mode === "manual" || event.virtual_mode === "livekit") {
+  if (event.virtual_mode === "zoom" || event.virtual_mode === "manual") {
     return event.event_venue && !isOnlineOnlyVenue(event) ? "Hybrid" : "Online";
   }
   return event.event_venue?.is_virtual ? "Online" : "In person";
@@ -60,7 +60,7 @@ export function eventHostNames(event: MemberEvent) {
 }
 
 export function eventLocationLabel(event: MemberEvent) {
-  if (event.virtual_mode === "zoom" || event.virtual_mode === "manual" || event.virtual_mode === "livekit") {
+  if (event.virtual_mode === "zoom" || event.virtual_mode === "manual") {
     return event.event_venue && !isOnlineOnlyVenue(event) ? `${event.event_venue.name} + online` : "Online event";
   }
   if (!event.event_venue) return "Location to be announced";
@@ -73,7 +73,6 @@ export function eventJoinUrl(event: MemberEvent) {
   if (!event.member_ticket_access) return null;
   if (event.virtual_mode === "manual") return event.manual_join_url;
   if (event.virtual_mode === "zoom") return event.event_zoom_meeting?.join_url ?? null;
-  if (event.virtual_mode === "livekit") return `/events/${event.id}/live`;
   return null;
 }
 

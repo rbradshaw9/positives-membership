@@ -94,7 +94,7 @@ function hostRoleLabel(role: string) {
 }
 
 function isVirtualVenueName(name?: string | null) {
-  return ["zoom", "online", "livekit"].includes((name ?? "").trim().toLowerCase());
+  return ["zoom", "online"].includes((name ?? "").trim().toLowerCase());
 }
 
 function statusLabel(status: string) {
@@ -322,7 +322,7 @@ export default async function EventDetailPage({
   const body = event.body || event.description || "";
   const ticketRequired = event.ticketing_mode === "ticket_required";
   const hasTicketAccess = Boolean(event.member_ticket_access);
-  const isOnlineEvent = event.virtual_mode === "zoom" || event.virtual_mode === "manual" || event.virtual_mode === "livekit";
+  const isOnlineEvent = event.virtual_mode === "zoom" || event.virtual_mode === "manual";
   const rsvp = rsvpState(event);
   const relatedEvents = await getMemberRelatedEvents({
     event: event as EventRow,

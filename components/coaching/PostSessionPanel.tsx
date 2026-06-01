@@ -3,8 +3,7 @@
 /**
  * components/coaching/PostSessionPanel.tsx
  *
- * Shown after a session ends (LiveKit disconnects) or when a confirmed
- * session's scheduled time has passed and the room is closed.
+ * Shown after a confirmed session's scheduled time has passed.
  *
  * Coach sees: notes textarea → POST /api/coaching/session/[id]/complete { coachNotes }
  * Member sees: optional reflection → POST /api/coaching/session/[id]/complete { memberReflection }

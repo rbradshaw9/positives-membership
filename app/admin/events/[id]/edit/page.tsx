@@ -39,11 +39,6 @@ export default async function EditEventPage({
           <Link href={`/admin/events/${event.id}/attendees`} className="admin-btn admin-btn--outline">
             Attendees
           </Link>
-          {event.virtual_mode === "livekit" ? (
-            <Link href={`/admin/events/${event.id}/studio`} className="admin-btn admin-btn--primary">
-              Open Studio
-            </Link>
-          ) : null}
         </div>
       </div>
       <EventForm event={event} {...options} searchParams={resolvedSearchParams} />

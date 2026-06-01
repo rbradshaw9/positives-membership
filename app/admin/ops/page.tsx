@@ -370,33 +370,33 @@ export default async function AdminOpsPage() {
 
         <HealthCard
           eyebrow="Video"
-          title="LiveKit"
-          tone={snapshot.livekit.tone}
-          href="/admin/coaching"
-          cta="Open Coaching"
+          title="Zoom"
+          tone={snapshot.zoom.tone}
+          href="/admin/integrations/zoom"
+          cta="Open Zoom"
         >
           <div className="grid gap-3 sm:grid-cols-2">
-            <Metric label="Server SDK" value={snapshot.livekit.configured ? "Configured" : "Missing"} />
-            <Metric label="Browser URL" value={snapshot.livekit.publicUrlConfigured ? "Configured" : "Missing"} />
-            <Metric label="Room service" value={snapshot.livekit.roomService} />
-            <Metric label="Egress service" value={snapshot.livekit.egressService} />
+            <Metric label="OAuth app" value={snapshot.zoom.configured ? "Configured" : "Missing"} />
+            <Metric label="Active accounts" value={String(snapshot.zoom.activeConnections)} />
+            <Metric label="Platform accounts" value={String(snapshot.zoom.platformConnections)} />
+            <Metric label="Coach accounts" value={String(snapshot.zoom.coachConnections)} />
           </div>
-          {!snapshot.livekit.configured ? (
+          {!snapshot.zoom.configured ? (
             <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              Set LIVEKIT_URL, LIVEKIT_API_KEY, and LIVEKIT_API_SECRET to enable coaching video sessions.
+              Set ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET, and ZOOM_REDIRECT_URI before connecting Zoom accounts.
             </p>
-          ) : !snapshot.livekit.publicUrlConfigured ? (
+          ) : snapshot.zoom.activeConnections === 0 ? (
             <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              Set NEXT_PUBLIC_LIVEKIT_URL so the browser client can connect. Server credentials are ready.
+              Connect at least one Zoom account before publishing Zoom events or creating coaching appointments.
             </p>
           ) : (
             <p className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-600">
-              {snapshot.livekit.serverUrl}
+              Zoom is the active video provider for events and coaching.
             </p>
           )}
-          {snapshot.livekit.egressError ? (
+          {snapshot.zoom.lastError ? (
             <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              Egress check: {snapshot.livekit.egressError}
+              Latest Zoom connection issue: {snapshot.zoom.lastError}
             </p>
           ) : null}
         </HealthCard>

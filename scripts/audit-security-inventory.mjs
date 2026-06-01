@@ -203,12 +203,10 @@ line(
 );
 line(
   `- ${status(
-    Boolean(process.env.LIVEKIT_STUDIO_TOKEN_SECRET || process.env.LIVEKIT_API_SECRET),
-    process.env.LIVEKIT_STUDIO_TOKEN_SECRET
-      ? "LIVEKIT_STUDIO_TOKEN_SECRET is configured"
-      : process.env.LIVEKIT_API_SECRET
-        ? "LIVEKIT studio tokens use LIVEKIT_API_SECRET fallback; consider a dedicated LIVEKIT_STUDIO_TOKEN_SECRET"
-        : "LiveKit studio token signing secret is missing"
+    Boolean(process.env.ZOOM_TOKEN_ENCRYPTION_KEY),
+    process.env.ZOOM_TOKEN_ENCRYPTION_KEY
+      ? "ZOOM_TOKEN_ENCRYPTION_KEY is configured"
+      : "ZOOM_TOKEN_ENCRYPTION_KEY is missing; Zoom tokens will fall back to another server secret"
   )}`
 );
 line(

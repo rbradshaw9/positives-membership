@@ -244,7 +244,7 @@ const EVENT_SELECT = `
   event_rsvp_type(id, event_id, name, description, capacity, start_at, end_at, collect_attendee_info, registration_fields, sort_order, status),
   event_zoom_meeting(
     id, zoom_connection_id, zoom_object_type, zoom_object_id, join_url, host_email, provider_status,
-    zoom_connection:zoom_connection_id(id, label, owner_kind, zoom_user_email, status)
+    zoom_connection:zoom_connection_id(id, label, owner_kind, owner_member_id, zoom_user_email, status)
   ),
   event_livekit_room(
     id, event_id, room_name, mode, recording_policy, room_status, egress_id, egress_status, replay_asset_id,
@@ -343,8 +343,8 @@ async function fetchEventAdminOptions() {
       .order("name", { ascending: true }),
     supabase
       .from("zoom_connection")
-      .select<ZoomConnectionOption>("id, label, owner_kind, zoom_user_email, status")
-      .neq("status", "disabled")
+      .select<ZoomConnectionOption>("id, label, owner_kind, owner_member_id, zoom_user_email, status")
+      .eq("status", "active")
       .order("created_at", { ascending: false }),
     supabase
       .from("event_setting")
@@ -365,7 +365,7 @@ async function fetchEventAdminOptions() {
 export const getEventAdminOptions = unstable_cache(
   fetchEventAdminOptions,
   ["event-admin-options"],
-  { revalidate: 60 }
+  { revalidate: 60, tags: ["zoom-connections"] }
 );
 
 export async function getEventSettingsOptions() {
@@ -391,8 +391,8 @@ export async function getEventSettingsOptions() {
       .order("key", { ascending: true }),
     supabase
       .from("zoom_connection")
-      .select<ZoomConnectionOption>("id, label, owner_kind, zoom_user_email, status")
-      .neq("status", "disabled")
+      .select<ZoomConnectionOption>("id, label, owner_kind, owner_member_id, zoom_user_email, status")
+      .eq("status", "active")
       .order("created_at", { ascending: false }),
     supabase
       .from("event_ticket_type")
@@ -1008,19 +1008,26 @@ async function fetchZoomConnections() {
   const supabase = asLooseSupabaseClient(getAdminClient());
   const { data, error } = await supabase
     .from("zoom_connection")
-    .select<ZoomConnectionOption & { last_connected_at: string | null; last_error: string | null }>(
-      "id, label, owner_kind, zoom_user_email, status, last_connected_at, last_error"
+    .select<ZoomConnectionOption & { scopes: string[] | null; last_connected_at: string | null; last_checked_at: string | null; last_error: string | null }>(
+      "id, label, owner_kind, owner_member_id, zoom_user_email, status, scopes, last_connected_at, last_checked_at, last_error"
     )
     .order("created_at", { ascending: false });
   if (error) {
     console.error("[getZoomConnections]", error.message);
     return [];
   }
-  return (data ?? []) as unknown as Array<ZoomConnectionOption & { last_connected_at: string | null; last_error: string | null }>;
+  return (data ?? []) as unknown as Array<
+    ZoomConnectionOption & {
+      scopes: string[] | null;
+      last_connected_at: string | null;
+      last_checked_at: string | null;
+      last_error: string | null;
+    }
+  >;
 }
 
 export const getZoomConnections = unstable_cache(
   fetchZoomConnections,
   ["admin-zoom-connections"],
-  { revalidate: 30 }
+  { revalidate: 30, tags: ["zoom-connections"] }
 );

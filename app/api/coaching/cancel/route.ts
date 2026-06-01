@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireMember } from "@/lib/auth/require-member";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
+import { deleteCoachingZoomMeeting } from "@/lib/zoom/coaching";
 import { sendPostmarkEmail } from "@/lib/email/postmark";
 import { renderCoachingCancellationEmail } from "@/lib/email/templates/coaching-confirmation-email";
 
@@ -40,13 +41,15 @@ export async function POST(req: NextRequest) {
       scheduled_at: string;
       duration_minutes: number;
       timezone: string | null;
+      zoom_connection_id: string | null;
+      zoom_meeting_id: string | null;
       coach: { display_name: string } | Array<{ display_name: string }>;
     };
 
     const { data: bookingRaw, error: fetchError } = await supabase
       .from("coaching_booking")
       .select(
-        "id, member_id, pack_id, status, scheduled_at, duration_minutes, timezone, coach:coach_profile(display_name)"
+        "id, member_id, pack_id, status, scheduled_at, duration_minutes, timezone, zoom_connection_id, zoom_meeting_id, coach:coach_profile(display_name)"
       )
       .eq("id", bookingId)
       .single();
@@ -100,6 +103,15 @@ export async function POST(req: NextRequest) {
     if (cancelError) {
       console.error("[coaching/cancel] cancel error:", cancelError);
       return NextResponse.json({ error: "Failed to cancel booking" }, { status: 500 });
+    }
+
+    try {
+      await deleteCoachingZoomMeeting({
+        connectionId: booking.zoom_connection_id,
+        meetingId: booking.zoom_meeting_id,
+      });
+    } catch (zoomErr) {
+      console.error("[coaching/cancel] Zoom cancellation failed:", zoomErr);
     }
 
     // Restore session credit if eligible

@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense } from "react";
-import { usePathname } from "next/navigation";
 import { MemberTopNav } from "@/components/member/MemberTopNav";
 import { MemberAudioProvider } from "@/components/member/audio/MemberAudioProvider";
 import { PersistentAudioPlayer } from "@/components/member/PersistentAudioPlayer";
@@ -58,8 +57,6 @@ export function MemberShellClient({
   children,
 }: MemberShellClientProps) {
   const isEarlyReleaseMember = launchCohort === "alpha" || launchCohort === "beta";
-  const pathname = usePathname();
-  const isLiveEventRoute = /^\/events\/[^/]+\/live$/.test(pathname);
 
   return (
     <MemberAudioProvider>
@@ -74,18 +71,16 @@ export function MemberShellClient({
           showAdminNav={showAdminNav}
         />
         {isImpersonating ? <ImpersonationBanner memberName={memberName} /> : null}
-        {!isLiveEventRoute ? <InstallAppPrompt /> : null}
-        {betaWelcomeEnabled && isEarlyReleaseMember && !isLiveEventRoute ? (
+        <InstallAppPrompt />
+        {betaWelcomeEnabled && isEarlyReleaseMember ? (
           <BetaWelcomeBanner memberName={memberName} />
         ) : null}
         <main className="member-shell__content flex-1">{children}</main>
         <PersistentAudioPlayer />
-        {!isLiveEventRoute ? (
-          <MemberOnboardingTour
-            initialStatus={onboardingTourStatus}
-            shouldAutoStart={shouldAutoStartOnboardingTour}
-          />
-        ) : null}
+        <MemberOnboardingTour
+          initialStatus={onboardingTourStatus}
+          shouldAutoStart={shouldAutoStartOnboardingTour}
+        />
         {betaFeedbackEnabled && isEarlyReleaseMember ? (
           <BetaFeedbackWidget
             memberEmail={memberEmail ?? null}

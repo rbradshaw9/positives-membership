@@ -73,14 +73,14 @@ function accessLabels(event: EventRow | null | undefined) {
 function virtualLabel(event: EventRow | null | undefined) {
   if (event?.virtual_mode === "zoom") return "Zoom";
   if (event?.virtual_mode === "manual") return "Manual link";
-  if (event?.virtual_mode === "livekit") return "LiveKit webinar";
+  if (event?.virtual_mode === "livekit") return "Legacy LiveKit";
   return "No virtual link";
 }
 
 function missingJoinLink(event: EventRow | null | undefined) {
   if (event?.virtual_mode === "zoom") return !event.event_zoom_meeting?.join_url;
   if (event?.virtual_mode === "manual") return !event.manual_join_url;
-  if (event?.virtual_mode === "livekit") return event.event_livekit_room?.room_status === "failed" || !event.event_livekit_room?.room_name;
+  if (event?.virtual_mode === "livekit") return true;
   return false;
 }
 
@@ -92,7 +92,7 @@ function locationLabel(event: EventRow | null | undefined) {
   if (!event) return "Not set";
   if (event.virtual_mode === "zoom") return "Zoom session";
   if (event.virtual_mode === "manual") return "Manual virtual link";
-  if (event.virtual_mode === "livekit") return "LiveKit webinar";
+  if (event.virtual_mode === "livekit") return "Legacy LiveKit event";
   return event.event_venue?.name ?? "No venue";
 }
 
@@ -347,9 +347,6 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
                     <td>
                       <div className="flex flex-wrap gap-1.5">
                         <Link href={`/admin/events/${event.id}/edit`} className="admin-btn admin-btn--outline">Edit</Link>
-                        {event.virtual_mode === "livekit" && event.status !== "archived" && event.event_livekit_room?.room_name ? (
-                          <Link href={`/admin/events/${event.id}/studio`} className="admin-btn admin-btn--primary">Studio</Link>
-                        ) : null}
                         <Link href={`/admin/events/attendees?event_id=${event.id}`} className="admin-btn admin-btn--ghost">Attendees</Link>
                       </div>
                     </td>
