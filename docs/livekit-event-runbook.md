@@ -28,11 +28,22 @@ These routes/components are no longer part of the product path:
    - `ZOOM_REDIRECT_URI`
    - `ZOOM_TOKEN_ENCRYPTION_KEY`
    - `ZOOM_WEBHOOK_SECRET_TOKEN`
-2. Connect at least one platform Zoom account at `/admin/integrations/zoom`.
-3. For coach-owned Zoom rooms, set `coach_profile.zoom_connection_id` to that coach's connected Zoom account.
-4. Create or edit events with Zoom selected, then create or attach a Zoom meeting/webinar before publishing.
-5. Book a test coaching session and confirm `coaching_booking.zoom_join_url` and `zoom_meeting_id` are populated.
-6. Confirm member and coach confirmation/reminder emails contain the Zoom join URL.
+2. Configure the Zoom OAuth app scopes:
+   - `user:read:user`
+   - `meeting:read:list_meetings`
+   - `meeting:write:meeting`
+   - `meeting:update:meeting`
+   - `meeting:delete:meeting`
+   - `webinar:read:list_webinars`
+   - `webinar:write:webinar`
+   - `webinar:update:webinar`
+   - `webinar:delete:webinar`
+3. Connect at least one platform Zoom account at `/admin/integrations/zoom`.
+4. Run the Zoom smoke test. It must pass user lookup plus meeting and webinar create/update/delete before treating the account as production-ready.
+5. For coach-owned Zoom rooms, connect that coach's Zoom account or set `coach_profile.zoom_connection_id` to a platform/shared Zoom account.
+6. Create or edit events with Zoom selected, then create or attach a Zoom meeting/webinar before publishing.
+7. Book, reschedule, and cancel a test coaching session, confirming `coaching_booking.zoom_join_url` and `zoom_meeting_id` are populated and Zoom reflects the time/cancel change.
+8. Confirm member and coach confirmation/reminder emails contain the Zoom join URL.
 
 ## Historical Notes
 

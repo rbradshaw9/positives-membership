@@ -1,5 +1,6 @@
 import { formatInTimeZone } from "date-fns-tz";
 import { zoomApi } from "@/lib/zoom/client";
+import { missingZoomScopeRequirements } from "@/lib/zoom/scopes";
 
 type ZoomCreatedSession = {
   id?: string | number;
@@ -21,8 +22,10 @@ export type ZoomSmokeTestResult = {
     user: SmokeCheck;
     scopes: SmokeCheck;
     meetingCreate: SmokeCheck;
+    meetingUpdate: SmokeCheck;
     meetingDelete: SmokeCheck;
     webinarCreate: SmokeCheck;
+    webinarUpdate: SmokeCheck;
     webinarDelete: SmokeCheck;
   };
 };
@@ -36,30 +39,20 @@ function startTime() {
   return formatInTimeZone(new Date(Date.now() + 30 * 60 * 1000), "UTC", "yyyy-MM-dd'T'HH:mm:ss");
 }
 
-function hasScope(scopes: string[] | null | undefined, scope: string) {
-  return (scopes ?? []).includes(scope);
-}
-
-function missingSmokeTestScopes(scopes: string[] | null | undefined) {
-  const missing = [];
-  if (!hasScope(scopes, "meeting:write:meeting") && !hasScope(scopes, "meeting:write:meeting:admin")) {
-    missing.push("meeting:write:meeting");
-  }
-  if (!hasScope(scopes, "meeting:delete:meeting") && !hasScope(scopes, "meeting:delete:meeting:admin")) {
-    missing.push("meeting:delete:meeting");
-  }
-  if (!hasScope(scopes, "webinar:write:webinar") && !hasScope(scopes, "webinar:write:webinar:admin")) {
-    missing.push("webinar:write:webinar");
-  }
-  if (!hasScope(scopes, "webinar:delete:webinar") && !hasScope(scopes, "webinar:delete:webinar:admin")) {
-    missing.push("webinar:delete:webinar");
-  }
-  return missing;
-}
-
 async function deleteZoomObject(connectionId: string, kind: "meeting" | "webinar", id: string) {
   const path = kind === "webinar" ? `/webinars/${encodeURIComponent(id)}` : `/meetings/${encodeURIComponent(id)}`;
   await zoomApi<null>(connectionId, path, { method: "DELETE" });
+}
+
+async function updateZoomObject(connectionId: string, kind: "meeting" | "webinar", id: string) {
+  const path = kind === "webinar" ? `/webinars/${encodeURIComponent(id)}` : `/meetings/${encodeURIComponent(id)}`;
+  await zoomApi<null>(connectionId, path, {
+    method: "PATCH",
+    body: JSON.stringify({
+      agenda: "Positives smoke test update check",
+      duration: 20,
+    }),
+  });
 }
 
 export async function runZoomSmokeTest(connectionId: string, scopes?: string[] | null): Promise<ZoomSmokeTestResult> {
@@ -67,8 +60,10 @@ export async function runZoomSmokeTest(connectionId: string, scopes?: string[] |
     user: { ok: false },
     scopes: { ok: false },
     meetingCreate: { ok: false },
+    meetingUpdate: { ok: false },
     meetingDelete: { ok: false },
     webinarCreate: { ok: false },
+    webinarUpdate: { ok: false },
     webinarDelete: { ok: false },
   };
 
@@ -83,19 +78,21 @@ export async function runZoomSmokeTest(connectionId: string, scopes?: string[] |
     checks.user = checkError(error);
   }
 
-  const missingScopes = missingSmokeTestScopes(scopes);
+  const missingScopes = missingZoomScopeRequirements(scopes).map((requirement) => requirement.setupScope);
   if (missingScopes.length > 0) {
     checks.scopes = {
       ok: false,
       detail: `Missing Zoom scopes required for safe smoke tests: ${missingScopes.join(", ")}`,
     };
     checks.meetingCreate = { ok: false, detail: "Skipped because required smoke-test scopes are missing" };
+    checks.meetingUpdate = { ok: false, detail: "Skipped because required smoke-test scopes are missing" };
     checks.meetingDelete = { ok: false, detail: "Skipped because required smoke-test scopes are missing" };
     checks.webinarCreate = { ok: false, detail: "Skipped because required smoke-test scopes are missing" };
+    checks.webinarUpdate = { ok: false, detail: "Skipped because required smoke-test scopes are missing" };
     checks.webinarDelete = { ok: false, detail: "Skipped because required smoke-test scopes are missing" };
     return { ok: false, checks };
   }
-  checks.scopes = { ok: true, detail: "Required create/delete scopes are present" };
+  checks.scopes = { ok: true, detail: "Required list/create/update/delete scopes are present" };
 
   let meetingId: string | null = null;
   try {
@@ -126,12 +123,20 @@ export async function runZoomSmokeTest(connectionId: string, scopes?: string[] |
 
   if (meetingId) {
     try {
+      await updateZoomObject(connectionId, "meeting", meetingId);
+      checks.meetingUpdate = { ok: true, detail: "Updated throwaway Zoom meeting", id: meetingId };
+    } catch (error) {
+      checks.meetingUpdate = checkError(error);
+    }
+
+    try {
       await deleteZoomObject(connectionId, "meeting", meetingId);
       checks.meetingDelete = { ok: true, detail: "Deleted throwaway Zoom meeting", id: meetingId };
     } catch (error) {
       checks.meetingDelete = checkError(error);
     }
   } else {
+    checks.meetingUpdate = { ok: false, detail: "Skipped because meeting creation failed" };
     checks.meetingDelete = { ok: false, detail: "Skipped because meeting creation failed" };
   }
 
@@ -163,12 +168,20 @@ export async function runZoomSmokeTest(connectionId: string, scopes?: string[] |
 
   if (webinarId) {
     try {
+      await updateZoomObject(connectionId, "webinar", webinarId);
+      checks.webinarUpdate = { ok: true, detail: "Updated throwaway Zoom webinar", id: webinarId };
+    } catch (error) {
+      checks.webinarUpdate = checkError(error);
+    }
+
+    try {
       await deleteZoomObject(connectionId, "webinar", webinarId);
       checks.webinarDelete = { ok: true, detail: "Deleted throwaway Zoom webinar", id: webinarId };
     } catch (error) {
       checks.webinarDelete = checkError(error);
     }
   } else {
+    checks.webinarUpdate = { ok: false, detail: "Skipped because webinar creation failed" };
     checks.webinarDelete = { ok: false, detail: "Skipped because webinar creation failed" };
   }
 

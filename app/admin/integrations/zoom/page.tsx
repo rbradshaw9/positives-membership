@@ -1,5 +1,6 @@
 import { getZoomConnections } from "@/lib/queries/get-events";
 import { zoomConfigured } from "@/lib/zoom/client";
+import { hasAnyZoomScope, ZOOM_REQUIRED_SCOPE_GROUPS } from "@/lib/zoom/scopes";
 import { getAdminPermissionSet, isBootstrapAdminEmail, requireAdmin } from "@/lib/auth/require-admin";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
@@ -35,14 +36,10 @@ function errorMessage(error?: string) {
 
 function successMessage(success?: string) {
   if (success === "coach_default_saved") return "Coach Zoom default updated.";
-  if (success === "zoom_verified") return "Zoom account verified for user, meeting, and webinar access.";
-  if (success === "zoom_smoke_passed") return "Zoom smoke test passed: user lookup, meeting create/delete, and webinar create/delete worked.";
+  if (success === "zoom_verified") return "Zoom account verified for user, meeting list, and webinar list access.";
+  if (success === "zoom_smoke_passed") return "Zoom smoke test passed: user lookup plus meeting and webinar create/update/delete worked.";
   if (success) return "Zoom account connected.";
   return null;
-}
-
-function hasScope(scopes: string[] | null | undefined, required: string) {
-  return (scopes ?? []).includes(required);
 }
 
 function CapabilityBadge({ label, ok }: { label: string; ok: boolean }) {
@@ -65,8 +62,10 @@ function smokeCheckLabels(run?: ZoomTestRunRow) {
     ["User", run.checks.user],
     ["Scopes", run.checks.scopes],
     ["Meeting+", run.checks.meetingCreate],
+    ["Meeting edit", run.checks.meetingUpdate],
     ["Meeting-", run.checks.meetingDelete],
     ["Webinar+", run.checks.webinarCreate],
+    ["Webinar edit", run.checks.webinarUpdate],
     ["Webinar-", run.checks.webinarDelete],
   ] as const;
 }
@@ -264,11 +263,13 @@ export default async function ZoomIntegrationsPage({ searchParams }: { searchPar
                 </td>
                 <td>
                   <div className="flex flex-wrap gap-1">
-                    <CapabilityBadge label="User" ok={hasScope(connection.scopes, "user:read:user")} />
-                    <CapabilityBadge label="Meetings" ok={hasScope(connection.scopes, "meeting:write:meeting")} />
-                    <CapabilityBadge label="Meeting delete" ok={hasScope(connection.scopes, "meeting:delete:meeting") || hasScope(connection.scopes, "meeting:delete:meeting:admin")} />
-                    <CapabilityBadge label="Webinars" ok={hasScope(connection.scopes, "webinar:write:webinar")} />
-                    <CapabilityBadge label="Webinar delete" ok={hasScope(connection.scopes, "webinar:delete:webinar") || hasScope(connection.scopes, "webinar:delete:webinar:admin")} />
+                    {ZOOM_REQUIRED_SCOPE_GROUPS.map((requirement) => (
+                      <CapabilityBadge
+                        key={requirement.key}
+                        label={requirement.label}
+                        ok={hasAnyZoomScope(connection.scopes, requirement.acceptedScopes)}
+                      />
+                    ))}
                   </div>
                 </td>
                 <td>
