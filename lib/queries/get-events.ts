@@ -345,6 +345,7 @@ async function fetchEventAdminOptions() {
       .from("zoom_connection")
       .select<ZoomConnectionOption>("id, label, owner_kind, owner_member_id, zoom_user_email, status")
       .eq("status", "active")
+      .eq("owner_kind", "platform")
       .order("created_at", { ascending: false }),
     supabase
       .from("event_setting")
@@ -393,6 +394,7 @@ export async function getEventSettingsOptions() {
       .from("zoom_connection")
       .select<ZoomConnectionOption>("id, label, owner_kind, owner_member_id, zoom_user_email, status")
       .eq("status", "active")
+      .eq("owner_kind", "platform")
       .order("created_at", { ascending: false }),
     supabase
       .from("event_ticket_type")

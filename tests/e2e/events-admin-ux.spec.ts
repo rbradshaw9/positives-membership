@@ -78,9 +78,9 @@ test("admin event form keeps advanced fields contextual and supports inline crea
   await expect(page.getByLabel("Ends")).toHaveCount(0);
 
   await expect(page.getByLabel("Manual join URL")).toHaveCount(0);
-  await page.getByLabel("Virtual mode").selectOption("manual");
+  await page.getByLabel("Join method").selectOption("manual");
   await expect(page.getByLabel("Manual join URL")).toBeVisible();
-  await page.getByLabel("Virtual mode").selectOption("zoom");
+  await page.getByLabel("Join method").selectOption("zoom");
   await expect(page.getByLabel("Zoom session")).toBeVisible();
   await expect(page.getByText("Do not change Zoom link")).toHaveCount(0);
   await expect(page.getByLabel("Existing Zoom session")).toHaveCount(0);
@@ -228,7 +228,7 @@ test("publishing a Zoom event requires a Zoom setup choice", async ({ page }) =>
   await waitForEventFormReady(page);
 
   await page.getByLabel("Short summary").fill("A fixture event for Zoom validation coverage.");
-  await page.getByLabel("Virtual mode").selectOption("zoom");
+  await page.getByLabel("Join method").selectOption("zoom");
   await page.getByLabel("Title").fill(`${EVENT_TITLE_PREFIX} Zoom Validation`);
   await page.getByLabel("Start date & time").fill("2099-06-15T18:00");
   await expect(page.getByLabel("Start date & time")).toHaveValue("2099-06-15T18:00");
@@ -315,7 +315,7 @@ test("draft publish and unpublish flow controls member event visibility", async 
   await page.getByLabel("Start date & time").fill("2099-06-15T12:00");
   await page.getByLabel("End date & time").fill("2099-06-15T13:00");
   await page.getByLabel("Timezone").selectOption("America/New_York");
-  await page.getByLabel("Virtual mode").selectOption("manual");
+  await page.getByLabel("Join method").selectOption("manual");
   await page.getByLabel("Manual join URL").fill("https://example.com/e2e-event");
   await page.getByLabel("Title").fill(title);
   await expect(page.getByLabel("Title")).toHaveValue(title);

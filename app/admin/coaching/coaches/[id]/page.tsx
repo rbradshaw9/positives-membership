@@ -23,25 +23,26 @@ export default async function EditCoachPage({
   const { id } = await params;
   const supabase = asLooseSupabaseClient(getAdminClient());
 
-  const [{ data: coachRaw }, { data: zoomConnectionsRaw }] = await Promise.all([
-    supabase
-      .from("coach_profile")
-      .select(
-        "id, display_name, title, bio, avatar_url, member_id, routing_group, is_active, accepts_new, session_duration_minutes, buffer_minutes_after, zoom_connection_id"
-      )
-      .eq("id", id)
-      .single(),
-    supabase
-      .from("zoom_connection")
-      .select<ZoomConnectionOption>("id, label, owner_kind, owner_member_id, zoom_user_email, status")
-      .eq("status", "active")
-      .order("owner_kind", { ascending: false })
-      .order("created_at", { ascending: false }),
-  ]);
+  const { data: coachRaw } = await supabase
+    .from("coach_profile")
+    .select(
+      "id, display_name, title, bio, avatar_url, member_id, routing_group, is_active, accepts_new, session_duration_minutes, buffer_minutes_after, zoom_connection_id"
+    )
+    .eq("id", id)
+    .single();
 
   if (!coachRaw) redirect("/admin/coaching");
 
   const coach = coachRaw as CoachFormData;
+  const zoomQuery = supabase
+    .from("zoom_connection")
+    .select<ZoomConnectionOption>("id, label, owner_kind, owner_member_id, zoom_user_email, status")
+    .eq("status", "active")
+    .order("owner_kind", { ascending: false })
+    .order("created_at", { ascending: false });
+  const { data: zoomConnectionsRaw } = coach.member_id
+    ? await zoomQuery.or(`owner_kind.eq.platform,owner_member_id.eq.${coach.member_id}`)
+    : await zoomQuery.eq("owner_kind", "platform");
   const zoomConnections = (zoomConnectionsRaw ?? []) as unknown as ZoomConnectionOption[];
 
   return (

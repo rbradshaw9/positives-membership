@@ -20,7 +20,7 @@ export default async function NewCoachPage() {
     .from("zoom_connection")
     .select<ZoomConnectionOption>("id, label, owner_kind, owner_member_id, zoom_user_email, status")
     .eq("status", "active")
-    .order("owner_kind", { ascending: false })
+    .eq("owner_kind", "platform")
     .order("created_at", { ascending: false });
   const zoomConnections = (zoomConnectionsRaw ?? []) as unknown as ZoomConnectionOption[];
 

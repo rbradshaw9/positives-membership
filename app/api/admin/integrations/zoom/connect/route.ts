@@ -7,7 +7,7 @@ import { buildZoomAuthorizeUrl, zoomConfigured } from "@/lib/zoom/client";
 import { canManageCoachZoom, canManagePlatformZoom } from "@/lib/zoom/authorization";
 
 function safeReturnTo(value: string | null) {
-  return value?.startsWith("/") ? value : "/admin/integrations/zoom";
+  return value?.startsWith("/") && !value.startsWith("//") ? value : "/admin/integrations/zoom";
 }
 
 export async function GET(request: Request) {
