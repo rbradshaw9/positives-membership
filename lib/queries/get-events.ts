@@ -1011,6 +1011,7 @@ async function fetchZoomConnections() {
     .select<ZoomConnectionOption & { scopes: string[] | null; last_connected_at: string | null; last_checked_at: string | null; last_error: string | null }>(
       "id, label, owner_kind, owner_member_id, zoom_user_email, status, scopes, last_connected_at, last_checked_at, last_error"
     )
+    .in("status", ["active", "needs_reconnect"])
     .order("created_at", { ascending: false });
   if (error) {
     console.error("[getZoomConnections]", error.message);

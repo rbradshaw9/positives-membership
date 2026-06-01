@@ -49,9 +49,49 @@ export async function GET(request: Request) {
     const token = await exchangeZoomCode(code);
     const me = await fetchZoomMe(token.access_token);
     const label = me.email ? `Zoom - ${me.email}` : "Zoom account";
-    const { data: connection, error } = await supabase
+    let existingQuery = supabase
       .from("zoom_connection")
-      .insert({
+      .select<{ id: string }>("id")
+      .eq("owner_kind", data.owner_kind)
+      .eq("zoom_user_id", me.id)
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    existingQuery =
+      data.owner_kind === "coach"
+        ? existingQuery.eq("owner_member_id", user.id)
+        : existingQuery.is("owner_member_id", null);
+
+    const { data: existingConnection } = await existingQuery.maybeSingle();
+    const connectionPayload = {
+      owner_kind: data.owner_kind,
+      owner_member_id: data.owner_kind === "coach" ? user.id : null,
+      label,
+      zoom_account_id: me.account_id ?? null,
+      zoom_user_id: me.id,
+      zoom_user_email: me.email ?? null,
+      access_token_ciphertext: encryptSecret(token.access_token),
+      refresh_token_ciphertext: encryptSecret(token.refresh_token),
+      token_expires_at: new Date(Date.now() + token.expires_in * 1000).toISOString(),
+      scopes: token.scope ? token.scope.split(" ") : [],
+      status: "active",
+      last_connected_at: new Date().toISOString(),
+      last_checked_at: null,
+      last_error: null,
+      updated_at: new Date().toISOString(),
+      created_by: user.id,
+    };
+
+    const { data: connection, error } = existingConnection?.id
+      ? await supabase
+          .from("zoom_connection")
+          .update(connectionPayload)
+          .eq("id", existingConnection.id)
+          .select<{ id: string }>("id")
+          .single()
+      : await supabase
+          .from("zoom_connection")
+          .insert({
         owner_kind: data.owner_kind,
         owner_member_id: data.owner_kind === "coach" ? user.id : null,
         label,

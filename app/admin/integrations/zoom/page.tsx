@@ -95,6 +95,7 @@ export default async function ZoomIntegrationsPage({ searchParams }: { searchPar
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://positives.life";
   const deauthorizationUrl = `${appUrl}/api/admin/integrations/zoom/deauthorization`;
   const canReadMembers = permissionSet.has("members.read") || isBootstrapAdminEmail(user.email);
+  const canManageCoach = permissionSet.has("coaching.manage") || isBootstrapAdminEmail(user.email);
   const coachProfile = coachProfileResult.data ?? null;
   const coachConnections = connections.filter(
     (connection) =>
@@ -249,6 +250,11 @@ export default async function ZoomIntegrationsPage({ searchParams }: { searchPar
               <tr key={connection.id}>
                 {(() => {
                   const latestRun = latestRunByConnection.get(connection.id);
+                  const canReconnect =
+                    connection.owner_kind === "platform"
+                      ? canReadMembers
+                      : canManageCoach && connection.owner_member_id === user.id;
+                  const reconnectHref = `/api/admin/integrations/zoom/connect?ownerKind=${connection.owner_kind}&returnTo=/admin/integrations/zoom`;
                   return (
                     <>
                 <td>
@@ -301,6 +307,11 @@ export default async function ZoomIntegrationsPage({ searchParams }: { searchPar
                 <td>{connection.last_error ?? "Ready for event setup"}</td>
                 <td>
                   <div className="flex flex-col gap-2">
+                    {canReconnect ? (
+                      <a href={reconnectHref} className="admin-btn admin-btn--primary">
+                        Reconnect
+                      </a>
+                    ) : null}
                     <form action={verifyZoomConnection}>
                       <input type="hidden" name="connection_id" value={connection.id} />
                       <button type="submit" className="admin-btn admin-btn--outline">

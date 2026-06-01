@@ -168,6 +168,13 @@ export default function SupportPage({
                   <p className="font-medium mb-3" style={{ fontSize: "0.9rem", color: "#121417" }}>More resources</p>
                   <div className="space-y-2">
                     <PublicTrackedLink
+                      href="/support/zoom-integration"
+                      className="block text-sm transition-colors hover:opacity-80"
+                      style={{ color: "#2F6FED" }}
+                    >
+                      Zoom integration guide →
+                    </PublicTrackedLink>
+                    <PublicTrackedLink
                       href="/faq"
                       className="block text-sm transition-colors hover:opacity-80"
                       style={{ color: "#2F6FED" }}
