@@ -111,6 +111,22 @@ export async function GET(request: Request) {
 
     if (error || !connection) throw new Error(error?.message ?? "Zoom connection insert failed.");
 
+    await supabase
+      .from("zoom_connection")
+      .update({
+        access_token_ciphertext: connectionPayload.access_token_ciphertext,
+        refresh_token_ciphertext: connectionPayload.refresh_token_ciphertext,
+        token_expires_at: connectionPayload.token_expires_at,
+        scopes: connectionPayload.scopes,
+        status: "active",
+        last_checked_at: null,
+        last_error: null,
+        updated_at: connectionPayload.updated_at,
+      })
+      .eq("zoom_user_id", me.id)
+      .neq("id", connection.id)
+      .in("status", ["active", "needs_reconnect"]);
+
     if (data.owner_kind === "coach") {
       await supabase
         .from("coach_profile")
