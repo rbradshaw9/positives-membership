@@ -104,8 +104,11 @@ test("member can navigate launch routes and use practice tabs", async ({ page })
   await expect(page.getByRole("region", { name: "Daily Practice", exact: true })).toBeVisible();
   await expect(page.getByText("Your Rhythm")).toHaveCount(0);
   await expect(page.getByText("Go Deeper")).toHaveCount(0);
+  await expect(page.getByText("This Week & Month")).toBeVisible();
+  await expect(page.getByText("This Month's Principles")).toBeVisible();
   await expect(page.getByRole("button", { name: "Open this week's principle" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Open this month's theme" })).toBeVisible();
+  await expect(page.locator('button[aria-label^="Open Week "]').first()).toBeVisible();
   await expect(page.getByText("Home is today's guidance")).toHaveCount(0);
   await expect(page.getByText("Start your streak")).toHaveCount(0);
   await expect(
@@ -120,7 +123,7 @@ test("member can navigate launch routes and use practice tabs", async ({ page })
   await weeklyDialog.getByRole("button", { name: "Close" }).click();
 
   await page.setViewportSize({ width: 390, height: 844 });
-  const archiveToggle = page.getByRole("button", { name: "Explore past practices" });
+  const archiveToggle = page.getByRole("button", { name: /daily archive/i });
   if ((await archiveToggle.count()) > 0) {
     await expect(archiveToggle).toBeVisible();
   }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { MonthlyAudioArchive } from "@/components/today/MonthlyAudioArchive";
-import { WeeklyArchive } from "@/components/today/WeeklyArchive";
+import { MonthlyPrinciplesStrip } from "@/components/today/MonthlyPrinciplesStrip";
 import type { MonthGroup } from "@/lib/queries/get-monthly-daily-audios";
 import type { MonthWeeklyContent } from "@/lib/queries/get-month-weekly-content";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
@@ -104,48 +104,49 @@ export function TodayArchiveSection({
   if (!hasArchive) return null;
 
   return (
-    <section aria-labelledby="today-archive-heading" className="rounded-[1.5rem] border border-border/70 bg-card p-4 shadow-soft md:p-5">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="ui-section-eyebrow mb-1.5">Explore Past Practices</p>
-          <h2
-            id="today-archive-heading"
-            className="heading-balance font-heading text-lg font-semibold tracking-[-0.02em] text-foreground"
-            style={{ textWrap: "balance" }}
-          >
-            Revisit this month when it feels helpful.
-          </h2>
-          <p className="mt-1.5 text-sm leading-body text-muted-foreground">
-            Past weekly reflections and daily practices are here when you want them.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setArchiveOpen((open) => !open)}
-          className="btn-outline shrink-0 justify-center text-center text-sm"
-          aria-expanded={archiveOpen}
-          aria-controls="today-archive-content"
-        >
-          {archiveOpen ? "Hide past practices" : "Explore past practices"}
-        </button>
-      </div>
+    <div className="flex flex-col gap-7">
+      {payload.monthWeekly.length > 0 ? (
+        <MonthlyPrinciplesStrip
+          weeks={payload.monthWeekly}
+          currentWeekStart={currentWeekStart}
+        />
+      ) : null}
 
-      {archiveOpen && (
-        <div id="today-archive-content" className="mt-5 flex flex-col gap-8">
-          <WeeklyArchive
-            weeks={payload.monthWeekly}
-            currentWeekStart={currentWeekStart}
-          />
+      {payload.monthGroups.length > 0 ? (
+        <section aria-labelledby="today-archive-heading" className="rounded-[1.5rem] border border-border/70 bg-card p-4 shadow-soft md:p-5">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="ui-section-eyebrow mb-1.5">Recent Daily Practices</p>
+              <h2
+                id="today-archive-heading"
+                className="heading-balance font-heading text-lg font-semibold tracking-[-0.02em] text-foreground"
+                style={{ textWrap: "balance" }}
+              >
+                Replay a daily practice when it feels helpful.
+              </h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => setArchiveOpen((open) => !open)}
+              className="btn-outline shrink-0 justify-center text-center text-sm"
+              aria-expanded={archiveOpen}
+              aria-controls="today-archive-content"
+            >
+              {archiveOpen ? "Hide daily archive" : "Show daily archive"}
+            </button>
+          </div>
 
-          {payload.monthGroups.length > 0 ? (
-            <MonthlyAudioArchive
-              monthGroups={payload.monthGroups}
-              currentMonthName={currentMonthName}
-              listenedContentIds={payload.listenedContentIds}
-            />
-          ) : null}
-        </div>
-      )}
-    </section>
+          {archiveOpen && (
+            <div id="today-archive-content" className="mt-5">
+              <MonthlyAudioArchive
+                monthGroups={payload.monthGroups}
+                currentMonthName={currentMonthName}
+                listenedContentIds={payload.listenedContentIds}
+              />
+            </div>
+          )}
+        </section>
+      ) : null}
+    </div>
   );
 }

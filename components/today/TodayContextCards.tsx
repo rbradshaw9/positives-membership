@@ -5,6 +5,7 @@ import type { MonthlyContent } from "@/lib/queries/get-monthly-content";
 import type { WeeklyContent } from "@/lib/queries/get-weekly-content";
 import { MonthlyThemeCard } from "@/components/today/MonthlyThemeCard";
 import { WeeklyPrincipleCard } from "@/components/today/WeeklyPrincipleCard";
+import { ContentThumbnail } from "@/components/today/ContentThumbnail";
 
 type TodayContextCardsProps = {
   weeklyContent: WeeklyContent | null;
@@ -59,45 +60,53 @@ function ContextButton({
   accent,
   eyebrow,
   title,
-  body,
-  emptyBody,
+  detail,
+  imageUrl,
+  actionLabel,
   onClick,
   ariaLabel,
 }: {
   accent: "secondary" | "accent";
   eyebrow: string;
   title: string;
-  body: string | null | undefined;
-  emptyBody: string;
+  detail: string;
+  imageUrl: string | null;
+  actionLabel: string;
   onClick: () => void;
   ariaLabel: string;
 }) {
-  const color = accent === "secondary" ? "var(--color-secondary)" : "var(--color-accent)";
-
   return (
     <button
       type="button"
       onClick={onClick}
       aria-label={ariaLabel}
-      className="group flex min-h-[9.5rem] w-full flex-col justify-between rounded-[1.35rem] border border-border bg-card p-5 text-left shadow-soft transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-medium"
+      className="group grid min-h-[10.5rem] w-full overflow-hidden rounded-[1.35rem] border border-border bg-card text-left shadow-soft transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-medium sm:grid-cols-[9.75rem_1fr]"
     >
-      <span>
-        <span
-          className="text-[10px] font-bold uppercase tracking-[0.16em]"
-          style={{ color }}
-        >
+      <span className="relative block min-h-[8.5rem] overflow-hidden bg-muted sm:min-h-full">
+        <ContentThumbnail
+          accent={accent}
+          imageUrl={imageUrl}
+          sizes="(max-width: 640px) 100vw, 10rem"
+          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+        />
+        <span className="absolute inset-0 bg-gradient-to-t from-black/35 via-black/5 to-transparent" />
+        <span className="absolute left-3 top-3 rounded-full bg-black/50 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.16em] text-white shadow-soft backdrop-blur-md">
           {eyebrow}
         </span>
-        <span className="mt-2 block font-heading text-xl font-semibold leading-heading tracking-[-0.025em] text-foreground">
-          {title}
-        </span>
-        <span className="mt-2 block text-sm leading-6 text-muted-foreground">
-          {body || emptyBody}
-        </span>
       </span>
-      <span className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-primary transition-colors group-hover:text-primary-hover">
-        Open
-        <ArrowIcon />
+      <span className="flex min-w-0 flex-col justify-between p-4 sm:p-5">
+        <span>
+          <span className="block font-heading text-lg font-semibold leading-heading tracking-[-0.025em] text-foreground md:text-xl">
+            {title}
+          </span>
+          <span className="mt-2 block text-sm leading-6 text-muted-foreground line-clamp-2">
+            {detail}
+          </span>
+        </span>
+        <span className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-primary transition-colors group-hover:text-primary-hover">
+          {actionLabel}
+          <ArrowIcon />
+        </span>
       </span>
     </button>
   );
@@ -118,32 +127,54 @@ export function TodayContextCards({
       ? "This Week"
       : activeContext === "monthly"
         ? "This Month"
-        : "";
+      : "";
+  const weeklyImageUrl =
+    weeklyContent?.thumbnail_image_url ?? weeklyContent?.featured_image_url ?? null;
+  const monthlyImageUrl =
+    monthlyContent?.thumbnail_image_url ?? monthlyContent?.featured_image_url ?? null;
+  const weeklyAction =
+    weeklyContent?.vimeo_video_id || weeklyContent?.youtube_video_id
+      ? "Watch"
+      : weeklyAudioUrl
+        ? "Listen"
+        : "Open";
+  const monthlyAction =
+    monthlyContent?.vimeo_video_id || monthlyContent?.youtube_video_id ? "Watch" : "Open";
 
   return (
     <>
-      <section aria-label="This week and this month" className="grid gap-4 md:grid-cols-2">
-        <div data-tour-target="today-weekly-principle">
-          <ContextButton
-            accent="secondary"
-            eyebrow={weekLabel}
-            title={weeklyContent?.title ?? "This week's principle"}
-            body={weeklyContent?.excerpt}
-            emptyBody="A simple principle to carry with you this week."
-            onClick={() => setActiveContext("weekly")}
-            ariaLabel="Open this week's principle"
-          />
-        </div>
-        <div data-tour-target="today-monthly-theme">
-          <ContextButton
-            accent="accent"
-            eyebrow={monthLabel}
-            title={monthlyContent?.title ?? `${monthLabel}'s theme`}
-            body={monthlyContent?.excerpt}
-            emptyBody="A steady frame for the month."
-            onClick={() => setActiveContext("monthly")}
-            ariaLabel="Open this month's theme"
-          />
+      <section aria-labelledby="today-context-heading" className="space-y-3">
+        <h2
+          id="today-context-heading"
+          className="ui-section-eyebrow text-[11px]"
+        >
+          This Week &amp; Month
+        </h2>
+        <div className="grid gap-4 lg:grid-cols-[1.08fr_0.92fr]">
+          <div data-tour-target="today-weekly-principle">
+            <ContextButton
+              accent="secondary"
+              eyebrow={weekLabel}
+              title={weeklyContent?.title ?? "This week's principle"}
+              detail={weeklyContent?.excerpt ?? "A simple principle to carry into the next few practices."}
+              imageUrl={weeklyImageUrl}
+              actionLabel={weeklyAction}
+              onClick={() => setActiveContext("weekly")}
+              ariaLabel="Open this week's principle"
+            />
+          </div>
+          <div data-tour-target="today-monthly-theme">
+            <ContextButton
+              accent="accent"
+              eyebrow={monthLabel}
+              title={monthlyContent?.title ?? `${monthLabel}'s theme`}
+              detail={monthlyContent?.excerpt ?? "The larger frame behind this month's practice."}
+              imageUrl={monthlyImageUrl}
+              actionLabel={monthlyAction}
+              onClick={() => setActiveContext("monthly")}
+              ariaLabel="Open this month's theme"
+            />
+          </div>
         </div>
       </section>
 
