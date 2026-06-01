@@ -141,6 +141,7 @@ export function TodayArchiveSection({
               <MonthlyAudioArchive
                 monthGroups={payload.monthGroups}
                 currentMonthName={currentMonthName}
+                headingLabel="Daily Practice Archive"
                 listenedContentIds={payload.listenedContentIds}
               />
             </div>

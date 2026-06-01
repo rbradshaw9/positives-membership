@@ -6,8 +6,9 @@ import type { Tables } from "@/types/supabase";
 /**
  * lib/queries/get-monthly-daily-audios.ts
  *
- * Returns all published daily_audio entries up to (but not including) today,
- * grouped by month_year. Covers the current month's past days only.
+ * Returns recent published daily_audio entries up to (but not including) today,
+ * grouped by month_year. This keeps the Today page archive useful even at the
+ * start of a new month, when the current month has no past daily practices yet.
  *
  * Results are sorted newest-first within each month. The "exclude date" is
  * today's date so today's audio (shown separately at the top) isn't repeated.
@@ -41,12 +42,18 @@ function monthYearToLabel(monthYear: string): string {
   );
 }
 
+function subtractDays(dateStr: string, days: number): string {
+  const date = new Date(`${dateStr}T12:00:00`);
+  date.setDate(date.getDate() - days);
+  return date.toISOString().slice(0, 10);
+}
+
 export async function getMonthlyDailyAudios(
   excludeDate: string
 ): Promise<MonthGroup[]> {
   return unstable_cache(
     () => fetchMonthlyDailyAudios(excludeDate),
-    ["monthly-daily-audios", excludeDate],
+    ["monthly-daily-audios-v2", excludeDate],
     {
       tags: [CACHE_TAGS.libraryContent],
       revalidate: 60 * 30,
@@ -57,14 +64,11 @@ export async function getMonthlyDailyAudios(
 async function fetchMonthlyDailyAudios(excludeDate: string): Promise<MonthGroup[]> {
   const supabase = getAdminClient();
 
-  // Scope to current month only — the /today page is a "living document"
-  // for the current month. Closed months are accessed via /library/months/[monthYear].
-  const currentMonthYear = excludeDate.slice(0, 7); // "2026-04"
-  const monthStart = `${currentMonthYear}-01`;
+  const archiveStart = subtractDays(excludeDate, 45);
 
   // Some content is published with publish_date set; older entries may only
   // have published_at (a timestamp). We match both:
-  //   - rows where publish_date is in range  [monthStart, excludeDate)
+  //   - rows where publish_date is in range  [archiveStart, excludeDate)
   //   - rows where publish_date is null but published_at::date is in range
   const { data, error } = await supabase
     .from("content")
@@ -74,8 +78,8 @@ async function fetchMonthlyDailyAudios(excludeDate: string): Promise<MonthGroup[
     .eq("type", "daily_audio")
     .eq("status", "published")
     .or(
-      `and(publish_date.gte.${monthStart},publish_date.lt.${excludeDate}),` +
-      `and(publish_date.is.null,published_at.gte.${monthStart}T00:00:00,published_at.lt.${excludeDate}T00:00:00)`
+      `and(publish_date.gte.${archiveStart},publish_date.lt.${excludeDate}),` +
+      `and(publish_date.is.null,published_at.gte.${archiveStart}T00:00:00,published_at.lt.${excludeDate}T00:00:00)`
     )
     .order("publish_date", { ascending: false, nullsFirst: false })
     .order("published_at", { ascending: false });

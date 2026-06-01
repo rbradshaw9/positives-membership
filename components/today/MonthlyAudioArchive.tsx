@@ -20,6 +20,7 @@ interface MonthlyAudioArchiveProps {
   monthGroups: MonthGroup[];
   /** e.g. "April" — used to render the section heading */
   currentMonthName: string;
+  headingLabel?: string;
   listenedContentIds?: string[];
 }
 
@@ -526,6 +527,7 @@ function WeekPickerSection({
 export function MonthlyAudioArchive({
   monthGroups,
   currentMonthName,
+  headingLabel,
   listenedContentIds = [],
 }: MonthlyAudioArchiveProps) {
   const [listenedIds, setListenedIds] = useState<Set<string>>(
@@ -571,7 +573,7 @@ export function MonthlyAudioArchive({
           className="font-heading font-semibold text-base text-foreground tracking-[-0.02em]"
           style={{ textWrap: "balance" }}
         >
-          {currentMonthName}&apos;s Daily Practices
+          {headingLabel ?? `${currentMonthName}'s Daily Practices`}
         </h2>
         <p className="text-xs text-muted-foreground mt-0.5">
           Tap any day to play it inline. Practices are grouped by week to keep the month easy to revisit.
