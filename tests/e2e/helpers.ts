@@ -1135,6 +1135,219 @@ export async function createEventUxZoomFixture(prefix: string) {
   return { eventId: event.id };
 }
 
+export async function cleanupZoomOwnershipFixtures(prefix: string) {
+  const supabase = getServiceRoleClient();
+  const memberEmailPrefix = `${prefix.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-`;
+
+  const { data: members, error: memberLookupError } = await withSupabaseRetry("cleanupZoomOwnershipFixtures:members_lookup", async () =>
+    supabase
+      .from("member")
+      .select("id")
+      .like("email", `${memberEmailPrefix}%`)
+  );
+
+  if (memberLookupError) {
+    throw new Error(`Failed to look up Zoom ownership fixture members: ${memberLookupError.message}`);
+  }
+
+  const memberIds = (members ?? []).map((member) => member.id).filter(Boolean);
+
+  const { error: coachByNameError } = await withSupabaseRetry("cleanupZoomOwnershipFixtures:coach_profile_name", async () =>
+    supabase
+      .from("coach_profile")
+      .delete()
+      .like("display_name", `${prefix}%`)
+  );
+
+  if (coachByNameError) {
+    throw new Error(`Failed to delete Zoom ownership fixture coach profiles: ${coachByNameError.message}`);
+  }
+
+  if (memberIds.length > 0) {
+    const { error: coachByMemberError } = await withSupabaseRetry("cleanupZoomOwnershipFixtures:coach_profile_member", async () =>
+      supabase
+        .from("coach_profile")
+        .delete()
+        .in("member_id", memberIds)
+    );
+
+    if (coachByMemberError) {
+      throw new Error(`Failed to delete Zoom ownership fixture coach profiles by member: ${coachByMemberError.message}`);
+    }
+  }
+
+  const { error: zoomError } = await withSupabaseRetry("cleanupZoomOwnershipFixtures:zoom_connection", async () =>
+    supabase
+      .from("zoom_connection")
+      .delete()
+      .like("label", `${prefix}%`)
+  );
+
+  if (zoomError) {
+    throw new Error(`Failed to delete Zoom ownership fixture connections: ${zoomError.message}`);
+  }
+
+  const { error: memberError } = await withSupabaseRetry("cleanupZoomOwnershipFixtures:member", async () =>
+    supabase
+      .from("member")
+      .delete()
+      .like("email", `${memberEmailPrefix}%`)
+  );
+
+  if (memberError) {
+    throw new Error(`Failed to delete Zoom ownership fixture members: ${memberError.message}`);
+  }
+
+  for (const memberId of memberIds) {
+    const { error } = await supabase.auth.admin.deleteUser(memberId);
+    if (error && !/User not found/i.test(error.message)) {
+      throw new Error(`Failed to delete Zoom ownership fixture auth user ${memberId}: ${error.message}`);
+    }
+  }
+}
+
+export async function createZoomOwnershipFixture(prefix: string) {
+  const supabase = getServiceRoleClient();
+  const unique = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const emailSlug = prefix.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  const coachOneEmail = `${emailSlug}-coach-one-${unique}@example.com`;
+  const coachTwoEmail = `${emailSlug}-coach-two-${unique}@example.com`;
+  const labels = {
+    platformOne: `${prefix} Platform Zoom A ${unique}`,
+    platformTwo: `${prefix} Platform Zoom B ${unique}`,
+    coachOne: `${prefix} Coach One Zoom ${unique}`,
+    coachTwo: `${prefix} Coach Two Zoom ${unique}`,
+  };
+
+  await cleanupZoomOwnershipFixtures(prefix);
+
+  const [{ data: coachOneAuth, error: coachOneAuthError }, { data: coachTwoAuth, error: coachTwoAuthError }] = await Promise.all([
+    supabase.auth.admin.createUser({
+      email: coachOneEmail,
+      password: `E2E-${unique}-coach-one!`,
+      email_confirm: true,
+    }),
+    supabase.auth.admin.createUser({
+      email: coachTwoEmail,
+      password: `E2E-${unique}-coach-two!`,
+      email_confirm: true,
+    }),
+  ]);
+
+  if (coachOneAuthError || !coachOneAuth.user?.id) {
+    throw new Error(`Failed to create Zoom ownership fixture coach one auth user: ${coachOneAuthError?.message ?? "missing user"}`);
+  }
+  if (coachTwoAuthError || !coachTwoAuth.user?.id) {
+    throw new Error(`Failed to create Zoom ownership fixture coach two auth user: ${coachTwoAuthError?.message ?? "missing user"}`);
+  }
+
+  const coachOneMemberId = coachOneAuth.user.id;
+  const coachTwoMemberId = coachTwoAuth.user.id;
+
+  const { error: memberError } = await supabase.from("member").upsert([
+    {
+      id: coachOneMemberId,
+      email: coachOneEmail,
+      name: `${prefix} Coach One`,
+      timezone: "America/New_York",
+    },
+    {
+      id: coachTwoMemberId,
+      email: coachTwoEmail,
+      name: `${prefix} Coach Two`,
+      timezone: "America/New_York",
+    },
+  ]);
+
+  if (memberError) {
+    throw new Error(`Failed to create Zoom ownership fixture members: ${memberError.message}`);
+  }
+
+  const { data: zoomConnections, error: zoomError } = await supabase.from("zoom_connection").insert([
+    {
+      label: labels.platformOne,
+      owner_kind: "platform",
+      zoom_user_id: `e2e-platform-a-${unique}`,
+      zoom_user_email: `platform-a-${unique}@example.com`,
+      status: "active",
+    },
+    {
+      label: labels.platformTwo,
+      owner_kind: "platform",
+      zoom_user_id: `e2e-platform-b-${unique}`,
+      zoom_user_email: `platform-b-${unique}@example.com`,
+      status: "active",
+    },
+    {
+      label: labels.coachOne,
+      owner_kind: "coach",
+      owner_member_id: coachOneMemberId,
+      zoom_user_id: `e2e-coach-one-${unique}`,
+      zoom_user_email: `coach-one-${unique}@example.com`,
+      status: "active",
+    },
+    {
+      label: labels.coachTwo,
+      owner_kind: "coach",
+      owner_member_id: coachTwoMemberId,
+      zoom_user_id: `e2e-coach-two-${unique}`,
+      zoom_user_email: `coach-two-${unique}@example.com`,
+      status: "active",
+    },
+  ]).select("id, label");
+
+  if (zoomError || !zoomConnections) {
+    throw new Error(`Failed to create Zoom ownership fixture connections: ${zoomError?.message ?? "missing rows"}`);
+  }
+
+  const { data: coachProfile, error: coachError } = await supabase
+    .from("coach_profile")
+    .insert({
+      member_id: coachOneMemberId,
+      display_name: `${prefix} Coach One ${unique}`,
+      title: "E2E Coach",
+      bio_short: "Fixture coach for Zoom ownership scoping.",
+      routing_group: "general",
+      is_active: true,
+      accepts_new: true,
+      session_duration_minutes: 60,
+      buffer_minutes_after: 15,
+    })
+    .select("id")
+    .single();
+
+  if (coachError || !coachProfile) {
+    throw new Error(`Failed to create Zoom ownership fixture coach profile: ${coachError?.message ?? "missing row"}`);
+  }
+
+  return {
+    coachProfileId: coachProfile.id as string,
+    coachOneMemberId,
+    connectionIds: {
+      platformOne: zoomConnections.find((connection) => connection.label === labels.platformOne)?.id as string,
+      platformTwo: zoomConnections.find((connection) => connection.label === labels.platformTwo)?.id as string,
+      coachOne: zoomConnections.find((connection) => connection.label === labels.coachOne)?.id as string,
+      coachTwo: zoomConnections.find((connection) => connection.label === labels.coachTwo)?.id as string,
+    },
+    labels,
+  };
+}
+
+export async function getCoachProfileZoomConnectionId(coachProfileId: string) {
+  const supabase = getServiceRoleClient();
+  const { data, error } = await supabase
+    .from("coach_profile")
+    .select("zoom_connection_id")
+    .eq("id", coachProfileId)
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to fetch coach profile Zoom connection: ${error.message}`);
+  }
+
+  return (data as { zoom_connection_id: string | null }).zoom_connection_id;
+}
+
 export async function createEventHostVenueFixture(prefix: string) {
   const supabase = getServiceRoleClient();
   const unique = Date.now();

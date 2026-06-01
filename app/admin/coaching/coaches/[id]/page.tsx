@@ -26,7 +26,7 @@ export default async function EditCoachPage({
   const { data: coachRaw } = await supabase
     .from("coach_profile")
     .select(
-      "id, display_name, title, bio, avatar_url, member_id, routing_group, is_active, accepts_new, session_duration_minutes, buffer_minutes_after, zoom_connection_id"
+      "id, display_name, title, bio:bio_short, avatar_url, member_id, routing_group, is_active, accepts_new, session_duration_minutes, buffer_minutes_after, zoom_connection_id"
     )
     .eq("id", id)
     .single();

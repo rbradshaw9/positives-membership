@@ -27,16 +27,21 @@ type CoachPayload = {
 
 async function validZoomConnectionId(
   supabase: ReturnType<typeof asLooseSupabaseClient>,
-  connectionId: string | null | undefined
+  connectionId: string | null | undefined,
+  coachMemberId: string | null | undefined
 ) {
   if (!connectionId) return null;
   const { data } = await supabase
     .from("zoom_connection")
-    .select("id")
+    .select<{ id: string; owner_kind: "platform" | "coach"; owner_member_id: string | null }>(
+      "id, owner_kind, owner_member_id"
+    )
     .eq("id", connectionId)
     .eq("status", "active")
     .maybeSingle();
-  return data ? connectionId : null;
+  if (!data) return null;
+  if (data.owner_kind === "platform") return connectionId;
+  return data.owner_member_id && data.owner_member_id === coachMemberId ? connectionId : null;
 }
 
 export async function POST(req: NextRequest) {
@@ -44,14 +49,14 @@ export async function POST(req: NextRequest) {
     await requireAdmin();
     const payload = (await req.json()) as CoachPayload;
     const supabase = asLooseSupabaseClient(getAdminClient());
-    const zoomConnectionId = await validZoomConnectionId(supabase, payload.zoom_connection_id);
+    const zoomConnectionId = await validZoomConnectionId(supabase, payload.zoom_connection_id, payload.member_id);
 
     const { data, error } = await supabase
       .from("coach_profile")
       .insert({
         display_name: payload.display_name,
         title: payload.title ?? null,
-        bio: payload.bio ?? null,
+        bio_short: payload.bio ?? null,
         avatar_url: payload.avatar_url ?? null,
         member_id: payload.member_id ?? null,
         routing_group: payload.routing_group ?? "general",
@@ -83,14 +88,14 @@ export async function PATCH(req: NextRequest) {
     if (!payload.id) return NextResponse.json({ error: "id is required" }, { status: 400 });
 
     const supabase = asLooseSupabaseClient(getAdminClient());
-    const zoomConnectionId = await validZoomConnectionId(supabase, payload.zoom_connection_id);
+    const zoomConnectionId = await validZoomConnectionId(supabase, payload.zoom_connection_id, payload.member_id);
 
     const { error } = await supabase
       .from("coach_profile")
       .update({
         display_name: payload.display_name,
         title: payload.title ?? null,
-        bio: payload.bio ?? null,
+        bio_short: payload.bio ?? null,
         avatar_url: payload.avatar_url ?? null,
         member_id: payload.member_id ?? null,
         routing_group: payload.routing_group,
