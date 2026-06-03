@@ -378,7 +378,7 @@ export default function AboutPage() {
             Start the practice →
           </PublicTrackedLink>
           <p className="mt-4 text-sm" style={{ color: "#4A5360" }}>
-            From $37/month · Cancel anytime · 30-day guarantee
+            From $27/month · Cancel anytime · 30-day guarantee
           </p>
         </div>
       </section>

@@ -23,7 +23,8 @@ export function PasswordNudgeBanner() {
 
   return (
     <div
-      role="banner"
+      role="status"
+      aria-live="polite"
       aria-label="Account security suggestion"
       className="w-full"
       style={{

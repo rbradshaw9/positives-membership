@@ -137,7 +137,7 @@ export default function WatchPage() {
               </div>
 
               <p className="mt-4 text-sm" style={{ color: "#9AA0A8" }}>
-                Starts at $37/month · 30-day guarantee · Cancel anytime
+                Starts at $27/month · 30-day guarantee · Cancel anytime
               </p>
             </div>
 
@@ -367,7 +367,7 @@ export default function WatchPage() {
             </div>
 
             <p className="mt-4 text-sm" style={{ color: "#9AA0A8" }}>
-              Paid membership starts at $37/month · 30-day guarantee · cancel anytime
+              Paid membership starts at $27/month · 30-day guarantee · cancel anytime
             </p>
           </div>
         </section>

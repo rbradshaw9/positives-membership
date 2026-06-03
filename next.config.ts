@@ -3,7 +3,8 @@ import { withSentryConfig } from "@sentry/nextjs";
 
 const contentSecurityPolicy = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
+  // 'unsafe-inline' kept for Stripe.js / Sentry injection; replace with nonce-based CSP to harden further
+  "script-src 'self' 'unsafe-inline' https:",
   "style-src 'self' 'unsafe-inline' https:",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data: https:",
@@ -86,6 +87,11 @@ const nextConfig: NextConfig = {
           {
             key: "Permissions-Policy",
             value: "camera=(self), microphone=(self), geolocation=()",
+          },
+          // Force HTTPS for 2 years, include subdomains, eligible for preload list
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=63072000; includeSubDomains; preload",
           },
         ],
       },

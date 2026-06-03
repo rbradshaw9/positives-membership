@@ -117,10 +117,11 @@ export function CommunityComposerCard() {
           </p>
 
           <div className="mt-5">
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            <label htmlFor="community-post-body" className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               Post
             </label>
             <textarea
+              id="community-post-body"
               value={body}
               onChange={(event) => setBody(event.target.value)}
               placeholder={placeholder}
@@ -131,10 +132,11 @@ export function CommunityComposerCard() {
           </div>
 
           <div className="mt-4">
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            <label htmlFor="community-post-headline" className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               Optional headline
             </label>
             <input
+              id="community-post-headline"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               maxLength={120}

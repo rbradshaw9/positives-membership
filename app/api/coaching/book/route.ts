@@ -22,6 +22,7 @@ import {
   renderCoachingConfirmationEmail,
   renderCoachBookingNotificationEmail,
 } from "@/lib/email/templates/coaching-confirmation-email";
+import { config } from "@/lib/config";
 
 type BookRequest = {
   coachId: string;
@@ -150,18 +151,27 @@ export async function POST(req: NextRequest) {
     const bookingId = booking.id;
 
     // ── 4. Deduct the session from the pack (atomic update with check) ────────
-    const { error: deductError } = await supabase
+    const { data: deductedRaw, error: deductError } = await supabase
       .from("coaching_session_pack")
       .update({ sessions_remaining: pack.sessions_remaining - 1 })
       .eq("id", pack.id)
-      .eq("sessions_remaining", pack.sessions_remaining); // optimistic lock
+      .eq("sessions_remaining", pack.sessions_remaining) // optimistic lock
+      .select("id");
+    const deducted = deductedRaw as Array<{ id: string }> | null;
 
-    if (deductError) {
-      // Roll back the booking if deduction fails
+    if (deductError || !deducted?.length) {
+      // Roll back the booking — either a DB error or a concurrent booking consumed the session
       await supabase.from("coaching_booking").delete().eq("id", bookingId);
+      if (deductError) {
+        console.error("[coaching/book] deduct error:", deductError);
+        return NextResponse.json(
+          { error: "Failed to deduct session — please try again" },
+          { status: 500 }
+        );
+      }
       return NextResponse.json(
-        { error: "Failed to deduct session — please try again" },
-        { status: 500 }
+        { error: "Session no longer available. Please try again." },
+        { status: 409 }
       );
     }
 
@@ -207,10 +217,10 @@ export async function POST(req: NextRequest) {
         minute: "2-digit",
         timeZone: timezone,
       });
-      const sessionUrl = `https://positives.life/account/coaching/session/${bookingId}`;
+      const sessionUrl = `${config.app.url}/account/coaching/session/${bookingId}`;
       const joinUrl = zoomJoinUrl ?? sessionUrl;
       const calendarUrl = `${sessionUrl}/calendar`;
-      const cancelUrl = "https://positives.life/account/coaching";
+      const cancelUrl = `${config.app.url}/account/coaching`;
 
       // Member confirmation
       const memberEmail = renderCoachingConfirmationEmail({

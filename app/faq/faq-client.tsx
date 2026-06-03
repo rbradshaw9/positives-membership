@@ -43,7 +43,7 @@ const FAQS = [
   },
   {
     q: "What is the 'Founding Member' rate?",
-    a: "The founding member rate ($37/month or $370/year, down from the standard $97/month) is a special price for early members who join during our launch. Your rate stays locked in permanently — when we raise prices for new members, yours doesn't change.",
+    a: "The founding member rate ($27/month or $270/year, down from the standard $97/month) is a special price for early members who join during our launch. Your rate stays locked in permanently — when we raise prices for new members, yours doesn't change.",
   },
   {
     q: "What are the membership options?",

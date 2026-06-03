@@ -150,7 +150,7 @@ export default async function LibraryPage({
                     Event Replays
                   </p>
                   <h2 id="event-replays-heading" className="heading-balance font-heading font-bold text-xl text-foreground">
-                    Live sessions live on Events.
+                    Watch past event replays in the Events section
                   </h2>
                   <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
                     Past Practice keeps the daily, weekly, and monthly rhythm. Ask Dr. Paul and
@@ -159,7 +159,7 @@ export default async function LibraryPage({
                   </p>
                 </div>
                 <Link href="/events?view=list" className="btn-secondary inline-flex items-center justify-center text-sm">
-                  Open Events
+                  Browse Event Replays
                 </Link>
               </div>
             </div>

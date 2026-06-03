@@ -8,7 +8,7 @@ import { getStoredFirstPromoterRefId } from "@/lib/firstpromoter/referral";
 /**
  * components/marketing/PricingToggle.tsx
  *
- * Two-tier layout: Positives ($37/mo) and Positives Plus ($97/mo).
+ * Two-tier layout: Positives ($27/mo) and Positives Plus ($97/mo).
  * Plus card is the conversion hero — visually elevated, outcome-first copy,
  * "Most Popular" badge, teal glow border.
  */
@@ -72,8 +72,8 @@ function PlanCard({
   const [isPending, startTransition] = useTransition();
   const isPlus = tier === 2;
 
-  const monthly = isPlus ? 97 : 37;
-  const annual = isPlus ? 970 : 370;
+  const monthly = isPlus ? 97 : 27;
+  const annual = isPlus ? 970 : 270;
   const annualPerMonth = Math.round(annual / 12);
 
   const handleCheckout = (e: React.FormEvent<HTMLFormElement>) => {

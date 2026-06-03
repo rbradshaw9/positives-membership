@@ -7,6 +7,12 @@ import { encryptSecret } from "@/lib/zoom/crypto";
 import { exchangeZoomCode, fetchZoomMe } from "@/lib/zoom/client";
 import { canManageCoachZoom, canManagePlatformZoom } from "@/lib/zoom/authorization";
 
+function safeReturnTo(value: string | null | undefined): string {
+  const SAFE_DEFAULT = "/admin/integrations";
+  if (!value) return SAFE_DEFAULT;
+  return value.startsWith("/") && !value.startsWith("//") ? value : SAFE_DEFAULT;
+}
+
 type OAuthState = {
   state: string;
   created_by: string;
@@ -142,13 +148,13 @@ export async function GET(request: Request) {
     revalidatePath("/admin/events");
     revalidateTag("zoom-connections", "max");
 
-    const returnUrl = new URL(data.return_to, url.origin);
+    const returnUrl = new URL(safeReturnTo(data.return_to), url.origin);
     returnUrl.searchParams.set("zoomConnectionId", connection.id);
     returnUrl.searchParams.set("success", "zoom_connected");
     return NextResponse.redirect(returnUrl);
   } catch (error) {
     console.error("[zoom/callback]", error);
-    const returnUrl = new URL(data.return_to, url.origin);
+    const returnUrl = new URL(safeReturnTo(data.return_to), url.origin);
     returnUrl.searchParams.set("error", "zoom_connect_failed");
     return NextResponse.redirect(returnUrl);
   }

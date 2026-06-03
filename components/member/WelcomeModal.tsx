@@ -224,6 +224,11 @@ export function WelcomeModal({
         .welcome-feature-row:last-child {
           border-bottom: none;
         }
+        @media (prefers-reduced-motion: reduce) {
+          .welcome-backdrop, .welcome-card {
+            animation-duration: 0.01ms !important;
+          }
+        }
       `}</style>
 
       {/* ── Backdrop ── */}

@@ -234,6 +234,11 @@ export function MemberOnboardingTour({
 
   if (!active || !step) return null;
 
+  const prefersReducedMotion =
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const overlayTransition = prefersReducedMotion ? "" : "transition-opacity duration-200";
+
   const cutout =
     targetRect && !targetMissing
       ? {
@@ -248,13 +253,13 @@ export function MemberOnboardingTour({
     <div aria-live="polite">
       {cutout ? (
         <>
-          <div className="fixed inset-x-0 top-0 z-[90] bg-black/58" style={{ height: cutout.top }} />
+          <div className={`fixed inset-x-0 top-0 z-[90] bg-black/58 ${overlayTransition}`} style={{ height: cutout.top }} />
           <div
-            className="fixed left-0 z-[90] bg-black/58"
+            className={`fixed left-0 z-[90] bg-black/58 ${overlayTransition}`}
             style={{ top: cutout.top, width: cutout.left, height: cutout.height }}
           />
           <div
-            className="fixed right-0 z-[90] bg-black/58"
+            className={`fixed right-0 z-[90] bg-black/58 ${overlayTransition}`}
             style={{
               top: cutout.top,
               left: cutout.left + cutout.width,
@@ -262,7 +267,7 @@ export function MemberOnboardingTour({
             }}
           />
           <div
-            className="fixed inset-x-0 bottom-0 z-[90] bg-black/58"
+            className={`fixed inset-x-0 bottom-0 z-[90] bg-black/58 ${overlayTransition}`}
             style={{ top: cutout.top + cutout.height }}
           />
           <div
@@ -271,7 +276,7 @@ export function MemberOnboardingTour({
           />
         </>
       ) : (
-        <div className="fixed inset-0 z-[90] bg-black/58" />
+        <div className={`fixed inset-0 z-[90] bg-black/58 ${overlayTransition}`} />
       )}
 
       <div

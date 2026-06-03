@@ -181,7 +181,10 @@ export async function POST(req: Request) {
 
   // ── Signature verification ────────────────────────────────────────────
   if (!signingKey) {
-    // Dev/staging mode: log a warning but continue so local testing works
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
+    }
+    // Dev/test mode: log a warning but continue so local testing works
     console.warn(
       "[CalendlyWebhook] CALENDLY_WEBHOOK_SIGNING_KEY is not set — skipping signature verification. " +
         "Set this env var before enabling in production."

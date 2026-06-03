@@ -59,7 +59,8 @@ Not around modules, courses, or progress ladders.
 
 **Pricing display rule:** always show:
 - Regular price: $97/month
-- Offer price: $49/month
+- Founding member rate: $27/month (or $270/year — 2 months free)
+- Decided: May 18, 2026 meeting (Ryan Bradshaw, Dr. Paul Jenkins, Lyndi Jenkins)
 
 ### Level 2 — Membership + Events + Q&A
 - everything in Level 1

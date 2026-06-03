@@ -204,11 +204,6 @@ export default async function AccountPage({
         title="Account"
         subtitle="Membership details, billing, timezone, security, and session controls."
         hero
-        right={
-          <Button href="/practice" variant="outline" size="sm" className="hidden md:inline-flex">
-            Open My Practice
-          </Button>
-        }
       />
 
       <div className="member-container py-8 md:py-10 flex flex-col gap-8">

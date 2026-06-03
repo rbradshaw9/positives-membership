@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import type Stripe from "stripe";
-import { createClient } from "@supabase/supabase-js";
+import { getAdminClient } from "@/lib/supabase/admin";
 import { getSubscriptionAnalyticsFromPriceId } from "@/lib/analytics/subscription";
 import { PLAN_NAME_BY_TIER } from "@/lib/plans";
 import { checkAbuseGuard, getClientIp } from "@/lib/security/abuse-guard";
@@ -35,14 +35,6 @@ import { getStripe } from "@/lib/stripe/config";
 
 // All routes are dynamic by default in Next.js 16 with cacheComponents enabled.
 // The 'force-dynamic' export is no longer needed (and is now incompatible).
-
-function getAdminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } }
-  );
-}
 
 function jsonNoStore(body: unknown, init?: ResponseInit) {
   const headers = new Headers(init?.headers);

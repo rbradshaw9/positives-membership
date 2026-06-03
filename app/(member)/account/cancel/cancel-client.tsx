@@ -17,6 +17,7 @@ export function CancelClient({ isPlus }: { isPlus: boolean }) {
   const router = useRouter();
   const [state, setState] = useState<State>("idle");
   const [showRetentionStep, setShowRetentionStep] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [periodEndLabel, setPeriodEndLabel] = useState<string | null>(null);
   const [changeLabel, setChangeLabel] = useState<string | null>(null);
   const [winbackCode, setWinbackCode] = useState<string | null>(null);
@@ -217,22 +218,54 @@ export function CancelClient({ isPlus }: { isPlus: boolean }) {
             Ready to stop renewal completely? Your access continues through the current paid period.
             We will also email you a discount code in case you want to return later.
           </p>
-          <button
-            type="button"
-            onClick={handleCancel}
-            disabled={busy}
-            className="mt-3 w-full rounded-full border border-destructive/25 px-5 py-3 text-sm font-semibold text-destructive transition-colors hover:bg-destructive/5 disabled:opacity-60"
-          >
-            {state === "canceling" ? "Canceling..." : "No, cancel my membership"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowRetentionStep(false)}
-            disabled={busy}
-            className="mt-3 w-full rounded-full px-5 py-3 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted disabled:opacity-60"
-          >
-            Back
-          </button>
+
+          {showConfirm ? (
+            <div className="mt-3 rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
+              <p className="text-sm font-semibold text-foreground">Are you sure?</p>
+              <p className="mt-1 text-sm leading-body text-muted-foreground">
+                This will cancel your membership immediately. Your access continues through
+                the end of your current billing period.
+              </p>
+              <div className="mt-4 flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  disabled={busy}
+                  className="w-full rounded-full border border-destructive/25 px-5 py-3 text-sm font-semibold text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-60"
+                >
+                  {state === "canceling" ? "Canceling..." : "Yes, cancel my membership"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm(false)}
+                  disabled={busy}
+                  className="w-full rounded-full px-5 py-3 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted disabled:opacity-60"
+                >
+                  Never mind
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowConfirm(true)}
+              disabled={busy}
+              className="mt-3 w-full rounded-full border border-destructive/25 px-5 py-3 text-sm font-semibold text-destructive transition-colors hover:bg-destructive/5 disabled:opacity-60"
+            >
+              No, cancel my membership
+            </button>
+          )}
+
+          {!showConfirm && (
+            <button
+              type="button"
+              onClick={() => setShowRetentionStep(false)}
+              disabled={busy}
+              className="mt-3 w-full rounded-full px-5 py-3 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted disabled:opacity-60"
+            >
+              Back
+            </button>
+          )}
         </div>
       ) : null}
     </div>

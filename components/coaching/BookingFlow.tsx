@@ -12,6 +12,7 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { SafeImage } from "@/components/media/SafeImage";
 
@@ -341,6 +342,10 @@ export function BookingFlow({ onBooked }: { onBooked?: (result: BookingResult) =
         <div className="flex flex-col gap-1">
           <p className="text-sm font-semibold text-foreground">
             {formatSlotTime(selectedSlot.startsAt, timezone)}
+          </p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Times shown in your local timezone ({timezone}).{" "}
+            <Link href="/account" className="underline">Update timezone</Link>
           </p>
           <p className="text-xs text-muted-foreground">
             One session will be deducted from your balance.

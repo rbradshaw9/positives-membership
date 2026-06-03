@@ -287,13 +287,13 @@ export function MemberTopNav({
         className="member-shell__tabbar safe-area-pb md:hidden"
         style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}
       >
-        <ul className="flex items-center justify-around px-2">
+        <ul className="flex flex-nowrap items-center overflow-x-auto px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {[...navItems, ...(adminMenuItem ? [adminMenuItem] : []), { href: "/account", label: "Account", mobileLabel: "Account" }].map(
             ({ href, label, mobileLabel }) => {
             const isActive = pathname === href || (href !== "/today" && pathname.startsWith(href));
             const isCommunity = href === "/community";
             return (
-              <li key={href} className="flex-1">
+              <li key={href} className="flex-shrink-0 min-w-[60px]">
                 <Link
                   href={href}
                   aria-current={isActive ? "page" : undefined}

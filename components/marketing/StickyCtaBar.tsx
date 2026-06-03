@@ -71,7 +71,7 @@ export function StickyCtaBar({ sentinelId, href, label }: StickyCtaBarProps) {
           className="text-center text-[11px] font-medium"
           style={{ color: "rgba(255,255,255,0.72)", lineHeight: "1.35" }}
         >
-          From $37/month · Cancel anytime · 30-day guarantee
+          From $27/month · Cancel anytime · 30-day guarantee
         </p>
       </div>
     </div>

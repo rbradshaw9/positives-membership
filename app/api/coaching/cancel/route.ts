@@ -117,10 +117,10 @@ export async function POST(req: NextRequest) {
     // Restore session credit if eligible
     if (sessionRestored) {
       // Load current pack balance
-      type PackRow = { id: string; sessions_remaining: number };
+      type PackRow = { id: string; sessions_remaining: number; sessions_total: number };
       const { data: packRaw } = await supabase
         .from("coaching_session_pack")
-        .select("id, sessions_remaining")
+        .select("id, sessions_remaining, sessions_total")
         .eq("id", booking.pack_id)
         .single();
       const pack = packRaw as PackRow | null;
@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
       if (pack) {
         await supabase
           .from("coaching_session_pack")
-          .update({ sessions_remaining: pack.sessions_remaining + 1 })
+          .update({ sessions_remaining: Math.min(pack.sessions_remaining + 1, pack.sessions_total) })
           .eq("id", booking.pack_id);
       }
     }

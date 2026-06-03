@@ -367,7 +367,7 @@ export function JoinPageExperience({
           </Link>
 
           <p className="mt-5 text-sm" style={{ color: "#68707A" }}>
-            From $37/month · Cancel anytime · 30-day guarantee
+            From $27/month · Cancel anytime · 30-day guarantee
           </p>
         </div>
       </section>

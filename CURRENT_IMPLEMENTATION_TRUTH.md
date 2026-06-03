@@ -29,7 +29,7 @@ Do not treat `decided next` items as shipped behavior.
 
 ### Membership and pricing
 
-- Level 1 pricing truth is `$37/mo` and `$370/yr`
+- Level 1 pricing truth is `$27/mo` and `$270/yr` (confirmed by Ryan 2026-06-03; Stripe prices updated to price_1TeEhTIoN7XN0qfmLLZqmpG4 monthly / price_1TeEhTIoN7XN0qfmgCXxoPts annual)
 - Level 2 pricing truth is `$97/mo` and `$970/yr`
 - Level 3 pricing truth is `$297/mo` and `$2,970/yr`
 - Level 4 is admin-assigned and priced separately

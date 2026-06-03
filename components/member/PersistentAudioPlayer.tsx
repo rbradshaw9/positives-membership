@@ -104,6 +104,15 @@ export function PersistentAudioPlayer() {
     };
   }, [currentTrack, mini, pathname]);
 
+  // Pause audio when navigating to /today so it doesn't play invisibly while
+  // the persistent bar is hidden. The /today page has its own in-card player.
+  useEffect(() => {
+    if (pathname === "/today" && isPlaying) {
+      togglePlayback();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
   // The /today page has its own full-featured in-card audio player for today's
   // daily practice. Showing the persistent bar there would create a duplicate UI.
   // Once the member navigates away, the bar reappears and playback continues.

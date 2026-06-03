@@ -18,6 +18,7 @@ import { StatCard } from "@/components/ui/StatCard";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { PracticeHeatmap } from "@/components/practice/PracticeHeatmap";
 import { PracticeCollection } from "@/components/practice/PracticeCollection";
+import { PracticeTabsClient } from "@/components/practice/PracticeTabsClient";
 
 export const metadata = {
   title: "My Practice — Positives",
@@ -71,26 +72,6 @@ function buildItems(items: LibraryItem[], noteContentIds: Set<string>) {
   }));
 }
 
-function TabLink({
-  tab,
-  activeTab,
-  children,
-}: {
-  tab: PracticeTab;
-  activeTab: PracticeTab;
-  children: React.ReactNode;
-}) {
-  return (
-    <Link
-      href={tab === "daily" ? "/practice" : `/practice?tab=${tab}`}
-      className="member-segmented-control__item"
-      data-active={activeTab === tab}
-      aria-current={activeTab === tab ? "page" : undefined}
-    >
-      {children}
-    </Link>
-  );
-}
 
 export default async function PracticePage({
   searchParams,
@@ -437,41 +418,30 @@ export default async function PracticePage({
         )}
 
         {/* ── Practice Collection Tabs ────────────────────────────────── */}
-        <nav aria-label="Practice sections" className="member-segmented-control">
-          <TabLink tab="daily" activeTab={activeTab}>
-            Daily
-          </TabLink>
-          <TabLink tab="weekly" activeTab={activeTab}>
-            Weekly
-          </TabLink>
-          <TabLink tab="monthly" activeTab={activeTab}>
-            Monthly
-          </TabLink>
-        </nav>
-
-        {activeTab === "daily" && (
-          <PracticeCollection
-            title="Daily practices"
-            subtitle="A calmer archive of recent daily grounding sessions. Start here when you want a focused practice without digging through the full library."
-            items={enrichedDaily}
-          />
-        )}
-
-        {activeTab === "weekly" && (
-          <PracticeCollection
-            title="Weekly principles"
-            subtitle="The principles that anchor each week, designed to feel readable, intentional, and easy to revisit."
-            items={enrichedWeekly}
-          />
-        )}
-
-        {activeTab === "monthly" && (
-          <PracticeCollection
-            title="Monthly themes"
-            subtitle="Longer-range themes that give the month its shape and help the rest of your practice cohere."
-            items={enrichedMonthly}
-          />
-        )}
+        <PracticeTabsClient
+          initialTab={activeTab}
+          daily={
+            <PracticeCollection
+              title="Daily practices"
+              subtitle="A calmer archive of recent daily grounding sessions. Start here when you want a focused practice without digging through the full library."
+              items={enrichedDaily}
+            />
+          }
+          weekly={
+            <PracticeCollection
+              title="Weekly principles"
+              subtitle="The principles that anchor each week, designed to feel readable, intentional, and easy to revisit."
+              items={enrichedWeekly}
+            />
+          }
+          monthly={
+            <PracticeCollection
+              title="Monthly themes"
+              subtitle="Longer-range themes that give the month its shape and help the rest of your practice cohere."
+              items={enrichedMonthly}
+            />
+          }
+        />
       </div>
     </div>
   );

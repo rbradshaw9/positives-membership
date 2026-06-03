@@ -77,22 +77,21 @@ async function parsePayload(request: NextRequest): Promise<WebhookPayload> {
   return Object.fromEntries(form.entries());
 }
 
-function isAuthorized(request: NextRequest): boolean {
+function isAuthorized(request: NextRequest): boolean | 503 {
   const expectedSecret = process.env.ACTIVECAMPAIGN_WEBHOOK_SECRET;
 
   if (!expectedSecret) {
     if (process.env.NODE_ENV === "production") {
       console.error("[AC webhook] ACTIVECAMPAIGN_WEBHOOK_SECRET is required in production.");
-      return false;
+      return 503;
     }
 
     console.warn("[AC webhook] ACTIVECAMPAIGN_WEBHOOK_SECRET is not set; accepting dev/test request.");
     return true;
   }
 
-  const providedSecret =
-    request.headers.get("x-activecampaign-webhook-secret") ??
-    request.nextUrl.searchParams.get("secret");
+  // Accept secret only from request header — never from query parameters
+  const providedSecret = request.headers.get("x-activecampaign-webhook-secret");
 
   return providedSecret === expectedSecret;
 }
@@ -113,7 +112,11 @@ async function setMarketingPreference(email: string, unsubscribed: boolean) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!isAuthorized(request)) {
+  const authResult = isAuthorized(request);
+  if (authResult === 503) {
+    return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
+  }
+  if (!authResult) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

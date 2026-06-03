@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { config } from "@/lib/config";
 import { getAdminClient } from "@/lib/supabase/admin";
+import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 
 const FALLBACK_IP = "unknown";
 
@@ -62,12 +63,7 @@ export async function checkAbuseGuard({
   const hashedBucket = hashAbuseKey([scope, ...normalizedParts].join("|"));
   const supabase = getAdminClient();
 
-  const { data, error } = await (supabase as never as {
-    rpc: (
-      fn: string,
-      args: Record<string, string | number>
-    ) => Promise<{ data: GuardRateLimitRow[] | GuardRateLimitRow | null; error: { message: string } | null }>;
-  }).rpc("guard_rate_limit", {
+  const { data, error } = await asLooseSupabaseClient(supabase).rpc<GuardRateLimitRow[] | GuardRateLimitRow>("guard_rate_limit", {
     p_scope: scope,
     p_bucket: hashedBucket,
     p_window_seconds: windowSeconds,

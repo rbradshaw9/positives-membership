@@ -13,6 +13,20 @@ Positives is currently targeting a **Level 1-only launch**.
 - Keep `ENABLE_COMMUNITY_PREVIEW=false` for production launch readiness.
 - Do not assume events, email automation, Castos automation, or AI retrieval are part of launch scope.
 
+### Confirmed Live Pricing (as of 2026-06-03)
+
+| Tier | Monthly | Annual | Notes |
+|------|---------|--------|-------|
+| Level 1 — Positives (Basic) | **$27/mo** | **$270/yr** | Founding member rate; $97/mo regular price. 2 months free on annual. |
+| Level 2 — Positives Plus | $97/mo | $970/yr | Community + group coaching + events |
+| Level 3 — Positives Circle | $297/mo | $2,970/yr | High-touch coaching circle |
+| Level 4 — Executive Coaching | Admin-assigned | — | — |
+| Coaching — Single Session | $225 | — | One-off |
+| Coaching — Punch Pass | $1,997 | — | 10 sessions, 6-month expiry |
+
+**Source:** May 18, 2026 team meeting (Ryan Bradshaw, Dr. Paul Jenkins, Lyndi Jenkins, Natasja Visser).
+**Stripe price IDs (live):** `STRIPE_PRICE_LEVEL_1_MONTHLY=price_1TeEhTIoN7XN0qfmLLZqmpG4` · `STRIPE_PRICE_LEVEL_1_ANNUAL=price_1TeEhTIoN7XN0qfmgCXxoPts`
+
 ---
 
 ## 1. Platform Overview

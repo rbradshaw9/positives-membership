@@ -18,6 +18,7 @@ import { getAvailableSlots } from "@/lib/coaching/availability";
 import { createCoachingZoomMeeting, updateCoachingZoomMeeting } from "@/lib/zoom/coaching";
 import { sendPostmarkEmail } from "@/lib/email/postmark";
 import { renderCoachingConfirmationEmail } from "@/lib/email/templates/coaching-confirmation-email";
+import { config } from "@/lib/config";
 
 type RescheduleRequest = {
   bookingId: string;
@@ -180,9 +181,9 @@ export async function POST(req: NextRequest) {
         coachName: coachProfile?.display_name ?? "Your Coach",
         scheduledAt: scheduledAtFormatted,
         durationMinutes: coachProfile?.session_duration_minutes ?? booking.duration_minutes,
-        joinUrl: zoomJoinUrl ?? `https://positives.life/account/coaching/session/${bookingId}`,
-        cancelUrl: "https://positives.life/account/coaching",
-        calendarUrl: `https://positives.life/account/coaching/session/${bookingId}/calendar`,
+        joinUrl: zoomJoinUrl ?? `${config.app.url}/account/coaching/session/${bookingId}`,
+        cancelUrl: `${config.app.url}/account/coaching`,
+        calendarUrl: `${config.app.url}/account/coaching/session/${bookingId}/calendar`,
       });
 
       await sendPostmarkEmail({

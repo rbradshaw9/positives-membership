@@ -232,7 +232,9 @@ export default async function AccountCoachingPage({
                     : "Your coaching session is ready."}
                 </p>
                 <p className="mt-0.5 text-sm text-muted-foreground">
-                  Book your first session anytime using the button below.
+                  {pastBookings.length === 0
+                    ? "Book your first session anytime using the button below."
+                    : "Ready to book your next session using the button below."}
                 </p>
               </div>
             </div>
@@ -393,7 +395,7 @@ export default async function AccountCoachingPage({
                   const sessionTime = new Intl.DateTimeFormat("en-US", {
                     weekday: "short", month: "short", day: "numeric",
                     hour: "numeric", minute: "2-digit",
-                    timeZone: "America/New_York",
+                    timeZone: member.timezone ?? "America/New_York",
                     timeZoneName: "short",
                   }).format(new Date(s.scheduled_at));
                   return (

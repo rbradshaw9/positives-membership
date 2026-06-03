@@ -11,16 +11,12 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getAdminClient } from "@/lib/supabase/admin";
 import { syncMarketingPreference } from "@/lib/activecampaign/sync";
 import { verifyUnsubscribeToken } from "@/lib/email/unsubscribe";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
-
 async function suppressEmail(email: string): Promise<{ memberUpdateError: boolean }> {
+  const supabase = getAdminClient();
   const normalizedEmail = email.trim().toLowerCase();
 
   // 1. Record in our DB so lifecycle automations skip this address

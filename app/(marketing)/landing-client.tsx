@@ -879,7 +879,7 @@ function LandingPageShell({
           </Link>
 
           <p className="mt-5 text-sm" style={{ color: "#68707A" }}>
-            From $37/month · Cancel anytime · 30-day guarantee
+            From $27/month · Cancel anytime · 30-day guarantee
           </p>
 
           <div className="mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm">

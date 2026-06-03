@@ -98,8 +98,8 @@ const CARDS = {
 
 const PRICING = {
   1: {
-    monthly: { regular: 97, offer: 37 },
-    annual: { total: 370, perMonth: 31 },
+    monthly: { regular: 97, offer: 27 },
+    annual: { total: 270, perMonth: 22 },
   },
   2: {
     monthly: { offer: 97 },
@@ -146,12 +146,12 @@ function Level1Price({ billing }: { billing: Billing }) {
             className="font-heading font-bold"
             style={{ fontSize: "2.75rem", letterSpacing: "-0.045em", color: "#121417", lineHeight: 1 }}
           >
-            $370
+            $270
           </span>
           <span style={{ fontSize: "0.9rem", color: "#9AA0A8" }}>/year</span>
         </div>
         <p className="text-xs font-semibold" style={{ color: "#4E8C78" }}>
-          2 months free · $31/mo
+          2 months free · $22.50/mo
         </p>
       </div>
     );
@@ -164,7 +164,7 @@ function Level1Price({ billing }: { billing: Billing }) {
           className="font-heading font-bold"
           style={{ fontSize: "2.75rem", letterSpacing: "-0.045em", color: "#121417", lineHeight: 1 }}
         >
-          $37
+          $27
         </span>
         <span style={{ fontSize: "0.9rem", color: "#9AA0A8" }}>/month</span>
       </div>

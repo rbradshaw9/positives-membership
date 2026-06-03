@@ -9,7 +9,7 @@ type JoinPageSearchParams = Promise<Record<string, string | string[] | undefined
 export const metadata = {
   title: "Join Positives — Start Your Practice",
   description:
-    "Start your Positives practice from $37/month. Daily guided audio, weekly principles, and monthly themes with Dr. Paul Jenkins. Upgrade to Positives Plus for live Q&A calls and 50% off events.",
+    "Start your Positives practice from $27/month. Daily guided audio, weekly principles, and monthly themes with Dr. Paul Jenkins. Upgrade to Positives Plus for live Q&A calls and 50% off events.",
   alternates: {
     canonical: "/join",
   },

@@ -1,3 +1,4 @@
+import pLimit from "p-limit";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { asLooseSupabaseClient } from "@/lib/supabase/loose";
 import { checkTierAccess } from "@/lib/auth/check-tier-access";
@@ -537,61 +538,65 @@ export async function dispatchReminderTriggers() {
   ]);
   const eventAccess = await fetchEventReminderAccess(eventRows.map((event) => event.id));
 
-  let triggered = 0;
+  // Process up to 10 members concurrently to avoid Vercel cron timeout at scale.
+  const limit = pLimit(10);
 
-  for (const member of members) {
-    const upcomingEvent = chooseUpcomingEventForMember(member, eventRows, eventAccess, now);
-    const upcomingEventReminderKind = upcomingEvent ? getUpcomingEventReminderKind(upcomingEvent, now) : null;
+  const results = await Promise.allSettled(
+    members.map((member) =>
+      limit(async () => {
+        const upcomingEvent = chooseUpcomingEventForMember(member, eventRows, eventAccess, now);
+        const upcomingEventReminderKind = upcomingEvent
+          ? getUpcomingEventReminderKind(upcomingEvent, now)
+          : null;
 
-    if (upcomingEvent && upcomingEventReminderKind) {
-      const sent = await triggerEventReminder({
-        member,
-        event: upcomingEvent,
-        reminderKind: upcomingEventReminderKind,
-      });
-      if (sent) triggered += 1;
-      continue;
-    }
+        if (upcomingEvent && upcomingEventReminderKind) {
+          return triggerEventReminder({
+            member,
+            event: upcomingEvent,
+            reminderKind: upcomingEventReminderKind,
+          });
+        }
 
-    const upcoming = chooseUpcomingContentForMember(member, contentRows, now);
-    const upcomingReminderKind = upcoming ? getUpcomingReminderKind(upcoming, now) : null;
+        const upcoming = chooseUpcomingContentForMember(member, contentRows, now);
+        const upcomingReminderKind = upcoming ? getUpcomingReminderKind(upcoming, now) : null;
 
-    if (upcoming && upcomingReminderKind) {
-      const sent = await triggerReminder({
-        member,
-        content: upcoming,
-        reminderKind: upcomingReminderKind,
-      });
-      if (sent) triggered += 1;
-      continue;
-    }
+        if (upcoming && upcomingReminderKind) {
+          return triggerReminder({
+            member,
+            content: upcoming,
+            reminderKind: upcomingReminderKind,
+          });
+        }
 
-    const replayEvent = chooseReplayEventForMember(member, eventRows, eventAccess, now);
-    if (replayEvent) {
-      const sent = await triggerEventReminder({
-        member,
-        event: replayEvent,
-        reminderKind: "event_replay",
-      });
-      if (sent) triggered += 1;
-      continue;
-    }
+        const replayEvent = chooseReplayEventForMember(member, eventRows, eventAccess, now);
+        if (replayEvent) {
+          return triggerEventReminder({
+            member,
+            event: replayEvent,
+            reminderKind: "event_replay",
+          });
+        }
 
-    const replay = chooseReplayContentForMember(member, contentRows, now);
-    if (!replay) continue;
+        const replay = chooseReplayContentForMember(member, contentRows, now);
+        if (!replay) return false;
 
-    const sessionKind = getContentSessionKind(replay.tier_min);
-    if (!sessionKind) continue;
+        const sessionKind = getContentSessionKind(replay.tier_min);
+        if (!sessionKind) return false;
 
-    const replayKind: ReminderKind =
-      sessionKind === "event" ? "event_replay" : "coaching_replay";
-    const sent = await triggerReminder({
-      member,
-      content: replay,
-      reminderKind: replayKind,
-    });
-    if (sent) triggered += 1;
-  }
+        const replayKind: ReminderKind =
+          sessionKind === "event" ? "event_replay" : "coaching_replay";
+        return triggerReminder({
+          member,
+          content: replay,
+          reminderKind: replayKind,
+        });
+      })
+    )
+  );
+
+  const triggered = results.filter(
+    (r) => r.status === "fulfilled" && r.value === true
+  ).length;
 
   return {
     membersChecked: members.length,

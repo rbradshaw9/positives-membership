@@ -5,7 +5,7 @@ import { useState } from "react";
 const JOIN_FAQS = [
   {
     q: "What is the Founding Member rate?",
-    a: "The founding member rate ($37/month or $370/year, down from the standard $97/month) is a permanent price lock for early members who join during launch. When we raise prices for new members, your rate stays exactly where it is — forever.",
+    a: "The founding member rate ($27/month or $270/year, down from the standard $97/month) is a permanent price lock for early members who join during launch. When we raise prices for new members, your rate stays exactly where it is — forever.",
   },
   {
     q: "Can I cancel anytime?",
